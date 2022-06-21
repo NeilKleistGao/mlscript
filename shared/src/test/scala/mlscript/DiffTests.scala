@@ -52,6 +52,7 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
       override def emitDbg(str: String): Unit = output(str)
     }
     var ctx: typer.Ctx = typer.Ctx.init
+    var self_define_res: Bool = false
     var declared: Map[Str, typer.PolymorphicType] = Map.empty
     val failures = mutable.Buffer.empty[Int]
     val unmergedChanges = mutable.Buffer.empty[Int]
@@ -510,6 +511,8 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                   typer.typeType(rhs)(ctx.nextLevel, raise,
                     vars = tps.map(tp => tp.name -> typer.freshVar(typer.noProv/*FIXME*/)(1)).toMap))
                 ctx += nme.name -> ty_sch
+                if (nme.name.contentEquals("res")) self_define_res = true
+                if (!self_define_res) ctx += "res" -> ty_sch
                 declared += nme.name -> ty_sch
                 val exp = getType(ty_sch)
                 output(s"$nme: ${exp.show}")
@@ -521,6 +524,7 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                 typer.dbg = mode.dbg
                 val ty_sch = typer.typeLetRhs(isrec, nme.name, rhs)(ctx, raise)
                 val exp = getType(ty_sch)
+                if (nme.name.contentEquals("res")) self_define_res = true
                 // statement does not have a declared type for the body
                 // the inferred type must be used and stored for lookup
                 declared.get(nme.name) match {
@@ -528,6 +532,7 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                   // infer it's type and store it for lookup and type gen
                   case N =>
                     ctx += nme.name -> ty_sch
+                    if (!self_define_res) ctx += "res" -> ty_sch
                     output(s"$nme: ${exp.show}")
                     if (mode.generateTsDeclarations) tsTypegenCodeBuilder.addTypeGenTermDefinition(exp, Some(nme.name))
                     
@@ -536,6 +541,7 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                   // the inferred type is used to for ts type gen
                   case S(sign) =>
                     ctx += nme.name -> sign
+                    if (!self_define_res) ctx += "res" -> sign
                     val sign_exp = getType(sign)
                     output(exp.show)
                     output(s"  <:  $nme:")
@@ -565,7 +571,7 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                   case L(pty) =>
                     val exp = getType(pty)
                     if (exp =/= TypeName("unit")) {
-                      ctx += "res" -> pty
+                      if (!self_define_res) ctx += "res" -> pty
                       output(s"res: ${exp.show}")
                       if (mode.generateTsDeclarations) tsTypegenCodeBuilder.addTypeGenTermDefinition(exp, None)
                       prefixLength = 3
