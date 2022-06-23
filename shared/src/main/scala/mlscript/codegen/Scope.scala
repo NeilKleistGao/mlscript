@@ -7,6 +7,7 @@ import scala.reflect.ClassTag
 import mlscript.{TypeName, Top, Bot, TypeDef, Als, Trt, Cls}
 import mlscript.MethodDef
 import mlscript.Term
+import mlscript.utils.AnyOps
 
 class Scope(name: Str, enclosing: Opt[Scope]) {
   private val lexicalTypeSymbols = scala.collection.mutable.HashMap[Str, TypeSymbol]()
@@ -158,8 +159,9 @@ class Scope(name: Str, enclosing: Opt[Scope]) {
    */
   def getTypeSymbol(name: Str): Opt[TypeSymbol] = lexicalTypeSymbols.get(name)
 
-  def resolveValue(name: Str): Opt[RuntimeSymbol] =
+  def resolveValue(name: Str): Opt[RuntimeSymbol] = {
     lexicalValueSymbols.get(name).orElse(enclosing.flatMap(_.resolveValue(name)))
+  }
 
   /**
     * Find the base class for a specific class.
@@ -301,6 +303,15 @@ class Scope(name: Str, enclosing: Opt[Scope]) {
     * Shorthands for deriving function scopes.
     */
   def derive(name: Str, params: Ls[Str]): Scope = Scope(name, params, this)
+
+  def refreshRes(): Unit = {
+    lexicalValueSymbols("res") = ValueSymbol("res", "res")
+    for (i <- 1 to Int.MaxValue) {
+      val name = s"res$i"
+      if (!runtimeSymbols.remove(name)) return
+      else lexicalValueSymbols.remove(name); ()
+    }
+  }
 }
 
 object Scope {
@@ -330,6 +341,7 @@ final case class TemporaryVariableEmitter() {
     * Add a new variable name. The name must be a runtime name.
     */
   def +=(name: Str): Unit = names += name
+  def -=(name: Str): Unit = names -= name
 
   /**
     * Emit a `let`-declaration for collected names and clear the collection.

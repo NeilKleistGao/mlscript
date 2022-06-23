@@ -431,7 +431,7 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                       }
                     }
                     queries.zipWithIndex foreach {
-                      case (JSTestBackend.CodeQuery(prelude, code), i) =>
+                      case (JSTestBackend.CodeQuery(prelude, code, _), i) =>
                         output(s"// Query ${i + 1}")
                         prelude foreach { output(_) }
                         code foreach { output(_) }
@@ -455,7 +455,7 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                     }
                     // Send queries to the host.
                     ExecutedResult(queries.zipWithIndex.map {
-                      case (JSTestBackend.CodeQuery(preludeLines, codeLines), i) =>
+                      case (JSTestBackend.CodeQuery(preludeLines, codeLines, bounded), i) =>
                         val prelude = preludeLines.mkString
                         val code = codeLines.mkString
                         if (mode.showRepl) {
@@ -463,7 +463,14 @@ class DiffTests extends org.scalatest.funsuite.AnyFunSuite with org.scalatest.Pa
                           println(s"│ ├── Prelude: ${if (preludeLines.isEmpty) "<empty>" else prelude}")
                           println(s"│ └── Code: ${code}")
                         }
+                        
+                        val res = host.query("", "res = res;") match {
+                          case ReplHost.Result(content) => content
+                          case _ => ""
+                        }
+
                         val reply = host.query(prelude, code)
+                        if (bounded && !res.isEmpty) host.execute(s"res = ${res}")
                         if (mode.showRepl) {
                           val prefix = if (i + 1 == queries.length) "└──" else "├──"
                           println(s"$prefix Reply ${i + 1}/${queries.length}: $reply")
