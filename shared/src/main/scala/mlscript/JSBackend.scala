@@ -93,101 +93,104 @@ class JSBackend {
     * Handle all possible cases of MLscript function applications. We extract
     * this method to prevent exhaustivity check from reaching recursion limit.
     */
-  protected def translateApp(term: App)(implicit scope: Scope): JSExpr = term match {
+  protected def translateApp(term: App, isClassMember: Bool = false, isThisCaptured: Bool = false)(implicit scope: Scope): JSExpr = term match {
     // Binary expressions
     case App(App(Var(op), Tup((N -> (lhs -> _)) :: Nil)), Tup((N -> (rhs -> _)) :: Nil))
         if JSBinary.operators contains op =>
-      JSBinary(op, translateTerm(lhs), translateTerm(rhs))
+      JSBinary(op, translateTerm(lhs, isClassMember, isThisCaptured), translateTerm(rhs, isClassMember, isThisCaptured))
     // If-expressions
     case App(App(App(Var("if"), tst), con), alt) =>
-      JSTenary(translateTerm(tst), translateTerm(con), translateTerm(alt))
+      JSTenary(translateTerm(tst, isClassMember, isThisCaptured), translateTerm(con, isClassMember, isThisCaptured), translateTerm(alt, isClassMember, isThisCaptured))
     // Function invocation
     case App(trm, Tup(args)) =>
       val callee = trm match {
         case Var(nme) => translateVar(nme, true)
-        case _ => translateTerm(trm)
+        case _ => translateTerm(trm, isClassMember, isThisCaptured)
       }
-      callee(args map { case (_, (arg, _)) => translateTerm(arg) }: _*)
+      callee(args map { case (_, (arg, _)) => translateTerm(arg, isClassMember, isThisCaptured) }: _*)
     case _ => throw CodeGenError(s"ill-formed application ${inspect(term)}")
   }
 
   /**
     * Translate MLscript terms into JavaScript expressions.
     */
-  protected def translateTerm(term: Term)(implicit scope: Scope): JSExpr = term match {
+  protected def translateTerm(term: Term, isClassMember: Bool = false, isThisCaptured: Bool = false)(implicit scope: Scope): JSExpr = term match {
+    case Var(name) if (name === "this" && isClassMember && isThisCaptured) => translateVar("$", false)
     case Var(name) => translateVar(name, false)
     case Lam(params, body) =>
       val patterns = translateParams(params)
       val lamScope = Scope("Lam", patterns flatMap { _.bindings }, scope)
-      JSArrowFn(patterns, lamScope.tempVars `with` translateTerm(body)(lamScope))
-    case t: App => translateApp(t)
+      JSArrowFn(patterns, lamScope.tempVars `with` translateTerm(body, isClassMember, isThisCaptured)(lamScope))
+    case t: App => translateApp(t, isClassMember, isThisCaptured)
     case Rcd(fields) =>
       JSRecord(fields map { case (key, (value, _)) =>
-        key.name -> translateTerm(value)
+        key.name -> translateTerm(value, isClassMember, isThisCaptured)
       })
     case Sel(receiver, fieldName) =>
-      JSField(translateTerm(receiver), fieldName.name)
+      JSField(translateTerm(receiver, isClassMember, isThisCaptured), fieldName.name)
     // Turn let into an IIFE.
     case Let(true, Var(name), Lam(args, body), expr) =>
-      val letScope = scope.derive("Let", name :: Nil)
+      val letScope = if (isClassMember && !isThisCaptured) scope.derive("Let", name :: "$" :: Nil)
+                     else scope.derive("Let", name :: Nil)
       val fn = {
         val params = translateParams(args)
         val bindings = name :: params.flatMap { _.bindings }
         val fnScope = scope.derive("Function", bindings)
-        val fnBody = fnScope.tempVars.`with`(translateTerm(body)(fnScope))
+        val fnBody = fnScope.tempVars.`with`(translateTerm(body, isClassMember, true)(fnScope))
         JSFuncExpr(S(name), params, fnBody.fold(_.`return` :: Nil, identity))
       }
       JSImmEvalFn(
         N,
-        JSNamePattern(name) :: Nil,
-        letScope.tempVars.`with`(translateTerm(expr)(letScope)),
-        fn :: Nil
+        JSNamePattern(name) :: (if (isClassMember && !isThisCaptured) JSNamePattern("$") :: Nil else Nil),
+        letScope.tempVars.`with`(translateTerm(expr, isClassMember, isThisCaptured)(letScope)),
+        fn :: (if (isClassMember && !isThisCaptured) JSIdent("this") :: Nil else Nil)
       )
     case Let(true, Var(name), _, _) =>
       throw new CodeGenError(s"recursive non-function definition $name is not supported")
     case Let(_, Var(name), value, body) =>
-      val letScope = scope.derive("Let", name :: Nil)
+      val letScope = if (isClassMember && !isThisCaptured) scope.derive("Let", name :: "$" :: Nil)
+                     else scope.derive("Let", name :: Nil)
       JSImmEvalFn(
         N,
-        JSNamePattern(name) :: Nil,
-        letScope.tempVars `with` translateTerm(body)(letScope),
-        translateTerm(value) :: Nil
+        JSNamePattern(name) :: (if (isClassMember && !isThisCaptured) JSNamePattern("$") :: Nil else Nil),
+        letScope.tempVars `with` translateTerm(body, isClassMember, true)(letScope),
+        translateTerm(value, isClassMember, isThisCaptured) :: (if (isClassMember && !isThisCaptured) JSIdent("this") :: Nil else Nil)
       )
     case Blk(stmts) =>
       val blkScope = scope.derive("Blk")
       JSImmEvalFn(
         N,
-        Nil,
+        if (isClassMember && !isThisCaptured) JSNamePattern("$") :: Nil else Nil,
         R(blkScope.tempVars `with` (stmts flatMap (_.desugared._2) map {
-          case t: Term             => JSExprStmt(translateTerm(t))
+          case t: Term             => JSExprStmt(translateTerm(t, isClassMember, true))
           // TODO: find out if we need to support this.
           case _: Def | _: TypeDef => throw CodeGenError("unexpected definitions in blocks")
         })),
-        Nil
+        if (isClassMember && !isThisCaptured) JSIdent("this") :: Nil else Nil
       )
     // Pattern match with only one branch -> comma expression
     case CaseOf(trm, Wildcard(default)) =>
-      JSCommaExpr(translateTerm(trm) :: translateTerm(default) :: Nil)
+      JSCommaExpr(translateTerm(trm, isClassMember, isThisCaptured) :: translateTerm(default, isClassMember, isThisCaptured) :: Nil)
     // Pattern match with two branches -> tenary operator
     case CaseOf(trm, Case(tst, csq, Wildcard(alt))) =>
-      translateCase(translateTerm(trm), tst)(translateTerm(csq), translateTerm(alt))
+      translateCase(translateTerm(trm, isClassMember, isThisCaptured), tst)(translateTerm(csq, isClassMember, isThisCaptured), translateTerm(alt, isClassMember, isThisCaptured))
     // Pattern match with more branches -> chain of ternary expressions with cache
     case CaseOf(trm, cases) =>
-      val arg = translateTerm(trm)
+      val arg = translateTerm(trm, isClassMember, isThisCaptured)
       if (arg.isSimple) {
-        translateCaseBranch(arg, cases)
+        translateCaseBranch(arg, cases, isClassMember, isThisCaptured)
       } else {
         val name = scope.declareRuntimeSymbol()
         scope.tempVars += name
         val ident = JSIdent(name)
-        JSCommaExpr(JSAssignExpr(ident, arg) :: translateCaseBranch(ident, cases) :: Nil)
+        JSCommaExpr(JSAssignExpr(ident, arg) :: translateCaseBranch(ident, cases, isClassMember, isThisCaptured) :: Nil)
       }
     case IntLit(value) => JSLit(value.toString + (if (JSBackend isSafeInteger value) "" else "n"))
     case DecLit(value) => JSLit(value.toString)
     case StrLit(value) => JSExpr(value)
     case UnitLit(value) => JSLit(if (value) "undefined" else "null")
     // `Asc(x, ty)` <== `x: Type`
-    case Asc(trm, _) => translateTerm(trm)
+    case Asc(trm, _) => translateTerm(trm, isClassMember, isThisCaptured)
     // `c with { x = "hi"; y = 2 }`
     case With(trm, Rcd(fields)) =>
       JSInvoke(
@@ -195,19 +198,19 @@ class JSBackend {
           case S(fnName) => fnName
           case N         => polyfill.use("withConstruct", topLevelScope.declareRuntimeSymbol("withConstruct"))
         }),
-        translateTerm(trm) :: JSRecord(fields map { case (Var(name), (value, _)) =>
-          name -> translateTerm(value)
+        translateTerm(trm, isClassMember, isThisCaptured) :: JSRecord(fields map { case (Var(name), (value, _)) =>
+          name -> translateTerm(value, isClassMember, isThisCaptured)
         }) :: Nil
       )
-    case Bra(_, trm) => translateTerm(trm)
+    case Bra(_, trm) => translateTerm(trm, isClassMember, isThisCaptured)
     case Tup(terms) =>
-      JSArray(terms map { case (_, (term, _)) => translateTerm(term) })
+      JSArray(terms map { case (_, (term, _)) => translateTerm(term, isClassMember, isThisCaptured) })
     case Subs(arr, idx) =>
-      JSMember(translateTerm(arr), translateTerm(idx))
+      JSMember(translateTerm(arr, isClassMember, isThisCaptured), translateTerm(idx, isClassMember, isThisCaptured))
     case Assign(lhs, value) =>
       lhs match {
         case _: Subs | _: Sel | _: Var =>
-          JSCommaExpr(JSAssignExpr(translateTerm(lhs), translateTerm(value)) :: JSArray(Nil) :: Nil)
+          JSCommaExpr(JSAssignExpr(translateTerm(lhs, isClassMember, isThisCaptured), translateTerm(value, isClassMember, isThisCaptured)) :: JSArray(Nil) :: Nil)
         case _ =>
           throw CodeGenError(s"illegal assignemnt left-hand side: ${inspect(lhs)}")
       }
@@ -215,12 +218,12 @@ class JSBackend {
       throw CodeGenError(s"cannot generate code for term ${inspect(term)}")
   }
 
-  private def translateCaseBranch(scrut: JSExpr, branch: CaseBranches)(implicit
+  private def translateCaseBranch(scrut: JSExpr, branch: CaseBranches, isClassMember: Bool = false, isThisCaptured: Bool = false)(implicit
       scope: Scope
   ): JSExpr = branch match {
     case Case(pat, body, rest) =>
-      translateCase(scrut, pat)(translateTerm(body), translateCaseBranch(scrut, rest))
-    case Wildcard(body) => translateTerm(body)
+      translateCase(scrut, pat)(translateTerm(body, isClassMember, isThisCaptured), translateCaseBranch(scrut, rest, isClassMember, isThisCaptured))
+    case Wildcard(body) => translateTerm(body, isClassMember, isThisCaptured)
     case NoCases        => JSImmEvalFn(N, Nil, R(JSInvoke(
       JSNew(JSIdent("Error")),
       JSExpr("non-exhaustive case expression") :: Nil
@@ -388,11 +391,11 @@ class JSBackend {
         val methodParams = translateParams(params)
         val methodScope = scope.derive(s"Method $name", JSPattern.bindings(methodParams))
         methodScope.declareValue("this")
-        JSClassMethod(name, methodParams, L(translateTerm(body)(methodScope)))
+        JSClassMethod(name, methodParams, L(translateTerm(body, true)(methodScope)))
       case term =>
         val getterScope = scope.derive(s"Getter $name")
         getterScope.declareValue("this")
-        JSClassGetter(name, L(translateTerm(term)(getterScope)))
+        JSClassGetter(name, L(translateTerm(term, true)(getterScope)))
     }
   }
 

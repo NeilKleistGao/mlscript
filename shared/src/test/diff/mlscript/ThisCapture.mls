@@ -1,0 +1,91 @@
+:js
+class A: { x: int }
+  method MA = let _ = 1 in this.x
+//│ Defined class A
+//│ Defined A.MA: A -> int
+//│ // Prelude
+//│ let res;
+//│ class A {
+//│   constructor(fields) {
+//│     this.x = fields.x;
+//│   }
+//│   get MA() {
+//│     return ((function (_, $) {
+//│       return $.x;
+//│     })(1, this));
+//│   }
+//│ }
+//│ // End of generated code
+
+(A { x = 1 }).MA
+//│ res: int
+//│    = 1
+
+:js
+class B: { x: int }
+  method ABS1 = if this.x < 0 then (let d = 1 in (d - this.x)) else this.x + 1
+//│ Defined class B
+//│ Defined B.ABS1: B -> int
+//│ // Prelude
+//│ class B {
+//│   constructor(fields) {
+//│     this.x = fields.x;
+//│   }
+//│   get ABS1() {
+//│     return (this.x < 0 ? (function (d, $) {
+//│       return d - $.x;
+//│     })(1, this) : this.x + 1);
+//│   }
+//│ }
+//│ // End of generated code
+
+(B {x = 0 - 2}).ABS1
+//│ res: int
+//│    = 3
+
+
+:js
+class C: { x: int }
+  method FOO = let y = this.x in y + 1
+//│ Defined class C
+//│ Defined C.FOO: C -> int
+//│ // Prelude
+//│ class C {
+//│   constructor(fields) {
+//│     this.x = fields.x;
+//│   }
+//│   get FOO() {
+//│     return ((function (y, $) {
+//│       return y + 1;
+//│     })(this.x, this));
+//│   }
+//│ }
+//│ // End of generated code
+
+(C {x = 2}).FOO
+//│ res: int
+//│    = 3
+
+:js
+class D: { x: int }
+  method BAR = let _ = 1 in (let __ = 2 in this.x)
+//│ Defined class D
+//│ Defined D.BAR: D -> int
+//│ // Prelude
+//│ class D {
+//│   constructor(fields) {
+//│     this.x = fields.x;
+//│   }
+//│   get BAR() {
+//│     return ((function (_, $) {
+//│       return ((function (__) {
+//│         return $.x;
+//│       })(2));
+//│     })(1, this));
+//│   }
+//│ }
+//│ // End of generated code
+
+(D {x = 3}).BAR
+//│ res: int
+//│    = 3
