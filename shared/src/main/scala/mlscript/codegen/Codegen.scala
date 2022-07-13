@@ -290,10 +290,10 @@ final case class JSObjectPattern(properties: Ls[Str -> Opt[JSPattern]]) extends 
   def toSourceCode: SourceCode = SourceCode.record(
     properties
       .map {
-        case name -> Some(JSWildcardPattern()) => SourceCode(name)
+        case name -> Some(JSWildcardPattern()) => SourceCode(JSIdent.replaceTicks(name))
         case name -> Some(subPattern) =>
-          SourceCode(s"$name: ") ++ subPattern.toSourceCode
-        case name -> N => SourceCode(name)
+          SourceCode(s"${JSIdent.replaceTicks(name)}: ") ++ subPattern.toSourceCode
+        case name -> N => SourceCode(JSIdent.replaceTicks(name))
       }
   )
 }
@@ -305,7 +305,7 @@ final case class JSWildcardPattern() extends JSPattern {
 
 final case class JSNamePattern(name: Str) extends JSPattern {
   def bindings: Ls[Str] = name :: Nil
-  def toSourceCode: SourceCode = SourceCode(name)
+  def toSourceCode: SourceCode = SourceCode(JSIdent.replaceTicks(name))
 }
 
 abstract class JSExpr extends JSCode {
@@ -432,7 +432,7 @@ final case class JSArrowFn(params: Ls[JSPattern], body: JSExpr \/ Ls[JSStmt]) ex
 final case class JSFuncExpr(name: Opt[Str], params: Ls[JSPattern], body: Ls[JSStmt]) extends JSExpr {
   implicit def precedence: Int = 22
   def toSourceCode: SourceCode =
-    SourceCode(s"function ${name getOrElse ""}") ++
+    SourceCode(s"function ${JSIdent.replaceTicks(name getOrElse "")}") ++
       JSExpr.params(params) ++
       SourceCode.space ++
       SourceCode.concat(body map { _.toSourceCode }).block
@@ -448,7 +448,7 @@ final case class JSImmEvalFn(
   implicit def precedence: Int = 22
   def toSourceCode: SourceCode = {
     val fnName = name.getOrElse("")
-    (SourceCode(s"function $fnName${JSExpr.params(params)} ") ++ (body match {
+    (SourceCode(s"function ${JSIdent.replaceTicks(fnName)}${JSExpr.params(params)} ") ++ (body match {
       case Left(expr) => expr.`return`.toSourceCode
       case Right(stmts) =>
         stmts.foldLeft(SourceCode.empty) { _ + _.toSourceCode }
@@ -575,7 +575,11 @@ final case class JSInstanceOf(left: JSExpr, right: JSExpr) extends JSExpr {
 
 final case class JSIdent(name: Str) extends JSExpr {
   implicit def precedence: Int = 22
-  def toSourceCode: SourceCode = SourceCode(name)
+  def toSourceCode: SourceCode = SourceCode(JSIdent.replaceTicks(name))
+}
+
+object JSIdent {
+  def replaceTicks(str: Str): Str = str.replace('\'', '$')
 }
 
 final case class JSNew(ctor: JSExpr) extends JSExpr {
@@ -603,9 +607,9 @@ class JSField(`object`: JSExpr, property: JSIdent) extends JSMember(`object`, pr
       `object`.precedence < precedence || `object`.isInstanceOf[JSRecord]
     ) ++ SourceCode(
       if (JSField.isValidIdentifier(property.name)) {
-        s".${property.name}"
+        s".${JSIdent.replaceTicks(property.name)}"
       } else {
-        s"[${JSLit.makeStringLiteral(property.name)}]"
+        s"[${JSLit.makeStringLiteral(JSIdent.replaceTicks(property.name))}]"
       }
     )
 }
@@ -631,8 +635,8 @@ final case class JSRecord(entries: Ls[Str -> JSExpr]) extends JSExpr {
   // Make
   override def toSourceCode: SourceCode = SourceCode
     .record(entries map { case (key, value) =>
-      val body = if (JSField.isValidIdentifier(key)) { key }
-      else { JSLit.makeStringLiteral(key) }
+      val body = if (JSField.isValidIdentifier(key)) { JSIdent.replaceTicks(key) }
+      else { JSLit.makeStringLiteral(JSIdent.replaceTicks(key)) }
       SourceCode(body + ": ") ++ value.embed(JSCommaExpr.outerPrecedence)
     })
 }
@@ -679,7 +683,7 @@ final case class JSTryStmt(block: Ls[JSStmt], handler: JSCatchClause) extends JS
 }
 
 final case class JSCatchClause(param: JSIdent, body: Ls[JSStmt]) extends JSCode {
-  def toSourceCode: SourceCode = SourceCode(s" catch (${param.name}) ") ++
+  def toSourceCode: SourceCode = SourceCode(s" catch (${JSIdent.replaceTicks(param.name)}) ") ++
     body.foldLeft(SourceCode.empty) { _ + _.toSourceCode }.block
 }
 
@@ -720,8 +724,8 @@ final case class JSLetDecl(decls: Ls[Str -> Opt[JSExpr]]) extends JSStmt {
     SourceCode(s"let ") ++ decls.zipWithIndex
       .foldLeft(SourceCode.empty) { case (x, (y, i)) =>
         x ++ (y match {
-          case (pat, N)       => SourceCode(pat)
-          case (pat, S(init)) => SourceCode(pat) ++ SourceCode(" = ") ++ init.toSourceCode
+          case (pat, N)       => SourceCode(JSIdent.replaceTicks(pat))
+          case (pat, S(init)) => SourceCode(JSIdent.replaceTicks(pat)) ++ SourceCode(" = ") ++ init.toSourceCode
         }) ++ (if (i === decls.length - 1) SourceCode.empty else SourceCode(", "))
       } ++ SourceCode.semicolon
 }
@@ -732,7 +736,7 @@ object JSLetDecl {
 
 final case class JSConstDecl(pattern: Str, body: JSExpr) extends JSStmt {
   def toSourceCode: SourceCode =
-    SourceCode(s"const $pattern = ") ++ (body match {
+    SourceCode(s"const ${JSIdent.replaceTicks(pattern)} = ") ++ (body match {
       case _: JSCommaExpr => body.toSourceCode.parenthesized
       case _              => body.toSourceCode
     }) ++ SourceCode.semicolon
@@ -740,7 +744,7 @@ final case class JSConstDecl(pattern: Str, body: JSExpr) extends JSStmt {
 
 final case class JSFuncDecl(name: Str, params: Ls[JSPattern], body: Ls[JSStmt]) extends JSStmt {
   def toSourceCode: SourceCode =
-    SourceCode(s"function $name") ++ JSExpr.params(params) ++ SourceCode.space ++ body
+    SourceCode(s"function ${JSIdent.replaceTicks(name)}") ++ JSExpr.params(params) ++ SourceCode.space ++ body
       .foldLeft(SourceCode.empty) { case (x, y) => x + y.toSourceCode }
       .block
 }
@@ -749,7 +753,7 @@ abstract class JSClassMemberDecl extends JSStmt;
 
 final case class JSClassGetter(name: Str, body: JSExpr \/ Ls[JSStmt]) extends JSClassMemberDecl {
   def toSourceCode: SourceCode =
-    SourceCode(s"get $name() ") ++ (body match {
+    SourceCode(s"get ${JSIdent.replaceTicks(name)}() ") ++ (body match {
       case Left(expr) => new JSReturnStmt(S(expr)).toSourceCode
       case Right(stmts) =>
         stmts.foldLeft(SourceCode.empty) { case (x, y) => x + y.toSourceCode }
@@ -762,7 +766,7 @@ final case class JSClassMethod(
     body: JSExpr \/ Ls[JSStmt]
 ) extends JSClassMemberDecl {
   def toSourceCode: SourceCode =
-    SourceCode(name) ++ JSExpr.params(params) ++ SourceCode.space ++ (body match {
+    SourceCode(JSIdent.replaceTicks(name)) ++ JSExpr.params(params) ++ SourceCode.space ++ (body match {
       case Left(expr) => new JSReturnStmt(S(expr)).toSourceCode
       case Right(stmts) =>
         stmts.foldLeft(SourceCode.empty) { case (x, y) => x + y.toSourceCode }
@@ -771,7 +775,7 @@ final case class JSClassMethod(
 
 final case class JSClassMember(name: Str, body: JSExpr) extends JSClassMemberDecl {
   def toSourceCode: SourceCode =
-    SourceCode(name) ++ SourceCode(" = ") ++ body.toSourceCode ++ SourceCode.semicolon
+    SourceCode(JSIdent.replaceTicks(name)) ++ SourceCode(" = ") ++ body.toSourceCode ++ SourceCode.semicolon
 }
 
 final case class JSClassDecl(
@@ -788,10 +792,10 @@ final case class JSClassDecl(
       if (`extends`.isDefined)
         buffer += "    super(fields);"
       implements.foreach { name =>
-        buffer += s"    $name.implement(this);"
+        buffer += s"    ${JSIdent.replaceTicks(name)}.implement(this);"
       }
       fields.foreach { name =>
-        buffer += s"    this.$name = fields.$name;"
+        buffer += s"    this.${JSIdent.replaceTicks(name)} = fields.${JSIdent.replaceTicks(name)};"
       }
       buffer += "  }"
       SourceCode(buffer.toList)
@@ -803,14 +807,14 @@ final case class JSClassDecl(
     val epilogue = SourceCode("}")
     `extends` match {
       case Some(base) =>
-        SourceCode(s"class $name extends ") ++ base.toSourceCode ++
+        SourceCode(s"class ${JSIdent.replaceTicks(name)} extends ") ++ base.toSourceCode ++
           SourceCode(" {") + constructor + methodsSourceCode + epilogue
       case None =>
         if (fields.isEmpty && methods.isEmpty && implements.isEmpty) {
-          SourceCode(s"class $name {}")
+          SourceCode(s"class ${JSIdent.replaceTicks(name)} {}")
         } else {
           SourceCode(
-            s"class $name {" :: Nil
+            s"class ${JSIdent.replaceTicks(name)} {" :: Nil
           ) + constructor + methodsSourceCode + epilogue
         }
     }
