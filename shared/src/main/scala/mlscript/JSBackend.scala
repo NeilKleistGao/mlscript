@@ -111,6 +111,16 @@ class JSBackend {
     case _ => throw CodeGenError(s"ill-formed application ${inspect(term)}")
   }
 
+  private def updatePatternName(patterns: JSPattern)(implicit scope: Scope): JSPattern = patterns match {
+    case p: JSWildcardPattern => p
+    case JSNamePattern(name) => JSNamePattern(scope.getRuntimeName(name))
+    case JSArrayPattern(elements) => JSArrayPattern(elements.map(x => updatePatternName(x)))
+    case JSObjectPattern(properties) => JSObjectPattern(properties.map{
+      case name -> Some(subPattern) => (scope.getRuntimeName(name) -> Some(updatePatternName(subPattern)))
+      case name -> None             => (scope.getRuntimeName(name) -> None)
+    })
+  }
+
   /**
     * Translate MLscript terms into JavaScript expressions.
     */
@@ -119,7 +129,7 @@ class JSBackend {
     case Lam(params, body) =>
       val patterns = translateParams(params)
       val lamScope = Scope("Lam", patterns flatMap { _.bindings }, scope)
-      JSArrowFn(patterns, lamScope.tempVars `with` translateTerm(body)(lamScope))
+      JSArrowFn(patterns.map(x => updatePatternName(x)(lamScope)), lamScope.tempVars `with` translateTerm(body)(lamScope))
     case t: App => translateApp(t)
     case Rcd(fields) =>
       JSRecord(fields map { case (key, (value, _)) =>
@@ -135,11 +145,11 @@ class JSBackend {
         val bindings = name :: params.flatMap { _.bindings }
         val fnScope = scope.derive("Function", bindings)
         val fnBody = fnScope.tempVars.`with`(translateTerm(body)(fnScope))
-        JSFuncExpr(S(name), params, fnBody.fold(_.`return` :: Nil, identity))
+        JSFuncExpr(S(letScope.getRuntimeName(name)), params, fnBody.fold(_.`return` :: Nil, identity))
       }
       JSImmEvalFn(
         N,
-        JSNamePattern(name) :: Nil,
+        JSNamePattern(letScope.getRuntimeName(name)) :: Nil,
         letScope.tempVars.`with`(translateTerm(expr)(letScope)),
         fn :: Nil
       )
@@ -149,7 +159,7 @@ class JSBackend {
       val letScope = scope.derive("Let", name :: Nil)
       JSImmEvalFn(
         N,
-        JSNamePattern(name) :: Nil,
+        JSNamePattern(letScope.getRuntimeName(name)) :: Nil,
         letScope.tempVars `with` translateTerm(body)(letScope),
         translateTerm(value) :: Nil
       )
@@ -342,7 +352,7 @@ class JSBackend {
       ) :: Nil
     )
     const(
-      traitSymbol.lexicalName,
+      traitSymbol.runtimeName,
       JSFuncExpr(
         N,
         Nil,
@@ -388,7 +398,7 @@ class JSBackend {
         val methodParams = translateParams(params)
         val methodScope = scope.derive(s"Method $name", JSPattern.bindings(methodParams))
         methodScope.declareValue("this")
-        JSClassMethod(name, methodParams, L(translateTerm(body)(methodScope)))
+        JSClassMethod(name, methodParams.map(x => updatePatternName(x)(methodScope)), L(translateTerm(body)(methodScope)))
       case term =>
         val getterScope = scope.derive(s"Getter $name")
         getterScope.declareValue("this")

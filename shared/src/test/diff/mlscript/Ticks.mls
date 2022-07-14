@@ -3,7 +3,7 @@ f' = 2
 //│ // Prelude
 //│ let res;
 //│ // Query 1
-//│ globalThis["f$"] = 2;
+//│ globalThis.f$ = 2;
 //│ // End of generated code
 //│ f': 2
 //│   = 2
@@ -61,13 +61,49 @@ class A'[B'] : {x': B'}
 //│ // Prelude
 //│ class A$ {
 //│   constructor(fields) {
-//│     this.x$ = fields.x$;
+//│     this["x'"] = fields["x'"];
 //│   }
-//│   get C$() {
-//│     return this["x$"];
+//│   get "C'"() {
+//│     return this["x'"];
 //│   }
 //│ }
 //│ // End of generated code
+
+:js
+class M : {x': int}
+  method N' = this.x'
+  method P' y' = this.x' + y'
+def mm = M{ x' = 2 }
+mm.N'
+mm.P' f'
+//│ Defined class M
+//│ Defined M.N': M -> int
+//│ Defined M.P': M -> int -> int
+//│ // Prelude
+//│ class M {
+//│   constructor(fields) {
+//│     this["x'"] = fields["x'"];
+//│   }
+//│   get "N'"() {
+//│     return this["x'"];
+//│   }
+//│   "P'"(y$) {
+//│     return this["x'"] + y$;
+//│   }
+//│ }
+//│ // Query 1
+//│ globalThis.mm = new M({ "x'": 2 });
+//│ // Query 2
+//│ res = mm["N'"];
+//│ // Query 3
+//│ res = mm["P'"](f$);
+//│ // End of generated code
+//│ mm: M & {x': 2}
+//│   = M { "x'": 2 }
+//│ res: int
+//│    = 2
+//│ res: int
+//│    = 4
 
 :js
 class D'[B'] : A'[B']
@@ -104,34 +140,42 @@ class CC': None' & Foo'[anything]
 //│ }
 //│ // End of generated code
 
+:js
 class TT' : { a': int }
 //│ Defined class TT'
+//│ // Prelude
+//│ class TT$ {
+//│   constructor(fields) {
+//│     this["a'"] = fields["a'"];
+//│   }
+//│ }
+//│ // End of generated code
 
 :js
 def tt' = TT'{a'=4}
 tt'.a'
 //│ // Query 1
-//│ globalThis["tt$"] = new TT$({ "a$": 4 });
+//│ globalThis.tt$ = new TT$({ "a'": 4 });
 //│ // Query 2
-//│ res = tt$["a$"];
+//│ res = tt$["a'"];
 //│ // End of generated code
 //│ tt': TT' & {a': 4}
-//│    = TT$ { 'a$': 4 }
+//│    = TT$ { "a'": 4 }
 //│ res: 4
 //│    = 4
 
 :js
 a' = {b' = 42}
 //│ // Query 1
-//│ globalThis["a$"] = { "b$": 42 };
+//│ globalThis.a$ = { "b'": 42 };
 //│ // End of generated code
 //│ a': {b': 42}
-//│   = { 'b$': 42 }
+//│   = { "b'": 42 }
 
 :js
 a'.b'
 //│ // Query 1
-//│ res = a$["b$"];
+//│ res = a$["b'"];
 //│ // End of generated code
 //│ res: 42
 //│    = 42
@@ -164,8 +208,8 @@ def g' x' = x' with { c' = 24 }
 //│   return copy;
 //│ }
 //│ // Query 1
-//│ globalThis["g$"] = function g$(x$) {
-//│   return withConstruct(x$, { "c$": 24 });
+//│ globalThis.g$ = function g$(x$) {
+//│   return withConstruct(x$, { "c'": 24 });
 //│ };
 //│ // End of generated code
 //│ g': 'a -> ('a\c' & {c': 24})
@@ -174,7 +218,7 @@ def g' x' = x' with { c' = 24 }
 :js
 gg' = let w' = 2 in w' + w'
 //│ // Query 1
-//│ globalThis["gg$"] = (function (w$) {
+//│ globalThis.gg$ = (function (w$) {
 //│   return w$ + w$;
 //│ })(2);
 //│ // End of generated code
@@ -185,11 +229,11 @@ gg' = let w' = 2 in w' + w'
 def rcd' = { x' = 1 }
 rcd'.x'
 //│ // Query 1
-//│ globalThis["rcd$"] = { "x$": 1 };
+//│ globalThis.rcd$ = { "x'": 1 };
 //│ // Query 2
-//│ res = rcd$["x$"];
+//│ res = rcd$["x'"];
 //│ // End of generated code
 //│ rcd': {x': 1}
-//│     = { 'x$': 1 }
+//│     = { "x'": 1 }
 //│ res: 1
 //│    = 1

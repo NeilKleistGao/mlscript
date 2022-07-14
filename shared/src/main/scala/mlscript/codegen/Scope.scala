@@ -57,7 +57,7 @@ class Scope(name: Str, enclosing: Opt[Scope]) {
     this(name, Opt(enclosing))
     params foreach { param =>
       // TODO: avoid reserved keywords.
-      val symbol = ValueSymbol(param, param)
+      val symbol = ValueSymbol(param, param.replace('\'', '$'))
       register(symbol)
     }
   }
@@ -84,23 +84,25 @@ class Scope(name: Str, enclosing: Opt[Scope]) {
     if (prefix.isEmpty()) {
       return allocateRuntimeName()
     }
+    // Replace ticks
+    val realPrefix = prefix.replace('\'', '$')
     // Try just prefix.
-    if (!runtimeSymbols.contains(prefix) && !Symbol.isKeyword(prefix)) {
-      return prefix
+    if (!runtimeSymbols.contains(realPrefix) && !Symbol.isKeyword(realPrefix)) {
+      return realPrefix
     }
     // Try prefix with an integer.
     for (i <- 1 to Int.MaxValue) {
-      val name = s"$prefix$i"
+      val name = s"$realPrefix$i"
       if (!runtimeSymbols.contains(name)) {
         return name
       }
     }
     // Give up.
     throw CodeGenError(
-      if (prefix.isEmpty())
+      if (realPrefix.isEmpty())
         "Cannot allocate a runtime name"
       else
-        s"Cannot allocate a runtime name starting with '$prefix'"
+        s"Cannot allocate a runtime name starting with '$realPrefix'"
     )
   }
 
@@ -292,6 +294,13 @@ class Scope(name: Str, enclosing: Opt[Scope]) {
   }
 
   def existsRuntimeSymbol(name: Str): Bool = runtimeSymbols.contains(name)
+
+  def getRuntimeName(lexicalName: Str): Str = lexicalValueSymbols.get(lexicalName) match {
+    case S(sym: ValueSymbol)                       => sym.runtimeName
+    case S(sym: StubValueSymbol) if !sym.shadowing => sym.runtimeName
+    case S(sym: BuiltinSymbol) if !sym.accessed    => sym.runtimeName
+    case _                                         => allocateRuntimeName(lexicalName)
+  }
 
   /**
     * Shorthands for deriving normal scopes.
