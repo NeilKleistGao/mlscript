@@ -760,7 +760,7 @@ object DiffTests {
         send(wrapped)
         consumeUntilPrompt() match {
           case _: ReplHost.Result =>
-            send(if (res =:= "res") res else s"globalThis[\"${res}\"]")
+            send(if (res =:= "res") res else s"globalThis[\"${JSIdent.replaceTicks(res)}\"]")
             consumeUntilPrompt()
           case t => t
         }
