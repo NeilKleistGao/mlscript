@@ -297,6 +297,7 @@ object NewLexer {
     // "all",
     "mut",
     "declare",
+    "export",
     "class",
     "trait",
     "mixin",

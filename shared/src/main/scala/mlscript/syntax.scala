@@ -190,7 +190,7 @@ final case class NuTypeDef(
   superAnnot: Opt[Type],
   thisAnnot: Opt[Type],
   body: TypingUnit
-)(val declareLoc: Opt[Loc], val abstractLoc: Opt[Loc])
+)(val declareLoc: Opt[Loc], val exportLoc: Opt[Loc], val abstractLoc: Opt[Loc])
   extends NuDecl with Statement {
     def isPlainJSClass: Bool = params.isEmpty
   }
@@ -200,7 +200,7 @@ final case class NuFunDef(
   nme: Var,
   tparams: Ls[TypeName],
   rhs: Term \/ Type,
-)(val declareLoc: Opt[Loc], val signature: Opt[NuFunDef]) extends NuDecl with DesugaredStatement {
+)(val declareLoc: Opt[Loc], val exportLoc: Opt[Loc], val signature: Opt[NuFunDef]) extends NuDecl with DesugaredStatement {
   val body: Located = rhs.fold(identity, identity)
   def kind: DeclKind = Val
   val abstractLoc: Opt[Loc] = None
