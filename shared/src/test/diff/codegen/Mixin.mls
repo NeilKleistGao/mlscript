@@ -118,21 +118,25 @@ mixin EvalBase {
 //│ class TypingUnit1 {
 //│   constructor() {
 //│   }
-//│   EvalBase(base) {
-//│     const outer = this;
-//│     return (class EvalBase extends base {
-//│       constructor(...rest) {
-//│         super(...rest);
-//│       }
-//│       eval(e) {
-//│         const self = this;
-//│         return ((() => {
-//│           let a;
-//│           return (a = e, a instanceof Lit.class ? ((n) => n)(e.n) : a instanceof Add.class ? ((l) => ((r) => self.eval(l) + self.eval(r))(e.rhs))(e.lhs) : (() => {
-//│             throw new Error("non-exhaustive case expression");
-//│           })());
-//│         })());
-//│       }
+//│   get EvalBase() {
+//│     return ((base) => {
+//│       const outer = this;
+//│       return (class EvalBase extends base {
+//│         constructor(...rest) {
+//│           super(...rest);
+//│         }
+//│         get eval() {
+//│           return ((e) => {
+//│             const self = this;
+//│             return ((() => {
+//│               let a;
+//│               return (a = e, a instanceof Lit.class ? ((n) => n)(e.n) : a instanceof Add.class ? ((l) => ((r) => self.eval(l) + self.eval(r))(e.rhs))(e.lhs) : (() => {
+//│                 throw new Error("non-exhaustive case expression");
+//│               })());
+//│             })());
+//│           });
+//│         }
+//│       });
 //│     });
 //│   }
 //│ }
@@ -145,28 +149,32 @@ mixin EvalBase {
 //│ │ │   class TypingUnit1 {
 //│ │ │     constructor() {
 //│ │ │     }
-//│ │ │     EvalBase(base) {
-//│ │ │       const outer = this;
-//│ │ │       return (class EvalBase extends base {
-//│ │ │         constructor(...rest) {
-//│ │ │           super(...rest);
-//│ │ │         }
-//│ │ │         eval(e) {
-//│ │ │           const self = this;
-//│ │ │           return ((() => {
-//│ │ │             let a;
-//│ │ │             return (a = e, a instanceof Lit.class ? ((n) => n)(e.n) : a instanceof Add.class ? ((l) => ((r) => self.eval(l) + self.eval(r))(e.rhs))(e.lhs) : (() => {
-//│ │ │               throw new Error("non-exhaustive case expression");
-//│ │ │             })());
-//│ │ │           })());
-//│ │ │         }
+//│ │ │     get EvalBase() {
+//│ │ │       return ((base) => {
+//│ │ │         const outer = this;
+//│ │ │         return (class EvalBase extends base {
+//│ │ │           constructor(...rest) {
+//│ │ │             super(...rest);
+//│ │ │           }
+//│ │ │           get eval() {
+//│ │ │             return ((e) => {
+//│ │ │               const self = this;
+//│ │ │               return ((() => {
+//│ │ │                 let a;
+//│ │ │                 return (a = e, a instanceof Lit.class ? ((n) => n)(e.n) : a instanceof Add.class ? ((l) => ((r) => self.eval(l) + self.eval(r))(e.rhs))(e.lhs) : (() => {
+//│ │ │                   throw new Error("non-exhaustive case expression");
+//│ │ │                 })());
+//│ │ │               })());
+//│ │ │             });
+//│ │ │           }
+//│ │ │         });
 //│ │ │       });
 //│ │ │     }
 //│ │ │   }
 //│ │ │   const typing_unit1 = new TypingUnit1;
 //│ │ │   globalThis.EvalBase = typing_unit1.EvalBase;
 //│ │ └── Reply
-//│ │     [Function: EvalBase]
+//│ │     [Function (anonymous)]
 //│ └── No queries
 
 :js
@@ -197,7 +205,7 @@ class Neg<A>(expr: A)
 //│ const typing_unit2 = new TypingUnit2;
 //│ globalThis.Neg = typing_unit2.Neg;
 //│ // End of generated code
-//│ ┌ Block at Mixin.mls:174
+//│ ┌ Block at Mixin.mls:182
 //│ ├─┬ Prelude
 //│ │ ├── Code
 //│ │ │   class TypingUnit2 {
@@ -242,49 +250,57 @@ mixin EvalNeg {
 //│ class TypingUnit3 {
 //│   constructor() {
 //│   }
-//│   EvalNeg(base) {
-//│     const outer = this;
-//│     return (class EvalNeg extends base {
-//│       constructor(...rest) {
-//│         super(...rest);
-//│       }
-//│       eval(e) {
-//│         const self = this;
-//│         return ((() => {
-//│           return e instanceof Neg.class ? ((d) => 0 - self.eval(d))(e.expr) : super.eval(e);
-//│         })());
-//│       }
+//│   get EvalNeg() {
+//│     return ((base) => {
+//│       const outer = this;
+//│       return (class EvalNeg extends base {
+//│         constructor(...rest) {
+//│           super(...rest);
+//│         }
+//│         get eval() {
+//│           return ((e) => {
+//│             const self = this;
+//│             return ((() => {
+//│               return e instanceof Neg.class ? ((d) => 0 - self.eval(d))(e.expr) : super.eval(e);
+//│             })());
+//│           });
+//│         }
+//│       });
 //│     });
 //│   }
 //│ }
 //│ const typing_unit3 = new TypingUnit3;
 //│ globalThis.EvalNeg = typing_unit3.EvalNeg;
 //│ // End of generated code
-//│ ┌ Block at Mixin.mls:231
+//│ ┌ Block at Mixin.mls:239
 //│ ├─┬ Prelude
 //│ │ ├── Code
 //│ │ │   class TypingUnit3 {
 //│ │ │     constructor() {
 //│ │ │     }
-//│ │ │     EvalNeg(base) {
-//│ │ │       const outer = this;
-//│ │ │       return (class EvalNeg extends base {
-//│ │ │         constructor(...rest) {
-//│ │ │           super(...rest);
-//│ │ │         }
-//│ │ │         eval(e) {
-//│ │ │           const self = this;
-//│ │ │           return ((() => {
-//│ │ │             return e instanceof Neg.class ? ((d) => 0 - self.eval(d))(e.expr) : super.eval(e);
-//│ │ │           })());
-//│ │ │         }
+//│ │ │     get EvalNeg() {
+//│ │ │       return ((base) => {
+//│ │ │         const outer = this;
+//│ │ │         return (class EvalNeg extends base {
+//│ │ │           constructor(...rest) {
+//│ │ │             super(...rest);
+//│ │ │           }
+//│ │ │           get eval() {
+//│ │ │             return ((e) => {
+//│ │ │               const self = this;
+//│ │ │               return ((() => {
+//│ │ │                 return e instanceof Neg.class ? ((d) => 0 - self.eval(d))(e.expr) : super.eval(e);
+//│ │ │               })());
+//│ │ │             });
+//│ │ │           }
+//│ │ │         });
 //│ │ │       });
 //│ │ │     }
 //│ │ │   }
 //│ │ │   const typing_unit3 = new TypingUnit3;
 //│ │ │   globalThis.EvalNeg = typing_unit3.EvalNeg;
 //│ │ └── Reply
-//│ │     [Function: EvalNeg]
+//│ │     [Function (anonymous)]
 //│ └── No queries
 
 :js
@@ -303,49 +319,57 @@ mixin EvalNegNeg {
 //│ class TypingUnit4 {
 //│   constructor() {
 //│   }
-//│   EvalNegNeg(base) {
-//│     const outer = this;
-//│     return (class EvalNegNeg extends base {
-//│       constructor(...rest) {
-//│         super(...rest);
-//│       }
-//│       eval(e) {
-//│         const self = this;
-//│         return ((() => {
-//│           return e instanceof Neg.class ? ((tmp0) => tmp0 instanceof Neg.class ? ((d) => self.eval(d))(tmp0.expr) : super.eval(e))(e.expr) : super.eval(e);
-//│         })());
-//│       }
+//│   get EvalNegNeg() {
+//│     return ((base) => {
+//│       const outer = this;
+//│       return (class EvalNegNeg extends base {
+//│         constructor(...rest) {
+//│           super(...rest);
+//│         }
+//│         get eval() {
+//│           return ((e) => {
+//│             const self = this;
+//│             return ((() => {
+//│               return e instanceof Neg.class ? ((tmp0) => tmp0 instanceof Neg.class ? ((d) => self.eval(d))(tmp0.expr) : super.eval(e))(e.expr) : super.eval(e);
+//│             })());
+//│           });
+//│         }
+//│       });
 //│     });
 //│   }
 //│ }
 //│ const typing_unit4 = new TypingUnit4;
 //│ globalThis.EvalNegNeg = typing_unit4.EvalNegNeg;
 //│ // End of generated code
-//│ ┌ Block at Mixin.mls:292
+//│ ┌ Block at Mixin.mls:308
 //│ ├─┬ Prelude
 //│ │ ├── Code
 //│ │ │   class TypingUnit4 {
 //│ │ │     constructor() {
 //│ │ │     }
-//│ │ │     EvalNegNeg(base) {
-//│ │ │       const outer = this;
-//│ │ │       return (class EvalNegNeg extends base {
-//│ │ │         constructor(...rest) {
-//│ │ │           super(...rest);
-//│ │ │         }
-//│ │ │         eval(e) {
-//│ │ │           const self = this;
-//│ │ │           return ((() => {
-//│ │ │             return e instanceof Neg.class ? ((tmp0) => tmp0 instanceof Neg.class ? ((d) => self.eval(d))(tmp0.expr) : super.eval(e))(e.expr) : super.eval(e);
-//│ │ │           })());
-//│ │ │         }
+//│ │ │     get EvalNegNeg() {
+//│ │ │       return ((base) => {
+//│ │ │         const outer = this;
+//│ │ │         return (class EvalNegNeg extends base {
+//│ │ │           constructor(...rest) {
+//│ │ │             super(...rest);
+//│ │ │           }
+//│ │ │           get eval() {
+//│ │ │             return ((e) => {
+//│ │ │               const self = this;
+//│ │ │               return ((() => {
+//│ │ │                 return e instanceof Neg.class ? ((tmp0) => tmp0 instanceof Neg.class ? ((d) => self.eval(d))(tmp0.expr) : super.eval(e))(e.expr) : super.eval(e);
+//│ │ │               })());
+//│ │ │             });
+//│ │ │           }
+//│ │ │         });
 //│ │ │       });
 //│ │ │     }
 //│ │ │   }
 //│ │ │   const typing_unit4 = new TypingUnit4;
 //│ │ │   globalThis.EvalNegNeg = typing_unit4.EvalNegNeg;
 //│ │ └── Reply
-//│ │     [Function: EvalNegNeg]
+//│ │     [Function (anonymous)]
 //│ └── No queries
 
 :js
@@ -380,7 +404,7 @@ module TestLang extends EvalBase, EvalNeg, EvalNegNeg
 //│ const typing_unit5 = new TypingUnit5;
 //│ globalThis.TestLang = typing_unit5.TestLang;
 //│ // End of generated code
-//│ ┌ Block at Mixin.mls:353
+//│ ┌ Block at Mixin.mls:377
 //│ ├─┬ Prelude
 //│ │ ├── Code
 //│ │ │   class TypingUnit5 {
@@ -429,7 +453,7 @@ TestLang.eval(mk(0))
 //│ // Query 2
 //│ res = TestLang.eval(mk(0));
 //│ // End of generated code
-//│ ┌ Block at Mixin.mls:412
+//│ ┌ Block at Mixin.mls:436
 //│ ├─┬ Prelude
 //│ │ ├── Code
 //│ │ │   class TypingUnit6 {}
@@ -489,23 +513,25 @@ mixin Fooo(x: Int) { fun f = [x, this.x] }
 //│ class TypingUnit14 {
 //│   constructor() {
 //│   }
-//│   Fooo(base) {
-//│     const outer = this;
-//│     return (class Fooo extends base {
-//│       #x;
-//│       get x() { return this.#x; }
-//│       constructor(x, ...rest) {
-//│         super(...rest);
-//│         this.#x = x;
-//│       }
-//│       get f() {
-//│         const x = this.#x;
-//│         const self = this;
-//│         return ([
-//│           x,
-//│           self.x
-//│         ]);
-//│       }
+//│   get Fooo() {
+//│     return ((base) => {
+//│       const outer = this;
+//│       return (class Fooo extends base {
+//│         #x;
+//│         get x() { return this.#x; }
+//│         constructor(x, ...rest) {
+//│           super(...rest);
+//│           this.#x = x;
+//│         }
+//│         get f() {
+//│           const x = this.#x;
+//│           const self = this;
+//│           return ([
+//│             x,
+//│             self.x
+//│           ]);
+//│         }
+//│       });
 //│     });
 //│   }
 //│ }
@@ -520,15 +546,17 @@ mixin Bazz(y: Int)
 //│ class TypingUnit15 {
 //│   constructor() {
 //│   }
-//│   Bazz(base) {
-//│     const outer = this;
-//│     return (class Bazz extends base {
-//│       #y;
-//│       get y() { return this.#y; }
-//│       constructor(y, ...rest) {
-//│         super(...rest);
-//│         this.#y = y;
-//│       }
+//│   get Bazz() {
+//│     return ((base) => {
+//│       const outer = this;
+//│       return (class Bazz extends base {
+//│         #y;
+//│         get y() { return this.#y; }
+//│         constructor(y, ...rest) {
+//│           super(...rest);
+//│           this.#y = y;
+//│         }
+//│       });
 //│     });
 //│   }
 //│ }
@@ -580,7 +608,7 @@ mixin Base {
   fun x = y
 }
 //│ ╔══[ERROR] identifier not found: y
-//│ ║  l.580: 	  fun x = y
+//│ ║  l.608: 	  fun x = y
 //│ ╙──       	          ^
 //│ mixin Base() {
 //│   fun x: error

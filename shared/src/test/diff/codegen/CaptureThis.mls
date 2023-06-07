@@ -1,0 +1,82 @@
+:NewDefs
+
+:js
+module C { fun f() = this }
+C.f()
+id(C.f)()
+//│ module C {
+//│   fun f: () -> C
+//│ }
+//│ C
+//│ // Prelude
+//│ function id(x) {
+//│   return x;
+//│ }
+//│ let res;
+//│ class TypingUnit {
+//│   #C;
+//│   constructor() {
+//│   }
+//│   get C() {
+//│     const outer = this;
+//│     if (this.#C === undefined) {
+//│       class C {
+//│         constructor() {
+//│         }
+//│         get f() {
+//│           return (() => {
+//│             const self = this;
+//│             return self;
+//│           });
+//│         }
+//│       }
+//│       this.#C = new C();
+//│       this.#C.class = C;
+//│     }
+//│     return this.#C;
+//│   }
+//│ }
+//│ const typing_unit = new TypingUnit;
+//│ globalThis.C = typing_unit.C;
+//│ // Query 1
+//│ res = C.f();
+//│ // Query 2
+//│ res = id(C.f)();
+//│ // End of generated code
+//│ res
+//│     = C { class: [class C] }
+//│ res
+//│     = C { class: [class C] }
+
+class Lit(n: Int)
+mixin EvalAddLit {
+  fun eval(e) =
+    if e is
+      Lit(n) then n
+}
+//│ class Lit(n: Int)
+//│ mixin EvalAddLit() {
+//│   fun eval: Lit -> Int
+//│ }
+
+module TestLang extends EvalAddLit
+TestLang.eval(Lit(0))
+//│ module TestLang {
+//│   fun eval: Lit -> Int
+//│ }
+//│ Int
+//│ res
+//│     = 0
+
+class D() { fun d() = this }
+let dd = D()
+id(dd.d)()
+//│ class D() {
+//│   fun d: () -> D
+//│ }
+//│ let dd: D
+//│ D
+//│ dd
+//│    = D {}
+//│ res
+//│     = D {}

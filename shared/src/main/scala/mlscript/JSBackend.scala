@@ -563,17 +563,17 @@ class JSBackend(allowUnresolvedSymbols: Boolean) {
   protected def translateMixinDeclaration(
       mixinSymbol: MixinSymbol,
       siblingsMembers: Ls[RuntimeSymbol]
-  )(implicit scope: Scope): JSClassMethod = {
+  )(implicit scope: Scope): JSClassGetter = {
     val getterScope = scope.derive(s"getter ${mixinSymbol.lexicalName}")
     val base = getterScope.declareValue("base", Some(false), false)
     val outerSymbol = getterScope.declareOuterSymbol()
     siblingsMembers.foreach(getterScope.captureSymbol(outerSymbol, _))
 
     val classBody = translateNewTypeDefinition(mixinSymbol, S(base), false)(getterScope)
-    JSClassMethod(mixinSymbol.lexicalName, Ls(JSNamePattern(base.runtimeName)),
+    JSClassGetter(mixinSymbol.lexicalName, L(JSArrowFn(Ls(JSNamePattern(base.runtimeName)),
       R((JSConstDecl(outerSymbol.runtimeName, JSIdent("this")) :: Nil) ::: Ls(
         JSReturnStmt(S(JSClassExpr(classBody)))
-      ))
+      ))))
     )
   }
 
@@ -845,7 +845,7 @@ class JSBackend(allowUnresolvedSymbols: Boolean) {
   private def translateNewClassMember(
     method: MethodDef[Left[Term, Type]],
     props: Ls[Str] // for overriding
-  )(implicit scope: Scope): JSClassMemberDecl = {
+  )(implicit scope: Scope): JSClassGetter = {
     val name = method.nme.name
     // Create the method/getter scope.
     val memberScope = method.rhs.value match {
@@ -881,7 +881,7 @@ class JSBackend(allowUnresolvedSymbols: Boolean) {
     } else R(preDecs ::: tempDecs ::: (bodyResult :: Nil))
     // Returns members depending on what it is.
     memberParams match {
-      case S(memberParams) => JSClassMethod(name, memberParams, bodyStmts)
+      case S(memberParams) => JSClassGetter(name, L(JSArrowFn(memberParams, bodyStmts)))
       case N => JSClassGetter(name, bodyStmts)
     }
   }
