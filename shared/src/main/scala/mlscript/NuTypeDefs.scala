@@ -496,7 +496,7 @@ class NuTypeDefs extends ConstraintSolver { self: Typer =>
             assert(fd.signature.isEmpty)
             funSigs.get(fd.nme.name) match {
               case S(sig) =>
-                fd.copy()(fd.declareLoc, fd.exportLoc, S(sig))
+                fd.copy()(fd.declareLoc, fd.exportLoc, S(sig), fd.genField)
               case _ =>
                 fd
             }
@@ -1021,7 +1021,7 @@ class NuTypeDefs extends ConstraintSolver { self: Typer =>
                       val fd = NuFunDef((a.fd.isLetRec, b.fd.isLetRec) match {
                         case (S(a), S(b)) => S(a || b)
                         case _ => N // if one is fun, then it will be fun
-                      }, a.fd.nme, a.fd.tparams, a.fd.rhs)(a.fd.declareLoc, a.fd.exportLoc, N)
+                      }, a.fd.nme, a.fd.tparams, a.fd.rhs)(a.fd.declareLoc, a.fd.exportLoc, N, a.fd.genField)
                       S(TypedNuFun(a.level, fd, a.bodyType & b.bodyType)(a.isImplemented || b.isImplemented))
                     case (a: NuParam, S(b: NuParam)) => 
                       S(NuParam(a.nme, a.ty && b.ty)(a.level))

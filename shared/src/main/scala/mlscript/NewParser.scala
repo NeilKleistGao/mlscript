@@ -419,8 +419,9 @@ abstract class NewParser(origin: Origin, tokens: Ls[Stroken -> Loc], raiseFun: D
           case ModifierSet(mods, (KEYWORD(kwStr @ ("fun" | "val" | "let")), l0) :: c) => // TODO support rec?
             consume
             val (isDecl, mods2) = mods.handle("declare")
-            val ( isExported, mods3) = mods2.handle("export")
+            val (isExported, mods3) = mods2.handle("export")
             mods3.done
+            val genField = kwStr =/= "let"
             val isLetRec = yeetSpaces match {
               case (KEYWORD("rec"), l1) :: _ if kwStr === "let" =>
                 consume
@@ -483,7 +484,7 @@ abstract class NewParser(origin: Origin, tokens: Ls[Stroken -> Loc], raiseFun: D
                   val body = expr(0)
                   val newBody = transformBody.fold(body)(_(body))
                   val annotatedBody = asc.fold(newBody)(ty => Asc(newBody, ty))
-                  R(NuFunDef(isLetRec, v, tparams, L(ps.foldRight(annotatedBody)((i, acc) => Lam(i, acc))))(isDecl, isExported, N))
+                  R(NuFunDef(isLetRec, v, tparams, L(ps.foldRight(annotatedBody)((i, acc) => Lam(i, acc))))(isDecl, isExported, N, genField))
                 case c =>
                   asc match {
                     case S(ty) =>
@@ -491,14 +492,14 @@ abstract class NewParser(origin: Origin, tokens: Ls[Stroken -> Loc], raiseFun: D
                       R(NuFunDef(isLetRec, v, tparams, R(PolyType(Nil, ps.foldRight(ty)((p, r) => Function(p.toType match {
                         case L(diag) => raise(diag); Top // TODO better
                         case R(tp) => tp
-                      }, r)))))(isDecl, isExported, N)) // TODO rm PolyType after FCP is merged
+                      }, r)))))(isDecl, isExported, N, genField)) // TODO rm PolyType after FCP is merged
                     case N =>
                       // TODO dedup:
                       val (tkstr, loc) = c.headOption.fold(("end of input", lastLoc))(_.mapFirst(_.describe).mapSecond(some))
                       err((
                         msg"Expected ':' or '=' followed by a function body or signature; found ${tkstr} instead" -> loc :: Nil))
                       consume
-                      R(NuFunDef(isLetRec, v, Nil, L(ps.foldRight(errExpr: Term)((i, acc) => Lam(i, acc))))(isDecl, isExported, N))
+                      R(NuFunDef(isLetRec, v, Nil, L(ps.foldRight(errExpr: Term)((i, acc) => Lam(i, acc))))(isDecl, isExported, N, genField))
                   }
               }
             }

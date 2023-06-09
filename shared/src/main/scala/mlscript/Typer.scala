@@ -1405,7 +1405,7 @@ class Typer(var dbg: Boolean, var verbose: Bool, var explainErrors: Bool, var ne
             mkTypingUnit(thisTy, members))(td.declareLoc, td.exportLoc, td.abstractLoc)
           }
       case tf @ TypedNuFun(level, fd, bodyTy) =>
-        NuFunDef(fd.isLetRec, fd.nme, Nil, R(go(tf.typeSignature)))(fd.declareLoc, fd.exportLoc, fd.signature)
+        NuFunDef(fd.isLetRec, fd.nme, Nil, R(go(tf.typeSignature)))(fd.declareLoc, fd.exportLoc, fd.signature, fd.genField)
       case p: NuParam =>
         ??? // TODO
       case TypedNuDummy(d) =>
