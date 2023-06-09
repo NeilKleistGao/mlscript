@@ -1052,6 +1052,12 @@ abstract class NewParser(origin: Origin, tokens: Ls[Stroken -> Loc], raiseFun: D
     
     // val blck = block
     
+    val argVal = yeetSpaces match {
+      case (KEYWORD("val"), l0) :: _ =>
+        consume
+        S(l0)
+      case _ => N
+    }
     val argMut = yeetSpaces match {
       case (KEYWORD("mut"), l0) :: _ =>
         consume
