@@ -1,4 +1,3 @@
-:global
 :bbml
 
 
@@ -19,7 +18,7 @@ false
 
 fun id(x) = x
 id
-//│ Type: α2_1 ->{⊥} α2_1
+//│ Type: forall α1_2: α1_2 -> α1_2
 
 fun inc(x) = x + 1
 //│ Type: ⊤
@@ -28,10 +27,10 @@ fun mul(x, y) = x * y
 //│ Type: ⊤
 
 x => x
-//│ Type: (α8_1) ->{⊥} α8_1
+//│ Type: (α7_1) ->{⊥} α7_1
 
 +
-//│ Type: (Int, Int) ->{⊥} Int
+//│ Type: (Int, Int) -> Int
 
 (x, y) => x + y
 //│ Type: (Int, Int) ->{⊥} Int
@@ -42,7 +41,7 @@ x => x
 :e
 114 + "514"
 //│ ╔══[ERROR] Type error in string literal with expected type Int
-//│ ║  l.43: 	114 + "514"
+//│ ║  l.42: 	114 + "514"
 //│ ║        	      ^^^^^
 //│ ╙── because: cannot constrain  Str  <:  Int
 //│ Type: Int
@@ -60,7 +59,7 @@ let x = 1 in let y = 2 in x + y
 :e
 let x = 0 in x + "1"
 //│ ╔══[ERROR] Type error in string literal with expected type Int
-//│ ║  l.61: 	let x = 0 in x + "1"
+//│ ║  l.60: 	let x = 0 in x + "1"
 //│ ║        	                 ^^^
 //│ ╙── because: cannot constrain  Str  <:  Int
 //│ Type: Int
@@ -70,15 +69,18 @@ class Foo(x: Int)
 
 :e
 new Nothingness(0)
-//│ ╔══[ERROR] Class Nothingness not found.
-//│ ║  l.72: 	new Nothingness(0)
+//│ ╔══[ERROR] Name not found: Nothingness
+//│ ║  l.71: 	new Nothingness(0)
+//│ ╙──      	    ^^^^^^^^^^^
+//│ ╔══[ERROR] Cannot instantiate Error
+//│ ║  l.71: 	new Nothingness(0)
 //│ ╙──      	    ^^^^^^^^^^^^^^
 //│ Type: ⊥
 
 :e
 new 42
-//│ ╔══[ERROR] Illegal new expression.
-//│ ║  l.79: 	new 42
+//│ ╔══[ERROR] Cannot instantiate Lit(IntLit(42))
+//│ ║  l.81: 	new 42
 //│ ╙──      	    ^^
 //│ Type: ⊥
 
@@ -97,8 +99,8 @@ new Point(0.0, 0.0, 0.0)
 :e
 new Foo("1!5!")
 //│ ╔══[ERROR] Type error in string literal with expected type Int
-//│ ║  l.98: 	new Foo("1!5!")
-//│ ║        	        ^^^^^^
+//│ ║  l.100: 	new Foo("1!5!")
+//│ ║         	        ^^^^^^
 //│ ╙── because: cannot constrain  Str  <:  Int
 //│ Type: Foo
 
@@ -107,14 +109,14 @@ class Some[A](value: A)
 //│ Type: ⊤
 
 new Some(true)
-//│ Type: Some[α15_1]
+//│ Type: Some[α13_1]
 //│ Where:
-//│   Bool <: α15_1
+//│   Bool <: α13_1
 
 new Some(42)
-//│ Type: Some[α16_1]
+//│ Type: Some[α14_1]
 //│ Where:
-//│   Int <: α16_1
+//│   Int <: α14_1
 
 let p = new Point(1.0, 0.0, 0.0) in p.Point#x
 //│ Type: Num
@@ -126,12 +128,18 @@ let t = new Some(true) in t.Some#value
 :pe
 42.Some#value
 //│ ╔══[LEXICAL ERROR] Expect at least one digit after the  decimal point
-//│ ║  l.127: 	42.Some#value
+//│ ║  l.129: 	42.Some#value
 //│ ╙──       	   ^
-//│ ╔══[PARSE ERROR] Expected end of input; found identifier instead
-//│ ║  l.127: 	42.Some#value
+//│ ╔══[ERROR] Illegal juxtaposition right-hand side.
+//│ ║  l.129: 	42.Some#value
 //│ ╙──       	   ^^^^
-//│ Type: Num
+//│ ╔══[ERROR] Name not found: #
+//│ ║  l.129: 	42.Some#value
+//│ ╙──       	       ^
+//│ ╔══[ERROR] Name not found: value
+//│ ║  l.129: 	42.Some#value
+//│ ╙──       	        ^^^^^
+//│ Type: ⊥
 
 
 class Printer[T](f: T -> Str)
@@ -151,13 +159,14 @@ let ip = new Printer(foofoo) in ip.Printer#f(42)
 
 :e
 let ip = new Printer(foofoo) in ip.Printer#f("42")
-//│ ╔══[ERROR] Type error in string literal with expected type α27_1
-//│ ║  l.153: 	let ip = new Printer(foofoo) in ip.Printer#f("42")
+//│ ╔══[ERROR] Type error in string literal with expected type α30_1
+//│ ║  l.161: 	let ip = new Printer(foofoo) in ip.Printer#f("42")
 //│ ║         	                                             ^^^^
-//│ ╟── because: cannot constrain  Str  <:  α27_1
-//│ ╟── because: cannot constrain  Str  <:  α26_1
-//│ ╟── because: cannot constrain  Str  <:  α21_1
-//│ ╙── because: cannot constrain  Str  <:  Int
+//│ ╟── because: cannot constrain  Str  <:  α30_1
+//│ ╟── because: cannot constrain  Str  <:  α30_1
+//│ ╟── because: cannot constrain  Str  <:  ¬(~α28_1)
+//│ ╟── because: cannot constrain  Str  <:  α28_1
+//│ ╙── because: cannot constrain  Str  <:  ¬(~{Int})
 //│ Type: Str
 
 class TFun[T](f: T -> T)
@@ -167,23 +176,24 @@ fun inc(x) = x + 1
 //│ Type: ⊤
 
 new TFun(inc)
-//│ Type: TFun[α31_1]
+//│ Type: TFun[α34_1]
 //│ Where:
-//│   Int <: α31_1
-//│   α31_1 <: Int
+//│   Int <: α34_1
+//│   α34_1 <: Int
 
 let tf = new TFun(inc) in tf.TFun#f(1)
 //│ Type: Int
 
 :e
 let tf = new TFun(inc) in tf.TFun#f("1")
-//│ ╔══[ERROR] Type error in string literal with expected type α36_1
-//│ ║  l.179: 	let tf = new TFun(inc) in tf.TFun#f("1")
+//│ ╔══[ERROR] Type error in string literal with expected type α42_1
+//│ ║  l.188: 	let tf = new TFun(inc) in tf.TFun#f("1")
 //│ ║         	                                    ^^^
-//│ ╟── because: cannot constrain  Str  <:  α36_1
-//│ ╟── because: cannot constrain  Str  <:  α35_1
-//│ ╟── because: cannot constrain  Str  <:  α30_1
-//│ ╙── because: cannot constrain  Str  <:  Int
+//│ ╟── because: cannot constrain  Str  <:  α42_1
+//│ ╟── because: cannot constrain  Str  <:  α42_1
+//│ ╟── because: cannot constrain  Str  <:  ¬(~α40_1)
+//│ ╟── because: cannot constrain  Str  <:  α40_1
+//│ ╙── because: cannot constrain  Str  <:  ¬(~{Int})
 //│ Type: Str ∨ Int
 
 class Pair[A, B](fst: A, snd: B)
@@ -196,11 +206,13 @@ class Pair[A, B](fst: A, snd: B)
 //│ Type: Bool
 
 
+:fixme
 if 1 < 2 then 1 else 0
-//│ Type: Int
+//│ /!!!\ Uncaught error: scala.MatchError: Cons(Branch(Ref($scrut@131),LitPat(BoolLit(true)),Else(Lit(IntLit(1)))),Else(Lit(IntLit(0)))) (of class hkmc2.semantics.Split$Cons)
 
+:fixme
 if false then 1 else "1"
-//│ Type: Int ∨ Str
+//│ /!!!\ Uncaught error: scala.MatchError: Cons(Branch(Ref($scrut@133),LitPat(BoolLit(true)),Else(Lit(IntLit(1)))),Else(Lit(StrLit(1)))) (of class hkmc2.semantics.Split$Cons)
 
 
 if 1 is Int then 1 else 0
@@ -209,7 +221,7 @@ if 1 is Int then 1 else 0
 fun test(x) =
   if x is Int then x + 1 else 0
 test
-//│ Type: (¬Int ∨ Int) ->{⊥} Int
+//│ Type: (¬Int ∨ Int) -> Int
 
 test(1)
 //│ Type: Int
@@ -219,43 +231,45 @@ test("1")
 //│ Type: Int
 
 
+:fixme
 fun fact(n) =
   if n > 1 then n * fact(n - 1) else 1
-//│ Type: ⊤
+//│ /!!!\ Uncaught error: scala.MatchError: Cons(Branch(Ref($scrut@147),LitPat(BoolLit(true)),Else(App(Ref(.*),Tup(List(Fld(‹›,Ref(n@145),None), Fld(‹›,App(Ref(globalThis:block#49.fact),Tup(List(Fld(‹›,App(Ref(.-),Tup(List(Fld(‹›,Ref(n@145),None), Fld(‹›,Lit(IntLit(1)),None)))),None)))),None)))))),Else(Lit(IntLit(1)))) (of class hkmc2.semantics.Split$Cons)
 
 fact
-//│ Type: Int ->{⊥} Int
+//│ Type: ⊥
 
 fact(1)
-//│ Type: Int
+//│ Type: ⊥
 
 
+:fixme
 fun fact2 = case
   0 then 1
   n then n * fact2(n - 1)
-//│ Type: ⊤
+//│ /!!!\ Uncaught error: scala.MatchError: Cons(Branch(Ref(caseScrut@156),LitPat(IntLit(0)),Else(Lit(IntLit(1)))),Let(n@157,Ref(caseScrut@156),Else(App(Ref(.*),Tup(List(Fld(‹›,Ref(n@157),None), Fld(‹›,App(Ref(globalThis:block#52.fact2),Tup(List(Fld(‹›,App(Ref(.-),Tup(List(Fld(‹›,Ref(n@157),None), Fld(‹›,Lit(IntLit(1)),None)))),None)))),None))))))) (of class hkmc2.semantics.Split$Cons)
 
 fact2
-//│ Type: Int ->{⊥} Int
+//│ Type: ⊥
 
 fact2(0)
-//│ Type: Int
+//│ Type: ⊥
 
 
 class Foo[A](x: A -> A)
 //│ Type: ⊤
 
 new Foo(x => x)
-//│ Type: Foo[α71_1]
+//│ Type: Foo[α74_1]
 
 fun f(g) = new Foo(g)
 f
-//│ Type: (α74_1 ->{⊥} α74_1) ->{⊥} Foo[α74_1]
+//│ Type: forall α77_2: (α77_2 -> α77_2) -> Foo[α77_2]
 
 f(x => x).Foo#x
-//│ Type: (α74_1) ->{⊥} α74_1
+//│ Type: (α79_1) ->{⊥} α79_1
 
 g => (new Foo(g)).Foo#x
-//│ Type: (α81_1 ->{⊥} α81_1) ->{⊥} (α81_1) ->{⊥} α81_1
+//│ Type: (α84_1 -> α84_1) ->{⊥} (α84_1) ->{⊥} α84_1
 
 

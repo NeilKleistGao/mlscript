@@ -1,4 +1,3 @@
-:global
 :bbml
 
 
@@ -7,7 +6,7 @@ fun letreg: [E,Res] -> ([R] -> Region[R] ->{E | R} Res) ->{E} Res
 //│ Type: ⊤
 
 letreg
-//│ Type: forall α1_2, α2_2: (forall α3_3: (Region[α3_3]) ->{α1_2 ∨ α3_3} α2_2) ->{α1_2} α2_2
+//│ Type: forall α0_2, α1_2: (forall α2_3: (Region[α2_3]) ->{α0_2 ∨ α2_3} α1_2) ->{α0_2} α1_2
 
 letreg(r => r)
 //│ Type: Region[?]
@@ -15,20 +14,20 @@ letreg(r => r)
 :e
 letreg(r => r).ref 1
 //│ ╔══[ERROR] Type error in reference creation
-//│ ║  l.16: 	letreg(r => r).ref 1
+//│ ║  l.15: 	letreg(r => r).ref 1
 //│ ║        	^^^^^^^^^^^^^^^^^^^^
-//│ ╟── because: cannot constrain  α7_1  <:  Region[α8_1]
-//│ ╟── because: cannot constrain  α7_1  <:  Region[((⊤ ∧ ⊤) ∧ α8_1) ∨ ⊥]
-//│ ╟── because: cannot constrain  Region[out ⊤ ∧ ⊤]  <:  Region[((⊤ ∧ ⊤) ∧ α8_1) ∨ ⊥]
-//│ ╟── because: cannot constrain  ((⊤ ∧ ⊤) ∧ ⊤) ∨ ⊥  <:  ((⊤ ∧ ⊤) ∧ α8_1) ∨ ⊥
-//│ ╟── because: cannot constrain  ⊤  <:  α8_1
-//│ ╙── because: cannot constrain  ⊤  <:  ⊥
+//│ ╟── because: cannot constrain  α7_1  <:  Region[α9_1]
+//│ ╟── because: cannot constrain  α7_1  <:  ¬(~{Region[α9_1]})
+//│ ╟── because: cannot constrain  Region[out ¬⊥] ∧ ¬⊥  <:  ¬(~{Region[α9_1]})
+//│ ╟── because: cannot constrain  D(  )  <:  α9_1
+//│ ╟── because: cannot constrain    <:  α9_1
+//│ ╙── because: cannot constrain    <:  ¬()
 //│ ╔══[ERROR] Type error in block
-//│ ║  l.16: 	letreg(r => r).ref 1
+//│ ║  l.15: 	letreg(r => r).ref 1
 //│ ║        	^^^^^^^^^^^^^^^^^^^^
-//│ ╟── because: cannot constrain  α8_1 ∨ α6_1  <:  <α>0_0
-//│ ╟── because: cannot constrain  α8_1  <:  <α>0_0
-//│ ╙── because: cannot constrain  ⊤  <:  <α>0_0
+//│ ╟── because: cannot constrain  α9_1 ∨ α6_1  <:  Alloc
+//│ ╟── because: cannot constrain  α9_1  <:  ¬(~{Alloc})
+//│ ╙── because: cannot constrain    <:  ¬(~{Alloc})
 //│ Type: Ref[Int, ?]
 
 letreg(r => r.ref 1)
@@ -40,12 +39,13 @@ letreg(r => !(r.ref 1))
 :e
 !letreg(r => r.ref 1)
 //│ ╔══[ERROR] Type error in block
-//│ ║  l.41: 	!letreg(r => r.ref 1)
+//│ ║  l.40: 	!letreg(r => r.ref 1)
 //│ ║        	 ^^^^^^^^^^^^^^^^^^^^
-//│ ╟── because: cannot constrain  α22_1 ∨ α18_1  <:  <α>0_0
-//│ ╟── because: cannot constrain  α22_1  <:  <α>0_0
-//│ ╟── because: cannot constrain  α21_1  <:  <α>0_0
-//│ ╙── because: cannot constrain  ⊤  <:  <α>0_0
+//│ ╟── because: cannot constrain  α26_1 ∨ α21_1  <:  Alloc
+//│ ╟── because: cannot constrain  α26_1  <:  ¬(~{Alloc})
+//│ ╟── because: cannot constrain  α25_1  <:  ¬(~{Alloc})
+//│ ╟── because: cannot constrain  α25_1  <:  ¬(~{Alloc})
+//│ ╙── because: cannot constrain  ¬⊥  <:  ¬(~{Alloc})
 //│ Type: Int
 
 letreg of r =>
@@ -69,13 +69,14 @@ letreg(r => arg => r.ref arg)(0)
 //│ ╔══[ERROR] Type error in block
 //│ ║  l.68: 	letreg(r => arg => r.ref arg)(0)
 //│ ║        	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ ╟── because: cannot constrain  α46_1 ∨ α39_1  <:  <α>0_0
-//│ ╟── because: cannot constrain  α46_1  <:  <α>0_0
-//│ ╟── because: cannot constrain  α45_1  <:  <α>0_0
-//│ ╙── because: cannot constrain  ⊤  <:  <α>0_0
-//│ Type: Ref[α43_1, ?]
+//│ ╟── because: cannot constrain  α53_1 ∨ α45_1  <:  Alloc
+//│ ╟── because: cannot constrain  α53_1  <:  ¬(~{Alloc})
+//│ ╟── because: cannot constrain  α52_1  <:  ¬(~{Alloc})
+//│ ╟── because: cannot constrain  α52_1  <:  ¬(~{Alloc})
+//│ ╙── because: cannot constrain  ¬⊥  <:  ¬(~{Alloc})
+//│ Type: Ref[α50_1, ?]
 //│ Where:
-//│   Int <: α43_1
+//│   Int <: α50_1
 
 
 
@@ -86,28 +87,30 @@ fun letreg: [E,Res] -> ([R] -> Region[R] -> Res) ->{E} Res
 
 :e
 letreg(r => r.ref 1)
-//│ ╔══[ERROR] Type error in function literal with expected type (Region[<α>50_2]) ->{⊥} α52_1
+//│ ╔══[ERROR] Type error in function literal with expected type (Region[<α>60_2]) ->{⊥} α59_1
 //│ ║  l.88: 	letreg(r => r.ref 1)
 //│ ║        	       ^^^^^^^^^^^^
-//│ ╟── because: cannot constrain  α53_2  <:  ⊥
-//│ ╙── because: cannot constrain  <α>50_2  <:  ⊥
+//│ ╟── because: cannot constrain  α61_2  <:  ⊥
+//│ ╟── because: cannot constrain  α61_2  <:  ¬()
+//│ ╙── because: cannot constrain  <α>60_2  <:  ¬()
 //│ Type: Ref[Int, ?]
 
 :e
 letreg(r => !(r.ref 1))
-//│ ╔══[ERROR] Type error in function literal with expected type (Region[<α>50_2]) ->{⊥} α56_1
+//│ ╔══[ERROR] Type error in function literal with expected type (Region[<α>65_2]) ->{⊥} α64_1
 //│ ║  l.97: 	letreg(r => !(r.ref 1))
 //│ ║        	       ^^^^^^^^^^^^^^
-//│ ╟── because: cannot constrain  α58_2 ∨ α57_2  <:  ⊥
-//│ ╟── because: cannot constrain  α58_2  <:  ⊥
-//│ ╟── because: cannot constrain  α57_2  <:  ⊥
-//│ ╙── because: cannot constrain  <α>50_2  <:  ⊥
-//│ ╔══[ERROR] Type error in function literal with expected type (Region[<α>50_2]) ->{⊥} α56_1
+//│ ╟── because: cannot constrain  α67_2 ∨ α66_2  <:  ⊥
+//│ ╟── because: cannot constrain  α67_2  <:  ¬()
+//│ ╟── because: cannot constrain  α66_2  <:  ¬()
+//│ ╟── because: cannot constrain  α66_2  <:  ¬()
+//│ ╙── because: cannot constrain  <α>65_2  <:  ¬()
+//│ ╔══[ERROR] Type error in function literal with expected type (Region[<α>65_2]) ->{⊥} α64_1
 //│ ║  l.97: 	letreg(r => !(r.ref 1))
 //│ ║        	       ^^^^^^^^^^^^^^
-//│ ╟── because: cannot constrain  α58_2 ∨ α57_2  <:  ⊥
-//│ ╟── because: cannot constrain  α57_2  <:  ⊥
-//│ ╙── because: cannot constrain  <α>50_2  <:  ⊥
+//│ ╟── because: cannot constrain  α67_2 ∨ α66_2  <:  ⊥
+//│ ╟── because: cannot constrain  α66_2  <:  ¬()
+//│ ╙── because: cannot constrain  <α>65_2  <:  ¬()
 //│ Type: Int
 
 

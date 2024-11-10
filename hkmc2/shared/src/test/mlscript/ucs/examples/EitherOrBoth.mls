@@ -1,0 +1,78 @@
+:import ../prelude/String.mls
+//│ Imported 2 member(s)
+
+:import ../prelude/Option.mls
+//│ Imported 3 member(s)
+
+abstract class EitherOrBoth[out A, out B]: (Left[A, B] | Right[A, B] | Both[A, B])
+class Left[out A, out B](value: A) extends EitherOrBoth[A, B]
+class Right[out A, out B](value: B) extends EitherOrBoth[A, B]
+class Both[out A, out B](left: A, right: B) extends EitherOrBoth[A, B] 
+
+type Either[A, B] = Left[A, B] | Right[A, B]
+
+fun getLeft[A, B](eob: EitherOrBoth[A, B]): Option[A] =
+  if eob is
+    Left(left) then Some(left)
+    Right(_) then None
+    Both(left, _) then Some(left)
+
+fun getRight[A, B](eob: EitherOrBoth[A, B]): Option[B] =
+  if eob is
+    Left(_) then None
+    Right(right) then Some(right)
+    Both(_, right) then Some(right)
+
+fun getBoth[A, B](eob: EitherOrBoth[A, B]): Option[[A, B]] =
+  if eob is
+    Left(_) then None
+    Right(_) then None
+    Both(left, right) then Some([left, right])
+
+fun mapLeft[A, B, C](eob: EitherOrBoth[A, B], f: A -> C): EitherOrBoth[C, B] =
+  if eob is
+    Left(left) then Left(f(left))
+    Right(right) then Right(right)
+    Both(left, right) then Both(f(left), right)
+
+fun mapRight[A, B, C](eob: EitherOrBoth[A, B], f: B -> C): EitherOrBoth[A, C] =
+  if eob is
+    Left(left) then Left(left)
+    Right(right) then Right(f(right))
+    Both(left, right) then Both(left, f(right))
+
+fun map[A, B, C, D](eob: EitherOrBoth[A, B], f: A -> C, g: B -> D): EitherOrBoth[C, D] =
+  if eob is
+    Left(left) then Left(f(left))
+    Right(right) then Right(g(right))
+    Both(left, right) then Both(f(left), g(right))
+
+fun fold[A, B, C](eob: EitherOrBoth[A, B], f: A -> C, g: B -> C, h: [A, B] -> C): C =
+  if eob is
+    Left(left) then f(left)
+    Right(right) then g(right)
+    Both(left, right) then h(left, right)
+
+fun isLeft[A, B](eob: EitherOrBoth[A, B]): Bool =
+  if eob is
+    Left(_) then true
+    Right(_) then false
+    Both(_, _) then false
+
+fun isRight[A, B](eob: EitherOrBoth[A, B]): Bool =
+  if eob is
+    Left(_) then false
+    Right(_) then true
+    Both(_, _) then false
+
+fun isBoth[A, B](eob: EitherOrBoth[A, B]): Bool =
+  if eob is
+    Left(_) then false
+    Right(_) then false
+    Both(_, _) then true
+
+fun eobToString[A, B](eob: EitherOrBoth[A, B]): Str =
+  if eob is
+    Left(left) then "Left(" ++ toString(left) ++ ")"
+    Right(right) then "Right(" ++ toString(right) ++ ")"
+    Both(left, right) then "Both(" ++ toString(left) ++ ", " ++ toString(right) ++ ")"

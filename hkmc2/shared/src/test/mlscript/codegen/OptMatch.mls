@@ -1,0 +1,114 @@
+:js
+
+
+class Some(value)
+module None
+
+
+:sjs
+fun isDefined(x) = if x is
+  Some then true
+  None then false
+//│ JS:
+//│ function isDefined(x) {
+//│   if (x instanceof globalThis.Some) {
+//│     return true
+//│   } else {
+//│     if (x === globalThis.None) {
+//│       return false
+//│     } else {
+//│       throw new globalThis.Error("match error")
+//│     }
+//│   }
+//│ };
+//│ undefined
+
+isDefined(Some(1))
+//│ = true
+
+isDefined(None)
+//│ = false
+
+
+:sjs
+val isDefined = case
+  Some(_) then true
+  None    then false
+//│ JS:
+//│ this.isDefined = (caseScrut) => {
+//│   let param0;
+//│   if (caseScrut instanceof this.Some) {
+//│     param0 = caseScrut.value;
+//│     return true
+//│   } else {
+//│     if (caseScrut === this.None) {
+//│       return false
+//│     } else {
+//│       throw new this.Error("match error")
+//│     }
+//│   }
+//│ };
+//│ undefined
+//│ isDefined = [Function (anonymous)]
+
+isDefined(Some(1))
+//│ = true
+
+isDefined(None)
+//│ = false
+
+
+val isDefined = x => if x is
+  Some(_) then true
+  None    then false
+//│ isDefined = [Function (anonymous)]
+
+isDefined(Some(1))
+//│ = true
+
+isDefined(None)
+//│ = false
+
+
+module Foo with
+  class Other(v)
+
+:fixme
+val isOther = x => if x is
+  Foo.Other(_) then true
+  None    then false
+//│ ╔══[ERROR] Unrecognized pattern.
+//│ ║  l.78: 	  Foo.Other(_) then true
+//│ ╙──      	  ^^^^^^^^^^^^
+//│ isOther = [Function (anonymous)]
+
+
+fun keepIfGreaterThan(x, y) =
+  if x > y then Some(x) else None
+
+
+1 keepIfGreaterThan(0) isDefined()
+//│ = true
+
+1
+  keepIfGreaterThan(0)
+  isDefined()
+  console.log()
+//│ > true
+
+
+:todo // alternative syntax?
+1
+  . keepIfGreaterThan(0)
+  . isDefined()
+  . console.log()
+//│ /!!!\ Uncaught error: scala.MatchError: OpBlock(List((Ident(.),App(Ident(keepIfGreaterThan),Tup(List(IntLit(0))))), (Ident(.),App(Ident(isDefined),Tup(List()))), (Ident(.),App(Sel(Ident(console),Ident(log)),Tup(List()))))) (of class hkmc2.syntax.Tree$OpBlock)
+
+
+:todo
+1
+  |> keepIfGreaterThan(_, 0)
+  |> isDefined(_)
+//│ /!!!\ Uncaught error: scala.MatchError: OpBlock(List((Ident(|>),App(Ident(keepIfGreaterThan),Tup(List(Ident(_), IntLit(0))))), (Ident(|>),App(Ident(isDefined),Tup(List(Ident(_))))))) (of class hkmc2.syntax.Tree$OpBlock)
+
+

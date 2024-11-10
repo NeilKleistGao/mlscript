@@ -1,0 +1,46 @@
+// AppSplits.mls
+// =============
+// Experimenting with conditional splits on function applications.
+
+fun foo(x) = x > 1
+
+:todo
+:pe
+:e
+if foo of
+  0 then "a"
+  1 then "b"
+//│ /!!!\ Uncaught error: scala.MatchError: InfixApp(IntLit(0),keyword 'then',StrLit(a)) (of class hkmc2.syntax.Tree$InfixApp)
+
+:todo
+:pe
+:e
+if foo of 1,
+  0 then "a"
+  1 then "b"
+//│ ╔══[PARSE ERROR] Expected an expression; found block instead
+//│ ║  l.19: 	  0 then "a"
+//│ ╙──      	  ^
+//│ ╔══[ERROR] Unrecognized term split (juxtaposition).
+//│ ║  l.18: 	if foo of 1,
+//│ ║        	   ^^^^^^^^^
+//│ ║  l.19: 	  0 then "a"
+//│ ║        	^^^^^^^^^^^^
+//│ ║  l.20: 	  1 then "b"
+//│ ╙──      	^^^^^^^^^^^^
+
+:todo
+:pe
+:e
+if foo
+  (0) then "a"
+  (1) then "b"
+//│ ╔══[ERROR] Unrecognized term split (juxtaposition).
+//│ ║  l.35: 	if foo
+//│ ║        	   ^^^
+//│ ║  l.36: 	  (0) then "a"
+//│ ║        	^^^^^^^^^^^^^^
+//│ ║  l.37: 	  (1) then "b"
+//│ ╙──      	^^^^^^^^^^^^^^
+
+

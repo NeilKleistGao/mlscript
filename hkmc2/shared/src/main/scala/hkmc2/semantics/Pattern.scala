@@ -10,19 +10,31 @@ enum Pattern extends Located:
   case Alias(nme: VarSymbol, pattern: Pattern)
   case LitPat(literal: Literal)
   case Concrete(nme: VarSymbol)
-  case Var(nme: VarSymbol)
+  case Var(nme: BlockLocalSymbol)
   /**
     * Represents wildcard patterns or missing patterns which match everything.
     * Should be transformed from `Var("_")` or unrecognized terms.
     */
   case Empty(source: Term)
-  case Class(nme: ClassSymbol, parameters: Opt[List[Pattern]], refined: Bool)
+  case Class(nme: ClassSymbol, parameters: Opt[List[BlockLocalSymbol]], var refined: Bool)(val ident: Tree.Ident)
   case Tuple(fields: List[Pattern])
   case Record(entries: List[(VarSymbol -> Pattern)])
   
   def boundSymbols: Ls[Str -> Symbol] = ???
   
-  def toLoc: Opt[Loc] = N // TODO
+  def toLoc: Opt[Loc] = this match
+    case LitPat(literal) => literal.toLoc
+    case pat @ Class(_, _, _) => pat.ident.toLoc
+  
+  def subTerms: Ls[Term] = this match
+    case Alias(nme, pattern) => pattern.subTerms
+    case LitPat(literal) => Nil
+    case Concrete(nme) => Nil
+    case Var(nme) => Nil
+    case Empty(source) => source :: Nil
+    case Class(_, parameters, _) => Nil
+    case Tuple(fields) => fields.flatMap(_.subTerms)
+    case Record(entries) => entries.flatMap(_._2.subTerms)
   
   /* 
   def toLoc: Opt[Loc] = Loc(children)

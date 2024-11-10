@@ -1,4 +1,3 @@
-:global
 :bbml
 
 
@@ -11,10 +10,10 @@ fun add(x, y) = x + y
 fun foo: Int -> Int
 fun foo: Int -> Int
 //│ ╔══[ERROR] Duplicate definition of foo
-//│ ║  l.12: 	fun foo: Int -> Int
+//│ ║  l.11: 	fun foo: Int -> Int
 //│ ║        	    ^^^^^^^^^^^^^^^
 //│ ╟── aready defined here
-//│ ║  l.12: 	fun foo: Int -> Int
+//│ ║  l.11: 	fun foo: Int -> Int
 //│ ╙──      	    ^^^
 //│ Type: ⊤
 
@@ -22,10 +21,10 @@ fun foo: Int -> Int
 fun id(x) = x
 fun id(y) = y
 //│ ╔══[ERROR] Duplicate definition of id
-//│ ║  l.23: 	fun id(y) = y
+//│ ║  l.22: 	fun id(y) = y
 //│ ║        	    ^^^^^^^^^
 //│ ╟── aready defined here
-//│ ║  l.23: 	fun id(y) = y
+//│ ║  l.22: 	fun id(y) = y
 //│ ╙──      	    ^^
 //│ Type: ⊤
 
@@ -33,7 +32,7 @@ fun id(y) = y
 fun bar: Str -> Str
 fun bar(x) = let t = x + 1 in "aaa"
 //│ ╔══[ERROR] Type error in reference with expected type Int
-//│ ║  l.34: 	fun bar(x) = let t = x + 1 in "aaa"
+//│ ║  l.33: 	fun bar(x) = let t = x + 1 in "aaa"
 //│ ║        	                     ^
 //│ ╙── because: cannot constrain  Str  <:  Int
 //│ Type: ⊤
@@ -41,9 +40,9 @@ fun bar(x) = let t = x + 1 in "aaa"
 :e
 fun baz: Int -> Int
 fun baz(x) = "bbb"
-//│ ╔══[ERROR] Type error in function literal with expected type (Int) ->{⊥} Int
-//│ ║  l.43: 	fun baz(x) = "bbb"
-//│ ║        	        ^^^^^^^^^^
+//│ ╔══[ERROR] Type error in string literal with expected type Int
+//│ ║  l.42: 	fun baz(x) = "bbb"
+//│ ║        	             ^^^^^
 //│ ╙── because: cannot constrain  Str  <:  Int
 //│ Type: ⊤
 
@@ -57,7 +56,7 @@ add(1, 2): Int
 :e
 add(0, 0): Str
 //│ ╔══[ERROR] Type error in application with expected type Str
-//│ ║  l.58: 	add(0, 0): Str
+//│ ║  l.57: 	add(0, 0): Str
 //│ ║        	^^^^^^^^^
 //│ ╙── because: cannot constrain  Int  <:  Str
 //│ Type: Str
@@ -65,7 +64,7 @@ add(0, 0): Str
 :e
 fun errAdd(x: Int) = x + "1"
 //│ ╔══[ERROR] Type error in string literal with expected type Int
-//│ ║  l.66: 	fun errAdd(x: Int) = x + "1"
+//│ ║  l.65: 	fun errAdd(x: Int) = x + "1"
 //│ ║        	                         ^^^
 //│ ╙── because: cannot constrain  Str  <:  Int
 //│ Type: ⊤
@@ -75,7 +74,7 @@ fun high(f) = f(42)
 //│ Type: ⊤
 
 high
-//│ Type: (forall α7_2: (α7_2) ->{⊥} α7_2) ->{⊥} Int
+//│ Type: (forall α6_2: (α6_2) ->{⊥} α6_2) ->{⊥} Int
 
 
 high((x => x): [A] -> A -> A)
@@ -87,51 +86,53 @@ high(x => x)
 :e
 high(x => x + 1)
 //│ ╔══[ERROR] Type error in reference with expected type Int
-//│ ║  l.88: 	high(x => x + 1)
+//│ ║  l.87: 	high(x => x + 1)
 //│ ║        	          ^
-//│ ╙── because: cannot constrain  <α>7_2  <:  Int
-//│ ╔══[ERROR] Type error in function literal with expected type (<α>7_2) ->{⊥} <α>7_2
-//│ ║  l.88: 	high(x => x + 1)
-//│ ║        	     ^^^^^^^^^^
-//│ ╙── because: cannot constrain  Int  <:  <α>7_2
+//│ ╙── because: cannot constrain  <α>10_2  <:  Int
+//│ ╔══[ERROR] Type error in application with expected type <α>10_2
+//│ ║  l.87: 	high(x => x + 1)
+//│ ║        	          ^^^^^
+//│ ╙── because: cannot constrain  Int  <:  <α>10_2
 //│ Type: Int
 
 (let a = 0 in x => x): [A] -> A -> A
-//│ Type: forall α9_2: (α9_2) ->{⊥} α9_2
+//│ Type: forall α11_2: (α11_2) ->{⊥} α11_2
 
+:fixme
 (if false then x => x else y => y): [A] -> A -> A
-//│ Type: forall α10_2: (α10_2) ->{⊥} α10_2
+//│ /!!!\ Uncaught error: scala.MatchError: Cons(Branch(Ref($scrut@101),LitPat(BoolLit(true)),Else(Lam(List(Param(‹›,x@102,None)),Ref(x@102)))),Else(Lam(List(Param(‹›,y@100,None)),Ref(y@100)))) (of class hkmc2.semantics.Split$Cons)
+
 
 fun baz: Int -> (([A] -> A -> A), Int) -> Int
 fun baz(z) =
-  (((f, x) => f(x)): (([A] -> A -> A), Int) -> Int)
+  ((f, x) => f(x))
 //│ Type: ⊤
 
-:fixme // toLoc
+fun baz: Int -> (([A] -> A -> A), Int) -> Int
+fun baz(z) =
+  ((f, x) => f(x)): (([A] -> A -> A), Int) -> Int
+//│ Type: ⊤
+
 :e
 baz: Int -> (([A] -> A -> A), Int) -> Int
-//│ ╔══[ERROR] General type is not allowed here.
-//│ ║  l.112: 	baz: Int -> (([A] -> A -> A), Int) -> Int
+//│ ╔══[ERROR] Cannot type non-function term Ref(globalThis:block#17.baz) as (Int) ->{⊥} (forall α25_2: (α25_2) ->{⊥} α25_2, Int) ->{⊥} Int
+//│ ║  l.117: 	baz: Int -> (([A] -> A -> A), Int) -> Int
 //│ ╙──       	^^^
-//│ ╔══[ERROR] General type is not allowed here.
-//│ ║  l.112: 	baz: Int -> (([A] -> A -> A), Int) -> Int
-//│ ╙──       	^^^
-//│ Type: (Int) ->{⊥} (forall α16_2: (α16_2) ->{⊥} α16_2, Int) ->{⊥} Int
+//│ Type: ⊥
 
 
 baz(42)
-//│ Type: (forall α12_2: (α12_2) ->{⊥} α12_2, Int) ->{⊥} Int
+//│ Type: (forall α21_2: (α21_2) ->{⊥} α21_2, Int) ->{⊥} Int
 
-:fixme // toLoc
 :e
 baz(42): (([A] -> A -> A), Int) -> Int
-//│ ╔══[ERROR] General type is not allowed here.
-//│ ║  l.127: 	baz(42): (([A] -> A -> A), Int) -> Int
+//│ ╔══[ERROR] Cannot type non-function term App(Ref(globalThis:block#17.baz),Tup(List(Fld(‹›,Lit(IntLit(42)),None)))) as (forall α26_2: (α26_2) ->{⊥} α26_2, Int) ->{⊥} Int
+//│ ║  l.128: 	baz(42): (([A] -> A -> A), Int) -> Int
 //│ ╙──       	^^^^^^^
-//│ ╔══[ERROR] General type is not allowed here.
-//│ ║  l.127: 	baz(42): (([A] -> A -> A), Int) -> Int
-//│ ╙──       	^^^^^^^
-//│ Type: (forall α17_2: (α17_2) ->{⊥} α17_2, Int) ->{⊥} Int
+//│ Type: ⊥
+
+(z => (f, x) => baz(z)(f, x)): Int -> (([A] -> A -> A), Int) -> Int
+//│ Type: (Int) ->{⊥} (forall α27_2: (α27_2) ->{⊥} α27_2, Int) ->{⊥} Int
 
 
 fun id: [A] -> A -> A
@@ -139,21 +140,21 @@ fun id(x) = x
 //│ Type: ⊤
 
 id: [A] -> A -> A
-//│ Type: forall α20_2: (α20_2) ->{⊥} α20_2
+//│ Type: forall α33_2: (α33_2) ->{⊥} α33_2
 
 
 (id: [A] -> A -> A): [A] -> A -> A
-//│ Type: forall α22_2: (α22_2) ->{⊥} α22_2
+//│ Type: forall α36_2: (α36_2) ->{⊥} α36_2
 
 42: Int | Num
 //│ Type: Int ∨ Num
 
 42: [A] -> Int
-//│ Type: forall α26_2: Int
+//│ Type: Int
 
 
 42: [A] -> Int | Num
-//│ Type: forall α27_2: Int ∨ Num
+//│ Type: Int ∨ Num
 
 fun foo: Int -> Int
 foo

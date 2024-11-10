@@ -1,0 +1,33 @@
+:js
+
+:import PredefJS.mls
+//│ Imported 2 member(s)
+
+
+:sjs
+val x = 2
+fun foo() =
+  x + 1
+//│ JS:
+//│ this.x = 2; function foo() { return globalThis.x + 1 }; undefined
+//│ x = 2
+
+:sjs
+class Test with
+  log(foo())
+//│ JS:
+//│ this.Test = class Test {
+//│   constructor() {
+//│     let tmp;
+//│     tmp = globalThis.foo();
+//│     log(tmp)
+//│   }
+//│   toString() { return "Test"; }
+//│ };
+//│ undefined
+
+new Test
+//│ > 3
+//│ = Test {}
+
+

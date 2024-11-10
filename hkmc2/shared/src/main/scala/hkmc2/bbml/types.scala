@@ -4,14 +4,15 @@ package bbml
 import mlscript.utils.*, shorthands.*
 import syntax.*
 import semantics.*, semantics.Term.*
+import utils.*
+import scala.collection.mutable.{Set => MutSet}
 
 // * General types include mono types (i.e., Type), forall quantified type, and poly function types
 sealed abstract class GeneralType:
   // * Is this type polymorphic
   lazy val isPoly: Bool
   // * Polymorphic level
-  lazy val lvl: Int
-  def toString(): String
+  def lvl: Int
   // * Return itself if it is actually monomorphic.
   // * Otherwise, evaluate fallback
   def monoOr(fallback: => Type): Type
@@ -23,13 +24,29 @@ sealed abstract class GeneralType:
 
 // * Types that can be used as class type arguments
 sealed trait TypeArg:
-  lazy val lvl: Int
+  def lvl: Int
   def mapArg(f: Type => Type): TypeArg
+  def & (that: TypeArg): TypeArg = (this, that) match
+    case (Wildcard(in1, out1), Wildcard(in2, out2)) => Wildcard(in1 | in2, out1 & out2)
+    case (ty: Type, Wildcard(in2, out2)) => Wildcard(ty | in2, ty & out2)
+    case (Wildcard(in1, out1), ty: Type) => Wildcard(in1 | ty, out1 & ty)
+    case (ty1: Type, ty2: Type) => ty1 & ty2
+  def | (that: TypeArg): TypeArg = (this, that) match
+    case (Wildcard(in1, out1), Wildcard(in2, out2)) => Wildcard(in1 & in2, out1 | out2)
+    case (ty: Type, Wildcard(in2, out2)) => Wildcard(ty & in2, ty | out2)
+    case (Wildcard(in1, out1), ty: Type) => Wildcard(in1 & ty, out1 | ty)
+    case (ty1: Type, ty2: Type) => ty1 | ty2
+  def posPart: Type = this match
+    case Wildcard(_, out) => out
+    case ty: Type => ty
+  def negPart: Type = this match
+    case Wildcard(in, _) => in
+    case ty: Type => ty
 
 case class Wildcard(in: Type, out: Type) extends TypeArg {
   def mapArg(f: Type => Type): Wildcard = Wildcard(f(in), f(out))
 
-  override def toString(): String = in match
+  override def toString: Str = in match
     case `out` => in.toString
     case Bot =>
       out match
@@ -48,41 +65,37 @@ object Wildcard:
   def out(ty: Type): Wildcard = Wildcard(Bot, ty)
   def empty: Wildcard = Wildcard(Bot, Top)
 
-sealed abstract class Type extends GeneralType with TypeArg:
-  override protected type ThisType = Type
+trait CachedBasicType extends Type:
+  override lazy val toBasic: BasicType = mkBasic
+  def mkBasic: BasicType
 
+abstract class TypeExt extends Type:
+  override def hashCode: Int =
+    toBasic.hashCode
+  override def equals(that: Any): Bool =
+    toBasic === that
+  
+sealed abstract class Type extends GeneralType with TypeArg:
+  
+  override protected type ThisType = Type
+  
+  def toBasic: BasicType
+  def toDnf(using TL): Disj
+  
   // * Remove redundant Top/Bot.
   // * e.g., Top & Int === Int
   lazy val simp: Type = this
   
-  protected def paren: Str = this match
-    case _: InfVar | _: ClassType | _: NegType | Top | Bot => toString
-    case _: ComposedType | _: FunType => s"($toString)"
   
-  override def toString: String = this match
-    case ClassType(name, targs) =>
-      if targs.isEmpty then s"${name.nme}" else s"${name.nme}[${targs.mkString(", ")}]"
-    case InfVar(lvl, uid, _, isSkolem) => if isSkolem then s"<α>${uid}_$lvl" else s"α${uid}_$lvl"
-    case FunType(arg :: Nil, ret, eff) => s"${arg.paren} ->{${eff}} ${ret.paren}"
-    case FunType(args, ret, eff) => s"(${args.mkString(", ")}) ->{${eff}} ${ret.paren}"
-    case ComposedType(lhs, rhs, pol) => s"${lhs.paren} ${if pol then "∨" else "∧"} ${rhs.paren}"
-    case NegType(ty) => s"¬${ty.paren}"
-    case Top => "⊤"
-    case Bot => "⊥"
-
-  lazy val lvl: Int = this match
-    case ClassType(name, targs) =>
-      targs.map(_.lvl).maxOption.getOrElse(0)
-    case InfVar(lvl, _, _, _) => lvl
-    case FunType(args, ret, eff) =>
-      (ret :: eff :: args).map(_.lvl).max
-    case ComposedType(lhs, rhs, _) =>
-      lhs.lvl.max(rhs.lvl)
-    case NegType(ty) => ty.lvl
-    case Top | Bot => 0
-
   lazy val isPoly: Bool = false
-
+  
+  override def map(f: Type => Type): Type =
+    toBasic.mapBasic(f) // TODO improve: map on all type constructors
+  
+  def mapArg(f: Type => Type): Type = f(this)
+  
+  def monoOr(fallback: => Type): Type = this
+  
   def & (that: Type): Type = this match
     case Top => that
     case Bot => Bot
@@ -111,47 +124,129 @@ sealed abstract class Type extends GeneralType with TypeArg:
     case ComposedType(l, r, false) => l.! | r.!
     case _ => NegType(this)
   
-  override def map(f: Type => Type): Type = this match
+  protected[bbml] def paren: Str = toBasic match
+    case _: InfVar | _: ClassType | _: NegType | Top | Bot => toString
+    case _: ComposedType | _: FunType => s"($toString)"
+
+sealed abstract class BasicType extends Type:
+  
+  lazy val lvl: Int = this match
+    case ClassType(name, targs) =>
+      targs.map(_.lvl).maxOption.getOrElse(0)
+    case InfVar(lvl, _, _, _) => lvl
+    case FunType(args, ret, eff) =>
+      (ret :: eff :: args).map(_.lvl).max
+    case ComposedType(lhs, rhs, _) =>
+      lhs.lvl.max(rhs.lvl)
+    case NegType(ty) => ty.lvl
+    case Top | Bot => 0
+  
+  def mapBasic(f: Type => Type): Type = this match
     case ClassType(name, targs) => ClassType(name, targs.map(_.mapArg(f)))
     case FunType(args, ret, eff) => FunType(args.map(f), f(ret), f(eff))
     case ComposedType(lhs, rhs, pol) => Type.mkComposedType(f(lhs), f(rhs), pol)
     case NegType(ty) => Type.mkNegType(f(ty))
     case Top | Bot | _: InfVar => this
+    
+  override def toString: Str =
+    def printEff(eff: Type) = eff match
+      case Bot => ""
+      // case ty if ty == allocSkolem => ""
+      case _ => s"{$eff}"
+    this match
+    case ClassType(name, targs) =>
+      if targs.isEmpty then s"${name.nme}" else s"${name.nme}[${targs.mkString(", ")}]"
+    case InfVar(lvl, uid, _, isSkolem) => if isSkolem then s"<α>${uid}_$lvl" else s"α${uid}_$lvl"
+    case FunType(arg :: Nil, ret, eff) => s"${arg.paren} ->${printEff(eff)} ${ret.paren}"
+    case FunType(args, ret, eff) => s"(${args.mkString(", ")}) ->${printEff(eff)} ${ret.paren}"
+    case ComposedType(lhs, rhs, pol) => s"${lhs.paren} ${if pol then "∨" else "∧"} ${rhs.paren}"
+    case NegType(ty) => s"¬${ty.paren}"
+    case Top => "⊤"
+    case Bot => "⊥"
   
-  def mapArg(f: Type => Type): Type = f(this)
+  def toBasic: BasicType = this
   
-  def monoOr(fallback: => Type): Type = this
+  var _dnf: Disj = null
+  def withDnf(d: Disj): this.type = // TODO: remove?
+    assert(_dnf eq null)
+    _dnf = d
+    this
+  def toDnf(using TL) =
+    if _dnf eq null
+    then
+      val d = NormalForm.dnf(this)
+      _dnf = d
+      d
+    else _dnf
 
-case class ClassType(name: ClassSymbol, targs: Ls[TypeArg]) extends Type:
+trait CachedNorm[A <: AnyRef]:
+  
+  def mkNorm(using TL): A
+  
+  private var _norm: A = null.asInstanceOf
+  final def hasNorm: Bool = !(_norm eq null)
+  def withNorm(d: A): this.type = // TODO: remove?
+    assert(!hasNorm)
+    _norm = d
+    this
+  def toNorm(using TL) =
+    if _norm eq null
+    then
+      val d = mkNorm
+      _norm = d
+      d
+    else _norm
+  
+
+object BasicType:
+  // TOOD dedup
+  def union(tys: Ls[BasicType]): BasicType = tys match
+    case Nil => Bot
+    case ty :: Nil => ty
+    case ty :: tys => ComposedType(ty, union(tys), true)
+  def inter(tys: Ls[BasicType]): BasicType = tys match
+    case Nil => Bot
+    case ty :: Nil => ty
+    case ty :: tys => ComposedType(ty, inter(tys), false)
+
+case class ClassType(name: ClassSymbol, targs: Ls[TypeArg]) extends BasicType with CachedNorm[ClassType]:
+  def mkNorm(using TL): ClassType =
+    ClassType(name,
+      targs.map:
+        case ty: Type => ty.toDnf
+        case Wildcard(i, o) => Wildcard(i.toDnf, o.toDnf)
+    )
   override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType =
     ClassType(name, targs.map {
         case Wildcard(in, out) => Wildcard(in.subst, out.subst)
         case ty: Type => ty.subst
       })
 
-final case class InfVar(vlvl: Int, uid: Uid[InfVar], state: VarState, isSkolem: Bool) extends Type:
+final case class InfVar(vlvl: Int, uid: Uid[InfVar], state: VarState, isSkolem: Bool) extends BasicType:
   override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType = map.get(uid).getOrElse(this)
 
 given Ordering[InfVar] = Ordering.by(_.uid)
 
-case class FunType(args: Ls[Type], ret: Type, eff: Type) extends Type:
+case class FunType(args: Ls[Type], ret: Type, eff: Type) extends BasicType with CachedNorm[FunType]:
+  def mkNorm(using TL): FunType =
+    FunType(args.map(_.toDnf), ret.toDnf, eff.toDnf)
   override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType =
     FunType(args.map(_.subst), ret.subst, eff.subst)
 
-case class ComposedType(lhs: Type, rhs: Type, pol: Bool) extends Type: // * Positive -> union
+case class ComposedType(lhs: Type, rhs: Type, pol: Bool) extends BasicType: // * Positive -> union
   override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType =
     Type.mkComposedType(lhs.subst, rhs.subst, pol)
   override lazy val simp: Type =
     Type.mkComposedType(lhs.simp, rhs.simp, pol)
   
-final case class NegType(ty: Type) extends Type:
+final case class NegType(ty: Type) extends BasicType:
   override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType = NegType(ty.subst)
   override lazy val simp: Type = ty.simp.!
 
-object Top extends Type:
+object Top extends BasicType:
   override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType = Top
 
-object Bot extends Type:
+object Bot extends BasicType:
   override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType = Bot
 
 object Type:
@@ -160,18 +255,68 @@ object Type:
     else lhs & rhs
   def mkNegType(ty: Type): Type = ty.!
 
-// TODO: bounds
 // * Poly types can not be used as type arguments
 case class PolyType(tvs: Ls[InfVar], body: GeneralType) extends GeneralType:
   override protected type ThisType = GeneralType
 
   override lazy val isPoly: Bool = true
   override lazy val lvl: Int = (body :: tvs).map(_.lvl).max
-  override def toString(): String = s"forall ${tvs.mkString(", ")}: $body"
+  override def toString: Str = s"forall ${tvs.mkString(", ")}: $body"
   override def monoOr(fallback: => Type): Type = fallback
   override def map(f: GeneralType => GeneralType): PolyType = PolyType(tvs, f(body))
 
-  override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType = PolyType(tvs, body.subst)
+  override def subst(using map: Map[Uid[InfVar], InfVar]): ThisType =
+    PolyType(tvs.map {
+      case InfVar(lvl, uid, state, skolem) =>
+        val newSt = new VarState()
+        newSt.lowerBounds = state.lowerBounds.map(_.subst)
+        newSt.upperBounds = state.upperBounds.map(_.subst)
+        InfVar(lvl, uid, newSt, skolem)
+    }, body.subst)
+
+  // * This function will only return the body after substitution
+  // * and \dom(map) should cover all tvs.
+  // * This function is dedicated to `skolemize` and `instantiate`.
+  private def substAndGetBody(using map: Map[Uid[InfVar], InfVar]): GeneralType =
+    tvs.foreach:
+      case InfVar(lvl, uid, state, skolem) =>
+        val v = map(uid)
+        v.state.lowerBounds = state.lowerBounds.map(_.subst)
+        v.state.upperBounds = state.upperBounds.map(_.subst)
+    body.subst
+
+  def skolemize(nextUid: => Uid[InfVar], lvl: Int)(tl: TL) =
+    // * Note that by this point, the state is supposed to be frozen/treated as immutable
+    val map = tvs.map(v =>
+      val sk = InfVar(lvl, nextUid, new VarState(), true)
+      tl.log(s"skolemize $v ~> $sk")
+      v.uid -> sk
+    ).toMap
+    substAndGetBody(using map)
+  
+  def instantiate(nextUid: => Uid[InfVar], lvl: Int)(tl: TL): GeneralType =
+    val map = tvs.map(v =>
+      val nv = InfVar(lvl, nextUid, new VarState(), false)
+      tl.log(s"instantiate $v ~> $nv")
+      v.uid -> nv
+    ).toMap
+    substAndGetBody(using map)
+
+object PolyType:
+  def generalize(ty: GeneralType, lvl: Int): PolyType =
+    val tvs = MutSet[InfVar]()
+    object CollectTVs extends TypeTraverser:
+      override def apply(pol: Boolean)(ty: GeneralType): Unit = ty match
+        case v @ InfVar(vlvl, _, state, _) if vlvl > lvl =>
+          if tvs.add(v) then
+            state.lowerBounds.foreach: bd =>
+              apply(true)(bd)
+            state.upperBounds.foreach: bd =>
+              apply(false)(bd)
+            super.apply(pol)(ty)
+        case _ => super.apply(pol)(ty)
+    CollectTVs(true)(ty)
+    PolyType(tvs.toList.sorted, ty)
 
 // * Functions that accept/return a polymorphic type.
 // * Note that effects are always monomorphic
@@ -181,8 +326,8 @@ case class PolyFunType(args: Ls[GeneralType], ret: GeneralType, eff: Type) exten
 
   lazy val isPoly: Bool = (ret :: args).exists(_.isPoly)
   lazy val lvl: Int = (ret :: eff :: args).map(_.lvl).max
-  override def toString(): String = s"(${args.mkString(", ")}) ->{${eff}} ${ret}"
-  private lazy val mono: Option[FunType] = if isPoly then N else
+  override def toString: Str = s"(${args.mkString(", ")}) ->{${eff}} ${ret}"
+  private lazy val mono: Opt[FunType] = if isPoly then N else
     Some(FunType(args.map {
       case t: Type => t
       case pf: PolyFunType => pf.mono.get

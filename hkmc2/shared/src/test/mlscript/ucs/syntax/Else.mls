@@ -1,0 +1,85 @@
+// Else.mls
+// ========
+// Examine how the `else` keyword is parsed.
+
+
+fun f(x, y, z) = if x then y
+
+:pt
+fun f(x, y, z) = if x then y else z
+//│ Parsed tree:
+//│ TermDef:
+//│   k = Fun
+//│   head = App:
+//│     lhs = Ident of "f"
+//│     rhs = Tup of Ls of 
+//│       Ident of "x"
+//│       Ident of "y"
+//│       Ident of "z"
+//│   rhs = S of IfLike:
+//│     kw = keyword 'if'
+//│     split = Block of Ls of 
+//│       InfixApp:
+//│         lhs = Ident of "x"
+//│         kw = keyword 'then'
+//│         rhs = Ident of "y"
+//│       Modified:
+//│         modifier = keyword 'else'
+//│         modLoc = N
+//│         body = Ident of "z"
+
+
+fun f(x, y, z) =
+  if x
+    then y
+    else z
+
+fun f(x, y, z) = if x
+                 then y
+                 else z
+
+fun f(x, y, z) = if x then y
+  else z
+
+fun f(x, y, z) = if
+  x then y
+  else z
+
+fun f(x, y, z) =
+  if x then
+    y
+  else
+    z
+
+fun f(x, y, z) =
+  if x then y
+  else z
+
+fun f(x, y, z) =
+  if x then y
+    else z
+
+fun f(x, y, z) =
+  if x
+  then y
+  else z
+
+fun f(x, y, z) =
+  if x
+    then y
+    else z
+
+:fixme
+fun f(x, y, z) =
+  if
+    x then y else z
+//│ ╔══[PARSE ERROR] Unexpected 'else' keyword here
+//│ ║  l.75: 	    x then y else z
+//│ ╙──      	             ^^^^
+
+
+fun f(x, y) =
+  if x
+    then y
+
+

@@ -1,0 +1,90 @@
+:js
+
+:import PredefJS.mls
+//│ Imported 2 member(s)
+
+
+fun foo() =
+  1 + 2
+
+foo
+//│ = [Function: foo]
+
+foo()
+//│ = 3
+
+fun foo(x) =
+  x + 1
+
+foo(123)
+//│ = 124
+
+fun foo(x) =
+  x + 1 + 2
+
+foo(123)
+//│ = 126
+
+fun foo() = bar()
+fun bar() = 42
+
+bar()
+//│ = 42
+
+foo()
+//│ = 42
+
+fun foo() = bar()
+let r = foo()
+fun bar() = 42
+r
+//│ = 42
+//│ r = 42
+
+// Note that this initializes fine
+fun foo() = bar()
+let r = foo()
+fun bar() = r
+//│ r = 42
+
+
+fun outer(x) =
+  let r = x + 1
+  fun nested(y) =
+    r + x + y
+  log(nested(x))
+  nested
+
+let f = outer(100)
+f(200)
+//│ > 301
+//│ = 401
+//│ f = [Function: nested]
+
+// f(200)
+
+outer(100)
+//│ > 301
+//│ = [Function: nested]
+
+outer(100)(200)
+//│ > 301
+//│ = 401
+
+
+// * Notice this strange JS phenomenon:
+// * functions leak from the `try` scope, although things like classes do not...
+
+:showRepl
+fun test1(x) = test2(x)
+fun test2(y) = y + 1
+//│ REPL> Sending: try { function test1(x) { return globalThis.test2(x) }; function test2(y) { return y + 1 }; undefined } catch (e) { console.log('\u200B' + e.stack + '\u200B'); }
+//│ REPL> Collected:
+//│ >  undefined
+//│ REPL> Parsed:
+//│ >  undefined
+
+test1(1)
+//│ = 2
+
+

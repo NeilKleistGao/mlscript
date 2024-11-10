@@ -1,23 +1,44 @@
+:js
 
 
 class Foo
-//│ Type: Ctor(lit:UnitLit(true),List())
 
 class Foo()
-//│ Type: Ctor(lit:UnitLit(true),List())
 
 class Foo(x: Int)
-//│ Type: Ctor(lit:UnitLit(true),List())
 
 class Foo(x: Int, y: Str)
-//│ Type: Ctor(lit:UnitLit(true),List())
 
 class Foo(x: Int) with
   val y = x
-//│ Type: Ctor(lit:UnitLit(true),List())
 
 
 :fixme
+class Foo(x: Int) { val y = x }
+//│ ╔══[PARSE ERROR] Expected end of input; found curly brace section instead
+//│ ║  l.17: 	class Foo(x: Int) { val y = x }
+//│ ╙──      	                  ^^^^^^^^^^^^^
+
+:fixme
+class Foo(x: Int)
+  val y = x
+//│ ╔══[PARSE ERROR] Expected end of input; found indented block instead
+//│ ║  l.24: 	  val y = x
+//│ ╙──      	^^
+
+:fixme
+class Foo(x: Int) { log("Hello!") }
+//│ ╔══[ERROR] Expected a valid definition head, found block instead
+//│ ║  l.30: 	class Foo(x: Int) { log("Hello!") }
+//│ ╙──      	                    ^^^^^^^^^^^^^
+//│ /!!!\ Uncaught error: scala.MatchError: Block(List(App(Ident(log),Tup(List(StrLit(Hello!)))))) (of class hkmc2.syntax.Tree$Block)
+
+
+
+// *** *** ***
+
+:fixme
+:e
 class Foo(42)
 //│ /!!!\ Uncaught error: scala.MatchError: IntLit(42) (of class hkmc2.syntax.Tree$IntLit)
 

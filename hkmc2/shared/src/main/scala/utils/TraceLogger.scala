@@ -1,6 +1,9 @@
-package utils
+package hkmc2.utils
 
 import mlscript.utils.*, shorthands.*
+
+type TL = TraceLogger
+def tl(using TL): TL = summon
 
 abstract class TraceLogger:
   def doTrace: Bool = true
@@ -15,10 +18,21 @@ abstract class TraceLogger:
     if post isnt noPostTrace then log(post(res))
     res
   }
-  inline def traceNot[T](pre: => Str)(thunk: => T)(post: T => Str = noPostTrace): T =
+  inline def traceNot[T](pre: => Str, post: T => Str = noPostTrace)(thunk: => T): T =
     thunk
   
   protected def emitDbg(str: Str): Unit = scala.Predef.println(str)
   
-  def log(msg: => Any): Unit = if doTrace then emitDbg("| " * indent + msg)
+  inline def log(msg: => Any): Unit = log(msg, noIndent = false)
+
+  def log(msg: => Any, noIndent: Bool = false) =
+    if doTrace then emitDbg(if noIndent then msg.toString
+      else "| " * indent + msg.toString.indentNewLines("| " * indent + ">  "))
+
+  protected var scope: Opt[Str] = N
+
+  def scoped[T](flag: Str)(thunk: => T): T =
+    var oldScope = scope
+    scope = S(flag)
+    try thunk finally scope = oldScope
 

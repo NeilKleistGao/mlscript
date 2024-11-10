@@ -30,7 +30,7 @@ class TypeChecker(using raise: Raise):
       ts.defn match
         case S(td: TermDefinition) =>
           td.params match
-            case N => P.Flow(td.resSym)
+            case Nil => P.Flow(td.resSym)
     case Blk(stats, res) =>
       // val p1 = stats.map(typeStat)
       // val p2 = typeProd(res)
@@ -40,12 +40,12 @@ class TypeChecker(using raise: Raise):
       stats.foreach:
         case t: TermDefinition =>
           t.sign.map(typeProd)
-          t.params.map(typeParams)
+          t.params.map(_.params).map(typeParams)
           t.body.map(typeProd)
           P.Ctor(LitSymbol(Tree.UnitLit(true)), Nil)
         case t: Term =>
           typeProd(t)
-        case _: ClassDef | _: LetBinding =>
+        case _: ClassDef =>
           // println(s"TODO ${t.showDbg}")
           // TODO
       typeProd(res)
@@ -57,17 +57,19 @@ class TypeChecker(using raise: Raise):
       ts.defn match
       case S(td: TermDefinition) =>
         td.params match
-          case N =>
+          case Nil =>
             val f = typeProd(r)
             constrain(P.exitIf(f, ts, r.refNum, rc), C.Fun(typeProd(tup), C.Flow(app.resSym)))
-          case S(ps) =>
+          case ParamList(_, ps) :: Nil =>
+            // App applies to the leftmost parameter list
+            // TODO: how to recursively check the subsequent Apps (if any)?
             if ps.size != args.size then
               raise(ErrorReport(
                 msg"Expected ${ps.size.toString} arguments, but got ${
                   args.size.toString}" -> t.toLoc :: Nil))
             // val p1 = ps.zip(args).map: (p, a) =>
             val p1 = ps.zip(args).foreach: (p, a) =>
-              constrain(P.enterIf(typeProd(a.value), ts, r.refNum, rc), C.Flow(p.sym))
+              constrain(P.enterIf(typeProd(a.value), ts, r.refNum, rc), C.Flow(p.sym.asInstanceOf/*FIXME*/))
             constrain(P.Flow(td.resSym), C.Flow(app.resSym))
         // P.Flow(td.resSym)
         P.Flow(app.resSym)
@@ -85,7 +87,7 @@ class TypeChecker(using raise: Raise):
   
   def typeParams(ps: Ls[Param]): Ls[(C, P)] =
     ps.map: p =>
-      (C.Flow(p.sym), P.Flow(p.sym))
+      (C.Flow(p.sym.asInstanceOf/*FIXME*/), P.Flow(p.sym.asInstanceOf/*FIXME*/))
   
   def typeCons(t: Term): Consumer = t match
     case Ref(sym: VarSymbol) => C.Flow(sym)

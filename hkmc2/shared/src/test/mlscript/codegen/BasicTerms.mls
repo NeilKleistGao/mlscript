@@ -1,0 +1,61 @@
+:js
+:sjs
+
+
+1
+//│ JS:
+//│ 1
+//│ = 1
+
+:lot
+:w
+1
+2
+//│ ╔══[WARNING] Pure expression in statement position
+//│ ║  l.12: 	1
+//│ ╙──      	^
+//│ Lowered:
+//│ Program:
+//│   imports = Nil
+//│   main = Return:
+//│     res = Lit of IntLit of 2
+//│     implct = true
+//│ JS:
+//│ 2
+//│ = 2
+
+
+:fixme // should be a "linking" error
+log("Hi")
+//│ JS:
+//│ log("Hi")
+//│ ═══[RUNTIME ERROR] ReferenceError: log is not defined
+
+:fixme
+:lot
+log("Hi")
+2
+//│ Lowered:
+//│ Program:
+//│   imports = Nil
+//│   main = Assign:
+//│     lhs = $tmp@31
+//│     rhs = Call:
+//│       fun = Ref of .log
+//│       args = Ls of 
+//│         Lit of StrLit of "Hi"
+//│     rest = Return: \
+//│     res = Lit of IntLit of 2
+//│     implct = true
+//│ JS:
+//│ let tmp; tmp = log("Hi"); 2
+//│ ═══[RUNTIME ERROR] ReferenceError: log is not defined
+
+
+:re
+2(2)
+//│ JS:
+//│ 2(2)
+//│ ═══[RUNTIME ERROR] TypeError: 2 is not a function
+
+
