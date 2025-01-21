@@ -509,6 +509,33 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
             (error(msg"Not a valid class: ${cls.describe}" -> cls.toLoc :: Nil), Bot)
       case Term.App(lhs: Term.SynthSel, Term.Tup(Nil)) if lhs.sym.exists(_.isGetter) =>
         typeCheck(lhs) // * Getter access will be elaborated to applications. But they cannot be typed as normal applications.
+      case Term.App(Term.Sel(s: Term.SynthSel, ctor: Tree.Ident), Term.Tup(params)) => s.sym match
+        case S(sym) => sym.asCls.flatMap(_.defn) match
+          case S(clsDfn: ClassDef.Plain) =>
+            def rec(defs: Ls[Statement]): (GeneralType, Type) = defs match
+              case Nil =>
+                (error(msg"Class field ${ctor.name} is not found." -> s.toLoc :: Nil), Bot)
+              case Term.Constructor(name, tvs, args, body) :: rest if name.name == ctor.name =>
+                if args.params.length != params.length then
+                  (error(msg"The number of parameters is incorrect" -> t.toLoc :: Nil), Bot)
+                else
+                  val effBuff = ListBuffer.empty[Type] // TODO: type parameters & refactor
+                  require(args.restParam.isEmpty)
+                  params.iterator.zip(args.params).foreach {
+                    case (arg: Fld, Param(_, _, S(sign))) =>
+                      val (ty, eff) = ascribe(arg.term, typeType(sign)) // TODO
+                      // val (ty, eff) = ascribe(arg, typeAndSubstType(sign, pol = true)(using map.toMap))
+                      effBuff += eff
+                    case _ => ???
+                  }
+                  (ClassLikeType(clsDfn.sym, Nil), effBuff.foldLeft[Type](Bot)((res, e) => res | e))
+              case _ :: rest => rec(rest)
+            rec(clsDfn.body.blk.stats ::: clsDfn.body.blk.res :: Nil)
+          case S(clsDfn: ClassDef.Parameterized) => ??? // TODO
+          case N =>
+            (error(msg"Not a valid class: ${s.show}" -> s.toLoc :: Nil), Bot)
+        case N => 
+          (error(msg"Cannot find the definition of ${s.show}" -> s.toLoc :: Nil), Bot)
       case t @ Term.App(lhs, Term.Tup(rhs)) =>
         val (funTy, lhsEff) = typeCheck(lhs)
         app((funTy, lhsEff), rhs, t)
