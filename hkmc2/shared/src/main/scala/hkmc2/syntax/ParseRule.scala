@@ -284,13 +284,10 @@ class ParseRules(using State):
       ParseRule("constructor keyword"):
         Expr(
           ParseRule("constructor declaration head")(
-            Kw(`extends`)(
-              ParseRule("extension clause")(
-                Expr(ParseRule("parent specification")(End(()))) ((ext, _: Unit) => S(ext))
-              )
-            ), End(N)
+            Blk(ParseRule("constructor declaration block")(End(())))((res, _: Unit) => S(res)),
+            End(N)
           )
-        ) { case (head, ext) => Tree.Constructor(head, ext) },
+        ) { case (head, body) => Tree.Constructor(head, body) },
     Kw(`fun`)(termDefBody(Fun)),
     Kw(`val`)(termDefBody(ImmutVal)),
     typeAliasLike(`type`, Als),
