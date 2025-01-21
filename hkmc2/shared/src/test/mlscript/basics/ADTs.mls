@@ -4,24 +4,29 @@
 
 // * Standard syntax of ADTs (TODO)
 
-class Expr
+class Expr with
   constructor Lit(n: Int)
   constructor Add(lhs: Expr, rhs: Expr)
-//│ ╔══[PARSE ERROR] Expected end of input; found indented block instead
-//│ ║  l.8: 	  constructor Lit(n: Int)
-//│ ╙──     	^^
+//│ /!!!\ Uncaught error: scala.MatchError: Constructor(App(Ident(Lit),Tup(List(InfixApp(Ident(n),keyword ':',Ident(Int))))),None) (of class hkmc2.syntax.Tree$Constructor)
+
 
 class Expr[A] with
   constructor
     Lit(n: Int) { A = Int }
     Add(lhs: Expr[Int], rhs: Expr[Int]) { A = Int }
-//│ /!!!\ Uncaught error: scala.NotImplementedError: List() (of class Nil$)
+//│ /!!!\ Uncaught error: scala.MatchError: Constructor(Jux(App(Ident(Lit),Tup(List(InfixApp(Ident(n),keyword ':',Ident(Int))))),Block(List(Def(Ident(A),Ident(Int))))),None) (of class hkmc2.syntax.Tree$Constructor)
 
 
 // * one can also go the TypeScript way
 
 class Lit(n: Int)
 class Add(lhs: Expr, rhs: Expr)
+//│ ╔══[ERROR] Name not found: Expr
+//│ ║  l.23: 	class Add(lhs: Expr, rhs: Expr)
+//│ ╙──      	               ^^^^
+//│ ╔══[ERROR] Name not found: Expr
+//│ ║  l.23: 	class Add(lhs: Expr, rhs: Expr)
+//│ ╙──      	                          ^^^^
 
 type Expr = Lit | Add
 
@@ -32,7 +37,7 @@ enum Expr =
   | Lit(n: Int)
   | Add(lhs: Expr, rhs: Expr)
 //│ ╔══[ERROR] Unrecognized definitional assignment left-hand side: juxtaposition
-//│ ║  l.31: 	enum Expr =
+//│ ║  l.36: 	enum Expr =
 //│ ╙──      	^^^^^^^^^
 
 

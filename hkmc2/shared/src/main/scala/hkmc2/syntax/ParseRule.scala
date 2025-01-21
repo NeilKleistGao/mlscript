@@ -6,6 +6,7 @@ import mlscript.utils.*, shorthands.*
 import hkmc2.Message._
 import BracketKind._
 import semantics.Elaborator.State
+import java.lang.reflect.Constructor
 
 
 // * TODO: add lookahead to Expr as a PartialFunction[Ls[Token], Bool]
@@ -279,6 +280,17 @@ class ParseRules(using State):
         ){ (body, _: Unit) => Outer(S(body)) },
         End(Outer(N))
       ),
+    Kw(`constructor`):
+      ParseRule("constructor keyword"):
+        Expr(
+          ParseRule("constructor declaration head")(
+            Kw(`extends`)(
+              ParseRule("extension clause")(
+                Expr(ParseRule("parent specification")(End(()))) ((ext, _: Unit) => S(ext))
+              )
+            ), End(N)
+          )
+        ) { case (head, ext) => Tree.Constructor(head, ext) },
     Kw(`fun`)(termDefBody(Fun)),
     Kw(`val`)(termDefBody(ImmutVal)),
     typeAliasLike(`type`, Als),
