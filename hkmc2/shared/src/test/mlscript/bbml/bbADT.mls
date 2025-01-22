@@ -15,3 +15,52 @@ IntList.Nil()
 
 IntList.Cons(1, IntList.Cons(2, IntList.Nil()))
 //│ Type: IntList
+
+
+:e
+class Bad with
+  constructor Foo(42)
+//│ ╔══[ERROR] Illegal ADT parameter shape.
+//│ ║  l.22: 	  constructor Foo(42)
+//│ ╙──      	                  ^^
+//│ Type: ⊤
+
+
+class Empty with
+  constructor Foo
+//│ Type: ⊤
+
+
+:e
+class BadBad with
+  constructor 42
+//│ ╔══[ERROR] Constructor parameter list is required.
+//│ ║  l.36: 	  constructor 42
+//│ ╙──      	              ^^
+//│ Type: ⊤
+
+
+class Maybe[T] with
+  constructor Just(v: T)
+  constructor Nothing()
+//│ Type: ⊤
+
+
+Maybe.Nothing()
+//│ Type: Maybe['T]
+
+
+Maybe.Nothing(): Maybe[out Int]
+//│ Type: Maybe[out Int]
+
+
+Maybe.Just(42)
+//│ Type: Maybe['T]
+//│ Where:
+//│   Int <: 'T
+
+
+Maybe.Just(true)
+//│ Type: Maybe['T]
+//│ Where:
+//│   Bool <: 'T

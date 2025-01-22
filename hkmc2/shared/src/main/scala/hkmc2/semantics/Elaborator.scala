@@ -523,13 +523,19 @@ extends Importer:
           raise(ErrorReport(msg"Illegal annotation shape." -> lhs.toLoc :: Nil))
           Term.Error
       Term.Annotated(annotation, term(rhs))
-    case Tree.Constructor(App(name: Tree.Ident, Tup(flds)), body) => // TODO: GADT & body
-      Term.Constructor(name, Nil, ParamList(ParamListFlags.empty, flds.map {
-        case InfixApp(id: Tree.Ident, Keyword.`:`, ty) => Param(FldFlags.empty, VarSymbol(id), S(term(ty)))
-        case t =>
-          raise(ErrorReport(msg"Illegal ADT parameter shape." -> t.toLoc :: Nil))
-          Param(FldFlags.empty, VarSymbol(Tree.Ident("error")), S(Term.Error))
-      }, N), Nil)
+    case Tree.Constructor(head, body) => head match
+      case App(name: Tree.Ident, Tup(flds)) =>
+        Term.Constructor(name, Nil, ParamList(ParamListFlags.empty, flds.map {
+          case InfixApp(id: Tree.Ident, Keyword.`:`, ty) => Param(FldFlags.empty, VarSymbol(id), S(term(ty)))
+          case t =>
+            raise(ErrorReport(msg"Illegal ADT parameter shape." -> t.toLoc :: Nil))
+            Param(FldFlags.empty, VarSymbol(Tree.Ident("error")), S(Term.Error))
+        }, N), Nil)
+      case name: Tree.Ident =>
+        Term.Constructor(name, Nil, ParamList(ParamListFlags.empty, Nil, N), Nil)
+      case _ =>
+        raise(ErrorReport(msg"Constructor parameter list is required." -> head.toLoc :: Nil))
+        Term.Error
     // case _ =>
     //   ???
   

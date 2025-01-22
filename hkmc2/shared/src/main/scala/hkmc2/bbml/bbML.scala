@@ -421,6 +421,33 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
       ft.monoOr(error(msg"Expected a monomorphic type or an instantiable type here, but ${ty.show} found" -> sc.toLoc :: Nil))
     case ty: Type => ty
   
+  private def typeConstruction(
+    t: Term, sym: ClassSymbol, args: Ls[Term], tparams: Ls[TyParam], params: ParamList
+  )(using ctx: BbCtx, scope: Scope, cctx: CCtx): (GeneralType, Type) =
+    if args.length != params.params.length then
+      (error(msg"The number of parameters is incorrect" -> t.toLoc :: Nil), Bot)
+    else
+      val map = HashMap[Uid[Symbol], TypeArg]()
+      val targs = tparams.map {
+        case TyParam(_, S(_), targ) =>
+          val ty = freshVar(targ)
+          map += targ.uid -> ty
+          ty
+        case TyParam(_, N, targ) =>
+          // val ty = freshWildcard // FIXME probably not correct
+          val ty = freshVar(targ)
+          map += targ.uid -> ty
+          ty
+      }
+      val effBuff = ListBuffer.empty[Type]
+      args.iterator.zip(params.params).foreach {
+        case (arg, Param(_, _, S(sign))) =>
+          val (ty, eff) = ascribe(arg, typeAndSubstType(sign, pol = true)(using map.toMap))
+          effBuff += eff
+        case _ => ???
+      }
+      (ClassLikeType(sym, targs), effBuff.foldLeft[Type](Bot)((res, e) => res | e))
+
   private def typeCheck(t: Term)(using ctx: BbCtx, scope: Scope): (GeneralType, Type) =
   trace[(GeneralType, Type)](s"${ctx.lvl}. Typing ${t.showDbg}", res => s": (${res._1.showDbg}, ${res._2.showDbg})"):
     given CCtx = CCtx.init(t, N)
@@ -516,19 +543,9 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
               case Nil =>
                 (error(msg"Class field ${ctor.name} is not found." -> s.toLoc :: Nil), Bot)
               case Term.Constructor(name, tvs, args, body) :: rest if name.name == ctor.name =>
-                if args.params.length != params.length then
-                  (error(msg"The number of parameters is incorrect" -> t.toLoc :: Nil), Bot)
-                else
-                  val effBuff = ListBuffer.empty[Type] // TODO: type parameters & refactor
-                  require(args.restParam.isEmpty)
-                  params.iterator.zip(args.params).foreach {
-                    case (arg: Fld, Param(_, _, S(sign))) =>
-                      val (ty, eff) = ascribe(arg.term, typeType(sign)) // TODO
-                      // val (ty, eff) = ascribe(arg, typeAndSubstType(sign, pol = true)(using map.toMap))
-                      effBuff += eff
-                    case _ => ???
-                  }
-                  (ClassLikeType(clsDfn.sym, Nil), effBuff.foldLeft[Type](Bot)((res, e) => res | e))
+                typeConstruction(t, clsDfn.sym, params.map {
+                  case f: Fld => f.term
+                }, clsDfn.tparams, args) // TODO: map tvs
               case _ :: rest => rec(rest)
             rec(clsDfn.body.blk.stats ::: clsDfn.body.blk.res :: Nil)
           case S(clsDfn: ClassDef.Parameterized) => ??? // TODO
@@ -543,30 +560,7 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
         cls.symbol.flatMap(_.asCls.flatMap(_.defn)) match
         case S(clsDfn: ClassDef.Parameterized) =>
           require(clsDfn.paramsOpt.forall(_.restParam.isEmpty))
-          if args.length != clsDfn.params.params.length then
-            (error(msg"The number of parameters is incorrect" -> t.toLoc :: Nil), Bot)
-          else
-            val map = HashMap[Uid[Symbol], TypeArg]()
-            val targs = clsDfn.tparams.map {
-              case TyParam(_, S(_), targ) =>
-                val ty = freshVar(targ)
-                map += targ.uid -> ty
-                ty
-              case TyParam(_, N, targ) =>
-                // val ty = freshWildcard // FIXME probably not correct
-                val ty = freshVar(targ)
-                map += targ.uid -> ty
-                ty
-            }
-            val effBuff = ListBuffer.empty[Type]
-            require(clsDfn.paramsOpt.forall(_.restParam.isEmpty))
-            args.iterator.zip(clsDfn.params.params).foreach {
-              case (arg, Param(_, _, S(sign))) =>
-                val (ty, eff) = ascribe(arg, typeAndSubstType(sign, pol = true)(using map.toMap))
-                effBuff += eff
-              case _ => ???
-            }
-            (ClassLikeType(clsDfn.sym, targs), effBuff.foldLeft[Type](Bot)((res, e) => res | e))
+          typeConstruction(t, clsDfn.sym, args, clsDfn.tparams, clsDfn.params)
         case S(clsDfn: ClassDef.Plain) => ??? // TODO
         case N => 
           (error(msg"Not a valid class: ${cls.describe}" -> cls.toLoc :: Nil), Bot)
