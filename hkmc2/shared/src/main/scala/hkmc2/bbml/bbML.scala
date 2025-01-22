@@ -422,7 +422,7 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
     case ty: Type => ty
   
   private def typeConstruction(
-    t: Term, sym: ClassSymbol, args: Ls[Term], tparams: Ls[TyParam], params: ParamList
+    t: Term, sym: ClassSymbol, args: Ls[Term], tparams: Ls[TyParam], params: ParamList, cons: Ls[Statement], nestTPs: Ls[TyParam]
   )(using ctx: BbCtx, scope: Scope, cctx: CCtx): (GeneralType, Type) =
     if args.length != params.params.length then
       (error(msg"The number of parameters is incorrect" -> t.toLoc :: Nil), Bot)
@@ -439,6 +439,13 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
           map += targ.uid -> ty
           ty
       }
+      nestTPs.foreach:
+        case TyParam(_, S(_), targ) =>
+          val ty = freshVar(targ)
+          map += targ.uid -> ty
+        case TyParam(_, N, targ) =>
+          val ty = freshVar(targ)
+          map += targ.uid -> ty
       val effBuff = ListBuffer.empty[Type]
       args.iterator.zip(params.params).foreach {
         case (arg, Param(_, _, S(sign))) =>
@@ -446,6 +453,20 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
           effBuff += eff
         case _ => ???
       }
+      cons.foreach:
+        case dv @ DefineVar(sym, rhs) =>
+          val rhsty = tryMkMono(typeAndSubstType(rhs, pol = true)(using map.toMap), rhs)
+          map.get(sym.uid) match
+            case S(Wildcard(in, out)) =>
+              constrain(out, rhsty)
+              constrain(rhsty, in)
+            case S(ty: Type) =>
+              constrain(ty, rhsty)
+              constrain(rhsty, ty)
+            case _ =>
+              error(msg"Cannot find variable ${sym.nme}" -> dv.toLoc :: Nil)
+        case c =>
+          error(msg"Cannot constrain ${c.show}}" -> c.toLoc :: Nil)
       (ClassLikeType(sym, targs), effBuff.foldLeft[Type](Bot)((res, e) => res | e))
 
   private def typeCheck(t: Term)(using ctx: BbCtx, scope: Scope): (GeneralType, Type) =
@@ -543,15 +564,16 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
               case Nil =>
                 (error(msg"Class field ${ctor.name} is not found." -> s.toLoc :: Nil), Bot)
               case Term.Constructor(name, tvs, args, body) :: rest if name.name == ctor.name =>
-                typeConstruction(t, clsDfn.sym, params.map {
+                val (res, eff) = typeConstruction(t, clsDfn.sym, params.map {
                   case f: Fld => f.term
-                }, clsDfn.tparams, args) // TODO: map tvs
+                }, clsDfn.tparams, args, body, tvs)
+                (res, eff)
               case _ :: rest => rec(rest)
             rec(clsDfn.body.blk.stats ::: clsDfn.body.blk.res :: Nil)
           case S(clsDfn: ClassDef.Parameterized) => ??? // TODO
           case N =>
             (error(msg"Not a valid class: ${s.show}" -> s.toLoc :: Nil), Bot)
-        case N => 
+        case N =>
           (error(msg"Cannot find the definition of ${s.show}" -> s.toLoc :: Nil), Bot)
       case t @ Term.App(lhs, Term.Tup(rhs)) =>
         val (funTy, lhsEff) = typeCheck(lhs)
@@ -560,7 +582,7 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
         cls.symbol.flatMap(_.asCls.flatMap(_.defn)) match
         case S(clsDfn: ClassDef.Parameterized) =>
           require(clsDfn.paramsOpt.forall(_.restParam.isEmpty))
-          typeConstruction(t, clsDfn.sym, args, clsDfn.tparams, clsDfn.params)
+          typeConstruction(t, clsDfn.sym, args, clsDfn.tparams, clsDfn.params, Nil, Nil)
         case S(clsDfn: ClassDef.Plain) => ??? // TODO
         case N => 
           (error(msg"Not a valid class: ${cls.describe}" -> cls.toLoc :: Nil), Bot)

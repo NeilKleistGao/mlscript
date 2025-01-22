@@ -71,3 +71,85 @@ class SimpleCode[T] with
   constructor NumLit(v: Num) { T = Num }
   constructor Eq[S](lhs: SimpleCode[S], rhs: SimpleCode[S]) { T = Bool }
 //│ Type: ⊤
+
+
+SimpleCode.IntLit(42)
+//│ Type: SimpleCode['T]
+//│ Where:
+//│   Int <: 'T
+//│   'T <: Int
+
+
+:e
+SimpleCode.IntLit(false)
+//│ ╔══[ERROR] Type error in boolean literal with expected type Int
+//│ ╙── because: cannot constrain  Bool  <:  Int
+//│ Type: SimpleCode['T]
+//│ Where:
+//│   Int <: 'T
+//│   'T <: Int
+
+
+let lhs = SimpleCode.IntLit(0)
+let rhs = SimpleCode.IntLit(1)
+let pi = SimpleCode.NumLit(3.14)
+//│ Type: ⊤
+
+
+SimpleCode.Eq(lhs, rhs)
+//│ Type: SimpleCode['T]
+//│ Where:
+//│   Bool <: 'T
+//│   'T <: Bool
+
+
+:e
+SimpleCode.Eq(lhs, pi)
+//│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
+//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║         	                   ^^
+//│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
+//│ ╟── because: cannot constrain  'S  <:  'T
+//│ ╟── because: cannot constrain  'S  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  'T  <:  'T
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬{Num})
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬{Num})
+//│ ╙── because: cannot constrain  Int  <:  ¬(¬{Num})
+//│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
+//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║         	                   ^^
+//│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
+//│ ╟── because: cannot constrain  'S  <:  'T
+//│ ╟── because: cannot constrain  'S  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  'T  <:  'T
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬{Num})
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬{Num})
+//│ ╙── because: cannot constrain  Int  <:  ¬(¬{Num})
+//│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
+//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║         	                   ^^
+//│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
+//│ ╟── because: cannot constrain  'T  <:  'S
+//│ ╟── because: cannot constrain  'T  <:  'S
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  Num  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  Num  <:  'T
+//│ ╙── because: cannot constrain  Num  <:  ¬(¬{Int})
+//│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
+//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║         	                   ^^
+//│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
+//│ ╟── because: cannot constrain  'T  <:  'S
+//│ ╟── because: cannot constrain  'T  <:  'S
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  'T  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  Num  <:  ¬(¬'T)
+//│ ╟── because: cannot constrain  Num  <:  'T
+//│ ╙── because: cannot constrain  Num  <:  ¬(¬{Int})
+//│ Type: SimpleCode['T]
+//│ Where:
+//│   Bool <: 'T
+//│   'T <: Bool

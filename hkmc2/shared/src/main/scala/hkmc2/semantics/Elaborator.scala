@@ -561,7 +561,12 @@ extends Importer:
             case _ =>
               raise(ErrorReport(msg"Illegal ADT declaration shape." -> head.toLoc :: Nil))
               (Tree.Ident("error"), Nil, ParamList(ParamListFlags.empty, Nil, N))
-          Term.Constructor(name, tparams, params, stats.map(s => term(s)))
+          Term.Constructor(name, tparams, params, stats.flatMap(s => term(s) match {
+            case Term.Blk(s, _) => s
+            case t =>
+              raise(ErrorReport(msg"Expected ADT type parameter constraints. ${t.describe} found." -> t.toLoc :: Nil))
+              Nil
+          }))
         case _ =>
           raise(ErrorReport(msg"Constructor parameter list is required." -> decl.toLoc :: Nil))
           Term.Error
