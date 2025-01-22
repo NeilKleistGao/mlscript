@@ -41,7 +41,7 @@ enum Term extends Statement:
   case Try(body: Term, finallyDo: Term)
   case Handle(lhs: LocalSymbol, rhs: Term, defs: Ls[HandlerTermDefinition])
   case Annotated(annotation: Term, target: Term)
-  case Constructor(name: Tree.Ident, tvs: Ls[VarSymbol], args: ParamList, body: Ls[Statement])
+  case Constructor(name: Tree.Ident, tvs: Ls[TyParam], args: ParamList, body: Ls[Statement])
   
   lazy val symbol: Opt[Symbol] = this match
     case Ref(sym) => S(sym)
@@ -212,7 +212,7 @@ sealed trait Statement extends AutoLocated with ProductWithExtraInfo:
     case Annotated(annotation, target) => s"@${annotation.showDbg} ${target.showDbg}"
     case Throw(res) => s"throw ${res.showDbg}"
     case Constructor(name, tvs, args, body) =>
-      s"constructor ${name.showDbg}[${tvs.map(_.name).mkString(", ")}](${args.showDbg}) {${body.map(_.showDbg).mkString(", ")}}"
+      s"constructor ${name.showDbg}[${tvs.map(_.sym.name).mkString(", ")}](${args.showDbg}) {${body.map(_.showDbg).mkString(", ")}}"
 
 final case class LetDecl(sym: LocalSymbol, annotations: Ls[Term]) extends Statement
 

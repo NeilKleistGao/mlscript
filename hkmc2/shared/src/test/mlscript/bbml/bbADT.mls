@@ -22,7 +22,7 @@ class Bad with
   constructor Foo(42)
 //│ ╔══[ERROR] Illegal ADT parameter shape.
 //│ ║  l.22: 	  constructor Foo(42)
-//│ ╙──      	                  ^^
+//│ ╙──      	              ^^^^^^^
 //│ Type: ⊤
 
 
@@ -64,3 +64,10 @@ Maybe.Just(true)
 //│ Type: Maybe['T]
 //│ Where:
 //│   Bool <: 'T
+
+
+class SimpleCode[T] with
+  constructor IntLit(v: Int) { T = Int }
+  constructor NumLit(v: Num) { T = Num }
+  constructor Eq[S](lhs: SimpleCode[S], rhs: SimpleCode[S]) { T = Bool }
+//│ Type: ⊤

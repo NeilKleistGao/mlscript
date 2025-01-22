@@ -523,19 +523,48 @@ extends Importer:
           raise(ErrorReport(msg"Illegal annotation shape." -> lhs.toLoc :: Nil))
           Term.Error
       Term.Annotated(annotation, term(rhs))
-    case Tree.Constructor(head, body) => head match
-      case App(name: Tree.Ident, Tup(flds)) =>
-        Term.Constructor(name, Nil, ParamList(ParamListFlags.empty, flds.map {
+    case Tree.Constructor(decl) =>
+      def toParamList(fields: Ls[Tree])(using Ctx): ParamList =
+        ParamList(ParamListFlags.empty, fields.map {
           case InfixApp(id: Tree.Ident, Keyword.`:`, ty) => Param(FldFlags.empty, VarSymbol(id), S(term(ty)))
           case t =>
-            raise(ErrorReport(msg"Illegal ADT parameter shape." -> t.toLoc :: Nil))
+            raise(ErrorReport(msg"Illegal ADT parameter shape." -> decl.toLoc :: Nil))
             Param(FldFlags.empty, VarSymbol(Tree.Ident("error")), S(Term.Error))
-        }, N), Nil)
-      case name: Tree.Ident =>
-        Term.Constructor(name, Nil, ParamList(ParamListFlags.empty, Nil, N), Nil)
-      case _ =>
-        raise(ErrorReport(msg"Constructor parameter list is required." -> head.toLoc :: Nil))
-        Term.Error
+        }, N)
+      def extractHead(head: App): (Tree.Ident, Ls[TyParam], ParamList) = head match
+        case App(name: Tree.Ident, Tup(flds)) =>
+          (name, Nil, toParamList(flds))
+        case App(App(name: Tree.Ident, TyTup(tvs)), Tup(flds)) =>
+          val boundVars = mutable.HashMap.empty[Str, VarSymbol] // TODO: refactor
+          def genSym(id: Tree.Ident) =
+            val sym = VarSymbol(id)
+            sym.decl = S(TyParam(FldFlags.empty, N, sym)) // TODO vce
+            boundVars += id.name -> sym
+            sym
+          val syms = tvs.collect:
+            case id: Tree.Ident => TyParam(FldFlags.empty, N, genSym(id)) // TODO: length check
+          val nestCtx = ctx ++ boundVars
+          (name, syms, toParamList(flds)(using nestCtx))
+        case _ =>
+          raise(ErrorReport(msg"Illegal ADT declaration shape." -> head.toLoc :: Nil))
+          (Tree.Ident("error"), Nil, ParamList(ParamListFlags.empty, Nil, N))
+      decl match
+        case head: App =>
+          val (name, tparams, params) = extractHead(head)
+          Term.Constructor(name, tparams, params, Nil)
+        case name: Tree.Ident =>
+          Term.Constructor(name, Nil, ParamList(ParamListFlags.empty, Nil, N), Nil)
+        case Jux(head, Block(stats)) =>
+          val (name: Tree.Ident, tparams, params) = head match
+            case head: App => extractHead(head)
+            case name: Tree.Ident => (name, Nil, ParamList(ParamListFlags.empty, Nil, N))
+            case _ =>
+              raise(ErrorReport(msg"Illegal ADT declaration shape." -> head.toLoc :: Nil))
+              (Tree.Ident("error"), Nil, ParamList(ParamListFlags.empty, Nil, N))
+          Term.Constructor(name, tparams, params, stats.map(s => term(s)))
+        case _ =>
+          raise(ErrorReport(msg"Constructor parameter list is required." -> decl.toLoc :: Nil))
+          Term.Error
     // case _ =>
     //   ???
   
