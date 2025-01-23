@@ -294,13 +294,20 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
     split match
     case Split.Cons(Branch(scrutinee, Pattern.ClassLike(sym, trm, params, _), cons), alts) => trm match
       case Term.Sel(Term.SynthSel(_, cls), ctor) => // * Pattern matching for ADTs
-        val (clsTy, body) = sym.asCls.flatMap(_.defn) match
+        val map = HashMap[Uid[Symbol], TypeArg]()
+        val (clsTy, tparams, body) = sym.asCls.flatMap(_.defn) match
           case S(cls: ClassDef.Plain) =>
-            (ClassLikeType(sym, cls.tparams.map(_ => freshWildcard(sym))), cls.body.blk.stats ::: cls.body.blk.res :: Nil)
+            val targs = cls.tparams.map {
+              case TyParam(_, _, targ) =>
+                val ty = freshWildcard(sym)
+                map += targ.uid -> ty
+                ty
+            }
+            (ClassLikeType(sym, targs), cls.tparams, cls.body.blk.stats ::: cls.body.blk.res :: Nil)
           case S(cls: ClassDef.Parameterized) => ??? // TODO
           case _ =>
             error(msg"Cannot match ${scrutinee.toString} as ${sym.toString}" -> split.toLoc :: Nil)
-            (Bot, Nil)
+            (Bot, Nil, Nil)
         val (scrutineeTy, scrutineeEff) = typeCheck(scrutinee)
         constrain(tryMkMono(scrutineeTy, scrutinee), clsTy)
         val nestCtx1 = ctx.nest
@@ -314,9 +321,13 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
               error(msg"The arity of ${ctor.name} should be ${args.params.length.toString()}, but ${arity.toString()} is got." -> trm.toLoc :: Nil)
               sanity
             else
+              tvs.foreach:
+                case TyParam(_, _, targ) =>
+                  val ty = freshVar(targ)
+                  map += targ.uid -> ty
               params.foreach(params => params.iterator.zip(args.params).foreach {
                 case (sym, Param(_, _, S(ty))) =>
-                  nestCtx1 += sym -> typeType(ty) // TODO: tvs
+                  nestCtx1 += sym -> typeAndSubstType(ty, true)(using map.toMap)
               })
               sanity match
                 case s @ S(sanity) =>
@@ -330,7 +341,8 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
                     S(sanity.append(name))
                 case N => S(SplitSanity(sym, name :: Nil))
           case _ :: rest => rec(rest)
-        given Opt[SplitSanity] = rec(body)
+        val newSanity = rec(body)
+        given Opt[SplitSanity] = newSanity
         val (consTy, consEff) = typeSplit(cons, sign)(using nestCtx1)
         val (altsTy, altsEff) = typeSplit(alts, sign)
         val allEff = scrutineeEff | (consEff | altsEff)
@@ -535,8 +547,6 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
               constrain(rhsty, ty)
             case _ =>
               error(msg"Cannot find variable ${sym.nme}" -> dv.toLoc :: Nil)
-        case c =>
-          error(msg"Cannot constrain ${c.show}}" -> c.toLoc :: Nil)
       (ClassLikeType(sym, targs), effBuff.foldLeft[Type](Bot)((res, e) => res | e))
 
   private def typeCheck(t: Term)(using ctx: BbCtx, scope: Scope): (GeneralType, Type) =

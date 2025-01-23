@@ -240,3 +240,74 @@ fun baz(xs) =
 //│ ║  l.238: 	    Int then 0
 //│ ╙──       	    ^^^^^^^^^^
 //│ Type: ⊤
+
+
+fun getOrElse(m, d) =
+  if m is
+    Maybe.Just(v) then v
+    Maybe.Nothing() then d
+getOrElse
+//│ Type: ['d, '+Maybe] -> (Maybe[?] ∧ Maybe[out '+Maybe], 'd) -> ('+Maybe ∨ 'd)
+
+
+getOrElse(Maybe.Just(1), 0)
+//│ Type: Int
+
+getOrElse(Maybe.Nothing(), 42)
+//│ Type: Int
+
+
+fun getOrElse: [T] -> (Maybe[T], T) -> T
+fun getOrElse(m, d) =
+  if m is
+    Maybe.Just(v) then v
+    Maybe.Nothing() then d
+//│ Type: ⊤
+
+
+getOrElse(Maybe.Just(1), 0)
+//│ Type: Int
+
+
+getOrElse(Maybe.Nothing(), 42)
+//│ Type: Int
+
+
+fun describe(cde) =
+  if cde is
+    SimpleCode.IntLit(x) then "int"
+    SimpleCode.NumLit(x) then "num"
+    SimpleCode.Eq(lhs, rhs) then "eq"
+describe
+//│ Type: SimpleCode[?] -> Str
+
+
+fun fooeval(cde) =
+  if cde is
+    SimpleCode.IntLit(x) then x
+    SimpleCode.NumLit(x) then x
+    SimpleCode.Eq(lhs, rhs) then false
+fooeval
+//│ Type: SimpleCode[?] -> ((Int ∨ Num) ∨ Bool)
+
+
+:todo gadt reasoning
+fun eval: [T] -> SimpleCode[T] -> T
+fun eval(cde) =
+  if cde is
+    SimpleCode.IntLit(x) then x
+    SimpleCode.NumLit(x) then x
+    SimpleCode.Eq(lhs, rhs) then eval(lhs) == eval(rhs)
+//│ ╔══[ERROR] Type error in reference with expected type T
+//│ ║  l.298: 	    SimpleCode.IntLit(x) then x
+//│ ║         	                              ^
+//│ ╙── because: cannot constrain  Int  <:  T
+//│ ╔══[ERROR] Type error in reference with expected type T
+//│ ║  l.299: 	    SimpleCode.NumLit(x) then x
+//│ ║         	                              ^
+//│ ╙── because: cannot constrain  Num  <:  T
+//│ ╔══[ERROR] Type error in application with expected type T
+//│ ║  l.300: 	    SimpleCode.Eq(lhs, rhs) then eval(lhs) == eval(rhs)
+//│ ║         	                                 ^^^^^^^^^^^^^^^^^^^^^^
+//│ ╙── because: cannot constrain  Bool  <:  T
+//│ Type: ⊤
