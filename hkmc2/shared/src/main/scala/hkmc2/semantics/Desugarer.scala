@@ -499,10 +499,40 @@ class Desugarer(val elaborator: Elaborator)
             Pattern.ClassLike(cls, clsTrm, S(params), false)(ctor), // TODO: refined?
             subMatches(params zip args, sequel)(Split.End)(ctx)
           ) ~: fallback
-        case _ =>
-          // Raise an error and discard `sequel`. Use `fallback` instead.
-          raise(ErrorReport(msg"Cannot use this ${ctor.describe} as an extractor" -> ctor.toLoc :: Nil))
-          fallback
+        case _ => ctor match
+          case Tree.Sel(cls, cons) => // ADT
+            val clsTrm = elaborator.cls(cls, inAppPrefix = false)
+            clsTrm.symbol.flatMap(_.asCls.flatMap(_.defn)) match
+              case S(clsDfn: ClassDef.Plain) =>
+                def rec(defs: Ls[Statement]): Split = defs match
+                  case Nil =>
+                    raise(ErrorReport(msg"ADT constructor ${cons.name} is not found." -> ctor.toLoc :: Nil))
+                    fallback
+                  case Term.Constructor(name, tvs, params, body) :: rest if name.name == cons.name =>
+                    if params.params.length =/= args.length then // TODO: refactor
+                      val m = args.length.toString
+                      ErrorReport:
+                        if params.params.length == 0 then
+                          msg"the constructor does not take any arguments but found $m" -> pat.toLoc :: Nil
+                        else
+                          msg"mismatched arity: expect ${params.params.length.toString}, found $m" -> pat.toLoc :: Nil
+                    val res = (0 until params.params.length).map(i => TempSymbol(N, s"param$i")).toList // TODO: ???
+                    val fieldSym = elaborator.resolveField(cons, clsTrm.symbol, cons)
+                    Branch(
+                      ref,
+                      Pattern.ClassLike(clsDfn.sym, Term.Sel(clsTrm, cons)(fieldSym), S(res), false)(ctor),
+                      subMatches(res zip args, sequel)(Split.End)(ctx)
+                    ) ~: fallback
+                  case _ :: rest => rec(rest)
+                rec(clsDfn.body.blk.stats ::: clsDfn.body.blk.res :: Nil)
+              case S(clsDfn: ClassDef.Parameterized) => ??? // TODO
+              case _ =>
+                raise(ErrorReport(msg"Cannot use this ${ctor.describe} as an extractor" -> ctor.toLoc :: Nil))
+                fallback
+          case _ =>
+            // Raise an error and discard `sequel`. Use `fallback` instead.
+            raise(ErrorReport(msg"Cannot use this ${ctor.describe} as an extractor" -> ctor.toLoc :: Nil))
+            fallback
       // A single literal pattern
       case literal: Literal => fallback => ctx => trace(
         pre = s"expandMatch: literal <<< $literal",

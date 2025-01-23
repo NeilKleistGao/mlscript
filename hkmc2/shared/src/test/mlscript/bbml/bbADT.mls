@@ -106,7 +106,7 @@ SimpleCode.Eq(lhs, rhs)
 :e
 SimpleCode.Eq(lhs, pi)
 //│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
-//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║  l.107: 	SimpleCode.Eq(lhs, pi)
 //│ ║         	                   ^^
 //│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
 //│ ╟── because: cannot constrain  'S  <:  'T
@@ -117,7 +117,7 @@ SimpleCode.Eq(lhs, pi)
 //│ ╟── because: cannot constrain  'T  <:  ¬(¬{Num})
 //│ ╙── because: cannot constrain  Int  <:  ¬(¬{Num})
 //│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
-//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║  l.107: 	SimpleCode.Eq(lhs, pi)
 //│ ║         	                   ^^
 //│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
 //│ ╟── because: cannot constrain  'S  <:  'T
@@ -128,7 +128,7 @@ SimpleCode.Eq(lhs, pi)
 //│ ╟── because: cannot constrain  'T  <:  ¬(¬{Num})
 //│ ╙── because: cannot constrain  Int  <:  ¬(¬{Num})
 //│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
-//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║  l.107: 	SimpleCode.Eq(lhs, pi)
 //│ ║         	                   ^^
 //│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
 //│ ╟── because: cannot constrain  'T  <:  'S
@@ -139,7 +139,7 @@ SimpleCode.Eq(lhs, pi)
 //│ ╟── because: cannot constrain  Num  <:  'T
 //│ ╙── because: cannot constrain  Num  <:  ¬(¬{Int})
 //│ ╔══[ERROR] Type error in reference with expected type SimpleCode['S]
-//│ ║  l.233: 	SimpleCode.Eq(lhs, pi)
+//│ ║  l.107: 	SimpleCode.Eq(lhs, pi)
 //│ ║         	                   ^^
 //│ ╟── because: cannot constrain  SimpleCode['T]  <:  SimpleCode['S]
 //│ ╟── because: cannot constrain  'T  <:  'S
@@ -153,3 +153,90 @@ SimpleCode.Eq(lhs, pi)
 //│ Where:
 //│   Bool <: 'T
 //│   'T <: Bool
+
+
+fun sum(xs) =
+  if xs is
+    IntList.Cons(x, rest) then x + sum(rest)
+    IntList.Nil() then 0
+sum
+//│ Type: IntList -> Int
+
+
+sum(IntList.Cons(1, IntList.Cons(2, IntList.Nil())))
+//│ Type: Int
+
+
+:e
+fun foo(xs) =
+  if xs is
+    IntList.Cons(x, rest) then x + sum(rest)
+//│ ═══[ERROR] Unexhausted pattern matching on IntList
+//│ Type: ⊤
+
+
+:e
+fun bar(xs) =
+  if xs is
+    IntList.Cons(x, rest) then x + sum(rest)
+    IntList.Cons(x, rest) then x + sum(rest)
+//│ ╔══[ERROR] Duplicate branch globalThis:block#1#666(.)IntList‹member:IntList›.Cons
+//│ ║  l.182: 	    IntList.Cons(x, rest) then x + sum(rest)
+//│ ╙──       	    ^^^^^^^^^^^^
+//│ ═══[ERROR] Unexhausted pattern matching on IntList
+//│ Type: ⊤
+
+
+:e
+fun foo(xs) =
+  if xs is
+    IntList.Cons(x, rest) then x + sum(rest)
+    Empty.Foo() then 0
+//│ ╔══[ERROR] Unexpected ADT matching branch globalThis:block#5#666(.)Empty‹member:Empty›.Foo
+//│ ║  l.194: 	    Empty.Foo() then 0
+//│ ╙──       	    ^^^^^^^^^
+//│ ═══[ERROR] Unexhausted pattern matching on IntList
+//│ Type: ⊤
+
+
+:e
+fun bar(xs) =
+  if xs is
+    0 then 0
+    IntList.Cons(x, rest) then x + sum(rest)
+//│ ╔══[ERROR] Unexpected ADT matching branch globalThis:block#1#666(.)IntList‹member:IntList›.Cons
+//│ ║  l.206: 	    IntList.Cons(x, rest) then x + sum(rest)
+//│ ╙──       	    ^^^^^^^^^^^^
+//│ Type: ⊤
+
+
+:e
+fun bar(xs) =
+  if xs is
+    IntList.Cons(x, rest) then x + sum(rest)
+    0 then 0
+//│ ╔══[ERROR] Unexpected literal pattern matching branch
+//│ ║  l.217: 	    0 then 0
+//│ ╙──       	    ^^^^^^^^
+//│ Type: ⊤
+
+
+:e
+fun baz(xs) =
+  if xs is
+    Int then 0
+    IntList.Cons(x, rest) then x + sum(rest)
+//│ ╔══[ERROR] Unexpected ADT matching branch globalThis:block#1#666(.)IntList‹member:IntList›.Cons
+//│ ║  l.228: 	    IntList.Cons(x, rest) then x + sum(rest)
+//│ ╙──       	    ^^^^^^^^^^^^
+//│ Type: ⊤
+
+:e
+fun baz(xs) =
+  if xs is
+    IntList.Cons(x, rest) then x + sum(rest)
+    Int then 0
+//│ ╔══[ERROR] Unexpected normal class pattern matching branch
+//│ ║  l.238: 	    Int then 0
+//│ ╙──       	    ^^^^^^^^^^
+//│ Type: ⊤

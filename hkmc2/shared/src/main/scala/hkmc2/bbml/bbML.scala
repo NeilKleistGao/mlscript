@@ -73,6 +73,10 @@ object BbCtx:
 end BbCtx
 
 
+final case class SplitSanity(cls: Symbol, ctors: Ls[Tree.Ident]):
+  def append(ctor: Tree.Ident): SplitSanity = SplitSanity(cls, ctor :: ctors)
+
+
 class BBTyper(using elState: Elaborator.State, tl: TL):
   import tl.{trace, log}
   
@@ -285,30 +289,77 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
     case _ => error(msg"Function definition shape not yet supported for ${sym.nme}" -> lam.toLoc :: Nil)
 
   private def typeSplit
-      (split: Split, sign: Opt[GeneralType])(using ctx: BbCtx)(using CCtx, Scope)
+      (split: Split, sign: Opt[GeneralType])(using ctx: BbCtx, sanity: Opt[SplitSanity])(using CCtx, Scope)
       : (GeneralType, Type) =
     split match
-    case Split.Cons(Branch(scrutinee, Pattern.ClassLike(sym, _, _, _), cons), alts) =>
-      // * Pattern matching for classes
-      val (clsTy, tv, emptyTy) = sym.asCls.flatMap(_.defn) match
-        case S(cls) =>
-          (ClassLikeType(sym, cls.tparams.map(_ => freshWildcard(sym))), (freshVar(new TempSymbol(S(scrutinee), "scrut"))), ClassLikeType(sym, cls.tparams.map(_ => Wildcard.empty)))
-        case _ =>
-          error(msg"Cannot match ${scrutinee.toString} as ${sym.toString}" -> split.toLoc :: Nil)
-          (Bot, Bot, Bot)
-      val (scrutineeTy, scrutineeEff) = typeCheck(scrutinee)
-      constrain(tryMkMono(scrutineeTy, scrutinee), clsTy | (tv & Type.mkNegType(emptyTy)))
-      val nestCtx1 = ctx.nest
-      val nestCtx2 = ctx.nest
-      scrutinee match // * refine
-        case Ref(sym: LocalSymbol) =>
-          nestCtx1 += sym -> clsTy
-          nestCtx2 += sym -> tv
-        case _ => () // TODO: refine all variables holding this value?
-      val (consTy, consEff) = typeSplit(cons, sign)(using nestCtx1)
-      val (altsTy, altsEff) = typeSplit(alts, sign)(using nestCtx2)
-      val allEff = scrutineeEff | (consEff | altsEff)
-      (sign.getOrElse(tryMkMono(consTy, cons) | tryMkMono(altsTy, alts)), allEff)
+    case Split.Cons(Branch(scrutinee, Pattern.ClassLike(sym, trm, params, _), cons), alts) => trm match
+      case Term.Sel(Term.SynthSel(_, cls), ctor) => // * Pattern matching for ADTs
+        val (clsTy, body) = sym.asCls.flatMap(_.defn) match
+          case S(cls: ClassDef.Plain) =>
+            (ClassLikeType(sym, cls.tparams.map(_ => freshWildcard(sym))), cls.body.blk.stats ::: cls.body.blk.res :: Nil)
+          case S(cls: ClassDef.Parameterized) => ??? // TODO
+          case _ =>
+            error(msg"Cannot match ${scrutinee.toString} as ${sym.toString}" -> split.toLoc :: Nil)
+            (Bot, Nil)
+        val (scrutineeTy, scrutineeEff) = typeCheck(scrutinee)
+        constrain(tryMkMono(scrutineeTy, scrutinee), clsTy)
+        val nestCtx1 = ctx.nest
+        def rec(defs: Ls[Statement]): Opt[SplitSanity] = defs match // TODO: refactor?
+          case Nil =>
+            error(msg"${ctor.name} is not a valid constructor of ${cls.name}." -> trm.toLoc :: Nil)
+            sanity
+          case Term.Constructor(name, tvs, args, body) :: rest if name.name == ctor.name =>
+            val arity = params.map(_.length).getOrElse(0)
+            if arity != args.params.length then
+              error(msg"The arity of ${ctor.name} should be ${args.params.length.toString()}, but ${arity.toString()} is got." -> trm.toLoc :: Nil)
+              sanity
+            else
+              params.foreach(params => params.iterator.zip(args.params).foreach {
+                case (sym, Param(_, _, S(ty))) =>
+                  nestCtx1 += sym -> typeType(ty) // TODO: tvs
+              })
+              sanity match
+                case s @ S(sanity) =>
+                  if sanity.cls != sym then
+                    error(msg"Unexpected ADT matching branch ${trm.show}" -> trm.toLoc :: Nil)
+                    s
+                  else if sanity.ctors.contains(name) then
+                    error(msg"Duplicate branch ${trm.show}" -> trm.toLoc :: Nil)
+                    s
+                  else
+                    S(sanity.append(name))
+                case N => S(SplitSanity(sym, name :: Nil))
+          case _ :: rest => rec(rest)
+        given Opt[SplitSanity] = rec(body)
+        val (consTy, consEff) = typeSplit(cons, sign)(using nestCtx1)
+        val (altsTy, altsEff) = typeSplit(alts, sign)
+        val allEff = scrutineeEff | (consEff | altsEff)
+        (sign.getOrElse(tryMkMono(consTy, cons) | tryMkMono(altsTy, alts)), allEff)
+      case _ => // * Pattern matching for classes
+        val (clsTy, tv, emptyTy) = sym.asCls.flatMap(_.defn) match
+          case S(cls) =>
+            (ClassLikeType(sym, cls.tparams.map(_ => freshWildcard(sym))), (freshVar(new TempSymbol(S(scrutinee), "scrut"))), ClassLikeType(sym, cls.tparams.map(_ => Wildcard.empty)))
+          case _ =>
+            error(msg"Cannot match ${scrutinee.toString} as ${sym.toString}" -> split.toLoc :: Nil)
+            (Bot, Bot, Bot)
+        val (scrutineeTy, scrutineeEff) = typeCheck(scrutinee)
+        constrain(tryMkMono(scrutineeTy, scrutinee), clsTy | (tv & Type.mkNegType(emptyTy)))
+        val nestCtx1 = ctx.nest
+        val nestCtx2 = ctx.nest
+        given Opt[SplitSanity] =
+          if sanity.map(!_.ctors.isEmpty).getOrElse(false) then
+            error(msg"Unexpected normal class pattern matching branch" -> split.toLoc :: Nil)
+            N
+          else S(SplitSanity(sym, Nil))
+        scrutinee match // * refine
+          case Ref(sym: LocalSymbol) =>
+            nestCtx1 += sym -> clsTy
+            nestCtx2 += sym -> tv
+          case _ => () // TODO: refine all variables holding this value?
+        val (consTy, consEff) = typeSplit(cons, sign)(using nestCtx1)
+        val (altsTy, altsEff) = typeSplit(alts, sign)(using nestCtx2)
+        val allEff = scrutineeEff | (consEff | altsEff)
+        (sign.getOrElse(tryMkMono(consTy, cons) | tryMkMono(altsTy, alts)), allEff)
     // * Pattern matching for literals
     case Split.Cons(Branch(scrutinee, Pattern.Lit(lit), cons), alts) =>
       val (scrutineeTy, scrutineeEff) = typeCheck(scrutinee)
@@ -319,6 +370,12 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
         case _: Tree.StrLit => BbCtx.strTy
         case _: Tree.UnitLit => Top
       
+      given Opt[SplitSanity] =
+        if sanity.map(!_.ctors.isEmpty).getOrElse(false) then
+          error(msg"Unexpected literal pattern matching branch" -> split.toLoc :: Nil)
+          N
+        else S(SplitSanity(new TempSymbol(S(scrutinee)), Nil)) // TODO: better than tempsymbol
+
       constrain(tryMkMono(scrutineeTy, scrutinee), litTy)
       val nestCtx1 = ctx.nest
       val nestCtx2 = ctx.nest
@@ -337,7 +394,19 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
     case Split.Else(alts) => sign match
       case S(sign) => ascribe(alts, sign)
       case _ => typeCheck(alts)
-    case Split.End => (Bot, Bot)
+    case Split.End =>
+      sanity match
+        case S(SplitSanity(cls, ctors)) if !ctors.isEmpty =>
+          cls.asCls.flatMap(_.defn) match
+            case S(cls: ClassDef) =>
+              val actualNum = (cls.body.blk.res :: cls.body.blk.stats).count:
+                case _: Term.Constructor => true
+                case _ => false
+              if ctors.length != actualNum then
+                error(msg"Unexhausted pattern matching on ${cls.sym.nme}" -> split.toLoc :: Nil)
+              (Bot, Bot)
+            case _ => ??? // impossible
+        case _ => (Bot, Bot)
 
   // * Note: currently, the returned type is not used or useful, but it could be in the future
   private def ascribe(lhs: Term, rhs: GeneralType)(using ctx: BbCtx, scope: Scope): (GeneralType, Type) =
@@ -366,6 +435,7 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
       constrain(ascribe(term, skolemize(pt))._2, Bot) // * never generalize terms with effects
       (pt, Bot)
     case (Term.IfLike(Keyword.`if`, branches), ty) => // * propagate
+      given Opt[SplitSanity] = N
       typeSplit(branches, S(ty))
     case (Term.Asc(term, ty), rhs) =>
       ascribe(term, typeType(ty))
@@ -589,7 +659,9 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
       case Term.Asc(term, ty) =>
         val res = typeType(ty)(using ctx)
         ascribe(term, res)
-      case Term.IfLike(Keyword.`if`, branches) => typeSplit(branches, N)
+      case Term.IfLike(Keyword.`if`, branches) =>
+        given Opt[SplitSanity] = N
+        typeSplit(branches, N)
       case reg @ Term.Region(sym, body) =>
         val sk = freshReg(sym)(using ctx)
         val nestCtx = ctx.nestReg(sk)
