@@ -38,10 +38,14 @@ abstract class DiffMaker:
   def doFail(blockLineNum: Int, msg: String): Unit =
     System.err.println(fansi.Color.Red("FAILURE: ").toString + msg)
   def unhandled(blockLineNum: Int, exc: Throwable): Unit =
-    unexpected("exception", blockLineNum)
+    unexpected("exception", blockLineNum, () => N)
   
-  final def unexpected(what: Str, blockLineNum: Int): Unit =
+  final def unexpected(what: Str, blockLineNum: Int, mkExtraInfo: () => Opt[Any]): Unit =
     output(s"FAILURE: Unexpected $what")
+    mkExtraInfo() match
+      case S(info: Product) => output(s"FAILURE INFO: ${info.showAsTree}")
+      case S(info) => output(s"FAILURE INFO: $info")
+      case N => ()
     doFail(blockLineNum, s"unexpected $what at $relativeName.${file.ext}:" + blockLineNum)
   
   
@@ -116,12 +120,13 @@ abstract class DiffMaker:
   
   val tests = Command("tests"):
     case "" =>
-      new DiffTestRunner(
-        // * I don't understand why when I use `new` here
-        // * the test framework seems to reinstantiate `State` for every test
-        // new DiffTestRunner.State
-        DiffTestRunner.State
-      ){}.execute()
+      // * Note that making `DiffTestRunnerBase` extend `ParallelTestExecution`,
+      // * as we used to do, is quite dangerous, because of the way ScalaTest works (which is pretty dumb):
+      // * it would try to re-instantiate the test classes haphazardly without passing it any arguments,
+      // * which either crashes (as it would here) or recomputes the state every time
+      // * (as would be the case if we created an anonymous subclass here),
+      // * even when the tests, when run with `execute()`, are not run in parallel (also for dumb reasons).
+      DiffTestRunnerBase(new DiffTestRunner.StateWithGit).execute()
   
   
   val fileName = file.last
@@ -165,36 +170,37 @@ abstract class DiffMaker:
           parseErrors += 1
           if expectParseErrors.isUnset && !tolerateErrors then
             failures += globalStartLineNum
-            unexpected("lexing error", blockLineNum)
+            unexpected("lexing error", blockLineNum, d.mkExtraInfo)
         case Diagnostic.Source.Parsing =>
           parseErrors += 1
           if expectParseErrors.isUnset && !tolerateErrors then
             failures += globalStartLineNum
             // doFail(fileName, blockLineNum, "unexpected parse error at ")
-            unexpected("parse error", blockLineNum)
+            unexpected("parse error", blockLineNum, d.mkExtraInfo)
             // report(blockLineNum, d :: Nil, showRelativeLineNums.isSet)
         case Diagnostic.Source.Typing =>
           typeErrors += 1
           if expectTypeErrors.isUnset && !tolerateErrors then
             failures += globalStartLineNum
-            unexpected("type error", blockLineNum)
+            unexpected("type error", blockLineNum, d.mkExtraInfo)
         case Diagnostic.Source.Compilation =>
           compilationErrors += 1
           if expectCodeGenErrors.isUnset && !tolerateErrors then
             failures += globalStartLineNum
-            unexpected("runtime error", blockLineNum)
+            unexpected("compilation error", blockLineNum, d.mkExtraInfo)
         case Diagnostic.Source.Runtime =>
           runtimeErrors += 1
           if !expectRuntimeOrCodeGenErrors && !tolerateErrors then
             failures += globalStartLineNum
-            unexpected("runtime error", blockLineNum)
+            unexpected("runtime error", blockLineNum, d.mkExtraInfo)
       case Diagnostic.Kind.Warning =>
         warnings += 1
         if expectWarnings.isUnset && !tolerateErrors then
           failures += globalStartLineNum
-          unexpected("warning", blockLineNum)
+          unexpected("warning", blockLineNum, d.mkExtraInfo)
       case Diagnostic.Kind.Internal =>
-        failures += globalStartLineNum
+        if !tolerateErrors then
+          failures += globalStartLineNum
         // unexpected("internal error", blockLineNum)
         throw d
       report(blockLineNum, d :: Nil, showRelativeLineNums.isSet)
@@ -205,23 +211,23 @@ abstract class DiffMaker:
     // Use `todo` when the errors are expected but not yet implemented.
     if expectParseErrors.isSet && parseErrors == 0 && todo.isUnset && breakme.isUnset then
       failures += globalStartLineNum
-      unexpected("lack of parse error", blockLineNum)
+      unexpected("lack of parse error", blockLineNum, () => N)
     if expectTypeErrors.isSet && typeErrors == 0 && todo.isUnset && breakme.isUnset then
       failures += globalStartLineNum
-      unexpected("lack of type error", blockLineNum)
+      unexpected("lack of type error", blockLineNum, () => N)
     if expectCodeGenErrors.isSet && compilationErrors == 0 && todo.isUnset && breakme.isUnset then
       failures += globalStartLineNum
-      unexpected("lack of compilation error", blockLineNum)
+      unexpected("lack of compilation error", blockLineNum, () => N)
     if expectRuntimeErrors.isSet && runtimeErrors == 0 && todo.isUnset && breakme.isUnset then
       failures += globalStartLineNum
-      unexpected("lack of runtime error", blockLineNum)
+      unexpected("lack of runtime error", blockLineNum, () => N)
     if expectWarnings.isSet && warnings == 0 && todo.isUnset && breakme.isUnset then
       failures += globalStartLineNum
-      unexpected("lack of warnings", blockLineNum)
+      unexpected("lack of warnings", blockLineNum, () => N)
     
     if fixme.isSet && (parseErrors + typeErrors + compilationErrors + runtimeErrors) == 0 then
       failures += globalStartLineNum
-      unexpected("lack of error to fix", blockLineNum)
+      unexpected("lack of error to fix", blockLineNum, () => N)
   
   
   
@@ -262,12 +268,12 @@ abstract class DiffMaker:
     case line :: ls if line.startsWith("//") =>
       out.println(line)
       rec(ls)
-    case line :: ls if line.startsWith(output.diffBegMarker) => // Check if there are unmerged git conflicts
+    case begLine :: ls if begLine.startsWith(output.diffBegMarker) => // Check if there are unmerged git conflicts
       val diff = ls.takeWhile(l => !l.startsWith(output.diffEndMarker))
       assert(diff.exists(_.startsWith(output.diffMidMarker)), diff)
       val rest = ls.drop(diff.length)
-      val hdo = rest.headOption
-      assert(hdo.exists(_.startsWith(output.diffEndMarker)), hdo)
+      val hdo = rest.head
+      assert(hdo.startsWith(output.diffEndMarker), hdo)
       val blankLines = diff.count(_.isEmpty)
       val hasBlankLines = diff.exists(_.isEmpty)
       if diff.forall(l => l.startsWith(output.outputMarker) || l.startsWith(output.diffMidMarker) || l.startsWith(output.diff3MidMarker) || l.isEmpty) then {
@@ -278,9 +284,9 @@ abstract class DiffMaker:
         doFail(blockLineNum,
           s"Unmerged non-output changes at $relativeName.${file.ext}:" + blockLineNum)
         unmergedChanges += allLines.size - lines.size + 1
-        out.println(output.diffBegMarker)
+        out.println(begLine)
         diff.foreach(out.println)
-        out.println(output.diffEndMarker)
+        out.println(hdo)
       }
       if hasBlankLines then resetCommands
       rec(rest.tail)

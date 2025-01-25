@@ -15,7 +15,7 @@ Predef.Test === globalThis.Predef.Test
 
 :fixme
 new Predef.Test is Predef.Test
-//│ ═══[RUNTIME ERROR] TypeError: tmp2 is not a constructor
+//│ ═══[RUNTIME ERROR] TypeError: tmp7 is not a constructor
 
 (new Predef.Test) is Predef.Test
 //│ > Test
@@ -80,5 +80,74 @@ let
 
 [f(123), g(123)]
 //│ = [ 247, 247 ]
+
+
+// *** Folding ***
+
+
+fold(+)(0, 1, 2, 3)
+//│ = 6
+
+fold(-)(0, 1, 2, 3)
+//│ = -6
+
+fold(print)(0, 1, 2, 3)
+//│ > 0 1
+//│ > null 2
+//│ > null 3
+
+fold(tuple)(0, 1, 2, 3)
+//│ = [ [ [ 0, 1 ], 2 ], 3 ]
+
+fold(+) of
+  0
+  1
+  2
+  3
+//│ = 6
+
+:todo
+:re
+fold(+)()
+
+fold(tuple) of
+  "A" +
+  "B"
+  "C"
+//│ = [ 'AB', 'C' ]
+
+
+foldr(+)(0, 1, 2, 3)
+//│ = 6
+
+foldr(-)(0, 1, 2, 3)
+//│ = -2
+
+foldr(tuple)(0, 1, 2, 3)
+//│ = [ 0, [ 1, [ 2, 3 ] ] ]
+
+:todo
+:re
+foldr(+)()
+
+
+// An alternative implementation of foldr
+fun foldr(f)(first, ...rest) =
+  let len = rest.length
+  if len == 0 then first else...
+  let
+    init = rest.at(len - 1)
+    i = len - 2
+  while i >= 0 do
+    set
+      init = f(rest.at(i), init)
+      i -= 1
+  f(first, init)
+
+foldr(+)(0, 1, 2, 3)
+//│ = 6
+
+foldr(-)(0, 1, 2, 3)
+//│ = -2
 
 

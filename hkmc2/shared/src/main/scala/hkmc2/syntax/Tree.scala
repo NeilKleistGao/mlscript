@@ -43,16 +43,17 @@ enum Tree extends AutoLocated:
   case Error()
   case Under()
   case Ident(name: Str)
+  case Keywrd(kw: Keyword)
   case IntLit(value: BigInt)          extends Tree with Literal
   case DecLit(value: BigDecimal)      extends Tree with Literal
   case StrLit(value: Str)             extends Tree with Literal
-  case UnitLit(undefinedOrNull: Bool) extends Tree with Literal
+  case UnitLit(isNullNotUndefined: Bool) extends Tree with Literal
   case BoolLit(value: Bool)           extends Tree with Literal
   case Bra(k: BracketKind, inner: Tree)
   case Block(stmts: Ls[Tree])(using State) extends Tree with semantics.BlockImpl
   case OpBlock(items: Ls[Tree -> Tree])
   case LetLike(kw: Keyword.letLike, lhs: Tree, rhs: Opt[Tree], body: Opt[Tree])
-  case Handle(lhs: Tree, cls: Tree, defs: Tree, body: Opt[Tree])
+  case Hndl(lhs: Tree, cls: Tree, defs: Tree, body: Opt[Tree])
   case Def(lhs: Tree, rhs: Tree)
   case TermDef(k: TermDefKind, head: Tree, rhs: Opt[Tree]) extends Tree with TermDefImpl
   case TypeDef(k: TypeDefKind, head: Tree, extension: Opt[Tree], body: Opt[Tree])(using State) extends Tree with TypeDefImpl
@@ -89,7 +90,7 @@ enum Tree extends AutoLocated:
     case OpBlock(items) => items.flatMap:
       case (op, body) => op :: body :: Nil
     case LetLike(kw, lhs, rhs, body) => lhs :: Nil ++ rhs ++ body
-    case Handle(lhs, rhs, defs, body) => body match
+    case Hndl(lhs, rhs, defs, body) => body match
       case Some(value) => lhs :: rhs :: defs :: value :: Nil
       case None => lhs :: rhs :: defs :: Nil
     case TypeDef(k, head, extension, body) =>
@@ -118,6 +119,8 @@ enum Tree extends AutoLocated:
     case Spread(_, _, body) => body.toList
     case Annotated(annotation, target) => annotation :: target :: Nil
     case Constructor(decl) => decl :: Nil
+    case MemberProj(cls, name) => cls :: Nil
+    case Keywrd(kw) => Nil
   
   def describe: Str = this match
     case Empty() => "empty"
@@ -153,12 +156,14 @@ enum Tree extends AutoLocated:
     case RegRef(reg, value) => "region reference"
     case Effectful(eff, body) => "effectful"
     case Outer(_) => "outer binding"
-    case Handle(_, _, _, _) => "handle"
+    case Hndl(_, _, _, _) => "handle"
     case Def(lhs, rhs) => "defining assignment"
     case Spread(_, _, _) => "spread"
     case Annotated(_, _) => "annotated"
     case Open(_) => "open"
     case Constructor(_) => "constructor"
+    case MemberProj(_, _) => "member projection"
+    case Keywrd(kw) => s"'${kw.name}' keyword"
     
   def deparenthesized: Tree = this match
     case Bra(BracketKind.Round, inner) => inner.deparenthesized
@@ -173,18 +178,16 @@ enum Tree extends AutoLocated:
       LetLike(kw, Ident("_").withLocOf(und), r, b)
     
     case Modified(Keyword.`declare`, modLoc, s) =>
-      // TODO handle `declare` modifier!
-      s
+      Annotated(Keywrd(Keyword.`declare`), s) // TODO properly attach location
     case Modified(Keyword.`abstract`, modLoc, s) =>
-      // TODO handle `declare` modifier!
-      s
+      Annotated(Keywrd(Keyword.`abstract`), s) // TODO properly attach location
     case Modified(Keyword.`mut`, modLoc, TermDef(ImmutVal, anme, rhs)) =>
-      TermDef(MutVal, anme, rhs).desugared
+      TermDef(MutVal, anme, rhs).withLocOf(this).desugared
     case LetLike(letLike, App(f @ Ident(nme), Tup((id: Ident) :: r :: Nil)), N, bodo)
     if nme.endsWith("=") =>
-      LetLike(letLike, id, S(App(Ident(nme.init), Tup(id :: r :: Nil))), bodo).desugared
+      LetLike(letLike, id, S(App(Ident(nme.init), Tup(id :: r :: Nil))), bodo).withLocOf(this).desugared
     case _ => this
-
+  
   /** S(true) means eager spread, S(false) means lazy spread, N means no spread. */
   def asParam: Opt[(Opt[Bool], Ident, Opt[Tree])] = this match
     case und: Under => S(N, new Ident("_").withLocOf(und), N)
@@ -222,6 +225,7 @@ object Apps:
     case t => S(t, Nil)
     
 object PossiblyAnnotated:
+  def apply(t: Tree, anns: Ls[Tree]): Tree = anns.foldRight(t)(Annotated(_, _))
   def unapply(t: Tree): Opt[(Ls[Tree], Tree)] = t match
     case Annotated(q, PossiblyAnnotated(qs, target)) => S(q :: qs, target)
     case other => S((Nil, other))
@@ -338,14 +342,17 @@ trait TypeOrTermDef:
 end TypeOrTermDef
 
 
-trait TypeDefImpl(using semantics.Elaborator.State) extends TypeOrTermDef:
+trait TypeDefImpl(using State) extends TypeOrTermDef:
   this: TypeDef =>
   
   lazy val symbol = k match
     case Cls => semantics.ClassSymbol(this, name.getOrElse(Ident("<error>")))
     case Mod | Obj => semantics.ModuleSymbol(this, name.getOrElse(Ident("<error>")))
     case Als => semantics.TypeAliasSymbol(name.getOrElse(Ident("<error>")))
-    case Pat => semantics.PatternSymbol(name.getOrElse(Ident("<error>")))
+    case Pat => semantics.PatternSymbol(
+      name.getOrElse(Ident("<error>")),
+      paramLists.headOption,
+      extension.getOrElse(die))
     case Trt | Mxn => ???
   
   lazy val definedSymbols: Map[Str, semantics.BlockMemberSymbol] =

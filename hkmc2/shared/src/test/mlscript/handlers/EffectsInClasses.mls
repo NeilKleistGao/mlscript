@@ -1,0 +1,115 @@
+:js
+:handler
+
+
+abstract class Effect with
+  fun perform(arg: Str): Str
+
+
+:sjs
+class Lol(h) with
+  print(h.perform("k"))
+//│ JS (unsanitized):
+//│ let Lol1;
+//│ Lol1 = function Lol(h1) { return new Lol.class(h1); };
+//│ Lol1.class = class Lol {
+//│   constructor(h) {
+//│     this.h = h;
+//│     let tmp, res, res1, Cont$;
+//│     const this$Lol = this;
+//│     Cont$ = function Cont$(pc1) { return new Cont$.class(pc1); };
+//│     Cont$.class = class Cont$ extends globalThis.Predef.__Cont.class {
+//│       constructor(pc) {
+//│         let tmp1;
+//│         tmp1 = super(null, null);
+//│         this.pc = pc;
+//│       }
+//│       resume(value$) {
+//│         if (this.pc === 0) {
+//│           res = value$;
+//│         } else if (this.pc === 1) {
+//│           res1 = value$;
+//│         }
+//│         contLoop: while (true) {
+//│           if (this.pc === 2) {
+//│             return this$Lol;
+//│           } else if (this.pc === 0) {
+//│             tmp = res;
+//│             res1 = Predef.print(tmp);
+//│             if (res1 instanceof globalThis.Predef.__EffectSig.class) {
+//│               res1.tail.next = this;
+//│               this.pc = 1;
+//│               return res1;
+//│             }
+//│             this.pc = 1;
+//│             continue contLoop;
+//│           } else if (this.pc === 1) {
+//│             this.pc = 2;
+//│             continue contLoop;
+//│           }
+//│           break;
+//│         }
+//│       }
+//│       toString() { return "Cont$(" + this.pc + ")"; }
+//│     };
+//│     res = this.h.perform("k") ?? null;
+//│     if (res instanceof globalThis.Predef.__EffectSig.class) {
+//│       res.tail.next = new Cont$.class(0);
+//│       res.tail = res.tail.next;
+//│       return res;
+//│     }
+//│     tmp = res;
+//│     res1 = Predef.print(tmp);
+//│     if (res1 instanceof globalThis.Predef.__EffectSig.class) {
+//│       res1.tail.next = new Cont$.class(1);
+//│       res1.tail = res1.tail.next;
+//│       return res1;
+//│     }
+//│     res1
+//│   }
+//│   toString() { return "Lol(" + this.h + ")"; }
+//│ };
+//│ null
+
+
+let oops = 
+  handle h = Effect with
+    fun perform(arg)(k) =
+      print(arg)
+      "b"
+  Lol(h)
+//│ > k
+//│ oops = 'b'
+
+:expect 'b'
+oops
+//│ = 'b'
+
+let oops = 
+  handle h = Effect with
+    fun perform(arg)(k) =
+      print(arg)
+      "b"
+  new Lol(h)
+//│ > k
+//│ oops = 'b'
+
+:expect 'b'
+oops
+//│ = 'b'
+
+
+let oops = 
+  handle h = Effect with
+    fun perform(arg)(k) =
+      print(arg)
+      k("b")
+  Lol(h)
+//│ > k
+//│ > b
+//│ oops = Lol { h: Effect$h$ {} }
+
+oops.h
+//│ = Effect$h$ {}
+
+

@@ -27,6 +27,8 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   val handler = NullaryCommand("handler")
   val expect = Command("expect"): ln =>
     ln.trim
+  val stackSafe = Command("stackSafe"): ln =>
+    ln.trim
   
   private val baseScp: utils.Scope =
     utils.Scope.empty
@@ -48,22 +50,36 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   private var hostCreated = false
   override def run(): Unit =
     try super.run() finally if hostCreated then host.terminate()
+
+  private val DEFAULT_STACK_LIMT = 500
   
   override def processTerm(blk: semantics.Term.Blk, inImport: Bool)(using Raise): Unit =
     super.processTerm(blk, inImport)
     val outerRaise: Raise = summon
     var showingJSYieldedCompileError = false
+    val stackLimit = stackSafe.get match
+      case None => None
+      case Some("off") => None
+      case Some(value) => value.toIntOption match
+        case None => Some(DEFAULT_STACK_LIMT)
+        case Some(value) =>
+          if value < 0 then
+            failures += 1
+            output("/!\\ Stack limit must be positive, but the stack limit here is set to " + value)
+            Some(DEFAULT_STACK_LIMT)
+          else
+            Some(value)
     if showJS.isSet then
       given Raise =
         case d @ ErrorReport(source = Source.Compilation) =>
           showingJSYieldedCompileError = true
           outerRaise(d)
         case d => outerRaise(d)
+      given Elaborator.Ctx = curCtx
       val low = ltl.givenIn:
-        new codegen.Lowering
+        new codegen.Lowering(lowerHandlers = handler.isSet, stackLimit = stackLimit)
           with codegen.LoweringSelSanityChecks(instrument = false)
           with codegen.LoweringTraceLog(instrument = false)
-      given Elaborator.Ctx = curCtx
       val jsb = new JSBuilder
         with JSBuilderArgNumSanityChecks(instrument = false)
       val le = low.program(blk)
@@ -74,38 +90,38 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       output(s"JS (unsanitized):")
       output(jsStr)
     if js.isSet && !showingJSYieldedCompileError then
+      given Elaborator.Ctx = curCtx
       val low = ltl.givenIn:
-        new codegen.Lowering
+        new codegen.Lowering(lowerHandlers = handler.isSet, stackLimit = stackLimit)
           with codegen.LoweringSelSanityChecks(noSanityCheck.isUnset)
           with codegen.LoweringTraceLog(traceJS.isSet)
-          with codegen.LoweringHandler(handler.isSet)
-      given Elaborator.Ctx = curCtx
       val jsb = new JSBuilder
         with JSBuilderArgNumSanityChecks(noSanityCheck.isUnset)
       val le = low.program(blk)
       if showLoweredTree.isSet then
         output(s"Lowered:")
         output(le.showAsTree)
-      if ppLoweredTree.isSet then
-        output(s"Pretty Lowered:")
-        output(Printer.mkDocument(le)(using summon[Raise], baseScp.nest).toString)
       
-      // * Note that the codegen scope is not in sync with curCtx in terms of its `this` symbol.
-      // * We do not nest TopLevelSymbol in codegen `Scope`s
-      // * to avoid needlessly generating new variable names in separate blocks.
-      val nestedScp = baseScp.nest
+      // * We used to do this to avoid needlessly generating new variable names in separate blocks:
+      // val nestedScp = baseScp.nest
+      val nestedScp = baseScp
       // val nestedScp = codegen.js.Scope(S(baseScp), curCtx.outer, collection.mutable.Map.empty) // * not needed
       
-      val je = nestedScp.givenIn:
-        jsb.program(le, N, wd)
-      val jsStr = je.stripBreaks.mkString(100)
+      if ppLoweredTree.isSet then
+        output(s"Pretty Lowered:")
+        output(Printer.mkDocument(le)(using summon[Raise], nestedScp).toString)
+      
+      val (pre, js) = nestedScp.givenIn:
+        jsb.worksheet(le)
+      val preStr = pre.stripBreaks.mkString(100)
+      val jsStr = js.stripBreaks.mkString(100)
       if showSanitizedJS.isSet then
         output(s"JS:")
         output(jsStr)
-      def mkQuery(prefix: Str, jsStr: Str) =
+      def mkQuery(prefix: Str, preStr: Str, jsStr: Str) =
         import hkmc2.Message.MessageContext
         val queryStr = jsStr.replaceAll("\n", " ")
-        val (reply, stderr) = host.query(queryStr, !expectRuntimeOrCodeGenErrors && fixme.isUnset && todo.isUnset)
+        val (reply, stderr) = host.query(preStr, queryStr, !expectRuntimeOrCodeGenErrors && fixme.isUnset && todo.isUnset)
         reply match
           case ReplHost.Result(content, stdout) =>
             stdout match
@@ -113,16 +129,16 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
             case Some(str) =>
               str.splitSane('\n').foreach: line =>
                 output(s"> ${line}")
+            expect.get match
+            case S(expected) if content != expected && prefix == "" => raise:
+              ErrorReport(msg"Expected: ${expected}, got: ${content}" -> N :: Nil,
+                source = Diagnostic.Source.Runtime)
+            case _ =>
             content match
             case "undefined" =>
             case "null" =>
             case _ =>
-              expect.get match
-              case S(expected) if content != expected => raise:
-                ErrorReport(msg"Expected: ${expected}, got: ${content}" -> N :: Nil,
-                  source = Diagnostic.Source.Runtime)
-              case _ =>
-                if silent.isUnset then output(s"$prefix= ${content}")
+              if silent.isUnset then output(s"$prefix= ${content}")
           case ReplHost.Empty =>
           case ReplHost.Unexecuted(message) => ???
           case ReplHost.Error(isSyntaxError, message, otherOutputs) =>
@@ -147,7 +163,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
           "globalThis.Predef.TraceLogger.enabled = true; " +
           "globalThis.Predef.TraceLogger.resetIndent(0)")
       
-      mkQuery("", jsStr)
+      mkQuery("", preStr, jsStr)
       
       if traceJS.isSet then
         host.execute("globalThis.Predef.TraceLogger.enabled = false")
@@ -159,6 +175,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
           case S(ts: TermSymbol) if ts.k.isInstanceOf[syntax.ValLike] => S((nme, ts))
           case S(ts: BlockMemberSymbol)
             if ts.trmImplTree.exists(_.k.isInstanceOf[syntax.ValLike]) => S((nme, ts))
+          case S(vs: VarSymbol) => S((nme, vs))
           case _ => N
         case _ => N
       if silent.isUnset then definedValues.toSeq.sortBy(_._1).foreach: (nme, sym) =>
@@ -166,7 +183,6 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
         val je = nestedScp.givenIn:
           jsb.block(le)
         val jsStr = je.stripBreaks.mkString(100)
-        mkQuery(s"$nme ", jsStr)
-      
+        mkQuery(s"$nme ", "", jsStr)
       
 

@@ -67,8 +67,9 @@ class Scope
   
   def nest: Scope = Scope(Some(this), N, MutMap.empty)
   
-  def getOuterThisScope: Opt[Scope] =
-    curThis.fold(parent)(thisSym => parent.flatMap(_.getOuterThisScope))
+  def getThisScope: Opt[Scope] = curThis.fold(parent.flatMap(_.getThisScope))(_ => S(this))
+  
+  def getOuterThisScope: Opt[Scope] = parent.flatMap(_.getThisScope)
   
   def nestRebindThis[R](thisSym: Opt[InnerSymbol])(k: Scope ?=> R): (Opt[Str], R) =
     val nested = Scope(Some(this), S(thisSym), MutMap.empty)
@@ -78,6 +79,7 @@ class Scope
     case S(outer) =>
       (if outer.thisProxyAccessed then S(outer.thisProxy) else N, res)
   
+  // TODO more efficient!
   def inScope(name: Str): Bool =
     bindings.valuesIterator.contains(name) || parent.exists(_.inScope(name))
   
@@ -87,7 +89,7 @@ class Scope
   
   def lookup_!(l: Local)(using Raise): Str =
     lookup(l).getOrElse:
-      raise(InternalError(msg"Not in scope: ${l.toString}" -> l.toLoc :: Nil,
+      raise(InternalError(msg"Not in scope: ${l.toString} (${l.getClass.toString})" -> l.toLoc :: Nil,
         source = Diagnostic.Source.Compilation))
       l.nme
   
@@ -98,7 +100,7 @@ class Scope
         prefix + tmp.nameHints.head
       case _ => if l.nme.isEmpty && prefix.isEmpty then "tmp" else prefix + l.nme
     
-    val realBase = Scope.replaceTicks(base)
+    val realBase = Scope.replaceInvalidCharacters(base)
     
     val name =
       // Try just realBase.
@@ -119,7 +121,13 @@ object Scope:
   def empty(using State): Scope =
     Scope(N, S(S(State.globalThisSymbol)), MutMap.empty)
   
-  def replaceTicks(str: Str): Str = str.replace('\'', '$')
+  def replaceInvalidCharacters(str: Str): Str =
+    str.iterator.map:
+        case c if c.isLetter || c.isDigit => c
+        // case '\'' => "$tick"
+        case '$' => "$"
+        case _ => "$_"
+      .mkString
   
 end Scope
 
