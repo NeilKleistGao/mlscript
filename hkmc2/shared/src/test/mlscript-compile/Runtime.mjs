@@ -2,6 +2,8 @@ import runtime from "./Runtime.mjs";
 import Term from "./Term.mjs";
 import RuntimeJS from "./RuntimeJS.mjs";
 import Rendering from "./Rendering.mjs";
+import LazyArray from "./LazyArray.mjs";
+import Iter from "./Iter.mjs";
 let Runtime1;
 (class Runtime {
   static {
@@ -62,20 +64,40 @@ let Runtime1;
     (class Tuple {
       static {
         Runtime.Tuple = Tuple;
+        this.split = LazyArray.__split;
       }
       static slice(xs, i, j) {
         let tmp;
         tmp = xs.length - j;
-        return runtime.safeCall(globalThis.Array.prototype.slice.call(xs, i, tmp))
+        return xs.slice(i, tmp)
       } 
-      static get(xs1, i1) {
-        let scrut;
-        scrut = i1 >= xs1.length;
+      static lazySlice(xs1, i1, j1) {
+        let tmp;
+        tmp = LazyArray.slice(i1, j1);
+        return runtime.safeCall(tmp(xs1))
+      } 
+      static lazyConcat(...args) {
+        return runtime.safeCall(LazyArray.__concat(...args))
+      } 
+      static get(xs2, i2) {
+        let scrut, scrut1, tmp, tmp1, tmp2;
+        scrut = i2 >= xs2.length;
         if (scrut === true) {
           throw globalThis.RangeError("Tuple.get: index out of bounds");
         } else {
-          return globalThis.Array.prototype.at.call(xs1, i1)
+          tmp = runtime.Unit;
         }
+        tmp1 = - xs2.length;
+        scrut1 = i2 < tmp1;
+        if (scrut1 === true) {
+          throw globalThis.RangeError("Tuple.get: negative index out of bounds");
+        } else {
+          tmp2 = runtime.Unit;
+        }
+        return xs2.at(i2)
+      } 
+      static isArrayLike(xs3) {
+        return runtime.safeCall(Iter.isArrayLike(xs3))
       }
       static toString() { return "Tuple"; }
     });
