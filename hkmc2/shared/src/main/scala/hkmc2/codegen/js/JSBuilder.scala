@@ -237,15 +237,21 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
                   val nme = scp.allocateName(fld)
                   doc" # $mtdPrefix#$nme;"
                 .mkDocument(doc"")
-            val preCtorCode = ctorAuxParams.flatMap(ps => ps).foldLeft(body(preCtor, endSemi = true)):
-              case (acc, (sym, nme)) =>
-                doc"$acc # this${fieldSelect(sym.name)} = $nme;"
-            val ctorCode = doc"$preCtorCode${body(ctor, endSemi = auxParams.nonEmpty)}"
+            val preCtorCode = body(preCtor, true)
+            val ctorCode = doc"$preCtorCode${body(ctor, endSemi = true)}"
+            
+            // If there are no ctor params, pop one param list off the aux params
+            val (newCtorAuxParams, initialCtorParams) = paramsOpt match
+              case None => ctorAuxParams match
+                case head :: next => (next, head)
+                case Nil => (ctorAuxParams, Nil)
+              
+              case Some(_) => (ctorAuxParams, ctorParams)
 
-            val ctorAux = if auxParams.isEmpty then
+            val ctorAux = if newCtorAuxParams.isEmpty then
               ctorCode
             else
-              val pss = ctorAuxParams.map(_.map(_._2))
+              val pss = newCtorAuxParams.map(_.map(_._2))
               val newCtorCode = doc"$ctorCode # return this;"
               val ctorBraced = doc"${ braced(newCtorCode) }"
               val funBod = pss.foldRight(ctorBraced):
@@ -265,7 +271,7 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
             val ctorOrStatic = if isModule
               then doc"static"
               else doc"constructor(${
-                  ctorParams.unzip._2.mkDocument(", ")
+                  initialCtorParams.unzip._2.mkDocument(", ")
                 })"
             val clsJS = doc"class ${scope.lookup_!(isym)}${
                 par.map(p => s" extends ${result(p)}").getOrElse("")
@@ -330,19 +336,18 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
                 case Some(value) => value :: auxParams
               
               val fun = paramsAll match
-                case ps_ :: pss_ =>
+                case ps_ :: pss_ if paramsOpt.isDefined =>
                   val (ps, _) = setupFunction(some(sym.nme), ps_, End())
                   val pss = pss_.map(setupFunction(N, _, End())._1)
                   val paramsDoc = pss.foldLeft(doc"($ps)"):
                     case (doc, ps) => doc"${doc}(${ps})"
-                  val extraBrace = if paramsOpt.isDefined then "" else "()"
-                  val bod = braced(doc" # return new ${sym.nme}.class$extraBrace$paramsDoc;")
+                  val bod = braced(doc" # return new ${sym.nme}.class$paramsDoc;")
                   val funBod = pss.foldRight(bod):
                     case (psDoc, doc_) => doc"($psDoc) => $doc_"
                   val funBodRet = if pss.isEmpty then funBod else braced(doc" # return $funBod")
                   val nme = if isValidIdentifier(sym.nme) then sym.nme else ""
                   S(doc"function $nme($ps) ${ funBodRet }")
-                case Nil => N
+                case _ => N
               
               ownr match
               case S(owner) =>
