@@ -40,13 +40,15 @@ fun foo(x, y) =
 //│     this.foo$capture$0.y0$ = 2;
 //│     return this.x$1 + this.foo$capture$0.y0$
 //│   }
-//│   toString() { return "M"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "M"]; 
 //│ };
 //│ foo$capture1 = class foo$capture {
 //│   constructor(y0$) {
 //│     this.y0$ = y0$;
 //│   }
-//│   toString() { return "foo$capture"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "foo$capture"]; 
 //│ };
 //│ foo1 = function foo(x, y) {
 //│   let tmp, M$, capture;
@@ -75,21 +77,26 @@ data class A(x) with
 //│   getB() {
 //│     return this.A$instance$0.x
 //│   }
-//│   toString() { return "M"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "M"]; 
 //│ };
 //│ A1 = function A(x1) {
 //│   return new A.class(x1);
 //│ };
-//│ A1.class = class A {
-//│   constructor(x) {
-//│     this.x = x;
-//│     this.M$ = new M5(this);
+//│ Object.defineProperty(A1, "class", {
+//│   enumerable: true,
+//│   value: class A {
+//│     constructor(x) {
+//│       this.x = x;
+//│       this.M$ = new M5(this);
+//│     }
+//│     getA() {
+//│       return this.M$.getB()
+//│     }
+//│     toString() { return runtime.render(this); }
+//│     static [definitionMetadata] = ["class", "A", ["x"]]; 
 //│   }
-//│   getA() {
-//│     return this.M$.getB()
-//│   }
-//│   toString() { return "A(" + runtime.render(this.x) + ")"; }
-//│ };
+//│ });
 
 :expect 2
 A(2).getA()
@@ -148,13 +155,17 @@ M.A().get
 //│     this.A = function A() {
 //│       return new A.class();
 //│     };
-//│     this.A.class = class A5 {
-//│       constructor() {}
-//│       get get() {
-//│         return M15.x + M14.x;
+//│     Object.defineProperty(this.A, "class", {
+//│     enumerable: true,
+//│       value: class A5 {
+//│         constructor() {}
+//│         get get() {
+//│           return M15.x + M14.x;
+//│         }
+//│         toString() { return runtime.render(this); }
+//│         static [definitionMetadata] = ["class", "A", []]; 
 //│       }
-//│       toString() { return "A(" + "" + ")"; }
-//│     };
+//│     });
 //│     scrut = runtime.safeCall(M14.A());
 //│     if (scrut instanceof M14.A.class) {
 //│       tmp4 = 2;
@@ -163,7 +174,8 @@ M.A().get
 //│     }
 //│     this.x = tmp4;
 //│   }
-//│   static toString() { return "M"; }
+//│   static toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["module", "M"]; 
 //│ });
 //│ tmp3 = runtime.safeCall(M15.A());
 //│ tmp3.get
@@ -205,21 +217,25 @@ M.A(2).newB.newA_B(3).newB.get
 //│     return new B.class()(A$instance$01);
 //│   }
 //│ };
-//│ B2.class = class B1 {
-//│   constructor() {
-//│     return (A$instance$0) => {
-//│       this.A$instance$0 = A$instance$0;
-//│       return this;
+//│ Object.defineProperty(B2, "class", {
+//│   enumerable: true,
+//│   value: class B1 {
+//│     constructor() {
+//│       return (A$instance$0) => {
+//│         this.A$instance$0 = A$instance$0;
+//│         return this;
+//│       }
 //│     }
+//│     get get() {
+//│       return this.A$instance$0.x;
+//│     } 
+//│     newA_B(y) {
+//│       return runtime.safeCall(M19.A(y))
+//│     }
+//│     toString() { return runtime.render(this); }
+//│     static [definitionMetadata] = ["class", "B", []]; 
 //│   }
-//│   get get() {
-//│     return this.A$instance$0.x;
-//│   } 
-//│   newA_B(y) {
-//│     return runtime.safeCall(M19.A(y))
-//│   }
-//│   toString() { return "B(" + "" + ")"; }
-//│ };
+//│ });
 //│ (class M18 {
 //│   static {
 //│     M19 = M18;
@@ -227,18 +243,22 @@ M.A(2).newB.newA_B(3).newB.get
 //│     this.A = function A(x1) {
 //│       return new A.class(x1);
 //│     };
-//│     this.A.class = class A7 {
-//│       constructor(x) {
-//│         this.x = x;
+//│     Object.defineProperty(this.A, "class", {
+//│     enumerable: true,
+//│       value: class A7 {
+//│         constructor(x) {
+//│           this.x = x;
+//│         }
+//│         get newA() {
+//│           return runtime.safeCall(M18.A(42));
+//│         } 
+//│         get newB() {
+//│           return B$(this);
+//│         }
+//│         toString() { return runtime.render(this); }
+//│         static [definitionMetadata] = ["class", "A", ["x"]]; 
 //│       }
-//│       get newA() {
-//│         return runtime.safeCall(M18.A(42));
-//│       } 
-//│       get newB() {
-//│         return B$(this);
-//│       }
-//│       toString() { return "A(" + runtime.render(this.x) + ")"; }
-//│     };
+//│     });
 //│     scrut = 0;
 //│     if (scrut instanceof M18.A.class) {
 //│       true
@@ -246,7 +266,8 @@ M.A(2).newB.newA_B(3).newB.get
 //│       false
 //│     }
 //│   }
-//│   static toString() { return "M"; }
+//│   static toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["module", "M"]; 
 //│ });
 //│ tmp5 = runtime.safeCall(M19.A(2));
 //│ tmp6 = runtime.safeCall(tmp5.newB.newA_B(3));
@@ -289,7 +310,8 @@ module A with
 //│   static get f() {
 //│     return lambda;
 //│   }
-//│   static toString() { return "A"; }
+//│   static toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["module", "A"]; 
 //│ });
 
 module A with
@@ -335,7 +357,8 @@ A.x
 //│     tmp9 = tmp7 + tmp8;
 //│     this.x = tmp9;
 //│   }
-//│   static toString() { return "A"; }
+//│   static toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["module", "A"]; 
 //│ });
 //│ A16.x
 //│ = 2

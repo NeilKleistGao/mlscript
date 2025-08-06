@@ -183,7 +183,8 @@ x + y
 //│   constructor(a0$) {
 //│     this.a0$ = a0$;
 //│   }
-//│   toString() { return "f$capture"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "f$capture"]; 
 //│ };
 //│ f5 = function f() {
 //│   let capture, g$this, h$this;
@@ -196,13 +197,17 @@ x + y
 //│ Tuple1 = function Tuple(a1, b1) {
 //│   return new Tuple.class(a1, b1);
 //│ };
-//│ Tuple1.class = class Tuple {
-//│   constructor(a, b) {
-//│     this.a = a;
-//│     this.b = b;
+//│ Object.defineProperty(Tuple1, "class", {
+//│   enumerable: true,
+//│   value: class Tuple {
+//│     constructor(a, b) {
+//│       this.a = a;
+//│       this.b = b;
+//│     }
+//│     toString() { return runtime.render(this); }
+//│     static [definitionMetadata] = ["class", "Tuple", ["a", "b"]]; 
 //│   }
-//│   toString() { return "Tuple(" + runtime.render(this.a) + ", " + runtime.render(this.b) + ")"; }
-//│ };
+//│ });
 //│ tmp = f5();
 //│ ret = tmp;
 //│ f11 = ret.a;
@@ -216,9 +221,9 @@ x + y
 //│ y = tmp5;
 //│ x + y
 //│ = "01"
-//│ f1 = [function]
-//│ f2 = [function]
-//│ ret = Tuple([function], [function])
+//│ f1 = fun
+//│ f2 = fun
+//│ ret = Tuple(fun, fun)
 //│ x = "0"
 //│ y = "1"
 
@@ -273,11 +278,11 @@ a.toString() + b + c + d
 //│ b = 1
 //│ c = 10
 //│ d = 110
-//│ g2 = [function]
-//│ gRet = Tuple([function], [function])
-//│ hFun = [function]
-//│ iFun = [function]
-//│ ret = Tuple(Tuple([function], [function]), [function])
+//│ g2 = fun
+//│ gRet = Tuple(fun, fun)
+//│ hFun = fun
+//│ iFun = fun
+//│ ret = Tuple(Tuple(fun, fun), fun)
 
 // some variables mutated, some not
 :sjs
@@ -313,7 +318,8 @@ f(1, 2, 1000)
 //│   constructor(mutated0$) {
 //│     this.mutated0$ = mutated0$;
 //│   }
-//│   toString() { return "f$capture"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "f$capture"]; 
 //│ };
 //│ f7 = function f(unused, immutable, mutated) {
 //│   let a1, tmp15, tmp16, tmp17, capture;
@@ -463,7 +469,8 @@ g()(1)
 //│   constructor(y0$) {
 //│     this.y0$ = y0$;
 //│   }
-//│   toString() { return "g$capture"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "g$capture"]; 
 //│ };
 //│ g13 = function g() {
 //│   let capture;
@@ -486,7 +493,7 @@ let ret = f()
 ret()
 ret()
 //│ = 2
-//│ ret = [function]
+//│ ret = fun
 
 :expect 6
 :lift
@@ -569,7 +576,8 @@ f()
 //│   constructor(x0$) {
 //│     this.x0$ = x0$;
 //│   }
-//│   toString() { return "f$capture"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "f$capture"]; 
 //│ };
 //│ f20 = function f() {
 //│   let tmp19, capture;
@@ -610,7 +618,8 @@ fun f(es, vs) =
 //│     this["v'$0"] = v$_$0;
 //│     this.fld = this["v'$0"];
 //│   }
-//│   toString() { return "A"; }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "A"]; 
 //│ };
 //│ f23 = function f(es, vs) {
 //│   let v$_;
