@@ -163,14 +163,14 @@ let Predef1;
     tmp1 = runtime.safeCall(Predef.fold(tmp));
     return runtime.safeCall(tmp1(...xs2))
   } 
+  static use(instance) {
+    return instance
+  } 
   static enterHandleBlock(handler, body) {
     return Runtime.enterHandleBlock(handler, body)
   } 
   static raiseUnhandledEffect() {
     return Runtime.mkEffect(Runtime.FatalEffect, null)
-  } 
-  static use(instance) {
-    return instance
   }
   static toString() { return runtime.render(this); }
   static [definitionMetadata] = ["module", "Predef"]; 

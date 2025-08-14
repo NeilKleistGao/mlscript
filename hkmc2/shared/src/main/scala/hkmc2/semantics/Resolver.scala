@@ -343,9 +343,9 @@ class Resolver(tl: TraceLogger)
             case Split.End =>
           split(t.desugared)
         
-        case Term.New(cls, argss, rft) =>
+        case Term.New(cls, args, rft) =>
           traverse(cls, expect = Any)
-          argss.foreach(_.foreach(traverse(_, expect = NonModule(N))))
+          args.foreach(traverse(_, expect = NonModule(N)))
           rft.foreach((sym, bdy) => traverseBlock(bdy.blk))
         
         case t: Resolvable =>
@@ -402,7 +402,7 @@ class Resolver(tl: TraceLogger)
        * the ICtx so that they can later be referred (be resolved to) in
        * the body of the class-like definition.
        */
-      def withCtxParams(using ICtx): ICtx = (cld.paramsOpt.toList ::: cld.auxParams)
+      def withCtxParams(using ICtx): ICtx = (cld.paramsOpt.toList.iterator ++ cld.auxParams)
         .filter(_.flags.ctx)
         .foldLeft(ictx): (ictx, ps) => 
           ps.params.foldLeft(ictx): (ictx, p) => 

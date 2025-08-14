@@ -159,7 +159,7 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
       then doc"${result(qual)}.at(${result(fld)})"
       else doc"${result(qual)}[${result(fld)}]"
     case Instantiate(mut, cls, as) =>
-      val inner = doc"new ${result(cls)}(${as.map(result).mkDocument(", ")})"
+      val inner = doc"new ${result(cls)}(${as.map(argument).mkDocument(", ")})"
       if mut then inner else s"$freeze(${inner})"
     case Value.Arr(mut, es) if es.isEmpty => if mut then "[]" else s"$freeze([])"
     case Value.Arr(mut, es) =>

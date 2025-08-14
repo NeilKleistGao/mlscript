@@ -595,10 +595,8 @@ extends Importer:
     case tree @ Tup(fields) =>
       Term.Tup(fields.map(fld(_)))(tree)
       
-    case DynamicNew(Apps(c, argss)) =>
-      Term.New(subterm(c, inAppPrefix = inAppPrefix), argss.map{
-        case Tup(args) =>
-          args.map(subterm(_))}, N).withLocOf(tree)
+    case DynamicNew(Apps(c, args)) =>
+      Term.New(subterm(c, inAppPrefix = inAppPrefix), args.map(subterm(_)), N).withLocOf(tree)
     // case New(c, rfto) =>
     //   assert(rfto.isEmpty)
     //   Term.New(cls(subterm(c), inAppPrefix = inAppPrefix), params.map(subterm(_)), bodo).withLocOf(tree)
@@ -611,16 +609,14 @@ extends Importer:
             // TODO make context with var symbols for class parameters
             ObjBody(block(rft, hasResult = false)._1)
       body match
-      case S(Apps(c, argss)) =>
+      case S(Apps(c, args)) =>
         val (mut, c2) = c match
           case Modified(Keyword.`mut`, kwLoc, c) => (true, c)
           case c => (false, c)
         val inner = new Term.New(
           cls(subterm(c2), // * Note: we'll catch bad `new` targets during type checking
             inAppPrefix = true), 
-          argss.map{
-            case Tup(args) =>
-              args.map(subterm(_))},
+          args.map(subterm(_)),
           bodo
         ).withLocOf(tree)
         if mut then Term.Mut(inner) else inner
