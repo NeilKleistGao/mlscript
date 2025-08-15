@@ -27,18 +27,20 @@ class DocumentContext(ctx: StringContext) {
   object doc {
     def apply(docs: Document*): Document =
       
-      type DocPlus = Document | Nest.type | UnNest.type | Insert.type | RawDocText
+      type DocPlus = Document | Nest.type | UnNest.type | BeginGroup.type | EndGroup.type | Insert.type | RawDocText
       case object Nest
       case object UnNest
+      case object BeginGroup
+      case object EndGroup
       case object Insert
       case class RawDocText(s: String) // avoids the "\n chars" warning of DocText
 
       assert(ctx.parts.size == docs.size + 1 && ctx.parts.size > 0)
 
       def interleave(docs: Seq[DocPlus], interleaved: DocPlus) =
-        docs(0) +: docs.tail.map { List(interleaved, _) }.flatten
+        docs.head :: (docs.iterator.drop(1).map { List(interleaved, _) }.flatten.toList: Ls[DocPlus])
       
-      def splitOn(mark: String, interleaved: DocPlus) = (ds: Seq[DocPlus]) => ds.flatMap:
+      def splitOn(mark: String, interleaved: DocPlus) = (ds: Ls[DocPlus]) => ds.flatMap:
         case RawDocText(str) => interleave(unsafeWrapArray(str.split(mark, -1)).map(RawDocText(_)), interleaved)
         case d               => Seq(d)
       
@@ -46,6 +48,8 @@ class DocumentContext(ctx: StringContext) {
       val parts = (
         splitOn(" #\\{ ", Nest) andThen
         splitOn(" #\\} ", UnNest) andThen
+        splitOn("\\\\\\{", BeginGroup) andThen
+        splitOn("\\\\\\}", EndGroup) andThen
         splitOn(" # ", DocBreak(false)) andThen
         splitOn("""\\n""", DocBreak(true)) // interpolated strings don't get special chars replaced (we escape \n for the regex)
       )(interleave(ctx.parts.map(RawDocText(_)), Insert)).map:

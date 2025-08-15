@@ -149,6 +149,13 @@ object Document {
   
   val DEFAULT_NEST_COUNT = 2
   
+  def bracketed(pre: Str, post: Str, insertBreak: Bool = false)(d: Document): Document =
+    if d.isEmpty
+    then pre + post
+    else group(doc"$pre #{ ${if insertBreak then break :: d else d} #}  # $post")
+  
+  def braced(d: Document): Document = bracketed("{", "}")(d)
+  
 }
 
 private case object DocNil extends Document
