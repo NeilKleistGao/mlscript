@@ -16,6 +16,7 @@ import hkmc2.codegen.Value.Lam
 import Scope.scope
 import hkmc2.syntax.Tree.UnitLit
 import hkmc2.semantics.Elaborator.ctx
+import hkmc2.syntax.Tree.{IntLit, StrLit}
 
 
 // TODO factor some logic for other codegen backends
@@ -175,11 +176,15 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
       if mut then "{}" else doc"$freeze({})"
     case Value.Rcd(mut, flds) =>
       val inner = bracketed(pre = "{", post = "}", insertBreak = true):
-          flds.map:
-            case RcdArg(S(idx), v) =>
-              doc"${result(idx)}: ${result(v)}"
-            case RcdArg(N, v) => doc"...${result(v)}"
-          .mkDocument(doc", # ")
+        flds.map:
+          case RcdArg(S(Value.Lit(IntLit(idx))), v) =>
+            doc"${idx.toString}: ${result(v)}"
+          case RcdArg(S(Value.Lit(StrLit(idx))), v) =>
+            doc"${if isValidIdentifier(idx) then idx else s"\"$idx\""}: ${result(v)}"
+          case RcdArg(S(idx), v) =>
+            doc"[${result(idx)}]: ${result(v)}"
+          case RcdArg(N, v) => doc"...${result(v)}"
+        .mkDocument(doc", # ")
       if mut then inner else doc"$freeze(${inner})"
   
   def returningTerm(t: Block, endSemi: Bool)(using Raise, Scope): Document =
