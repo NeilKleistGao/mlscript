@@ -156,7 +156,7 @@ let Runtime1;
       static take(string2, n) {
         return string2.slice(0, n)
       } 
-      static drop(string3, n1) {
+      static leave(string3, n1) {
         return runtime.safeCall(string3.slice(n1))
       }
       static toString() { return runtime.render(this); }
