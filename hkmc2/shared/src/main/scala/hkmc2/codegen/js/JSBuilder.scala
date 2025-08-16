@@ -438,9 +438,9 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
           case Elaborator.ctx.builtins.TypedArray => doc"globalThis.ArrayBuffer.isView($sd) && !($sd instanceof globalThis.DataView)"
           case _ => doc"$sd instanceof ${result(pth)}"
         case Case.Tup(len, inf) => doc"$runtimeVar.Tuple.isArrayLike($sd) && $sd.length ${if inf then ">=" else "==="} ${len}"
-        case Case.Field(n, safe = false) =>
+        case Case.Field(name = n, safe = false) =>
           doc"""typeof $sd === "object" && $sd !== null && "${n.name}" in $sd"""
-        case Case.Field(n, safe = true) =>
+        case Case.Field(name = n, safe = true) =>
           doc""""${n.name}" in $sd"""
       val h = doc" # if (${ cond(hd._1) }) ${ braced(returningTerm(hd._2, endSemi = false)) }"
       val t = tl.foldLeft(h)((acc, arm) =>

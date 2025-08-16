@@ -34,7 +34,7 @@ trait ProductWithExtraInfo extends Product:
 
 extension (t: Product)
   def showAsTree(using post: Product => String = Function.const("")): String =
-    showAsTree(false, identity)
+    showAsTree(false, id(_))
   def showAsTree(inTailPos: Bool, pre: PartialFunction[Product, Product])(using post: Product => String): String =
     def aux(v: Any, inTailPos: Bool = false): String = v match
       case Some(v) => "S of " + aux(v)

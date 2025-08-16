@@ -166,7 +166,7 @@ class BBTyper(using elState: Elaborator.State, tl: TL):
     case _ =>
       ty.symbol.flatMap(_.asTpe) match
       case S(cls: (ClassSymbol | TypeAliasSymbol)) => typeAndSubstType(Term.TyApp(ty, Nil)(N), pol)
-      case S(_) => error(msg"${ty.symbol.get.getClass.toString()} is not a valid type" -> ty.toLoc :: Nil)
+      // case S(_) => error(msg"${ty.symbol.get.getClass.toString()} is not a valid type" -> ty.toLoc :: Nil)
       case N => error(msg"Invalid type" -> ty.toLoc :: Nil) // TODO
 
   private def genPolyType(tvs: Ls[QuantVar], outer: InfVar, body: => GeneralType)(using ctx: BbCtx, cctx: CCtx) =

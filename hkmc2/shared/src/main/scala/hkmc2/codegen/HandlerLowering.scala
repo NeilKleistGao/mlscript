@@ -206,8 +206,8 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
           case StateTransition(uid) => uid
           case _ => freshId()
         
-        val armsParts = arms.map((cse, blkk) => (cse, go(blkk)(afterEnd = S(restId))))
-        val dfltParts = dflt.map(blkk => go(blkk)(afterEnd = S(restId)))
+        val armsParts = arms.map((cse, blkk) => (cse, go(blkk)(using afterEnd = S(restId))))
+        val dfltParts = dflt.map(blkk => go(blkk)(using afterEnd = S(restId)))
 
         val states_ = restParts.states ::: armsParts.flatMap(_._2.states)
         val states = dfltParts match
@@ -273,11 +273,11 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
         val PartRet(restNew, restParts) = go(rest)
         restNew match
           case StateTransition(uid) => 
-            val PartRet(subNew, subParts) = go(sub)(afterEnd = S(uid))
+            val PartRet(subNew, subParts) = go(sub)(using afterEnd = S(uid))
             PartRet(subNew, subParts ::: restParts)
           case _ =>
             val restId = freshId()
-            val PartRet(subNew, subParts) = go(sub)(afterEnd = S(restId))
+            val PartRet(subNew, subParts) = go(sub)(using afterEnd = S(restId))
             PartRet(subNew, BlockState(restId, restNew, N) :: subParts ::: restParts)
 
       case Define(defn, rest) => 
