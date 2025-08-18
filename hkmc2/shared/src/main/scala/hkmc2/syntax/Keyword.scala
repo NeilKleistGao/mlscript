@@ -163,7 +163,10 @@ object Keyword:
   
   type Ellipsis = `...`.type | `..`.type
   
-  type letLike = `let`.type | `set`.type
+  type IfLike = `if`.type | `while`.type
   
+  type LetLike = `let`.type | `set`.type
   
+  type Modifier = `in`.type | `out`.type | `mut`.type | `abstract`.type | `declare`.type | `data`.type | `virtual`.type | `override`.type |
+    `public`.type | `private`.type
 
