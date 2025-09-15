@@ -190,7 +190,7 @@ object Elaborator:
       def ref(id: Ident)(using Elaborator.State): Term =
         // * Same remark as in RefElem#ref
         Term.SynthSel(base.ref(Ident(base.nme)),
-          new Ident(nme).withLocOf(id))(symOpt)
+          new Ident(nme).withLocOf(id))(symOpt, N)
       def symbol = symOpt
     given Conversion[Symbol, Elem] = RefElem(_)
     val empty: Ctx = Ctx(OuterCtx.LocalScope, N, Map.empty, Mode.Full)
@@ -218,7 +218,10 @@ object Elaborator:
     val nonLocalRetHandlerTrm =
       val id = new Ident("NonLocalReturn")
       val sym = ClassSymbol(DummyTypeDef(syntax.Cls), id)
-      Term.Sel(runtimeSymbol.ref(), id)(S(sym))
+      val bsym = BlockMemberSymbol("ret", Nil, true)
+      val defn = ClassDef(N, syntax.Cls, sym, bsym, Nil, Nil, N, ObjBody(Blk(Nil, Term.Lit(UnitLit(false)))), Nil, N)
+      sym.defn = S(defn)
+      Term.Sel(runtimeSymbol.ref(), id)(S(sym), N)
     val nonLocalRet =
       val id = new Ident("ret")
       BlockMemberSymbol(id.name, Nil, true)
@@ -521,7 +524,7 @@ extends Importer:
     case SynthSel(pre, nme) =>
       val preTrm = subterm(pre)
       val sym = resolveField(nme, preTrm.symbol, nme)
-      Term.SynthSel(preTrm, nme)(sym)
+      Term.SynthSel(preTrm, nme)(sym, N)
     case Sel(pre, nme) =>
       val preTrm = subterm(pre)
       val sym = resolveField(nme, preTrm.symbol, nme)
@@ -548,7 +551,7 @@ extends Importer:
         val loc = tree.toLoc.getOrElse(???)
         Term.Lit(StrLit(loc.origin.fileName.toString))
       else
-        Term.Sel(preTrm, nme)(sym)
+        Term.Sel(preTrm, nme)(sym, N)
     case MemberProj(ct, nme) =>
       val c = subterm(ct)
       val f = c.symbol.flatMap(_.asCls) match
@@ -649,7 +652,7 @@ extends Importer:
           val argTree = new Tup(body :: Nil)
           val dummyIdent = new Ident("return").withLocOf(kw)
           Term.App(
-            Term.Sel(sym.ref(dummyIdent), retMtdTree)(S(state.nonLocalRet)),
+            Term.Sel(sym.ref(dummyIdent), retMtdTree)(S(state.nonLocalRet), N),
             Term.Tup(PlainFld(subterm(body)) :: Nil)(argTree)
           )(App(Sel(dummyIdent, retMtdTree), argTree), N, rs)
       case ReturnHandler.NotInFunction =>
@@ -1078,6 +1081,7 @@ extends Importer:
                       val td = TermDefinition(
                         Fun, mtdSym, tsym, PlainParamList(Param(FldFlags.empty, valueSym, N, Modulefulness.none) :: Nil) :: Nil,
                         N, N, S(valueSym.ref(Ident("value"))), FlowSymbol(s"‹result of non-local return›"), TermDefFlags.empty, Modulefulness.none, Nil, N)
+                      tsym.defn = S(td)
                       val htd = HandlerTermDefinition(resumeSym, td)
                       Term.Handle(nonLocalRetHandler, state.nonLocalRetHandlerTrm, Nil, clsSym, htd :: Nil, b)
               val r = FlowSymbol(s"‹result of ${sym}›")
@@ -1094,6 +1098,7 @@ extends Importer:
               val tsym = TermSymbol(k, owner, id) // TODO?
               val tdf = TermDefinition(k, sym, tsym, pss, tps, s, body, r, 
                 TermDefFlags.empty.copy(isMethod = isMethod), mfn, annotations, N)
+              tsym.defn = S(tdf)
               sym.defn = S(tdf)
               
               tdf
@@ -1580,12 +1585,10 @@ extends Importer:
   class VarianceTraverser(var changed: Bool = true) extends Traverser:
     override def traverseType(pol: Pol)(trm: Term): Unit = trm match
       case Term.TyApp(lhs, targs) =>
-        lhs.symbol.flatMap(sym => sym.asTpe orElse sym.asMod orElse sym.asObj) match
+        lhs.symbol.flatMap(sym => sym.asTpe) match
           case S(sym: ClassSymbol) =>
             sym.defn match
             case S(td: ClassDef) =>
-              if td.tparams.sizeCompare(targs) =/= 0 then
-                raise(ErrorReport(msg"Wrong number of type arguments" -> trm.toLoc :: Nil)) // TODO BE
               td.tparams.zip(targs).foreach:
                 case (tp, targ) =>
                   if !tp.isContravariant then traverseType(pol)(targ)
@@ -1595,8 +1598,6 @@ extends Importer:
           case S(sym: ModuleOrObjectSymbol) =>
             sym.defn match
             case S(td: ModuleOrObjectDef) =>
-              if td.tparams.sizeCompare(targs) =/= 0 then
-                raise(ErrorReport(msg"Wrong number of type arguments" -> trm.toLoc :: Nil)) // TODO BE
               td.tparams.zip(targs).foreach:
                 case (tp, targ) =>
                   if !tp.isContravariant then traverseType(pol)(targ)
@@ -1607,8 +1608,6 @@ extends Importer:
             // TODO dedup with above...
             sym.defn match
             case S(td: semantics.TypeDef) =>
-              if td.tparams.sizeCompare(targs) =/= 0 then
-                raise(ErrorReport(msg"Wrong number of type arguments" -> trm.toLoc :: Nil)) // TODO BE
               td.tparams.zip(targs).foreach:
                 case (tp, targ) =>
                   if !tp.isContravariant then traverseType(pol)(targ)
