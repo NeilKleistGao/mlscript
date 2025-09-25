@@ -40,6 +40,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val dbgElab = NullaryCommand("de")
   val dbgParsing = NullaryCommand("dp")
   val dbgResolving = NullaryCommand("dr")
+  val dbgFlow = NullaryCommand("df")
   
   val showParse = NullaryCommand("p")
   val showParsedTree = DebugTreeCommand("pt")
@@ -47,12 +48,15 @@ abstract class MLsDiffMaker extends DiffMaker:
   val showElaboratedTree = DebugTreeCommand("elt")
   val showResolve = NullaryCommand("r")
   val showResolvedTree = DebugTreeCommand("rt")
+  val showFlows = FlagCommand(false, "sf")
   val showLoweredTree = NullaryCommand("lot")
   val ppLoweredTree = NullaryCommand("slot")
   val showContext = NullaryCommand("ctx")
   val parseOnly = NullaryCommand("parseOnly")
   
-  val typeCheck = FlagCommand(false, "typeCheck")
+  val flow = FlagCommand(false, "flow")
+  private val flowScp: utils.Scope =
+    utils.Scope.empty(utils.Scope.Cfg.default.copy(escapeChars = false))
   
   
   // * Compiler configuration
@@ -118,6 +122,10 @@ abstract class MLsDiffMaker extends DiffMaker:
   
   val rtl = new TraceLogger:
     override def doTrace = dbgResolving.isSet
+    override def emitDbg(str: String): Unit = output(str)
+  
+  val ftl = new TraceLogger:
+    override def doTrace = dbgFlow.isSet
     override def emitDbg(str: String): Unit = output(str)
   
   var curCtx = Elaborator.State.init
@@ -271,9 +279,14 @@ abstract class MLsDiffMaker extends DiffMaker:
       output(s"Resolved tree:")
       output(trm.showAsTree(inTailPos = false, pre = pre)(using post))
     
-    if typeCheck.isSet then
-      val typer = typing.TypeChecker()
-      val ty = typer.typeProd(trm)
-      output(s"Type: ${ty}")
+    if flow.isSet then
+      val floan = semantics.flow.FlowAnalysis(using ftl)
+      val flo = floan.typeProd(trm)
+      floan.solveConstraints()
+      floan.expandTerms()
+      if showFlows.isSet then
+        val str = flo.show(using flowScp).toString
+        if str =/= "()" then output(s"Flow: $str")
+    
   
 

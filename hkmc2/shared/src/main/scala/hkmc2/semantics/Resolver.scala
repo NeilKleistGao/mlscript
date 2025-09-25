@@ -327,6 +327,10 @@ class Resolver(tl: TraceLogger)
         args.foreach(traverse(_, expect = NonModule(N)))
         rft.foreach((sym, bdy) => traverseBlock(bdy.blk))
       
+      case t: Term.Lam =>
+        t.params.foreach(traverseParam)
+        traverse(t.body, expect = NonModule(N))
+        
       case t: Resolvable =>
         resolve(t, prefer = expect, inAppPrefix = false, inTyPrefix = false, inCtxPrefix = false)
         t.expanded match
@@ -370,8 +374,7 @@ class Resolver(tl: TraceLogger)
   trace(s"Resolving definition: $defn"):
     def traverseTermDef(tdf: TermDefinition) =
       val TermDefinition(_k, _sym, _tsym, 
-        pss, tps, sign, body, 
-        _resSym, TermDefFlags(isMethod), modulefulness, annotations, comp
+        pss, tps, sign, body, TermDefFlags(isMethod), modulefulness, annotations, comp
       ) = tdf
       /** 
        * Add the contextual parameters in pss to the ICtx so that they
@@ -894,6 +897,9 @@ class Resolver(tl: TraceLogger)
   
   def traverseParam(p: Param)(using ictx: ICtx): Unit =
     log(s"Resolving parameter ${p.showDbg}")
+    val ty = p.sign.map(sign =>
+      resolveSign(sign, expect = if p.modulefulness.modified then Module(N) else NonModule(N)))
+    p.signType = ty
     if p.modulefulness.modified then
       if p.sign.isEmpty then
         raise(ErrorReport(msg"Module parameter must have explicit type." -> p.sym.toLoc :: Nil))

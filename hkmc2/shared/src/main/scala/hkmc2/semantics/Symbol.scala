@@ -98,7 +98,7 @@ abstract class Symbol(using State) extends Located:
     case mem: BlockMemberSymbol => S(mem)
     case mem: MemberSymbol[?] => mem.defn match
       case S(defn: TypeLikeDef) => S(defn.bsym)
-      case S(defn: TermDefinition) => S(defn.sym)
+      case S(defn: TermDefinition) => S(defn.bsym)
       case N => N
 
   /** Get the symbol corresponding to the "representative" of a set of overloaded definitions,
@@ -124,10 +124,10 @@ end Symbol
 class FlowSymbol(label: Str)(using State) extends Symbol:
   def nme: Str = label
   def toLoc: Option[Loc] = N // TODO track source trees of flows
-  import typing.*
+  import flow.*
   val outFlows: mutable.Buffer[FlowSymbol] = mutable.Buffer.empty
-  val outFlows2: mutable.Buffer[Consumer] = mutable.Buffer.empty
-  val inFlows: mutable.Buffer[ConcreteProd] = mutable.Buffer.empty
+  val consumers: mutable.Buffer[Consumer] = mutable.Buffer.empty
+  val producers: mutable.Buffer[ConcreteProd] = mutable.Buffer.empty
   def showDbg: Str =
     label + s"‹$uid›"
   override def toString: Str =
@@ -229,13 +229,17 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
     s"member:$nme${State.dbgUid(uid)}"
   
   def subst(using sub: SymbolSubst): BlockMemberSymbol = sub.mapBlockMemberSym(this)
-
+  
+  // * The flow of this symbol, when interpreted as a term (assuming no disambiguation)
+  lazy val flow: FlowSymbol = FlowSymbol(s"member-flow:$nme")(using getState)
+  
 end BlockMemberSymbol
 
 
 sealed abstract class MemberSymbol[Defn <: Definition](using State) extends Symbol:
   def nme: Str
   var defn: Opt[Defn] = N
+  def bms: Opt[BlockMemberSymbol] = defn.map(_.bsym)
   def subst(using SymbolSubst): MemberSymbol[Defn]
 
 
@@ -250,6 +254,7 @@ class TermSymbol(val k: TermDefKind, val owner: Opt[InnerSymbol], val id: Tree.I
 
 
 sealed trait CtorSymbol extends Symbol:
+  def nme: Str
   def subst(using sub: SymbolSubst): CtorSymbol = sub.mapCtorSym(this)
 
 case class Extr(isTop: Bool)(using State) extends CtorSymbol:
@@ -257,14 +262,14 @@ case class Extr(isTop: Bool)(using State) extends CtorSymbol:
   def toLoc: Option[Loc] = N
   override def toString: Str = nme
 
-case class LitSymbol(lit: Literal)(using State) extends CtorSymbol:
-  def nme: Str = lit.toString
+sealed abstract case class LitSymbol(lit: Literal)(using State) extends CtorSymbol:
+  def nme: Str = lit.idStr
   def toLoc: Option[Loc] = lit.toLoc
   override def toString: Str = s"lit:$lit"
-case class TupSymbol(arity: Opt[Int])(using State) extends CtorSymbol:
-  def nme: Str = s"Tuple#$arity"
-  def toLoc: Option[Loc] = N
-  override def toString: Str = s"tup:$arity"
+object LitSymbol:
+  val cache: mutable.Map[Literal, LitSymbol] = mutable.Map.empty
+  def apply(lit: Literal)(using State): LitSymbol =
+    cache.getOrElseUpdate(lit, new LitSymbol(lit){})
 
 
 /** A TypeSymbol that is not an alias. */
@@ -298,9 +303,10 @@ sealed trait ClassLikeSymbol extends IdentifiedSymbol:
   * A `Ref(_: InnerSymbol)` represents a `this`-like reference to the current object. */
   // TODO prevent from appearing in Ref
 sealed trait InnerSymbol(using State) extends Symbol:
-  val privatesScope: Scope = Scope.empty // * Scope for private members of this symbol
+  val privatesScope: Scope = Scope.empty(Scope.Cfg.default) // * Scope for private members of this symbol
   val thisProxy: TempSymbol = TempSymbol(N, s"this$$$nme")
   def subst(using SymbolSubst): InnerSymbol
+  def bms: Opt[BlockMemberSymbol]
 
 trait IdentifiedSymbol extends Symbol:
   val id: Tree.Ident

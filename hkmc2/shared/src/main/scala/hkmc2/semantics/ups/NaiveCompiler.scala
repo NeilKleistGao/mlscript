@@ -493,12 +493,12 @@ class NaiveCompiler(using tl: TL)(using State, Ctx, Raise) extends TermSynthesiz
     val sym = BlockMemberSymbol(name, Nil)
     val tsym = TermSymbol(Fun, owner, Ident(name))
     // Pattern parameters are passed as objects.
-    val patternInputs = patternParameters.map(_.copy(flags = FldFlags.empty))
+    val patternInputs = patternParameters.map(p => p.copy(flags = FldFlags.empty).withSignTypeOf(p))
     // The last parameter is the scrutinee.
     val scrutParam = Param(FldFlags.empty, scrut, N, Modulefulness.none)
     val ps = PlainParamList(patternInputs :+ scrutParam)
     TermDefinition(Fun, sym, tsym, ps :: Nil, N, N,
-      S(Term.IfLike(Keyword.`if`, topmost)), FlowSymbol(s"‹unapply-result›"),
+      S(Term.IfLike(Keyword.`if`, topmost)),
       TermDefFlags.empty, Modulefulness.none, Nil, N)
   
   /** Translate a list of extractor/matching functions for the given pattern.

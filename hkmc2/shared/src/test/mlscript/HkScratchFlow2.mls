@@ -1,0 +1,76 @@
+:js
+:flow
+:sf
+// :df
+// :todo
+// :d
+
+
+2
+//│ Flow: 2
+//│ = 2
+
+x => x
+//│ Flow: ((x) -> x)
+//│ = fun
+
+2 + 2
+//│ Flow: @
+//│ = 4
+
+
+class Foo with
+  val m = 1
+
+
+:e
+fun test(x) = x.m
+//│ ╔══[ERROR] Cannot resolve selection
+//│ ║  l.27: 	fun test(x) = x.m
+//│ ╙──      	              ^^^
+
+:df
+fun test(x: Foo) = x.m
+//│ Typing producer: { fun member:test(x: member:Foo) = x.m; }
+//│ | Typing producer: x.m
+//│ | | Typing producer: x
+//│ | | : x‹571›
+//│ | | SEL x.m None
+//│ | : ⋅m‹573›
+//│ | Typing producer: undefined
+//│ | : ()
+//│ : ()
+//│ Handling constraint: x‹571› <: {m: ⋅m‹573›} (from x.m)
+//│ | Solving: x‹571› <: {m: ⋅m‹573›}   (Flow, Sel)
+//│ | New flow x ~> Sel(Ident(m),Flow(⋅m))
+//│ | Solving: type class:Foo <: {m: ⋅m‹573›}   (Typ, Sel)
+//│ | Solving: Foo <: {m: ⋅m‹573›}   (Ctor, Sel)
+//│ | Found immediate member member:m
+//│ | Solving: member-flow:m‹555› <: ⋅m‹573›   (Flow, Flow)
+//│ | New flow member-flow:m ~> ⋅m
+//│ | Solving: 1 <: ⋅m‹573›   (Ctor, Flow)
+//│ | New flow Ctor(lit:IntLit(1),List()) ~> ⋅m
+//│ Handling constraint: ((type class:Foo) -> ⋅m‹573›) <: member-flow:test‹576› (from { fun member:test(x: member:Foo) = x.m; })
+//│ | Solving: ((type class:Foo) -> ⋅m‹573›) <: member-flow:test‹576›   (Fun, Flow)
+//│ | New flow Fun(Tup(List(Typ(Ref(class:Foo,List()))),None),Flow(⋅m),List()) ~> member-flow:test
+//│ Resolved targets for x.m: ObjectMember(member:m)
+
+let f = (x: Foo) => x.m
+//│ f = fun f
+
+
+let a = [1, 2, 3]
+//│ a = [1, 2, 3]
+
+let f = (x, y) => x + y
+//│ f = fun f
+
+f(1, 2)
+//│ Flow: @1
+//│ = 3
+
+:fixme
+f(...a)
+//│ /!!!\ Uncaught error: scala.MatchError: Spd(true,Ref(a)) (of class hkmc2.semantics.Spd)
+
+

@@ -36,6 +36,12 @@ enum Annot extends AutoLocated:
 
 type Resolvable = Term & ResolvableImpl
 
+sealed trait SelImpl(using val state: State) extends ResolvableImpl:
+  self: Term.Sel =>
+  val resSym: FlowSymbol = FlowSymbol.sel(self.nme.name)
+  var resolvedTargets: Ls[flow.SelTarget] = Nil // * filled during flow analysis
+  var isErroneous: Bool = false // * to avoid reporting follow-on errors after a flow/resolution error
+
 sealed trait ResolvableImpl:
   this: Term =>
   
@@ -51,19 +57,19 @@ sealed trait ResolvableImpl:
   private[semantics]
   var expansion: Opt[Opt[Term]] = N
 
-  def duplicate: this.type =
+  def duplicate(using State): this.type =
     this.match
       case t: Term.Ref => t.copy()(t.tree, t.refNum, t.typ)
       case t: Term.App => t.copy()(t.tree, t.typ, t.resSym)
       case t: Term.TyApp => t.copy()(t.typ)
-      case t: Term.Sel => t.copy()(t.sym, t.typ)
+      case t: Term.Sel => t.copy()(t.sym, t.typ, t.originalCtx)
       case t: Term.SynthSel => t.copy()(t.sym, t.typ)
     .withLocOf(this)
     .asInstanceOf
   
   def withSym(sym: FieldSymbol): this.type = 
     this.match
-      case t: Term.Sel => t.copy()(S(sym), t.typ)
+      case t: Term.Sel => t.copy()(S(sym), t.typ, t.originalCtx)(using t.state)
       case t: Term.SynthSel => t.copy()(S(sym), t.typ)
       case _ => lastWords(s"Cannot attach a symbol to a non-selection term: ${this.show}")
     .withLocOf(this)
@@ -74,7 +80,7 @@ sealed trait ResolvableImpl:
       case t: Term.Ref => t.copy()(t.tree, t.refNum, S(typ))
       case t: Term.App => t.copy()(t.tree, S(typ), t.resSym)
       case t: Term.TyApp => t.copy()(S(typ))
-      case t: Term.Sel => t.copy()(t.sym, S(typ))
+      case t: Term.Sel => t.copy()(t.sym, S(typ), t.originalCtx)(using t.state)
       case t: Term.SynthSel => t.copy()(t.sym, S(typ))
     .withLocOf(this)
     .asInstanceOf
@@ -195,7 +201,13 @@ enum Term extends Statement:
   case TyApp(lhs: Term, targs: Ls[Term])
     (val typ: Opt[Type]) extends Term, ResolvableImpl
   case Sel(prefix: Term, nme: Tree.Ident)
-    (val sym: Opt[FieldSymbol], val typ: Opt[Type]) extends Term, ResolvableImpl
+    (val sym: Opt[FieldSymbol], val typ: Opt[Type],
+      // TODO: improve:
+      //  * this currently retains many maps, which puts pressure on the GC;
+      //  * instead, we should store a lightweight representation of the context
+      val originalCtx: Opt[Elaborator.Ctx]
+    )
+    (using State) extends Term, SelImpl
   case SynthSel(prefix: Term, nme: Tree.Ident)
     (val sym: Opt[FieldSymbol], val typ: Opt[Type]) extends Term, ResolvableImpl
   case DynSel(prefix: Term, fld: Term, arrayIdx: Bool)
@@ -269,9 +281,9 @@ enum Term extends Statement:
     case sel: SynthSel => sel.typ
     case _ => N
   
-  def sel(id: Tree.Ident, sym: Opt[FieldSymbol]): Sel =
-    Sel(this, id)(sym, N)
-  def selNoSym(nme: Str, synth: Bool = false): Sel | SynthSel =
+  def sel(id: Tree.Ident, sym: Opt[FieldSymbol])(using State, Elaborator.Ctx): Sel =
+    Sel(this, id)(sym, N, S(summon))
+  def selNoSym(nme: Str, synth: Bool = false)(using State, Elaborator.Ctx): Sel | SynthSel =
     val id = new Tree.Ident(nme)
     if synth
     then SynthSel(this, id)(N, N)
@@ -291,9 +303,9 @@ enum Term extends Statement:
     case Lit(Tree.BoolLit(value)) => Lit(Tree.BoolLit(value))
     case Lit(Tree.UnitLit(value)) => Lit(Tree.UnitLit(value))
     case term @ Ref(sym) => Ref(sym)(Tree.Ident(term.tree.name), term.refNum, term.typ)
-    case term @ Sel(prefix, nme) => Sel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.typ)
     case term @ App(lhs, rhs) => App(lhs.mkClone, rhs.mkClone)(term.tree, term.typ, term.resSym)
     case term @ TyApp(lhs, targs) => TyApp(lhs.mkClone, targs.map(_.mkClone))(term.typ)
+    case term @ Sel(prefix, nme) => Sel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.typ, term.originalCtx)
     case term @ SynthSel(prefix, nme) => SynthSel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.typ)
     case DynSel(prefix, fld, arrayIdx) => DynSel(prefix.mkClone, fld.mkClone, arrayIdx)
     case term @ Tup(fields) => Tup(fields.map {
@@ -448,7 +460,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case SetRef(lhs, rhs) => lhs :: rhs :: Nil
     case Drop(term) => term :: Nil
     case Deref(term) => term :: Nil
-    case TermDefinition(_, _, _, pss, tps, sign, body, res, _, _, annotations, _) =>
+    case TermDefinition(_, _, _, pss, tps, sign, body, _, _, annotations, _) =>
       pss.toList.flatMap(_.subTerms) ::: tps.getOrElse(Nil).flatMap(_.subTerms) ::: sign.toList ::: body.toList ::: annotations.flatMap(_.subTerms)
     case cls: ClassDef =>
       cls.paramsOpt.toList.flatMap(_.subTerms) ::: cls.body.blk :: cls.annotations.flatMap(_.subTerms)
@@ -546,7 +558,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Tup(fields) => fields.map(_.showDbg).mkString("[", ", ", "]")
     case Mut(und) => s"mut ${und.showDbg}"
     case CtxTup(fields) => fields.map(_.showDbg).mkString("‹using›[", ", ", "]")
-    case TermDefinition(k, sym, tsym, pss, tps, sign, body, res, flags, _, _, _) =>
+    case TermDefinition(k, sym, tsym, pss, tps, sign, body, flags, _, _, _) =>
       s"${flags.showDbg}${k.str} ${sym}${
         tps.map(_.map(_.showDbg)).mkStringOr(", ", "[", "]")
       }${
@@ -631,13 +643,13 @@ final case class TermDefinition(
     tparams: Opt[Ls[Param]],
     sign: Opt[Term],
     body: Opt[Term],
-    resSym: FlowSymbol,
     flags: TermDefFlags,
     modulefulness: Modulefulness,
     annotations: Ls[Annot],
     companion: Opt[CompanionSymbol],
 ) extends CompanionValue:
   require(k is tsym.k)
+  def bsym: BlockMemberSymbol = sym
   val owner = tsym.owner
   def extraAnnotations: Ls[Annot] = annotations.filter:
     case Annot.Modifier(Keyword.`declare` | Keyword.`abstract`) => false
@@ -674,6 +686,7 @@ sealed abstract class Declaration:
 
 sealed abstract class Definition extends Declaration, Statement:
   val annotations: Ls[Annot]
+  def bsym: BlockMemberSymbol
   def hasDeclareModifier: Opt[Annot.Modifier] = annotations.collectFirst:
     case mod @ Annot.Modifier(Keyword.`declare`) => mod
 
@@ -713,6 +726,7 @@ sealed abstract class ClassLikeDef extends TypeLikeDef:
 
 
 case class ModuleOrObjectDef(
+  path: Elaborator.Ctx,
   owner: Opt[InnerSymbol], 
   sym: ModuleOrObjectSymbol, 
   bsym: BlockMemberSymbol,
@@ -759,6 +773,7 @@ case class PatternDef(
 sealed abstract class ClassDef extends ClassLikeDef:
   val kind: ClsLikeKind
   val sym: ClassSymbol
+  val bsym: BlockMemberSymbol
   val tparams: Ls[TyParam]
   val paramsOpt: Opt[ParamList]
   val auxParams: Ls[ParamList]
@@ -885,18 +900,30 @@ final case class TyParam(flags: FldFlags, vce: Opt[Bool], sym: VarSymbol) extend
     flags.show + sym
 
 
-final case class Param(flags: FldFlags, sym: VarSymbol, sign: Opt[Term], modulefulness: Modulefulness) 
+final case class Param(flags: FldFlags, sym: VarSymbol, sign: Opt[Term], modulefulness: Modulefulness)
 extends Declaration, AutoLocated:
+  
+  // * This field is set by the elaborator and used by the resolver;
+  // * it is not meant to be maintained afterwards (so it does not need to be copied around).
   var fldSym: Opt[FieldSymbol] = N
+  
+  // * This field is filled in during flow analysis;
+  // * it is not meant to be maintained afterwards (so it does not need to be copied around).
+  var signType: Opt[Type] = N
+  
+  def withSignTypeOf(p: Param): this.type =
+    signType = p.signType
+    this
+  
   def subTerms: Ls[Term] = sign.toList
+  
   override protected def children: List[Located] = sym :: sign.toList
   def showDbg: Str = flags.show + sym + sign.fold("")(": " + _.showDbg)
 
 final case class ParamList(flags: ParamListFlags, params: Ls[Param], restParam: Opt[Param])
 extends AutoLocated:
   override protected def children: List[Located] = params ::: restParam.toList
-  def foreach(f: Param => Unit): Unit =
-    (params ++ restParam).foreach(f)
+  def foreach(f: Param => Unit): Unit = (params.iterator ++ restParam).foreach(f)
   def paramCountLB: Int = params.length
   def paramCountUB: Bool = restParam.isEmpty
   def paramSyms = params.map(_.sym) ++ restParam.map(_.sym)
