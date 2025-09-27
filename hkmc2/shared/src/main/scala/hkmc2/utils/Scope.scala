@@ -138,11 +138,30 @@ case class Scope
       else base
     
     val name =
+      val c = cfg
       // Try just realBase.
-      if !inScope(realBase) && !JSBuilder.keywords.contains(realBase) then realBase
+      if !c.includeZero && !inScope(realBase) && !JSBuilder.keywords.contains(realBase) then realBase
       else
         // Try realBase with an integer.
-        (1 to Int.MaxValue).iterator.map(i => s"$realBase$i").filterNot(inScope).next
+        ((if c.includeZero then 0 else 1) to Int.MaxValue).iterator
+          .map: i =>
+            val idx =
+              if c.useSuperscripts
+              then i.toString.map:
+                case '0' => '⁰'
+                case '1' => '¹'
+                case '2' => '²'
+                case '3' => '³'
+                case '4' => '⁴'
+                case '5' => '⁵'
+                case '6' => '⁶'
+                case '7' => '⁷'
+                case '8' => '⁸'
+                case '9' => '⁹'
+                case _ => die
+              else i.toString
+            s"$realBase$idx"
+          .filterNot(inScope).next
     
     addToBindings(l, name, shadow = shadow)
     
@@ -151,9 +170,9 @@ case class Scope
 
 object Scope:
   
-  case class Cfg(escapeChars: Bool)
+  case class Cfg(escapeChars: Bool, useSuperscripts: Bool, includeZero: Bool)
   object Cfg:
-    val default = Cfg(escapeChars = true)
+    val default = Cfg(escapeChars = true, useSuperscripts = false, includeZero = false)
   end Cfg
   
   def scope(using scp: Scope): Scope = scp

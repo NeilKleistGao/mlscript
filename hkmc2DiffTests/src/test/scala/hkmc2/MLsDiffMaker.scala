@@ -56,7 +56,11 @@ abstract class MLsDiffMaker extends DiffMaker:
   
   val flow = FlagCommand(false, "flow")
   private val flowScp: utils.Scope =
-    utils.Scope.empty(utils.Scope.Cfg.default.copy(escapeChars = false))
+    utils.Scope.empty(utils.Scope.Cfg.default.copy(
+      escapeChars = false,
+      useSuperscripts = true,
+      includeZero = true,
+    ))
   
   
   // * Compiler configuration
@@ -285,8 +289,15 @@ abstract class MLsDiffMaker extends DiffMaker:
       floan.solveConstraints()
       floan.expandTerms()
       if showFlows.isSet then
-        val str = flo.show(using flowScp).toString
-        if str =/= "()" then output(s"Flow: $str")
+        import semantics.ShowCfg
+        given ShowCfg = ShowCfg(
+          showExpansionMappings = true,
+          showFlowSymbols = true,
+        )
+        output(s"Flowed:\n${
+          document.Document.bracketed("", ""):
+            trm.showTopLevel(using flowScp)
+        }")
     
   
 

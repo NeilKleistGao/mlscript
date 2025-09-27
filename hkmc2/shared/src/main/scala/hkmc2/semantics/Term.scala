@@ -5,6 +5,10 @@ import scala.collection.mutable.Buffer
 
 import mlscript.utils.*, shorthands.*
 import syntax.*
+import hkmc2.utils.Scope
+import hkmc2.utils.Scope.scope
+import hkmc2.document.*
+import hkmc2.document.Document.*
 
 import Elaborator.State
 import hkmc2.typing.Type
@@ -28,6 +32,11 @@ enum Annot extends AutoLocated:
   def children: Ls[Located] = this match
     case Trm(trm) => trm :: Nil
     case _: Modifier | Untyped => Nil
+  
+  def show(using Scope, ShowCfg): Document = this match
+    case Untyped => doc"‹untyped›"
+    case Modifier(mod) => doc"@${mod.name}"
+    case Trm(trm) => doc"@${trm.show}"
   
   def mkClone(using State): Annot = this match
     case Untyped => Untyped
@@ -71,7 +80,7 @@ sealed trait ResolvableImpl:
     this.match
       case t: Term.Sel => t.copy()(S(sym), t.typ, t.originalCtx)(using t.state)
       case t: Term.SynthSel => t.copy()(S(sym), t.typ)
-      case _ => lastWords(s"Cannot attach a symbol to a non-selection term: ${this.show}")
+      case _ => lastWords(s"Cannot attach a symbol to a non-selection term: ${this.showDbg}")
     .withLocOf(this)
     .asInstanceOf
   
@@ -85,17 +94,13 @@ sealed trait ResolvableImpl:
     .withLocOf(this)
     .asInstanceOf
   
-  override def show: Str = expansion match
-    case S(S(expansion)) => showDbg + "{~>" + expansion.show + "}"
-    case _ => showDbg
-  
   def expandedIn[T](in: Term => T): T =
     in(expanded)
   
   def expandedResolvableIn[T](in: Resolvable => T): T =
     expanded match
       case r: Resolvable => in(r)
-      case t => lastWords(s"Expected a resolvable term, but got ${t.show}.")
+      case t => lastWords(s"Expected a resolvable term, but got ${t.showDbg}.")
 
   /** 
    * Expanding a term to another, which can be later retrieved by the
@@ -117,7 +122,7 @@ sealed trait ResolvableImpl:
     // `expansion.get =/= newExpansion`: Waiting for @Luyu to revamp the
     // desugaring stage so that no same term occurs in different places.
     if this.expansion.isDefined && this.expansion.get =/= expansion then
-      lastWords(s"Cannot expand the term ${this.show} multiple times (to different expansions ${expansion.get.show}).")
+      lastWords(s"Cannot expand the term ${this.showDbg} multiple times (to different expansions ${expansion.get.showDbg}).")
     
     this.expansion = S(expansion)
     this
@@ -358,6 +363,12 @@ extension (self: Blk)
     Blk(self.stats, f(self.res))
 
 
+case class ShowCfg(
+  showExpansionMappings: Bool,
+  showFlowSymbols: Bool,
+)
+
+
 sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
   
   def mkClone(using State): Statement = this match
@@ -494,7 +505,68 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case _ =>
       subTerms // TODO more precise (include located things that aren't terms)
   
-  def show: Str = showDbg // TODO use Document
+  def show(using Scope, ShowCfg): Document =
+    def res: Document = this match
+      case lit: Lit => lit.lit.idStr
+      case r: Ref =>
+        r.sym match
+        case _: BuiltinSymbol => r.sym.nme
+        case _ => r.sym.showName
+      case sel: Sel =>
+        if summon[ShowCfg].showFlowSymbols
+        then doc"${sel.prefix.show}.${sel.sym.fold(doc"${sel.nme.name}‹?›")(_.showName)}"
+        else doc"${sel.prefix.show}.${sel.nme.name}"
+      case sel: SynthSel =>
+        if summon[ShowCfg].showFlowSymbols
+        then doc"⟨${sel.prefix.show}.⟩${sel.sym.fold(doc"${sel.nme.name}‹?›")(_.showName)}"
+        else doc"${sel.prefix.show}.${sel.nme.name}"
+      case app: App =>
+        doc"${app.lhs.show}${app.rhs.showAsParams}${
+          if summon[ShowCfg].showFlowSymbols
+          then "‹" + app.resSym.getName + "›"
+          else ""
+        }"
+      case lam: Lam => doc"${lam.params.show} => ${lam.body.show}"
+      case nw: New => doc"new ${nw.cls.show}${nw.args.map(_.showAsParams).mkDocument()}${
+        nw.rft.fold(doc"")(doc" with " :: _._2.blk.show)}"
+      case tup: Tup => bracketed("[", "]", insertBreak = true):
+        tup.fields.map(_.show).mkDocument(doc", # ")
+      case blk: Blk => braced:
+        doc" # " :: blk.stats.map(_.show).mkDocument(doc", # ") :: blk.res.match
+          case Lit(Tree.UnitLit(false)) => doc""
+          case res => res.show
+      case ld: LetDecl =>
+        (ld.annotations.map(_.show) ::: doc"let ${ld.sym.showName}" :: Nil).mkDocument()
+      case df: DefineVar =>
+        doc"${df.sym.showName} = ${df.rhs.show}"
+      case td: TermDefinition =>
+          td.annotations.map(_.show).mkDocument()
+          :: doc"${td.k.str} ${td.sym.showName}"
+          :: (if td.tparams.isEmpty then doc""
+            else doc"[${td.tparams.get.map(_.sym.showName).mkDocument(", ")}]")
+          :: td.params.map(_.show).mkDocument()
+          :: td.sign.fold(doc"")(s => doc": ${s.show}")
+          :: td.body.fold(doc"")(b => doc" = ${b.show}")
+      case cld: ClassLikeDef =>
+          cld.annotations.map(_.show).mkDocument()
+          :: doc"${cld.kind.str} ${cld.sym.nme}"
+          :: (if cld.tparams.isEmpty then doc""
+            else doc"[${cld.tparams.map(_.sym.showName).mkDocument(", ")}]")
+          :: cld.paramsOpt.map(_.show).toList.mkDocument()
+          :: cld.auxParams.map(_.show).mkDocument()
+          :: doc" ${cld.body.blk.show}"
+      case imp: Import =>
+        doc"import ${"\""}${imp.file}${"\""} as ${imp.sym.showName}"
+      case _ =>
+        doc"TODO[show:${getClass.getSimpleName}]($showDbg)"
+    this match
+    case t: Resolvable => t.expansion match
+      case S(S(exp)) =>
+        if summon[ShowCfg].showExpansionMappings then
+          res :: doc"{ ~> " :: exp.show(using summon, summon[ShowCfg].copy(showExpansionMappings = false)) :: doc" }"
+        else exp.show
+      case _ => res
+    case _ => res
   
   def showDbg: Str = this match
     case r: Ref =>
@@ -504,8 +576,12 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       s"$showPlain${trm.symbol.fold("")("‹"+_+"›")}"
     case _ =>
       showPlain
+
+  def showAsParams(using Scope, ShowCfg): Document = this match
+    case tup: Tup => s"(${tup.fields.map(_.show).mkDocument(", ")})"
+    case _ => s"(...$show)"
   
-  def showAsParams: Str = this match
+  def showDbgAsParams: Str = this match
     case tup: Tup => s"(${tup.fields.map(_.showDbg).mkString(", ")})"
     case _ => s"(...$showDbg)"
   
@@ -513,7 +589,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Term.UnitVal() => "()"
     case Lit(lit) => lit.idStr
     case r @ Ref(symbol) => symbol.toString + symbol.getState.dbgRefNum(r.refNum)
-    case App(lhs, rhs) => s"${lhs.showDbg}${rhs.showAsParams}"
+    case App(lhs, rhs) => s"${lhs.showDbg}${rhs.showDbgAsParams}"
     case RcdField(lhs, rhs) => s"${lhs.showDbg}: ${rhs.showDbg}"
     case RcdSpread(bod) => s"...${bod.showDbg}"
     case FunTy(lhs: Tup, rhs, eff) =>
@@ -537,9 +613,9 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Quoted(term) => s"""code"${term.showDbg}""""
     case Unquoted(term) => s"$${${term.showDbg}}"
     case New(cls, args, rft) =>
-      s"new ${cls.showDbg}${args.map(_.showAsParams).mkString}${rft.fold("")(r => s"{ ${r._2.blk.showDbg} }")}"
+      s"new ${cls.showDbg}${args.map(_.showDbgAsParams).mkString}${rft.fold("")(r => s"{ ${r._2.blk.showDbg} }")}"
     case DynNew(cls, args) =>
-      s"new! ${cls.showDbg}${args.map(_.showAsParams).mkString}"
+      s"new! ${cls.showDbg}${args.map(_.showDbgAsParams).mkString}"
     case SelProj(pre, cls, proj) => s"${pre.showDbg}.${cls.showDbg}#${proj.name}"
     case Asc(term, ty) => s"${term.toString}: ${ty.toString}"
     case LetDecl(sym, _) => s"let ${sym}"
@@ -875,6 +951,7 @@ sealed abstract class Elem:
   def subTerms: Ls[Term] = this match
     case Fld(_, term, asc) => term :: asc.toList
     case Spd(_, term) => term :: Nil
+  def show(using Scope, ShowCfg): Document
   def showDbg: Str
 object Elem:
   given Conversion[Term, Elem] = PlainFld(_)
@@ -883,6 +960,7 @@ object PlainFld:
   def apply(term: Term) = Fld(FldFlags.empty, term, N)
   def unapply(fld: Fld): Opt[Term] = S(fld.term)
 final case class Spd(eager: Bool, term: Term) extends Elem:
+  def show(using Scope, ShowCfg): Document = (if eager then "..." else "..") + term.show
   def showDbg: Str = (if eager then "..." else "..") + term.showDbg
 
 final case class TyParam(flags: FldFlags, vce: Opt[Bool], sym: VarSymbol) extends Declaration:
@@ -918,6 +996,10 @@ extends Declaration, AutoLocated:
   def subTerms: Ls[Term] = sign.toList
   
   override protected def children: List[Located] = sym :: sign.toList
+  
+  def show(using Scope, ShowCfg): Document =
+    doc"${flags.show}${sym.showName}${sign.fold("")(": " + _.show)}"
+  
   def showDbg: Str = flags.show + sym + sign.fold("")(": " + _.showDbg)
 
 final case class ParamList(flags: ParamListFlags, params: Ls[Param], restParam: Opt[Param])
@@ -929,6 +1011,15 @@ extends AutoLocated:
   def paramSyms = params.map(_.sym) ++ restParam.map(_.sym)
   def allParams = params ++ restParam.toList
   def subTerms: Ls[Term] = params.flatMap(_.subTerms) ++ restParam.toList.flatMap(_.subTerms)
+  def show(using Scope, ShowCfg): Document =
+    flags.showDbg // TODO
+    // :: bracketed("(", ")", insertBreak = true):
+    :: doc"(" :: (
+      params.map(_.show)
+      :::
+      restParam.map(p => doc"...${p.show}").toList
+    ).mkDocument(", ")
+    :: doc")"
   def showDbg: Str = flags.showDbg
     + (params.map(_.showDbg) ++ restParam.toList.map("..." + _.showDbg)).mkString("(", ", ", ")")
 object PlainParamList:
@@ -949,6 +1040,7 @@ object ParamListFlags:
 trait FldImpl extends AutoLocated:
   self: Fld =>
   def children: Ls[Located] = self.term :: self.asc.toList ::: Nil
+  def show(using Scope, ShowCfg): Document = flags.show + self.term.show
   def showDbg: Str = flags.show + self.term.showDbg
   def describe: Str =
     (if self.flags.spec then "specialized " else "") +
@@ -967,5 +1059,9 @@ object Apps:
 trait BlkImpl:
   this: Blk =>
   def mkBlkClone(using State): Blk = Blk(stats.map(_.mkClone), res.mkClone)
+  def showTopLevel(using Scope, ShowCfg): Document =
+    (stats ::: (res match
+      case Lit(Tree.UnitLit(false)) => Nil
+      case res => res :: Nil)).map(_.show).mkDocument(doc", # ")
 
 

@@ -21,6 +21,17 @@ abstract class Symbol(using State) extends Located:
   
   val uid: Uid[Symbol] = State.suid.nextUid
   
+  def getName(using scp: Scope): hkmc2.document.Document =
+    import hkmc2.document.*
+    scp.allocateOrGetName(this)
+
+  def showName(using scp: Scope, cfg: ShowCfg): hkmc2.document.Document =
+    import hkmc2.document.*
+    val name = nme
+    if cfg.showFlowSymbols
+    then s"$name${scp.allocateOrGetName(this).stripPrefix(name)}"
+    else name
+  
   val directRefs: mutable.Buffer[Term.Ref] = mutable.Buffer.empty
   def ref(id: Tree.Ident =
     Tree.Ident("") // FIXME hack
@@ -139,7 +150,8 @@ object FlowSymbol:
   
   def app()(using State) =
     // FlowSymbol("‹app-res›")
-    FlowSymbol("@")
+    // FlowSymbol("@")
+    FlowSymbol("app")
 
   def sel(nme: Str)(using State) =
     FlowSymbol(s"⋅$nme")

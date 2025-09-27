@@ -5,72 +5,95 @@
 // :todo
 // :d
 
+//│ Flowed:
+//│   import "/Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Predef.mjs" as Predef⁰ 
 
 2
-//│ Flow: 2
+//│ Flowed:
+//│   2 
 //│ = 2
 
 x => x
-//│ Flow: ((x) -> x)
+//│ Flowed:
+//│   (x⁰) => x⁰ 
 //│ = fun
 
 2 + 2
-//│ Flow: @
+//│ Flowed:
+//│   +(2, 2)‹app⁰› 
 //│ = 4
 
 
 class Foo with
   val m = 1
+//│ Flowed:
+//│   class Foo { val m⁰ = 1 } 
 
 
 :e
 fun test(x) = x.m
 //│ ╔══[ERROR] Cannot resolve selection
-//│ ║  l.27: 	fun test(x) = x.m
+//│ ║  l.34: 	fun test(x) = x.m
 //│ ╙──      	              ^^^
+//│ Flowed:
+//│   fun test⁰(x¹) = x¹.m‹?› 
 
 :df
 fun test(x: Foo) = x.m
 //│ Typing producer: { fun member:test(x: member:Foo) = x.m; }
 //│ | Typing producer: x.m
 //│ | | Typing producer: x
-//│ | | : x‹571›
+//│ | | : x‹569›
 //│ | | SEL x.m None
-//│ | : ⋅m‹573›
+//│ | : ⋅m‹571›
 //│ | Typing producer: undefined
 //│ | : ()
 //│ : ()
-//│ Handling constraint: x‹571› <: {m: ⋅m‹573›} (from x.m)
-//│ | Solving: x‹571› <: {m: ⋅m‹573›}   (Flow, Sel)
+//│ Handling constraint: x‹569› <: {m: ⋅m‹571›} (from x.m)
+//│ | Solving: x‹569› <: {m: ⋅m‹571›}   (Flow, Sel)
 //│ | New flow x ~> Sel(Ident(m),Flow(⋅m))
-//│ | Solving: type class:Foo <: {m: ⋅m‹573›}   (Typ, Sel)
-//│ | Solving: Foo <: {m: ⋅m‹573›}   (Ctor, Sel)
+//│ | Solving: type class:Foo <: {m: ⋅m‹571›}   (Typ, Sel)
+//│ | Solving: Foo <: {m: ⋅m‹571›}   (Ctor, Sel)
 //│ | Found immediate member member:m
-//│ | Solving: member-flow:m‹555› <: ⋅m‹573›   (Flow, Flow)
+//│ | Solving: member-flow:m‹553› <: ⋅m‹571›   (Flow, Flow)
 //│ | New flow member-flow:m ~> ⋅m
-//│ | Solving: 1 <: ⋅m‹573›   (Ctor, Flow)
+//│ | Solving: 1 <: ⋅m‹571›   (Ctor, Flow)
 //│ | New flow Ctor(lit:IntLit(1),List()) ~> ⋅m
-//│ Handling constraint: ((type class:Foo) -> ⋅m‹573›) <: member-flow:test‹576› (from { fun member:test(x: member:Foo) = x.m; })
-//│ | Solving: ((type class:Foo) -> ⋅m‹573›) <: member-flow:test‹576›   (Fun, Flow)
+//│ Handling constraint: ((type class:Foo) -> ⋅m‹571›) <: member-flow:test‹574› (from { fun member:test(x: member:Foo) = x.m; })
+//│ | Solving: ((type class:Foo) -> ⋅m‹571›) <: member-flow:test‹574›   (Fun, Flow)
 //│ | New flow Fun(Tup(List(Typ(Ref(class:Foo,List()))),None),Flow(⋅m),List()) ~> member-flow:test
 //│ Resolved targets for x.m: ObjectMember(member:m)
+//│ Flowed:
+//│   fun test¹(x²: Foo⁰) = x²{ ~> x² }.m‹?›{ ~> x².m⁰ } 
 
 let f = (x: Foo) => x.m
+//│ Flowed:
+//│   let f⁰, f⁰ = (x³: Foo⁰) => x³{ ~> x³ }.m‹?›{ ~> x³.m⁰ } 
 //│ f = fun f
 
 
 let a = [1, 2, 3]
+//│ Flowed:
+//│   let a⁰, a⁰ = [ 1, 2, 3 ] 
 //│ a = [1, 2, 3]
 
 let f = (x, y) => x + y
+//│ Flowed:
+//│   let f¹, f¹ = (x⁴, y⁰) => +(x⁴, y⁰)‹app¹› 
 //│ f = fun f
 
 f(1, 2)
-//│ Flow: @1
+//│ Flowed:
+//│   f¹(1, 2)‹app²› 
 //│ = 3
 
 :fixme
 f(...a)
 //│ /!!!\ Uncaught error: scala.MatchError: Spd(true,Ref(a)) (of class hkmc2.semantics.Spd)
+
+
+fun przd[A, B](x: A) = x
+//│ Flowed:
+//│   fun przd⁰[A⁰, B⁰](x⁵: A⁰) = x⁵{ ~> x⁵ } 
 
 

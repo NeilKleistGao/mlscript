@@ -216,7 +216,8 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       assert(sel.expansion.isEmpty)
       sel.resolvedTargets match
         case ObjectMember(sym) :: Nil =>
-          // TODO add symbol
+          assert(sel.sym.isEmpty)
+          sel.expansion = S(S(sel.copy()(sym = S(sym), sel.typ, sel.originalCtx)))
         case CompanionMember(comp, sym) :: Nil =>
           val base = Sel(comp, Tree.Ident(sym.nme))(S(sym), N, N)
           val app = App(base, Tup(sel.prefix :: Nil)(Tree.DummyTup))(Tree.DummyApp, N, FlowSymbol.app())
@@ -227,7 +228,6 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
           if !sel.isErroneous then raise:
             ErrorReport:
               msg"Cannot resolve selection" -> sel.toLoc :: Nil
-          
           // * An error should alsoready be reported in this case
         case targets => raise:
           ErrorReport:
