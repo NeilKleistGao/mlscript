@@ -4,7 +4,7 @@
 // :df
 
 //│ Flowed:
-//│   import "/Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Predef.mjs" as Predef⁰ 
+//│   import ".../Predef.mjs" as Predef⁰ 
 
 
 class Foo with
@@ -12,7 +12,7 @@ class Foo with
 module Foo with
   fun foo(x: Foo) = x.a
 //│ Flowed:
-//│   class Foo { val a⁰ = 123 }, module Foo { fun foo⁰(x⁰: Foo⁰) = x⁰{ ~> x⁰ }.a‹?›{ ~> x⁰.a⁰ } } 
+//│   class Foo { val a⁰ = 123 }, module Foo { fun foo⁰(x⁰: Foo⁰) = x⁰.a⁰ } 
 
 let f = new Foo()
 //│ Flowed:
@@ -21,7 +21,7 @@ let f = new Foo()
 
 f.a
 //│ Flowed:
-//│   f⁰.a‹?›{ ~> f⁰.a⁰ } 
+//│   f⁰.a⁰ 
 //│ = 123
 
 :e
@@ -34,7 +34,7 @@ f.a.b
 //│ ║  l.11: 	  val a = 123
 //│ ╙──      	          ^^^
 //│ Flowed:
-//│   f⁰.a‹?›{ ~> f⁰.a⁰ }.b‹?› 
+//│   f⁰.a⁰.b‹?› 
 //│ ═══[RUNTIME ERROR] Error: Access to required field 'b' yielded 'undefined'
 
 :sjs
@@ -118,20 +118,12 @@ module AA with
     module CC with
       fun getX(self: CC) = self.x
 //│ Flowed:
-//│   module AA {
-//│     module BB {
-//│       class CC {
-//│         val x⁴: Int⁰ = 1
-//│       },
-//│       module CC { fun getX⁰(self⁰: ⟨BB⁰.⟩CC⁰) = self⁰{ ~> self⁰ }.x‹?›{ ~> self⁰.x⁴ } }
-//│     }
-//│   }
-//│ 
+//│   module AA { module BB { class CC { val x⁴: Int⁰ = 1 }, module CC { fun getX⁰(self⁰: ⟨BB⁰.⟩CC⁰) = self⁰.x⁴ } } } 
 
 :sjs
 new AA.BB.CC().x
 //│ Flowed:
-//│   new AA⁰{ ~> AA⁰ }.BB¹{ ~> AA⁰.BB¹ }.CC⁰{ ~> AA⁰.BB¹.CC⁰ }().x‹?›{ ~> new AA⁰.BB¹.CC⁰().x⁴ } 
+//│   new AA⁰.BB¹.CC⁰().x⁴ 
 //│ JS (unsanitized):
 //│ let tmp3; tmp3 = globalThis.Object.freeze(new AA1.BB.CC()); tmp3.x
 //│ = 1
@@ -139,7 +131,7 @@ new AA.BB.CC().x
 :sjs
 new AA.BB.CC().getX
 //│ Flowed:
-//│   new AA⁰{ ~> AA⁰ }.BB¹{ ~> AA⁰.BB¹ }.CC⁰{ ~> AA⁰.BB¹.CC⁰ }().getX‹?›{ ~> AA⁰.BB¹.CC⁰.getX⁰(new AA⁰.BB¹.CC⁰())‹app¹¹› } 
+//│   new AA⁰.BB¹.CC⁰().getX‹?›{ ~> AA⁰.BB¹.CC⁰.getX⁰(new AA⁰.BB¹.CC⁰())‹app¹¹› } 
 //│ JS (unsanitized):
 //│ let tmp4; tmp4 = globalThis.Object.freeze(new AA1.BB.CC()); AA1.BB.CC.getX(tmp4)
 //│ = 1
@@ -158,7 +150,7 @@ let foo =
 :re
 foo.test
 //│ ╔══[ERROR] Cannot access companion A from the context of this selection
-//│ ║  l.159: 	foo.test
+//│ ║  l.151: 	foo.test
 //│ ╙──       	^^^^^^^^
 //│ Flowed:
 //│   foo¹.test‹?› 
@@ -169,16 +161,12 @@ class CC(val x: Int)
 module CC with
   fun getX(self: CC) = self.x
 //│ Flowed:
-//│   class CC(valx⁵: Int⁰) {
-//│     val x⁶ = x⁵{ ~> x⁵ }
-//│   },
-//│   module CC { fun getX¹(self¹: CC¹) = self¹{ ~> self¹ }.x‹?›{ ~> self¹.x⁶ } }
-//│ 
+//│   class CC(valx⁵: Int⁰) { val x⁶ = x⁵ }, module CC { fun getX¹(self¹: CC¹) = self¹.x⁶ } 
 
 :fixme // TODO: handle lifted class defs
 CC(123).getX
 //│ Flowed:
-//│   CC¹{ ~> CC¹ }(123)‹app¹²›.getX‹?›{ ~> CC¹.getX¹(CC¹(123)‹app¹²›)‹app¹³› } 
+//│   CC¹(123)‹app¹²›.getX‹?›{ ~> CC¹.getX¹(CC¹(123)‹app¹²›)‹app¹³› } 
 //│ ═══[RUNTIME ERROR] TypeError: CC2.getX is not a function
 
 
@@ -187,7 +175,7 @@ class CC
 module CC with
   fun oops(x: CC) = x.oops
 //│ Flowed:
-//│   class CC {  }, module CC { fun oops⁰(x⁷: CC²) = x⁷{ ~> x⁷ }.oops‹?›{ ~> CC².oops⁰(x⁷)‹app¹⁴› } } 
+//│   class CC {  }, module CC { fun oops⁰(x⁷: CC²) = x⁷.oops‹?›{ ~> CC².oops⁰(x⁷)‹app¹⁴› } } 
 
 :re
 new CC().oops
@@ -201,11 +189,11 @@ class CC with
 module CC with
   fun okay(x: CC) = x.okay
 //│ Flowed:
-//│   class CC { val okay⁰ = 123 }, module CC { fun okay¹(x⁸: CC³) = x⁸{ ~> x⁸ }.okay‹?›{ ~> x⁸.okay⁰ } } 
+//│   class CC { val okay⁰ = 123 }, module CC { fun okay¹(x⁸: CC³) = x⁸.okay⁰ } 
 
 new CC().okay
 //│ Flowed:
-//│   new CC³().okay‹?›{ ~> new CC³().okay⁰ } 
+//│   new CC³().okay⁰ 
 //│ = 123
 
 
