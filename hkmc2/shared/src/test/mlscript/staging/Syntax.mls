@@ -1,0 +1,160 @@
+import "./../../mlscript-compile/Predef.mjs"
+
+:de
+:elt
+module A with
+  fun f(x) = x
+//│ Elab block List(TypeDef(Mod,InfixApp(Ident(A),keyword 'with',Block(List(TermDef(Fun,App(Ident(f),Tup(List(Ident[...] LocalScope(block:3)
+//│ | Processing module/object definition Ident(A)
+//│ | | Companion: None
+//│ | | Elab block List(TermDef(Fun,App(Ident(f),Tup(List(Ident(x)))),Some(Ident(x)))) InnerScope(module:A‹537›)
+//│ | | | Processing term definition App(Ident(f),Tup(List(Ident(x))))
+//│ | | | Elaborating ParamTree: ParamTree(‹›,Ident(x),None,None,Set())
+//│ | | | Elab term Ident(x)
+//│ | | | | Elab subterm Ident(x)
+//│ | | | | ~> Ref(x‹539›)
+//│ | | | ~> Ref(x‹539›)
+//│ | | ~> Blk(List(TermDefinition(Fun,member:f‹535›,module:A‹537›.f,List(ParamList(‹›,List(Param(‹›,x‹539›,None,Modulefulness(None))),None)),None,None,Some(Ref(x‹539›)),‹result of member:f‹535››‹541›,‹›,Modulefulness(None),List(),None)),Lit(UnitLit(false)))
+//│ ~> Blk(List(ModuleOrObjectDef(None,module:A‹537›,member:A‹536›,List(),None,List(),None,Mod,{ fun member:f‹535›(x‹539›) = x‹539›#666; },None,List())),Lit(UnitLit(false)))
+//│ Elaborated tree:
+//│ Blk:
+//│   stats = Ls of 
+//│     ModuleOrObjectDef:
+//│       owner = N
+//│       sym = module:A‹537›
+//│       bsym = member:A‹536›
+//│       tparams = Nil
+//│       paramsOpt = N
+//│       auxParams = Nil
+//│       ext = N
+//│       kind = Mod
+//│       body = ObjBody of Blk:
+//│         stats = Ls of 
+//│           TermDefinition:
+//│             k = Fun
+//│             sym = member:f‹535›
+//│             tsym = module:A‹537›.f
+//│             params = Ls of 
+//│               ParamList:
+//│                 flags = ()
+//│                 params = Ls of 
+//│                   Param:
+//│                     flags = ()
+//│                     sym = x‹539›
+//│                     sign = N
+//│                     modulefulness = Modulefulness of N
+//│                 restParam = N
+//│             tparams = N
+//│             sign = N
+//│             body = S of Ref{sym=x‹539›} of x‹539›
+//│             resSym = ‹result of member:f‹535››‹541›
+//│             flags = ()
+//│             modulefulness = Modulefulness of N
+//│             annotations = Nil
+//│             companion = N
+//│         res = Lit of UnitLit of false
+//│       companion = N
+//│       annotations = Nil
+//│   res = Lit of UnitLit of false
+staged module B with
+  fun f(x) = x
+B.f(1)
+//│ Elab block List(Annotated(Keywrd(keyword 'staged'),TypeDef(Mod,InfixApp(Ident(B),keyword 'with',Block(List(Term[...] LocalScope(block:4)
+//│ | Processing module/object definition Ident(B)
+//│ | | Companion: None
+//│ | | Elab block List(TermDef(Fun,App(Ident(f),Tup(List(Ident(x)))),Some(Ident(x)))) InnerScope(module:B‹545›)
+//│ | | | Processing term definition App(Ident(f),Tup(List(Ident(x))))
+//│ | | | Elaborating ParamTree: ParamTree(‹›,Ident(x),None,None,Set())
+//│ | | | Elab term Ident(x)
+//│ | | | | Elab subterm Ident(x)
+//│ | | | | ~> Ref(x‹547›)
+//│ | | | ~> Ref(x‹547›)
+//│ | | ~> Blk(List(TermDefinition(Fun,member:f‹543›,module:B‹545›.f,List(ParamList(‹›,List(Param(‹›,x‹547›,None,Modulefulness(None))),None)),None,None,Some(Ref(x‹547›)),‹result of member:f‹543››‹549›,‹›,Modulefulness(None),List(),None)),Lit(UnitLit(false)))
+//│ | Elab term App(Sel(Ident(B),Ident(f)),Tup(List(IntLit(1))))
+//│ | | Elab subterm App(Sel(Ident(B),Ident(f)),Tup(List(IntLit(1))))
+//│ | | | Elab subterm Sel(Ident(B),Ident(f))
+//│ | | | | Elab subterm Ident(B)
+//│ | | | | ~> Ref(member:B‹544›)
+//│ | | | ~> Sel(Ref(member:B‹544›),Ident(f))
+//│ | | | Elab subterm Tup(List(IntLit(1)))
+//│ | | | | Elab term IntLit(1)
+//│ | | | | | Elab subterm IntLit(1)
+//│ | | | | | ~> Lit(IntLit(1))
+//│ | | | | ~> Lit(IntLit(1))
+//│ | | | ~> Tup(List(Fld(‹›,Lit(IntLit(1)),None)))
+//│ | | ~> App(Sel(Ref(member:B‹544›),Ident(f)),Tup(List(Fld(‹›,Lit(IntLit(1)),None))))
+//│ | ~> App(Sel(Ref(member:B‹544›),Ident(f)),Tup(List(Fld(‹›,Lit(IntLit(1)),None))))
+//│ ~> Blk(List(ModuleOrObjectDef(None,module:B‹545›,member:B‹544›,List(),None,List(),None,Mod,{ fun member:f‹543›(x‹547›) = x‹547›#666; },None,List(Modifier(keyword 'staged')))),App(Sel(Ref(member:B‹544›),Ident(f)),Tup(List(Fld(‹›,Lit(IntLit(1)),None)))))
+//│ Elaborated tree:
+//│ Blk:
+//│   stats = Ls of 
+//│     ModuleOrObjectDef:
+//│       owner = N
+//│       sym = module:B‹545›
+//│       bsym = member:B‹544›
+//│       tparams = Nil
+//│       paramsOpt = N
+//│       auxParams = Nil
+//│       ext = N
+//│       kind = Mod
+//│       body = ObjBody of Blk:
+//│         stats = Ls of 
+//│           TermDefinition:
+//│             k = Fun
+//│             sym = member:f‹543›
+//│             tsym = module:B‹545›.f
+//│             params = Ls of 
+//│               ParamList:
+//│                 flags = ()
+//│                 params = Ls of 
+//│                   Param:
+//│                     flags = ()
+//│                     sym = x‹547›
+//│                     sign = N
+//│                     modulefulness = Modulefulness of N
+//│                 restParam = N
+//│             tparams = N
+//│             sign = N
+//│             body = S of Ref{sym=x‹547›} of x‹547›
+//│             resSym = ‹result of member:f‹543››‹549›
+//│             flags = ()
+//│             modulefulness = Modulefulness of N
+//│             annotations = Nil
+//│             companion = N
+//│         res = Lit of UnitLit of false
+//│       companion = N
+//│       annotations = Ls of 
+//│         Modifier of keyword 'staged'
+//│   res = App:
+//│     lhs = Sel{sym=member:f‹543›}:
+//│       prefix = Ref{sym=member:B‹544›} of member:B‹544›
+//│       nme = Ident of "f"
+//│     rhs = Tup of Ls of 
+//│       Fld:
+//│         flags = ()
+//│         term = Lit of IntLit of 1
+//│         asc = N
+
+// should reject these annotations
+:de
+// :pe
+staged object Foo
+//│ Elab block List(Annotated(Keywrd(keyword 'staged'),TypeDef(Obj,Ident(Foo),None))) LocalScope(block:5)
+//│ | Processing module/object definition Ident(Foo)
+//│ | | Companion: None
+//│ ~> Blk(List(ModuleOrObjectDef(None,object:Foo‹553›,member:Foo‹552›,List(),None,List(),None,Obj,{ },None,List(Modifier(keyword 'staged')))),Lit(UnitLit(false)))
+
+:de
+:pe
+// staged class Foo
+
+:de
+// :pe
+staged fun f() = 0
+//│ Elab block List(Annotated(Keywrd(keyword 'staged'),TermDef(Fun,App(Ident(f),Tup(List())),Some(IntLit(0))))) LocalScope(block:6)
+//│ | Processing term definition App(Ident(f),Tup(List()))
+//│ | Elab term IntLit(0)
+//│ | | Elab subterm IntLit(0)
+//│ | | ~> Lit(IntLit(0))
+//│ | ~> Lit(IntLit(0))
+//│ ~> Blk(List(TermDefinition(Fun,member:f‹555›,.f,List(ParamList(‹›,List(),None)),None,None,Some(Lit(IntLit(0))),‹result of member:f‹555››‹557›,‹›,Modulefulness(None),List(Modifier(keyword 'staged')),None)),Lit(UnitLit(false)))

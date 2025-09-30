@@ -308,7 +308,7 @@ extends Importer:
     case _ => N
   
   def annot(tree: Tree): Ctxl[Opt[Annot]] = tree match
-    case Keywrd(kw @ (Keyword.`abstract` | Keyword.`declare` | Keyword.`data`)) => S(Annot.Modifier(kw))
+    case Keywrd(kw @ (Keyword.`abstract` | Keyword.`declare` | Keyword.`data` | Keyword.`staged`)) => S(Annot.Modifier(kw))
     case _ => term(tree) match
       case Term.Error => N
       case trm =>
@@ -1334,6 +1334,9 @@ extends Importer:
     end go
     
     ctx.withMembers(members).givenIn:
+      // log(msg"${blk.showDbg}")
+      // log(msg"${blk.desugStmts.map(_.showDbg).mkString(",")}")
+      // transform to Annotated here
       go(blk.desugStmts, Nil, Nil)
   
   
