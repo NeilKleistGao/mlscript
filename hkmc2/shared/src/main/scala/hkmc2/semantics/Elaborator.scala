@@ -308,7 +308,7 @@ extends Importer:
     case _ => N
   
   def annot(tree: Tree): Ctxl[Opt[Annot]] = tree match
-    case Keywrd(kw @ (Keyword.`abstract` | Keyword.`declare` | Keyword.`data`)) => S(Annot.Modifier(kw))
+    case Keywrd(kw @ (Keyword.`abstract` | Keyword.`declare` | Keyword.`data` | Keyword.`staged`)) => S(Annot.Modifier(kw))
     case _ => term(tree) match
       case Term.Error => N
       case trm =>
@@ -1335,7 +1335,7 @@ extends Importer:
     
     ctx.withMembers(members).givenIn:
       go(blk.desugStmts, Nil, Nil)
-  
+
   
   def mkBlk(acc: Ls[Statement], res: Opt[Term], hasResult: Bool): Blk | Rcd =
     // TODO forbid certain kinds of terms in records
