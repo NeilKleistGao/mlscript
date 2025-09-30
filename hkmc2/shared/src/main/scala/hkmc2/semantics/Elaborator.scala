@@ -1334,11 +1334,8 @@ extends Importer:
     end go
     
     ctx.withMembers(members).givenIn:
-      // log(msg"${blk.showDbg}")
-      // log(msg"${blk.desugStmts.map(_.showDbg).mkString(",")}")
-      // transform to Annotated here
       go(blk.desugStmts, Nil, Nil)
-  
+
   
   def mkBlk(acc: Ls[Statement], res: Opt[Term], hasResult: Bool): Blk | Rcd =
     // TODO forbid certain kinds of terms in records
