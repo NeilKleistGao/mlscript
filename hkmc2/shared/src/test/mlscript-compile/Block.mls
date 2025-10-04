@@ -1,0 +1,124 @@
+import "./Predef.mls"
+import "./Option.mls"
+import "./Term.mls"
+
+open Predef
+open Option
+
+type Opt[A] = Option[A]
+type Ls[A] = List[A]
+
+// dependancies referenced in Block classes
+class List[A] with 
+  class Cons[A](head: A, tail: List[A])
+  object Nil
+// copying Tree.Ident => Str in Term.mls
+class Ident(name: Str) // translation of Tree.Ident
+class VarSymbol(id: Ident)
+type Local = Symbol
+// should these be replaced with just Symbol?
+type FieldSymbol = Symbol
+type ClassSymbol = Symbol
+type ClassLikeSymbol = Symbol
+type TermSymbol = Symbol
+type InnerSymbol = Symbol
+type BlockMemberSymbol = Symbol
+type ModuleOrObjectSymbol = Symbol
+type MemberSymbol = Symbol
+
+type Literal = null | undefined | Str | Int | Num | Bool
+class Arg(spread: Opt[Bool], value: Path)
+
+class ClsLikeKind(desc: Str)
+class ParamListFlags(ctx: Bool)
+class FldFlags(_mut: Bool, spec: Bool, pat: Bool, isVal: Bool)
+class Modulefulness(msym: Opt[ModuleOrObjectSymbol])
+class Param(flags: FldFlags, sym: VarSymbol, sign: Opt[Term.Term], modulefulness: Modulefulness)
+class ParamList(flags: ParamListFlags, params: Ls[Param], restParam: Opt[Param])
+// class Handler(
+//   sym: BlockMemberSymbol,
+//   resumeSym: VarSymbol,
+//   params: Ls[ParamList],
+//   body: Block,
+// )
+
+class Path with
+  class Select(qual: Path, name: Ident)(symcol: Opt[FieldSymbol])
+  class Value with
+    constructor
+      Ref(l: Local)
+      Lit(lit: Literal)
+      // TODO Tup
+  
+class Case with
+  constructor
+    CaseLit(lit: Literal)
+    Cls(cls: ClassLikeSymbol, path: Path)
+    Tup(len: Int, inf: Bool)
+    Field(name: Ident, safe: Bool)
+
+class Result with 
+  constructor
+    TrivialResult
+    Call(_fun: Path, args: Ls[Arg])(isMlsFun: Bool, mayRaiseEffects: Bool)
+    Instantiate(_mut: Bool, cls: Path, args: Ls[Arg]) // may assume immutable
+    Tuple(_mut: Bool, elems: Ls[Arg]) // may assume immutable
+
+class Defn with 
+  class ValDefn(
+    tsym: TermSymbol,
+    sym: BlockMemberSymbol,
+    rhs: Path
+  ) with
+    val innerSym = Some(tsym)
+    val owner: Opt[InnerSymbol] = tsym.owner
+  class ClsLikeDefn(
+    owner: Opt[InnerSymbol],
+    isym: MemberSymbol & InnerSymbol,
+    sym: BlockMemberSymbol,
+    k: ClsLikeKind,
+    paramsOpt: Opt[ParamList],
+    auxParams: Ls[ParamList],
+    parentPath: Opt[Path],
+    methods: Ls[FunDefn],
+    privateFields: Ls[TermSymbol],
+    publicFields: Ls[BlockMemberSymbol -> TermSymbol],
+    preCtor: Block,
+    ctor: Block,
+    companion: Opt[ClsLikeBody],
+  ) with
+    val innerSym = Some(isym)
+  class FunDefn(
+      owner: Opt[InnerSymbol],
+      sym: BlockMemberSymbol,
+      params: Ls[ParamList],
+      body: Block,
+  ) with 
+    val innerSym = None
+
+// this is needed to convert the non-type selection to a type
+type FunDefn = Defn.FunDefn
+
+class ClsLikeBody(
+  isym: MemberSymbol & InnerSymbol,
+  methods: Ls[FunDefn],
+  privateFields: Ls[TermSymbol],
+  publicFields: Ls[BlockMemberSymbol -> TermSymbol],
+  ctor: Block,
+)
+
+class Block with
+  class Match(scrut: Path, arms: Ls[Case -> Block], dflt: Opt[Block], rest: Block)
+  class Return(res: Result, implct: Bool)
+  class Label(lavel: Local, body: Block, rest: Block)
+  class Define(defn: Defn, rest: Block)
+  // class HandleBlock(
+  //   lhs: Local,
+  //   rhs: Local,
+  //   par: Path,
+  //   args: Ls[Path],
+  //   cls: ClassSymbol,
+  //   handlers: Ls[Handler],
+  //   body: Block,
+  //   rest: Block,
+  // )
