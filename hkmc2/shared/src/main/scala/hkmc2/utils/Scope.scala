@@ -53,6 +53,9 @@ case class Scope
     if !shadow then assert(lookup(symbol).isEmpty, (symbol, this.showAsTree))
     bindings += symbol -> name
     existingNames += name
+
+  def getBindings: Iterator[(Local, String)] =
+    bindings.iterator
   
   def findThis_!(thisSym: InnerSymbol)(using Raise): Str =
     // println(s"findThis_! $thisSym")

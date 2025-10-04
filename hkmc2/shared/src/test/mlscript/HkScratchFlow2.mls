@@ -6,85 +6,100 @@
 // :d
 
 //│ Flowed:
-//│   import ".../Predef.mjs" as Predef⁰ 
+//│   import ".../Predef.mjs" as Predef⁰
+//│ where
+//│     
 
 2
 //│ Flowed:
-//│   2 
+//│   2
+//│ where
+//│     
 //│ = 2
 
 x => x
 //│ Flowed:
-//│   (x⁰) => x⁰ 
+//│   (x⁰) => x⁰
+//│ where
+//│     
 //│ = fun
 
 2 + 2
 //│ Flowed:
-//│   +(2, 2)‹app⁰› 
+//│   +(2, 2)‹app⁰›
+//│ where
+//│     
 //│ = 4
 
 
 class Foo with
   val m = 1
 //│ Flowed:
-//│   class Foo { val m⁰ = 1 } 
+//│   class Foo {
+//│     val m⁰ ‹flow:m⁰› = 1
+//│   }
+//│ where
+//│     flow:m⁰  <~  1
 
 
 :e
 fun test(x) = x.m
 //│ ╔══[ERROR] Cannot resolve selection
-//│ ║  l.34: 	fun test(x) = x.m
+//│ ║  l.46: 	fun test(x) = x.m
 //│ ╙──      	              ^^^
 //│ Flowed:
-//│   fun test⁰(x¹) = x¹.m‹?› 
+//│   fun test⁰(x¹) ‹flow:test⁰› = x¹.m‹?›
+//│ where
+//│     x¹  ~>  {m: ⋅m⁰}
+//│     flow:test⁰  <~  ((x¹) -> ⋅m⁰)
 
-:df
+// :de
+// :df
 fun test(x: Foo) = x.m
-//│ Typing producer: { fun member:test(x: member:Foo) = x.m; }
-//│ | Typing producer: x.m
-//│ | | Typing producer: x
-//│ | | : x‹570›
-//│ | | SEL x.m None
-//│ | : ⋅m‹572›
-//│ | Typing producer: undefined
-//│ | : ()
-//│ : ()
-//│ Handling constraint: x‹570› <: {m: ⋅m‹572›} (from x.m)
-//│ | Solving: x‹570› <: {m: ⋅m‹572›}   (Flow, Sel)
-//│ | New flow x ~> Sel(Ident(m),Flow(⋅m))
-//│ | Solving: type class:Foo <: {m: ⋅m‹572›}   (Typ, Sel)
-//│ | Solving: Foo <: {m: ⋅m‹572›}   (Ctor, Sel)
-//│ | Found immediate member member:m
-//│ | Solving: member-flow:m‹554› <: ⋅m‹572›   (Flow, Flow)
-//│ | New flow member-flow:m ~> ⋅m
-//│ | Solving: 1 <: ⋅m‹572›   (Ctor, Flow)
-//│ | New flow Ctor(lit:IntLit(1),List()) ~> ⋅m
-//│ Handling constraint: ((type class:Foo) -> ⋅m‹572›) <: member-flow:test‹575› (from { fun member:test(x: member:Foo) = x.m; })
-//│ | Solving: ((type class:Foo) -> ⋅m‹572›) <: member-flow:test‹575›   (Fun, Flow)
-//│ | New flow Fun(Tup(List(Typ(Ref(class:Foo,List()))),None),Flow(⋅m),List()) ~> member-flow:test
-//│ Resolved targets for x.m: ObjectMember(member:m)
 //│ Flowed:
-//│   fun test¹(x²: Foo⁰) = x².m⁰ 
+//│   fun test¹(x²: Foo⁰) ‹flow:test¹› = x².m⁰
+//│ where
+//│     x²  <~  type Foo
+//│     x²  ~>  {m: ⋅m¹}
+//│     flow:test¹  <~  ((type Foo) -> ⋅m¹)
 
 let f = (x: Foo) => x.m
 //│ Flowed:
-//│   let f⁰, f⁰ = (x³: Foo⁰) => x³.m⁰ 
+//│   let f⁰,
+//│   f⁰ = (x³: Foo⁰) => x³.m⁰
+//│ where
+//│     f⁰  <~  ((type Foo) -> ⋅m²)
+//│     x³  <~  type Foo
+//│     x³  ~>  {m: ⋅m²}
 //│ f = fun f
 
 
 let a = [1, 2, 3]
 //│ Flowed:
-//│   let a⁰, a⁰ = [ 1, 2, 3 ] 
+//│   let a⁰,
+//│   a⁰ = [
+//│     1,
+//│     2,
+//│     3
+//│   ]
+//│ where
+//│     a⁰  <~  [1, 2, 3 ]
 //│ a = [1, 2, 3]
 
 let f = (x, y) => x + y
 //│ Flowed:
-//│   let f¹, f¹ = (x⁴, y⁰) => +(x⁴, y⁰)‹app¹› 
+//│   let f¹,
+//│   f¹ = (x⁴, y⁰) => +(x⁴, y⁰)‹app¹›
+//│ where
+//│     f¹  <~  ((x⁴, y⁰) -> app¹)
 //│ f = fun f
 
 f(1, 2)
 //│ Flowed:
-//│   f¹(1, 2)‹app²› 
+//│   f¹(1, 2)‹app²›
+//│ where
+//│     f¹  <~  ((x⁴, y⁰) -> app¹)
+//│     f¹  ~>  ((1, 2) -> app²)
 //│ = 3
 
 :fixme
@@ -94,6 +109,9 @@ f(...a)
 
 fun przd[A, B](x: A) = x
 //│ Flowed:
-//│   fun przd⁰[A⁰, B⁰](x⁵: A⁰) = x⁵ 
+//│   fun przd⁰[A⁰, B⁰](x⁵: A⁰) ‹flow:przd⁰› = x⁵
+//│ where
+//│     x⁵  <~  type A
+//│     flow:przd⁰  <~  ((type A) -> x⁵)
 
 

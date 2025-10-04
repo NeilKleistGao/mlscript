@@ -1317,8 +1317,8 @@ extends Importer:
               log(s"Companion: ${comp}")
               val md =
                 val (bod, c) = mkBody
-                ModuleOrObjectDef(outerCtx, owner, modSym, sym,
-                  tps, pss.headOption, pss.tailOr(Nil), newOf(td), k, ObjBody(bod), comp, annotations)
+                ModuleOrObjectDef(owner, modSym, sym,
+                  tps, pss.headOption, pss.tailOr(Nil), newOf(td), k, ObjBody(bod), comp, annotations)(outerCtx)
               modSym.defn = S(md)
               md
         case Cls =>

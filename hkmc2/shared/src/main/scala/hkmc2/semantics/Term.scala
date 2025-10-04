@@ -2,6 +2,7 @@ package hkmc2
 package semantics
 
 import scala.collection.mutable.Buffer
+import scala.collection.mutable
 
 import mlscript.utils.*, shorthands.*
 import syntax.*
@@ -48,7 +49,7 @@ type Resolvable = Term & ResolvableImpl
 sealed trait SelImpl(using val state: State) extends ResolvableImpl:
   self: Term.Sel =>
   val resSym: FlowSymbol = FlowSymbol.sel(self.nme.name)
-  var resolvedTargets: Ls[flow.SelTarget] = Nil // * filled during flow analysis
+  var resolvedTargets: Ls[flow.SelectionTarget] = Nil // * filled during flow analysis
   var isErroneous: Bool = false // * to avoid reporting follow-on errors after a flow/resolution error
 
 sealed trait ResolvableImpl:
@@ -366,7 +367,10 @@ extension (self: Blk)
 case class ShowCfg(
   showExpansionMappings: Bool,
   showFlowSymbols: Bool,
-)
+):
+  // * Rather ugly way of collecting shown symbols during show operations
+  val shownSymbols: mutable.Set[Symbol] = mutable.Set.empty
+end ShowCfg
 
 
 sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
@@ -523,7 +527,9 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case app: App =>
         doc"${app.lhs.show}${app.rhs.showAsParams}${
           if summon[ShowCfg].showFlowSymbols
-          then "‹" + app.resSym.getName + "›"
+          then
+            summon[ShowCfg].shownSymbols.add(app.resSym)
+            "‹" :: app.resSym.getName :: "›"
           else ""
         }"
       case lam: Lam => doc"${lam.params.show} => ${lam.body.show}"
@@ -546,6 +552,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
             else doc"[${td.tparams.get.map(_.sym.showName).mkDocument(", ")}]")
           :: td.params.map(_.show).mkDocument()
           :: td.sign.fold(doc"")(s => doc": ${s.show}")
+          :: (if summon[ShowCfg].showFlowSymbols then doc" ‹${td.bsym.flow.showName}›" else doc"")
           :: td.body.fold(doc"")(b => doc" = ${b.show}")
       case cld: ClassLikeDef =>
           cld.annotations.map(_.show).mkDocument()
@@ -582,8 +589,8 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       showPlain
 
   def showAsParams(using Scope, ShowCfg): Document = this match
-    case tup: Tup => s"(${tup.fields.map(_.show).mkDocument(", ")})"
-    case _ => s"(...$show)"
+    case tup: Tup => doc"(${tup.fields.map(_.show).mkDocument(", ")})"
+    case _ => doc"(...$show)"
   
   def showDbgAsParams: Str = this match
     case tup: Tup => s"(${tup.fields.map(_.showDbg).mkString(", ")})"
@@ -807,7 +814,6 @@ sealed abstract class ClassLikeDef extends TypeLikeDef:
 
 
 case class ModuleOrObjectDef(
-  path: Elaborator.Ctx,
   owner: Opt[InnerSymbol], 
   sym: ModuleOrObjectSymbol, 
   bsym: BlockMemberSymbol,
@@ -819,6 +825,8 @@ case class ModuleOrObjectDef(
   body: ObjBody,
   companion: Opt[ModuleCompanionSymbol],
   annotations: Ls[Annot],
+)(
+  val path: Elaborator.Ctx // TODO: use more lightweight repr.
 ) extends ClassLikeDef, CompanionValue
 
 case class PatternDef(
@@ -965,7 +973,7 @@ object PlainFld:
   def apply(term: Term) = Fld(FldFlags.empty, term, N)
   def unapply(fld: Fld): Opt[Term] = S(fld.term)
 final case class Spd(eager: Bool, term: Term) extends Elem:
-  def show(using Scope, ShowCfg): Document = (if eager then "..." else "..") + term.show
+  def show(using Scope, ShowCfg): Document = (if eager then "..." else "..") :: term.show
   def showDbg: Str = (if eager then "..." else "..") + term.showDbg
 
 final case class TyParam(flags: FldFlags, vce: Opt[Bool], sym: VarSymbol) extends Declaration:
@@ -1003,7 +1011,7 @@ extends Declaration, AutoLocated:
   override protected def children: List[Located] = sym :: sign.toList
   
   def show(using Scope, ShowCfg): Document =
-    doc"${flags.show}${sym.showName}${sign.fold("")(": " + _.show)}"
+    doc"${flags.show}${sym.showName}${sign.fold(doc"")(": " :: _.show)}"
   
   def showDbg: Str = flags.show + sym + sign.fold("")(": " + _.showDbg)
 
@@ -1045,7 +1053,7 @@ object ParamListFlags:
 trait FldImpl extends AutoLocated:
   self: Fld =>
   def children: Ls[Located] = self.term :: self.asc.toList ::: Nil
-  def show(using Scope, ShowCfg): Document = flags.show + self.term.show
+  def show(using Scope, ShowCfg): Document = flags.show :: self.term.show
   def showDbg: Str = flags.show + self.term.showDbg
   def describe: Str =
     (if self.flags.spec then "specialized " else "") +

@@ -24,8 +24,9 @@ abstract class Symbol(using State) extends Located:
   def getName(using scp: Scope): hkmc2.document.Document =
     import hkmc2.document.*
     scp.allocateOrGetName(this)
-
+  
   def showName(using scp: Scope, cfg: ShowCfg): hkmc2.document.Document =
+    cfg.shownSymbols += this
     import hkmc2.document.*
     val name = nme
     if cfg.showFlowSymbols
@@ -154,6 +155,7 @@ object FlowSymbol:
     FlowSymbol("app")
 
   def sel(nme: Str)(using State) =
+    // FlowSymbol(s"⋅$nme")
     FlowSymbol(s"⋅$nme")
   
 end FlowSymbol
@@ -243,7 +245,7 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
   def subst(using sub: SymbolSubst): BlockMemberSymbol = sub.mapBlockMemberSym(this)
   
   // * The flow of this symbol, when interpreted as a term (assuming no disambiguation)
-  lazy val flow: FlowSymbol = FlowSymbol(s"member-flow:$nme")(using getState)
+  lazy val flow: FlowSymbol = FlowSymbol(s"flow:$nme")(using getState)
   
 end BlockMemberSymbol
 

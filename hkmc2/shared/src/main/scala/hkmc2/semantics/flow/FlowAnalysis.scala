@@ -15,7 +15,6 @@ import syntax.Tree
 import Elaborator.{State, Ctx, ctx}
 import Producer as P
 import Consumer as C
-import SelTarget as ST
 
 
 
@@ -28,7 +27,7 @@ type ProdCtor = Producer.Ctor | Producer.Fun | Producer.Typ | Producer.Tup
 case class ConcreteProd(path: Path, ctor: ProdCtor)
 
 
-enum SelTarget:
+enum SelectionTarget:
   case ObjectMember(sym: FieldSymbol)
   case CompanionMember(comp: Term, sym: FieldSymbol)
 
@@ -210,7 +209,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
   val selsToExpand: mutable.Buffer[Sel] = mutable.Buffer.empty
   
   def expandTerms() =
-    import SelTarget.*
+    import SelectionTarget.*
     selsToExpand.foreach: sel =>
       log(s"Resolved targets for ${sel.showDbg}: ${sel.resolvedTargets.mkString(", ")}")
       assert(sel.expansion.isEmpty)
@@ -319,7 +318,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
                 val d = sym.defn.getOrElse(die)
                 d.body.members.get(sel.nme.name) match
                 case S(memb: BlockMemberSymbol) =>
-                  sel.trm.resolvedTargets ::= ST.ObjectMember(memb)
+                  sel.trm.resolvedTargets ::= SelectionTarget.ObjectMember(memb)
                   log(s"Found immediate member ${memb}")
                   val lhs = P.Flow(memb.flow)
                   toSolve.push(Constraint(lhs, sel.res))
@@ -337,7 +336,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
                         log(s"Access path: ${patho}")
                         patho match
                         case S(path) =>
-                          sel.trm.resolvedTargets ::= ST.CompanionMember(path, memb)
+                          sel.trm.resolvedTargets ::= SelectionTarget.CompanionMember(path, memb)
                           val lhs = memb match
                             case memb: BlockMemberSymbol => P.Flow(memb.flow)
                             case _ => TODO(memb)
@@ -387,5 +386,28 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
     case sym :: syms => S:
       syms.foldLeft(sym.bms.getOrElse(die).ref(): Term): (a, b) =>
         Sel(a, Tree.Ident(b.nme))(S(b.bms.getOrElse(die)), N, N)
-
+  
+  
+  import hkmc2.document.*
+  import utils.Scope
+  
+  def showFlows(using Scope, ShowCfg): Document =
+    val syms = summon[ShowCfg].shownSymbols.toIndexedSeq.sortBy(_.uid)
+    doc" #{  # ${
+      syms.collect:
+        case sym: FlowSymbol =>
+          (
+            if sym.producers.isEmpty then Nil else doc"${sym.showName}  <~  ${
+              sym.producers.toSeq.map(_.ctor.show).mkDocument(doc"  ")}" :: Nil
+          ) ::: (
+            if sym.consumers.isEmpty then Nil else doc"${sym.showName}  ~>  ${
+                sym.consumers.toSeq.map(_.show).mkDocument(doc"  ")}" :: Nil
+          ) ::: (
+            if sym.outFlows.isEmpty then Nil else doc"${sym.showName}  ->  ${
+                sym.outFlows.toSeq.map(_.showName).mkDocument(doc"  ")}" :: Nil
+          ) ::: Nil
+      .flatten.mkDocument(doc" # ")
+    } #} "
+  
+end FlowAnalysis
 

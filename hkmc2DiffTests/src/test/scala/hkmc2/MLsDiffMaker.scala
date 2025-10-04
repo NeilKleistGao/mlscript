@@ -295,8 +295,8 @@ abstract class MLsDiffMaker extends DiffMaker:
           showFlowSymbols = true,
         )
         output(s"Flowed:\n${
-          document.Document.bracketed("", ""):
-            trm.showTopLevel(using flowScp)
+          import document.*
+          doc" #{ ${trm.showTopLevel(using flowScp)} #} \nwhere #{ ${floan.showFlows(using flowScp)} #} ".mkString()
         }")
     
   

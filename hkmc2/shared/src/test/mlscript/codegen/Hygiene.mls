@@ -230,3 +230,44 @@ Runtime
 //│ ╙──       	^^^^^^^
 
 
+:sjs
+module AA with
+  module BB with
+    val y = 2
+    fun test =
+      let BB = "oops"
+      y
+//│ JS (unsanitized):
+//│ let AA1;
+//│ globalThis.Object.freeze(class AA {
+//│   static {
+//│     AA1 = this
+//│   }
+//│   constructor() {
+//│     runtime.Unit;
+//│   }
+//│   static {
+//│     globalThis.Object.freeze(class BB {
+//│       static {
+//│         AA.BB = this
+//│       }
+//│       constructor() {
+//│         runtime.Unit;
+//│       }
+//│       static {
+//│         this.y = 2;
+//│       }
+//│       static get test() {
+//│         let BB1;
+//│         BB1 = "oops";
+//│         return BB.y;
+//│       }
+//│       toString() { return runtime.render(this); }
+//│       static [definitionMetadata] = ["class", "BB"]; 
+//│     });
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "AA"]; 
+//│ });
+
+
