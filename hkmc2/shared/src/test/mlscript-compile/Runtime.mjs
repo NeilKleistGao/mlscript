@@ -16,15 +16,12 @@ globalThis.Object.freeze(class Runtime {
   }
   static #stackLimit;
   static #stackDepth;
-  static #stackOffset;
   static #stackHandler;
   static #stackResume;
   static get stackLimit() { return Runtime.#stackLimit; }
   static set stackLimit(value) { Runtime.#stackLimit = value; }
   static get stackDepth() { return Runtime.#stackDepth; }
   static set stackDepth(value) { Runtime.#stackDepth = value; }
-  static get stackOffset() { return Runtime.#stackOffset; }
-  static set stackOffset(value) { Runtime.#stackOffset = value; }
   static get stackHandler() { return Runtime.#stackHandler; }
   static set stackHandler(value) { Runtime.#stackHandler = value; }
   static get stackResume() { return Runtime.#stackResume; }
@@ -272,6 +269,12 @@ globalThis.Object.freeze(class Runtime {
       constructor(next) {
         this.next = next;
       }
+      doUnwind(res1, newPc) {
+        this.pc = newPc;
+        res1.contTrace.last.next = this;
+        res1.contTrace.last = this;
+        return res1
+      }
       toString() { return runtime.render(this); }
       static [definitionMetadata] = ["class", "FunctionContFrame", ["next"]]; 
     });
@@ -360,7 +363,6 @@ globalThis.Object.freeze(class Runtime {
     });
     this.stackLimit = 0;
     this.stackDepth = 0;
-    this.stackOffset = 0;
     this.stackHandler = null;
     this.stackResume = null;
     globalThis.Object.freeze(class StackDelayHandler {
@@ -897,13 +899,15 @@ globalThis.Object.freeze(class Runtime {
     }
   } 
   static resumeContTrace(contTrace, value) {
-    let cont, handlerCont, scrut, scrut1, tmp, tmp1, tmp2, tmp3, tmp4;
+    let cont, handlerCont, curDepth, scrut, scrut1, tmp, tmp1, tmp2, tmp3, tmp4;
     cont = contTrace.next;
     handlerCont = contTrace.nextHandler;
+    curDepth = Runtime.stackDepth;
     tmp5: while (true) {
       if (cont instanceof Runtime.FunctionContFrame.class) {
         tmp = runtime.safeCall(cont.resume(value));
         value = tmp;
+        Runtime.stackDepth = curDepth;
         if (value instanceof Runtime.EffectSig.class) {
           value.contTrace.last.next = cont.next;
           value.contTrace.lastHandler.nextHandler = handlerCont;
@@ -943,46 +947,33 @@ globalThis.Object.freeze(class Runtime {
     return tmp4
   } 
   static checkDepth() {
-    let scrut, tmp, tmp1, lambda;
-    tmp = Runtime.stackDepth - Runtime.stackOffset;
-    tmp1 = tmp >= Runtime.stackLimit;
+    let scrut, tmp, lambda;
+    tmp = Runtime.stackDepth >= Runtime.stackLimit;
     lambda = (undefined, function () {
       return Runtime.stackHandler !== null
     });
-    scrut = runtime.short_and(tmp1, lambda);
+    scrut = runtime.short_and(tmp, lambda);
     if (scrut === true) {
       return runtime.safeCall(Runtime.stackHandler.delay())
     } else {
       return runtime.Unit
     }
   } 
-  static resetDepth(tmp, curDepth) {
-    let scrut, tmp1;
-    Runtime.stackDepth = curDepth;
-    scrut = curDepth < Runtime.stackOffset;
-    if (scrut === true) {
-      Runtime.stackOffset = curDepth;
-      tmp1 = runtime.Unit;
-    } else {
-      tmp1 = runtime.Unit;
-    }
-    return tmp
-  } 
   static runStackSafe(limit, f) {
     let result, scrut, saved, tmp, tmp1;
     Runtime.stackLimit = limit;
     Runtime.stackDepth = 1;
-    Runtime.stackOffset = 0;
     Runtime.stackHandler = Runtime.StackDelayHandler;
     result = Runtime.enterHandleBlock(Runtime.StackDelayHandler, f);
+    Runtime.stackDepth = 1;
     tmp2: while (true) {
       scrut = Runtime.stackResume !== null;
       if (scrut === true) {
         saved = Runtime.stackResume;
         Runtime.stackResume = null;
-        Runtime.stackOffset = Runtime.stackDepth;
         tmp = runtime.safeCall(saved());
         result = tmp;
+        Runtime.stackDepth = 1;
         tmp1 = runtime.Unit;
         continue tmp2
       } else {
@@ -992,7 +983,6 @@ globalThis.Object.freeze(class Runtime {
     }
     Runtime.stackLimit = 0;
     Runtime.stackDepth = 0;
-    Runtime.stackOffset = 0;
     Runtime.stackHandler = null;
     return result
   } 
