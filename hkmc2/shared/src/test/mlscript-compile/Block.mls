@@ -12,8 +12,8 @@ type Opt[A] = Option[A]
 // dependancies referenced in Block classes
 
 // copying Tree.Ident => Str in Term.mls
-class Ident(name: Str) // translation of Tree.Ident
-class VarSymbol(id: Ident)
+class Ident(val name: Str) // translation of Tree.Ident
+class VarSymbol(val id: Ident)
 type Local = Symbol
 // should these be replaced with just Symbol?
 type FieldSymbol = Symbol
@@ -26,98 +26,83 @@ type ModuleOrObjectSymbol = Symbol
 type MemberSymbol = Symbol
 
 type Literal = null | undefined | Str | Int | Num | Bool
-class Arg(spread: Opt[Bool], value: Path)
+class Arg(val spread: Opt[Bool], val value: Path)
 
-class ClsLikeKind(desc: Str)
-class ParamListFlags(ctx: Bool)
-class FldFlags(_mut: Bool, spec: Bool, pat: Bool, isVal: Bool)
-class Modulefulness(msym: Opt[ModuleOrObjectSymbol])
-class Param(flags: FldFlags, sym: VarSymbol, sign: Opt[Term.Term], modulefulness: Modulefulness)
-class ParamList(flags: ParamListFlags, params: Array[Param], restParam: Opt[Param])
-// class Handler(
-//   sym: BlockMemberSymbol,
-//   resumeSym: VarSymbol,
-//   params: Array[ParamList],
-//   body: Block,
-// )
+class ClsLikeKind(val desc: Str)
+class ParamListFlags(val ctx: Bool)
+class FldFlags(val _mut: Bool, val spec: Bool, val pat: Bool, val isVal: Bool)
+class Modulefulness(val msym: Opt[ModuleOrObjectSymbol])
+class Param(val flags: FldFlags, val sym: VarSymbol, val sign: Opt[Term.Term], val modulefulness: Modulefulness)
+class ParamList(val flags: ParamListFlags, val params: Array[Param], val restParam: Opt[Param])
+
+// Defined Classes for Block
 
 class Path with
-  class Select(qual: Path, name: Ident)(symcol: Opt[FieldSymbol])
-  class Value with
-    constructor
-      Ref(l: Local)
-      Lit(lit: Literal)
+      constructor
+      Select(val qual: Path, val name: Ident)(symcol: Opt[FieldSymbol])
+    ValueRef(val l: Local)
+      ValueLit(val lit: Literal)
       // TODO Tup
   
 class Case with
   constructor
-    CaseLit(lit: Literal)
-    Cls(cls: ClassLikeSymbol, path: Path)
-    Tup(len: Int, inf: Bool)
-    Field(name: Ident, safe: Bool)
+    CaseLit(val lit: Literal)
+    Cls(val cls: ClassLikeSymbol, val path: Path)
+    Tup(val len: Int, val inf: Bool)
+    Field(val name: Ident, val safe: Bool)
 
 class Result with 
   constructor
-    TrivialResult
-    Call(_fun: Path, args: Array[Arg])(isMlsFun: Bool, mayRaiseEffects: Bool)
-    Instantiate(_mut: Bool, cls: Path, args: Array[Arg]) // may assume immutable
-    Tuple(_mut: Bool, elems: Array[Arg]) // may assume immutable
+TrivialResult(val path: Path) // only Path extends TrivialResult
+    Call(val _fun: Path, val args: Array[Arg])(isMlsFun: Bool, mayRaiseEffects: Bool)
+    Instantiate(val _mut: Bool, val cls: Path, val args: Array[Arg]) // may assume immutable
+    Tuple(val _mut: Bool, val elems: Array[Arg]) // may assume immutable
 
+// moved owner and innerSym into the argument to comply with `constructor` syntax
 class Defn with 
-  class ValDefn(
-    tsym: TermSymbol,
-    sym: BlockMemberSymbol,
-    rhs: Path
-  ) with
-    val innerSym = Some(tsym)
-    val owner: Opt[InnerSymbol] = tsym.owner
-  class ClsLikeDefn(
-    owner: Opt[InnerSymbol],
-    isym: MemberSymbol & InnerSymbol,
-    sym: BlockMemberSymbol,
-    k: ClsLikeKind,
-    paramsOpt: Opt[ParamList],
-    auxParams: Array[ParamList],
-    parentPath: Opt[Path],
-    methods: Array[FunDefn],
-    privateFields: Array[TermSymbol],
-    publicFields: Array[BlockMemberSymbol -> TermSymbol],
-    preCtor: Block,
-    ctor: Block,
-    companion: Opt[ClsLikeBody],
-  ) with
-    val innerSym = Some(isym)
-  class FunDefn(
-      owner: Opt[InnerSymbol],
-      sym: BlockMemberSymbol,
-      params: Array[ParamList],
-      body: Block,
-  ) with 
-    val innerSym = None
-
-// this is needed to convert the non-type selection to a type
-type FunDefn = Defn.FunDefn
+  constructor 
+    ValDefn(
+      val tsym: TermSymbol,
+      val sym: BlockMemberSymbol,
+      val rhs: Path,
+      val innerSym: Symbol = Some(tsym),
+      val owner: Opt[InnerSymbol] = tsym.owner,
+    )
+    ClsLikeDefn(
+      val owner: Opt[InnerSymbol],
+      val isym: MemberSymbol & InnerSymbol,
+      val sym: BlockMemberSymbol,
+      val k: ClsLikeKind,
+      val paramsOpt: Opt[ParamList],
+      val auxParams: Array[ParamList],
+      val parentPath: Opt[Path],
+      val methods: Array[FunDefn],
+      val privateFields: Array[TermSymbol],
+      val publicFields: Array[BlockMemberSymbol -> TermSymbol],
+      val preCtor: Block,
+      val ctor: Block,
+      val companion: Opt[ClsLikeBody],
+      val innerSym: Symbol = Some(isym),
+    )
+    FunDefn(
+      val owner: Opt[InnerSymbol],
+      val sym: BlockMemberSymbol,
+      val params: Array[ParamList],
+      val body: Block,
+      val innerSym: Symbol = None,
+    )
 
 class ClsLikeBody(
-  isym: MemberSymbol & InnerSymbol,
-  methods: Array[FunDefn],
-  privateFields: Array[TermSymbol],
-  publicFields: Array[BlockMemberSymbol -> TermSymbol],
-  ctor: Block,
+  val isym: MemberSymbol & InnerSymbol,
+  val methods: Array[FunDefn],
+  val privateFields: Array[TermSymbol],
+  val publicFields: Array[BlockMemberSymbol -> TermSymbol],
+  val ctor: Block,
 )
 
 class Block with
-  class Match(scrut: Path, arms: Array[Case -> Block], dflt: Opt[Block], rest: Block)
-  class Return(res: Result, implct: Bool)
-  class Label(lavel: Local, body: Block, rest: Block)
-  class Define(defn: Defn, rest: Block)
-  // class HandleBlock(
-  //   lhs: Local,
-  //   rhs: Local,
-  //   par: Path,
-  //   args: Array[Path],
-  //   cls: ClassSymbol,
-  //   handlers: Array[Handler],
-  //   body: Block,
-  //   rest: Block,
-  // )
+  constructor
+Match(val scrut: Path, val arms: Array[Case -> Block], val dflt: Opt[Block], val rest: Block)
+  Return(val res: Result, val implct: Bool)
+  Label(val lavel: Local, val body: Block, val rest: Block)
+  Define(val defn: Defn, val rest: Block)
