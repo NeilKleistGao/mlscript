@@ -13,23 +13,21 @@ type Opt[A] = Option[A]
 
 // copying Tree.Ident => Str in Term.mls
 class Ident(val name: Str) // translation of Tree.Ident
+class Symbol(val name: Str)
 class VarSymbol(val id: Ident)
 
 type Literal = null | undefined | Str | Int | Num | Bool
 class Arg(val spread: Opt[Bool], val value: Path)
 
 class ClsLikeKind(val desc: Str)
-class ParamListFlags(val ctx: Bool)
-class FldFlags(val _mut: Bool, val spec: Bool, val pat: Bool, val isVal: Bool)
-class Modulefulness(val msym: Opt[Symbol])
-class Param(val flags: FldFlags, val sym: VarSymbol, val sign: Opt[Term.Term], val modulefulness: Modulefulness)
-class ParamList(val flags: ParamListFlags, val params: Array[Param], val restParam: Opt[Param])
+// copying ParamList => Array[Symbol] in Term.mls
+type ParamList = Array[Symbol]
 
 // Defined Classes for Block
 
 class Path with
   constructor
-    Select(val qual: Path, val name: Ident)(symcol: Opt[Symbol])
+    Select(val qual: Path, val name: Ident)(symcol: Opt[Symbol]) // extra term unnecessary?
     ValueRef(val l: Symbol)
     ValueLit(val lit: Literal)
     // TODO Tup
