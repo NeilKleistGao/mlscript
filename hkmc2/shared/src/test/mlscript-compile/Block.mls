@@ -28,13 +28,14 @@ type ParamList = Array[Symbol]
 class Path with
   constructor
     Select(val qual: Path, val name: Ident)(symcol: Opt[Symbol]) // extra term unnecessary?
+    DynSelect(val qual: Path, val fld: Path, arrayIdx: Bool)
     ValueRef(val l: Symbol)
     ValueLit(val lit: Literal)
     // TODO Tup
   
 class Case with
   constructor
-    CaseLit(val lit: Literal)
+    Lit(val lit: Literal)
     Cls(val cls: Symbol, val path: Path)
     Tup(val len: Int, val inf: Bool)
     Field(val name: Ident, val safe: Bool)
@@ -92,5 +93,7 @@ class Block with
   constructor
     Match(val scrut: Path, val arms: Array[Case -> Block], val dflt: Opt[Block], val rest: Block)
     Return(val res: Result, val implct: Bool)
-    Label(val lavel: Symbol, val body: Block, val rest: Block)
+    Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
+    Label(val lavel: Symbol, val body: Block, val rest: Block) // unused?
     Define(val defn: Defn, val rest: Block)
+    End()
