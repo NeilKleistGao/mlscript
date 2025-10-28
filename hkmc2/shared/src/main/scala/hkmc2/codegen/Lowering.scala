@@ -62,7 +62,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         tl.trace[Term](s"Expanding term ${r}", post = t => s"~> ${t}"):
           r.expanded
       case t => t
-  
+
   val lowerHandlers: Bool = config.effectHandlers.isDefined
   val lift: Bool = config.liftDefns.isDefined
 
@@ -168,28 +168,34 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         case N => // abstract declarations have no lowering
           blockImpl(stats, res)(k)
         case S(bod) =>
-          td.k match
-          case knd: syntax.Val =>
-            assert(td.params.isEmpty)
-            subTerm_nonTail(bod)(r =>
-              // Assign(td.sym, r,
-              //   term(st.Blk(stats, res))(k)))
-              Define(ValDefn(td.tsym, td.sym, r),
-                blockImpl(stats, res)(k)))
-          case syntax.Fun =>
-            val (paramLists, bodyBlock) = setupFunctionOrByNameDef(td.params, bod, S(td.sym.nme))
-            Define(FunDefn(td.owner, td.sym, paramLists, bodyBlock),
-              blockImpl(stats, res)(k))
-          case syntax.Ins =>
-            // Implicit instances are not parameterized for now.
-            assert(td.params.isEmpty)
-            subTerm(bod)(r =>
-              Define(ValDefn(td.tsym, td.sym, r),
-                blockImpl(stats, res)(k)))
-          case syntax.LetBind | syntax.ParamBind | syntax.HandlerBind => fail:
-            ErrorReport(
-              msg"Unexpected declaration kind '${td.k.str}' in lowering" -> td.toLoc :: Nil,
-              source = Diagnostic.Source.Compilation)
+          val isStaged: Bool = td.extraAnnotations.exists:
+            case Annot.Modifier(syntax.Keyword.`staged`) => true
+            case _ => false
+          if isStaged then
+            stage(d)(k)
+          else
+            td.k match
+            case knd: syntax.Val =>
+              assert(td.params.isEmpty)
+              subTerm_nonTail(bod)(r =>
+                // Assign(td.sym, r,
+                //   term(st.Blk(stats, res))(k)))
+                Define(ValDefn(td.tsym, td.sym, r),
+                  blockImpl(stats, res)(k)))
+            case syntax.Fun =>
+              val (paramLists, bodyBlock) = setupFunctionOrByNameDef(td.params, bod, S(td.sym.nme))
+              Define(FunDefn(td.owner, td.sym, paramLists, bodyBlock),
+                blockImpl(stats, res)(k))
+            case syntax.Ins =>
+              // Implicit instances are not parameterized for now.
+              assert(td.params.isEmpty)
+              subTerm(bod)(r =>
+                Define(ValDefn(td.tsym, td.sym, r),
+                  blockImpl(stats, res)(k)))
+            case syntax.LetBind | syntax.ParamBind | syntax.HandlerBind => fail:
+              ErrorReport(
+                msg"Unexpected declaration kind '${td.k.str}' in lowering" -> td.toLoc :: Nil,
+                source = Diagnostic.Source.Compilation)
       case cls: ClassLikeDef if cls.sym.defn.exists(_.hasDeclareModifier.isDefined) =>
         // * Declarations have no lowering
         blockImpl(stats, res)(k)
@@ -900,6 +906,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         source = Diagnostic.Source.Compilation
       )
   
+  def stage(t: Declaration)(k: Result => Block)(using Subst): Block = ???
+
   def gatherMembers(clsBody: ObjBody)(using Subst)
   : (Ls[FunDefn], Ls[BlockMemberSymbol -> TermSymbol], Ls[TermSymbol], Block) =
     val mtds = clsBody.methods
@@ -1053,6 +1061,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
   def reportAnnotations(target: Statement, annotations: Ls[Annot]): Unit =
     annotations.foreach:
       case Annot.Untyped => ()
+      case Annot.Modifier(syntax.Keyword("staged")) => ()
       case annot => raise:
         WarningReport(msg"This annotation has no effect." -> annot.toLoc :: Nil)
 

@@ -20,6 +20,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val predefFile: os.Path // * Contains MLscript standard library definitions
   val runtimeFile: os.Path = predefFile/os.up/"Runtime.mjs" // * Contains MLscript runtime definitions
   val termFile: os.Path = predefFile/os.up/"Term.mjs" // * Contains MLscript runtime term definitions
+  val blockFile: os.Path = predefFile/os.up/"Block.mjs" // * Contains MLscript runtime block definitions
   
   val wd = file / os.up
   
@@ -63,6 +64,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val stackSafe = Command("stackSafe")(_.trim)
   val liftDefns = NullaryCommand("lift")
   val importQQ = NullaryCommand("qq")
+  val staging = NullaryCommand("staging")
   
   def mkConfig: Config =
     import Config.*
@@ -150,6 +152,11 @@ abstract class MLsDiffMaker extends DiffMaker:
       given Config = mkConfig
       processTrees(
         PrefixApp(Keywrd(`import`), StrLit(termFile.toString)) :: Nil)
+    if staging.isSet then
+      given Config = mkConfig
+      processTrees(
+        PrefixApp(Keywrd(`import`), StrLit(blockFile.toString)) :: Nil)
+
     super.init()
   
   
