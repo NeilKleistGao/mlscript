@@ -163,6 +163,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     case (d: Declaration) :: stats =>
       d match
       case td: TermDefinition =>
+        val isStaged = td.extraAnnotations.exists:
+          case Annot.Modifier(syntax.Keyword.`staged`) => true
+          case _ => false
         reportAnnotations(td, td.extraAnnotations)
         td.body match
         case N => // abstract declarations have no lowering
@@ -178,7 +181,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
                 blockImpl(stats, res)(k)))
           case syntax.Fun =>
             val (paramLists, bodyBlock) = setupFunctionOrByNameDef(td.params, bod, S(td.sym.nme))
-            Define(FunDefn(td.owner, td.sym, paramLists, bodyBlock),
+            Define(FunDefn(td.owner, td.sym, paramLists, bodyBlock, isStaged),
               blockImpl(stats, res)(k))
           case syntax.Ins =>
             // Implicit instances are not parameterized for now.
@@ -1053,8 +1056,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
   def reportAnnotations(target: Statement, annotations: Ls[Annot]): Unit =
     annotations.foreach:
       case Annot.Untyped => ()
-      case annot @ Annot.Modifier(syntax.Keyword("staged")) => raise:
-        WarningReport(msg"staged annotation has no effect." -> annot.toLoc :: Nil)
+      case annot @ Annot.Modifier(syntax.Keyword("staged")) => ()
       case annot => raise:
         WarningReport(msg"This annotation has no effect." -> annot.toLoc :: Nil)
 

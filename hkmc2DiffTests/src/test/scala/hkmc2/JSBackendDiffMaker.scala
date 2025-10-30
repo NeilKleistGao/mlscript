@@ -113,7 +113,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       )
       if showLoweredTree.isSet then
         output(s"Lowered:")
-        output(le.showAsTree)
+        output(le.showAsTree(using { case fd : hkmc2.codegen.FunDefn => s"staged=${fd.staged}" case _ => ""}))
       
       // * We used to do this to avoid needlessly generating new variable names in separate blocks:
       // val nestedScp = baseScp.nest

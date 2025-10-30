@@ -340,6 +340,14 @@ final case class FunDefn(
     body: Block,
 ) extends Defn:
   val innerSym = N
+  var staged = false 
+
+
+object FunDefn:
+  def apply(owner: Opt[InnerSymbol], sym: BlockMemberSymbol, params: Ls[ParamList], body: Block, staged: Boolean): FunDefn =
+    var f = new FunDefn(owner, sym, params, body)
+    f.staged = staged 
+    f
 
 
 final case class ValDefn(
