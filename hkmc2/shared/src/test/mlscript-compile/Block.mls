@@ -9,29 +9,24 @@ module Block with...
 
 type Opt[A] = Option[A]
 
-// dependancies referenced in Block classes
+// dependancies referenced in Block classes, referencing implementation in Term.mls
 
-// copying Tree.Ident => Str in Term.mls
 class Ident(val name: Str) // translation of Tree.Ident
 class Symbol(val name: Str)
-class VarSymbol(val id: Ident)
 
 type Literal = null | undefined | Str | Int | Num | Bool
 class Arg(val spread: Opt[Bool], val value: Path)
 
-// class ClsLikeKind(val desc: Str)
-// copying ParamList => Array[Symbol] in Term.mls
 type ParamList = Array[Symbol]
 
-// Defined Classes for Block
+// Classes defined in Block.scala
 
 class Path with
   constructor
-    Select(val qual: Path, val name: Ident)(symcol: Opt[Symbol]) // extra term unnecessary?
+    Select(val qual: Path, val name: Ident)
     DynSelect(val qual: Path, val fld: Path, arrayIdx: Bool)
     ValueRef(val l: Symbol)
     ValueLit(val lit: Literal)
-    // TODO Tup
   
 class Case with
   constructor
@@ -44,49 +39,30 @@ class Result with
   constructor
     TrivialResult(val path: Path) // only Path extends TrivialResult
     Call(val _fun: Path, val args: Array[Arg])(isMlsFun: Bool, mayRaiseEffects: Bool)
-    Instantiate(val _mut: Bool, val cls: Path, val args: Array[Arg]) // may assume immutable
-    Tuple(val _mut: Bool, val elems: Array[Arg]) // may assume immutable
+    Instantiate(val cls: Path, val args: Array[Arg]) // assume immutable
+    Tuple(val elems: Array[Arg]) // assume immutable
 
-// moved owner and innerSym into the argument to comply with `constructor` syntax
 class Defn with 
   constructor 
     ValDefn(
-      // val tsym: Symbol,
       val sym: Symbol,
       val rhs: Path,
-      // val innerSym: Symbol = Some(tsym),
-      // val owner: Opt[Symbol] = tsym.owner,
     )
     ClsLikeDefn(
-      // val owner: Opt[Symbol],
-      // val isym: Symbol,
       val sym: Symbol,
-      // val k: ClsLikeKind,
       val paramsOpt: Opt[ParamList],
-      // val auxParams: Array[ParamList],
-      // val parentPath: Opt[Path],
-      // val methods: Array[FunDefn],
-      // val privateFields: Array[Symbol],
-      // val publicFields: Array[Symbol -> Symbol],
-      // val preCtor: Block,
-      // val ctor: Block,
       val companion: Opt[ClsLikeBody],
-      // val innerSym: Symbol = Some(isym),
     )
     FunDefn(
-      // val owner: Opt[Symbol],
       val sym: Symbol,
       val params: Array[ParamList],
       val body: Block,
-      // val innerSym: Symbol = None,
     )
 
 class ClsLikeBody(
   val isym: Symbol,
   val methods: Array[FunDefn],
-  // val privateFields: Array[Symbol],
   val publicFields: Array[Symbol -> Symbol],
-  // val ctor: Block,
 )
 
 class Block with

@@ -72,7 +72,7 @@ class Instrumentation(using State):
 
   def stagedTuple(elems: Ls[Symbol | Path])(k: Path => Block): Block =
     // TODO: staging array
-      stagedBlock("Tuple", Ls(toValue(false), ???))(k)
+      stagedBlock("Tuple", Ls(???))(k)
   
   // helpers to create and access the components of a staged value
   def returnStagedValue(shape: Path, value: Path)(k: Path => Block): Block =
