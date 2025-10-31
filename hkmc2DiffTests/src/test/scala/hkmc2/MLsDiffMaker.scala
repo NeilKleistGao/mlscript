@@ -156,7 +156,6 @@ abstract class MLsDiffMaker extends DiffMaker:
       given Config = mkConfig
       processTrees(
         PrefixApp(Keywrd(`import`), StrLit(blockFile.toString)) :: Nil)
-
     super.init()
   
   
