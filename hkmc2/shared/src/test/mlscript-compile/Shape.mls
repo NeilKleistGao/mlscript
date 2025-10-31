@@ -1,0 +1,90 @@
+import "./Predef.mls"
+import "./Option.mls"
+
+open Predef
+open Option
+
+type Literal = null | undefined | Str | Int | Num | Bool
+type Opt[A] = Option[A]
+
+module Shape with...
+
+class Shape with
+  constructor
+    Dyn
+    Lit(val l: Literal)
+    Arr(val length: Int, val shapes: Array[Shape])
+    // TODO: change sym to accept multiple possible class symbols
+    Class(val sym: Symbol, val shapes: Array[Shape])
+    Unit
+
+fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
+  if [sym, l] is
+    ["Str", l] and l is Str then true
+    ["Int", i] and i is Int then true
+    ["Num", n] and n is Num then true
+    ["Bool", b] and b is Bool then true
+    _ then false
+
+// TODO: look at how Array is used
+fun mrg2(s1: Shape, s2: Shape) = if s1
+  == s2 then s1
+  is Lit(l) and s2 is Class(sym, shapes)
+    and isPrimitiveTypeOf(sym, l) then Class(sym, shapes)
+  is Class(sym1, shapes1) and s2 is Class(sym2, shapes2)
+    and sym1 == sym2 then Class(sym1, ???)
+  is Arr(l1, s1) and s2 is Arr(l2, s2)
+    and l1 == l2 then Arr(l1, ???)
+  else ???
+
+fun mrg(s1: Array[Shape]) = ???
+
+fun sel(s1: Shape, s2: Shape) = 
+  if [s1, s2] is
+    [Class(c, shapes), Lit(n)] // n_i ?
+    and n is Int then shapes.n
+    [Dyn, Lit(n)] // n_i ?
+    and n is Int then Dyn
+    [Arr(l, shapes), Lit(n)]
+    and n is Int then shapes.n
+    [Dyn, Lit(n)]
+    and n is Int then Dyn
+    [Dyn, Dyn] then Dyn
+    _ then ???
+
+fun static(s: Shape) = 
+  if s is
+    Lit then true
+    Class | Dyn then false // c vs c() ?
+    _ then ???
+
+module Pattern with...
+
+class Pattern with
+  constructor
+    Lit(val lit: Literal)
+    Class(val sym: Symbol)
+    Arr(val size: Int)
+    Wildcard
+
+fun silh(p: Pattern): Shape = if p is
+  Lit(l) then Shape.Lit(l)
+  // where to store size of argument array?
+  Class(sym) then Shape.Class(sym, ???)
+  // how to initialize array of Dyn?
+  Arr(n) then Shape.Arr(???)
+  Wildcard then Dyn
+
+fun match(s: Shape, p: Pattern): Option[Bool] = 
+  if [s, p] is
+    [Shape.Lit(l1), Lit(l2)] then Some(true)
+    [Shape.Lit(l), Class(c)] and isPrimitiveTypeOf(c, l) then Some(true)
+    [Shape.Class(c1, _), Class(c2)] and c1 == c2 then Some(true)
+    [Shape.Arr(n1, _), Arr(n2)] and n1 == n2 then Some(true)
+    [_, Wildcard] then Some(true)
+    [Shape.Dyn, _] then None
+    _ then Some(false)
+
+fun det(s: Shape, ps: Array[Pattern]): Option[Bool] = 
+  val a = ps.map(p => match(s, p) is Some(true))
+  return ???
