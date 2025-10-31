@@ -233,6 +233,8 @@ object Elaborator:
     val definitionMetadataSymbol = TempSymbol(N, "definitionMetadata")
     val prettyPrintSymbol = TempSymbol(N, "prettyPrint")
     val termSymbol = TempSymbol(N, "Term")
+    val blockSymbol = TempSymbol(N, "Block")
+    val shapeSymbol = TempSymbol(N, "Shape")
     val wasmSymbol = TempSymbol(N, "wasm")
     val effectSigSymbol = ClassSymbol(DummyTypeDef(syntax.Cls), Ident("EffectSig"))
     val nonLocalRetHandlerTrm =
