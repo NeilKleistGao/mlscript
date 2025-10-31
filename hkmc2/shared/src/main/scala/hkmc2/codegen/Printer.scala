@@ -63,8 +63,8 @@ object Printer:
     case fd @ FunDefn(own, sym, params, body) =>
       val docParams = doc"${own.fold("")(_.toString+"::")}${params.map(_.params.map(x => summon[Scope].allocateName(x.sym)).mkString("(", ", ", ")")).mkString("")}"
       val docBody = mkDocument(body)
-      val docInstr = if fd.staged then doc"staged " else doc""
-      doc"${docInstr}fun ${sym.nme}${docParams} { #{  # ${docBody} #}  # }"
+      val docStaged = if fd.staged then doc"staged " else doc""
+      doc"${docStaged}fun ${sym.nme}${docParams} { #{  # ${docBody} #}  # }"
     case ValDefn(tsym, sym, rhs) =>
       doc"val ${tsym.nme} = ${mkDocument(rhs)}"
     case ClsLikeDefn(own, _, sym, k, paramsOpt, auxParams, parentSym, methods,
