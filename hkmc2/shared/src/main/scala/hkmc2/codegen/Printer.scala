@@ -61,7 +61,7 @@ object Printer:
   
   def mkDocument(defn: Defn)(using Raise, Scope): Document = defn match
     case fd @ FunDefn(own, sym, params, body) =>
-      val docParams = doc"${own.fold("")(_.toString+"::")}${params.map(_.params.map(x => summon[Scope].allocateName(x.sym)).mkDocument("(", ", ", ")")).mkDocument("")}"
+      val docParams = doc"${own.fold("")(_.toString+"::")}${params.map(_.params.map(x => summon[Scope].allocateName(x.sym)).mkString("(", ", ", ")")).mkString("")}"
       val docBody = mkDocument(body)
       val docInstr = if fd.staged then doc"staged " else doc""
       doc"${docInstr}fun ${sym.nme}${docParams} { #{  # ${docBody} #}  # }"
