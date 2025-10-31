@@ -163,9 +163,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     case (d: Declaration) :: stats =>
       d match
       case td: TermDefinition =>
-        val isStaged = td.extraAnnotations.exists:
-          case Annot.Modifier(syntax.Keyword.`staged`) => true
-          case _ => false
         reportAnnotations(td, td.extraAnnotations)
         td.body match
         case N => // abstract declarations have no lowering
@@ -181,6 +178,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
                 blockImpl(stats, res)(k)))
           case syntax.Fun =>
             val (paramLists, bodyBlock) = setupFunctionOrByNameDef(td.params, bod, S(td.sym.nme))
+            val isStaged = td.extraAnnotations.contains(Annot.Modifier(syntax.Keyword.`staged`))
             Define(FunDefn(td.owner, td.sym, paramLists, bodyBlock, isStaged),
               blockImpl(stats, res)(k))
           case syntax.Ins =>
