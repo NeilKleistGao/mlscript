@@ -8,47 +8,6 @@ import semantics.Elaborator.State
 
 import syntax.{Literal, Tree}
 
-enum Shape:
-  case Dyn
-  case Lit(l: Literal)
-  case Arr(length: Int, shapes: Ls[Shape])
-  case Class(c: Symbol, shapes: Ls[Shape])
-  case Unit
-
-import Shape.{Dyn, Lit => SLit, Arr => SArr, Class => SClass, Unit}
-
-// TODO: use FlatPattern instead?
-enum Pattern:
-  case Lit(l: Literal)
-  case Class(c: Symbol)
-  case Arr(len: Int)
-  case Wildcard
-
-import Pattern.{Lit => PLit, Class => PClass, Arr => PArr, Wildcard}
-
-def isPrimitiveTypeOf(c: Symbol, l: SLit) = ???
-
-def mrg2(s1: Shape, s2: Shape): Shape = (s1, s2) match
-  case (s1, s2) if s1 == s2 => s1
-  case (l: SLit, s@SClass(c, _)) if isPrimitiveTypeOf(c, l) => s
-  case (SClass(c1, s1), SClass(c2, s2)) if c1 == c2 =>
-    SClass(c1, s1 zip s2 map mrg2)
-  case (SArr(l1, s1), SArr(l2, s2)) if l1 == l2 =>
-    SArr(l1, s1 zip s2 map mrg2)
-  case _ => Dyn
-
-def mrg(shapes: Ls[Shape]): Shape =
-  shapes.reduceRight(mrg2)
-
-def canMatch(s: Shape, p: Pattern): Opt[Bool] = (s, p) match
-  case (_, Wildcard) => Some(true)
-  case (SLit(l1), PLit(l2)) if l1 == l2 => S(true)
-  case (l: SLit, PClass(c)) if isPrimitiveTypeOf(c, l) => S(true)
-  case (SClass(c1, _), PClass(c2)) if c1 == c2 => S(true)
-  case (SArr(n1, s), PArr(n2)) if n1 == n2 => S(true)
-  case (Dyn, _) => None
-  case _ => Some(false)
-
 type BlockRet = (Block => Block, Shape, Value)
 class Instrumentation(using State):
   // use TempSymbol?
