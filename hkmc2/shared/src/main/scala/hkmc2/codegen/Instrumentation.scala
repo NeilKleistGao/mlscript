@@ -131,42 +131,19 @@ class Instrumentation(using State):
   def ruleInst(i: Instantiate): Block =
     val Instantiate(mut, cls, args) = i
     assert(!mut)
-    // the problem here is i can't accumulate the results?
-    val a0 = (f: List[Path] => Block) =>
-      (transformArg(args(0)):
-        _.mapTail {
-          case Return(r, _) =>
-            assign(r): p =>
-              f(Ls(p))
-          case _ => ???
-        }
-      )
 
-    val a1 = (f: List[Path] => Block) =>
-      a0: ls =>
-        transformArg(args(1)):
-          _.mapTail {
-            case Return(r, _) =>
-              assign(r): p =>
-                f(p :: ls)
-            case _ => ???
-          }
+    def rec(f: List[Path] => Block, a: Arg, rest: Ls[Path]) =
+      transformArg(a): b =>
+        extractResult(b): p =>
+          f(p :: rest)
 
-    val a2 = (f: List[Path] => Block) =>
-      a1: ls =>
-        transformArg(args(2)):
-          _.mapTail {
-            case Return(r, _) =>
-              assign(r): p =>
-                f(p :: ls)
-            case _ => ???
-          }
+    // collect up path for all args into a list
+    val a = args.foldRight((f: List[Path] => Block) => f(Nil))((a, acc) => f => acc(rec(f, a, _)))
+    val b = a: args =>
+      ???
 
-    val res = a2(ls => Return(Tuple(false, ls.reverse.map(toArg)), false))
-    ???
-
-    val as = args.map(transformArg)
-    // collect paths from each transformed arg
+      // val as = args.map(transformArg)
+      // collect paths from each transformed arg
 
     ???
 
