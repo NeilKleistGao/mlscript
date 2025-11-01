@@ -142,14 +142,13 @@ class Instrumentation(using State):
 
   def ruleSel(s: Select): Block =
     val Select(p, Tree.Ident(a)) = s
-    transformPath(p): b =>
-      extractResult(b): x =>
-        // TODO: how to format a?
-        val sel = ???
-        val n = ???
-        assign(Call(sel, Ls(getShape2(x), n).map(toArg))(true, false)): sp =>
-          stagedSelect(getCode2(x), a): cde =>
-            returnPair(sp, cde)
+    transformPath(p): x =>
+      // TODO: how to format a?
+      val sel = ???
+      val n = ???
+      assign(Call(sel, Ls(getShape2(x), n).map(toArg))(true, false)): sp =>
+        stagedSelect(getCode2(x), a): cde =>
+          returnPair(sp, cde)
 
   def ruleDynSel(d: DynSelect): Block = ???
 
@@ -169,11 +168,10 @@ class Instrumentation(using State):
               returnPair(sp, cde)
 
   def ruleReturn(r: Return): Block =
-    transformResult(r.res): b =>
-      extractResult(b): tmp =>
-        getShape(tmp): sp =>
-          stagedBlock("Return", Ls(getCode2(tmp))): cde =>
-            returnPair(sp, cde)
+    transformResult(r.res): x =>
+      getShape(x): sp =>
+        stagedBlock("Return", Ls(getCode2(x))): cde =>
+          returnPair(sp, cde)
 
   def ruleMatch(m: Match): Block = ???
 
@@ -186,19 +184,17 @@ class Instrumentation(using State):
 
   def ruleVal(defn: ValDefn, rest: Block): Block =
     val ValDefn(_, sym, rhs) = defn
-    transformPath(rhs): b =>
-      extractResult(b): y =>
-        transformBlock(rest): b =>
-          extractResult(b): z =>
-            // TODO: valdefn needs to be before code blocks?
-            Define(
-              ValDefn(???, sym, y),
-              getShape(z): sp =>
-                stagedSymbol("x"): x =>
-                  stagedBlock("ValDefn", Ls(x, getCode2(y))): df =>
-                    stagedBlock("Define", Ls(df, getCode2(z))): cde =>
-                      returnPair(sp, cde)
-            )
+    transformPath(rhs): y =>
+      transformBlock(rest): z =>
+        // TODO: valdefn needs to be before code blocks?
+        Define(
+          ValDefn(???, sym, y),
+          getShape(z): sp =>
+            stagedSymbol("x"): x =>
+              stagedBlock("ValDefn", Ls(x, getCode2(y))): df =>
+                stagedBlock("Define", Ls(df, getCode2(z))): cde =>
+                  returnPair(sp, cde)
+        )
 
   def ruleBlk(b: Block): Block = ???
 
@@ -206,7 +202,7 @@ class Instrumentation(using State):
 
   // functions for instrumentation
 
-  def transformPath(p: Path)(k: Block => Block): Block =
+  def transformPath(p: Path)(k: Path => Block): Block =
     p match
       // case Select(p, ident) => ???
       // case DynSelect(qual, fld, arrayIdx) => ???
@@ -214,21 +210,20 @@ class Instrumentation(using State):
       case Value.Lit(lit) => ruleLit(lit)
       case _ => ???
 
-  def transformResult(r: Result)(k: Block => Block): Block =
+  def transformResult(r: Result)(k: Path => Block): Block =
     ???
 
-  def transformArg(a: Arg)(k: Block => Block): Block =
+  def transformArg(a: Arg)(k: Path => Block): Block =
     ???
 
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: List[Arg])(k: (Ls[Path], Ls[Path]) => Block): Block =
     // collect (shape, code) pair for each arg
     def rec(f: List[(Path, Path)] => Block, a: Arg, rest: Ls[(Path, Path)]) =
-      transformArg(a): b =>
-        extractResult(b): p =>
-          getShape(p): sh =>
-            getCode(p): cde =>
-              f((sh, cde) :: rest)
+      transformArg(a): p =>
+        getShape(p): sh =>
+          getCode(p): cde =>
+            f((sh, cde) :: rest)
 
     // can you collect element wise instead?
     // val paths = args.map(a =>
@@ -243,4 +238,4 @@ class Instrumentation(using State):
       val (shapes, codes) = ps.unzip
       k(shapes, codes)
 
-  def transformBlock(b: Block)(k: Block => Block): Block = ???
+  def transformBlock(b: Block)(k: Path => Block): Block = ???
