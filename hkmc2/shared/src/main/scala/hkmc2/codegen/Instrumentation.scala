@@ -37,50 +37,25 @@ class Instrumentation(using State):
       case Return(r, _) => assign(r)(k)
       case _ => ??? // impossible
 
-  def stagedBlock(nme: String, args: Ls[Path | Symbol])(k: Path => Block): Block =
+  def mlsBlock(nme: String, args: Ls[Path | Symbol])(k: Path => Block): Block =
     val s = summon[State].blockSymbol.asPath.selSN(nme)
     assign(Instantiate(false, s, args.map(toArg)))(k)
-  def stagedShape(nme: String, args: Ls[Path | Symbol])(k: Path => Block): Block =
+  def mlsShape(nme: String, args: Ls[Path | Symbol])(k: Path => Block): Block =
     val s = summon[State].shapeSymbol.asPath.selSN(nme)
     assign(Instantiate(false, s, args.map(toArg)))(k)
 
   // helpers corresponding to constructors
 
-  def stagedSymbol(nme: String)(k: Path => Block): Block =
-    stagedBlock("Symbol", Ls(toValue(nme)))(k)
+  def mlsSymbol(nme: String)(k: Path => Block): Block =
+    mlsBlock("Symbol", Ls(toValue(nme)))(k)
 
-  def stagedIdent(nme: String)(k: Path => Block): Block =
-    stagedBlock("Ident", Ls(toValue(nme)))(k)
+  def mlsSelect(qual: Path, ident: Tree.Ident)(k: Path => Block): Block =
+    // unnecessary assignment?
+    assign(Select(qual, ident)(N))(k)
 
-  def stagedRef(l: Symbol)(k: Path => Block): Block =
-    stagedSymbol(l.nme): l =>
-      stagedBlock("ValueRef", Ls(l))(k)
-
-  // note that this is for Block.ValueLit, not Shape.Lit
-  def stagedBLit(l: Literal)(k: Path => Block): Block =
-    stagedBlock("ValueLit", Ls(Value.Lit(l)))(k)
-
-  def stagedSelect(qual: Path, name: Str)(k: Path => Block): Block =
-    stagedPath(qual): p =>
-      stagedIdent(name): i =>
-        stagedBlock("Select", Ls(p, i))(k)
-
-  def stagedDynSelect(qual: Path, fld: Path, arrayIdx: Bool)(k: Path => Block): Block =
-    stagedPath(qual): q =>
-      stagedPath(fld): f =>
-        stagedBlock("DynSelect", Ls(q, f, toValue(arrayIdx)))(k)
-
-  def stagedPath(p: Path)(k: Path => Block): Block = p match
-    case Select(qual, tree) => stagedSelect(qual, tree.name)(k)
-    case DynSelect(qual, fld, arrayIdx) => stagedDynSelect(qual, fld, arrayIdx)(k)
-    case Value.Ref(l) => stagedRef(l)(k)
-    case Value.Lit(lit) => stagedBLit(lit)(k)
-    case _ => ???
-
-  def stagedTuple(elems: Ls[Symbol | Path])(k: Path => Block): Block =
+  def mlsTuple(elems: Ls[Symbol | Path])(k: Path => Block): Block =
     // is this the same as "Ls of"?
-    assign(Tuple(false, elems.map(toArg))): tup =>
-      stagedBlock("Tuple", Ls(tup))(k)
+    assign(Tuple(false, elems.map(toArg)))(k)
 
   // helpers to create and access the components of a staged value
   // use getCode2 for spliced result, and getCode for code
@@ -91,43 +66,19 @@ class Instrumentation(using State):
   // can we just use getShape2 everywhere?
   def getShape2(p: Path): Path = DynSelect(p, toValue(0), false)
   def getCode2(p: Path): Path = DynSelect(p, toValue(1), false)
-  // simplifies transform-extract code
-  def extract(k: (Block => Block) => Block)(rest: Path => Block): Block =
-    k(extractResult(_)(rest))
-
-  // todo functions that fills out the holes in the functions above
-
-  // def stagedResult(res: Result)(k: Block => Block): Block = res match
-  //   case Call(fun, args) => ???
-  //   case res: Instantiate => ???
-  //   case Lambda(params, body) => ???
-  //   case Tuple(mut, elems) => ???
-  //   case Record(mut, elems) => ???
-  //   case p: Path => stagedPath(p)
-
-  // // probably wrong signature
-  // def stagedPath(p: Path): Block = ???
-
-  // def stagedArg(arg: Arg)(k: Path => Block): Block =
-  //   val stagedSpread = arg.spread match
-  //     case Some(value) => stagedBlock("Some", Ls(toValue(value)))
-  //     case None => stagedBlock("None", Ls())
-  //   stagedSpread: s =>
-  //     stagedPath(arg.value): v =>
-  //       stagedTuple(Ls(s, v))(k)
 
   // functions that perform the instrumentation
 
   def ruleLit(l: Literal): Block =
-    stagedShape("Lit", Ls(Value.Lit(l))): sp =>
-      stagedBlock("Lit", Ls(Value.Lit(l))): cde =>
+    mlsShape("Lit", Ls(Value.Lit(l))): sp =>
+      mlsBlock("Lit", Ls(Value.Lit(l))): cde =>
         returnPair(sp, cde)
 
   def ruleVar(r: Value.Ref): Block =
     // why not just use getShape2?
     getShape(r): sp =>
       // why not just use r?
-      stagedBlock("ValueRef", Ls(toValue(r.l.nme))): cde =>
+      mlsBlock("ValueRef", Ls(toValue(r.l.nme))): cde =>
         returnPair(sp, cde)
 
   def ruleTup(t: Tuple): Block =
@@ -135,19 +86,19 @@ class Instrumentation(using State):
     assert(!mut)
 
     transformArgs(elems): (shapes, codes) =>
-      stagedTuple(shapes): shapes =>
-        stagedShape("Arr", Ls(shapes)): sp =>
+      mlsTuple(shapes): shapes =>
+        mlsShape("Arr", Ls(shapes)): sp =>
           assign(Tuple(false, codes.map(toArg))): cde =>
             returnPair(sp, cde)
 
   def ruleSel(s: Select): Block =
-    val Select(p, Tree.Ident(a)) = s
+    val Select(p, i) = s
     transformPath(p): x =>
       // TODO: how to format a?
       val sel = ???
       val n = ???
       assign(Call(sel, Ls(getShape2(x), n).map(toArg))(true, false)): sp =>
-        stagedSelect(getCode2(x), a): cde =>
+        mlsSelect(getCode2(x), i): cde =>
           returnPair(sp, cde)
 
   def ruleDynSel(d: DynSelect): Block = ???
@@ -161,16 +112,16 @@ class Instrumentation(using State):
     assert(!mut)
 
     transformArgs(args): (shapes, codes) =>
-      stagedTuple(shapes): shapes =>
-        stagedTuple(codes): codes =>
-          stagedShape("Class", Ls(cls, shapes)): sp =>
-            stagedBlock("Instantiate", Ls(cls, codes)): cde =>
+      mlsTuple(shapes): shapes =>
+        mlsTuple(codes): codes =>
+          mlsShape("Class", Ls(cls, shapes)): sp =>
+            mlsBlock("Instantiate", Ls(cls, codes)): cde =>
               returnPair(sp, cde)
 
   def ruleReturn(r: Return): Block =
     transformResult(r.res): x =>
       getShape(x): sp =>
-        stagedBlock("Return", Ls(getCode2(x))): cde =>
+        mlsBlock("Return", Ls(getCode2(x))): cde =>
           returnPair(sp, cde)
 
   def ruleMatch(m: Match): Block = ???
@@ -178,23 +129,21 @@ class Instrumentation(using State):
   def ruleAssign(a: Assign): Block = ???
 
   def ruleEnd(): Block =
-    stagedShape("Unit", Ls()): sp =>
-      stagedBlock("End", Ls()): cde =>
+    mlsShape("Unit", Ls()): sp =>
+      mlsBlock("End", Ls()): cde =>
         returnPair(sp, cde)
 
   def ruleVal(defn: ValDefn, rest: Block): Block =
-    val ValDefn(_, sym, rhs) = defn
+    val ValDefn(tsym, sym, rhs) = defn
     transformPath(rhs): y =>
       transformBlock(rest): z =>
-        // TODO: valdefn needs to be before code blocks?
-        Define(
-          ValDefn(???, sym, y),
+        // TODO: valdefn needs to be before code blocks somehow?
+        (rest => Define(ValDefn(tsym, sym, y), rest)):
           getShape(z): sp =>
-            stagedSymbol("x"): x =>
-              stagedBlock("ValDefn", Ls(x, getCode2(y))): df =>
-                stagedBlock("Define", Ls(df, getCode2(z))): cde =>
+            mlsSymbol("x"): x =>
+              mlsBlock("ValDefn", Ls(x, getCode2(y))): df =>
+                mlsBlock("Define", Ls(df, getCode2(z))): cde =>
                   returnPair(sp, cde)
-        )
 
   def ruleBlk(b: Block): Block = ???
 
@@ -225,13 +174,8 @@ class Instrumentation(using State):
           getCode(p): cde =>
             f((sh, cde) :: rest)
 
-    // can you collect element wise instead?
-    // val paths = args.map(a =>
-    //   (k: Path => Block) =>
-    //     transformArg(a): b =>
-    //       extractResult(b)(k)
-    // )
     // collect up path for all args into a list
+    // can you collect element wise instead?
     args.foldRight((f: List[(Path, Path)] => Block) => f(Nil))((a, acc) =>
       f => acc(rest => rec(f, a, rest))
     ): ps =>
