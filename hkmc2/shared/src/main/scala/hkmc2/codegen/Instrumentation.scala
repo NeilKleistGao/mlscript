@@ -60,12 +60,9 @@ class Instrumentation(using State):
   // helpers to create and access the components of a staged value
   // use getCode2 for spliced result, and getCode for code
   def returnPair(shape: Path, value: Path): Block =
-    assign(Tuple(true, Ls(shape, value).map(toArg)))(end)
-  def getShape(p: Path)(k: Path => Block): Block = assign(getShape2(p))(k)
-  def getCode(p: Path)(k: Path => Block): Block = assign(getCode2(p))(k)
-  // can we just use getShape2 everywhere?
-  def getShape2(p: Path): Path = DynSelect(p, toValue(0), false)
-  def getCode2(p: Path): Path = DynSelect(p, toValue(1), false)
+    mlsTuple(Ls(shape, value))(end)
+  def getShape(p: Path): Path = DynSelect(p, toValue(0), false)
+  def getCode(p: Path): Path = DynSelect(p, toValue(1), false)
 
   // functions that perform the instrumentation
 
@@ -75,11 +72,9 @@ class Instrumentation(using State):
         returnPair(sp, cde)
 
   def ruleVar(r: Value.Ref): Block =
-    // why not just use getShape2?
-    getShape(r): sp =>
-      // why not just use r?
-      mlsBlock("ValueRef", Ls(toValue(r.l.nme))): cde =>
-        returnPair(sp, cde)
+    // why not just use r?
+    mlsBlock("ValueRef", Ls(toValue(r.l.nme))): cde =>
+      returnPair(getShape(r), cde)
 
   def ruleTup(t: Tuple): Block =
     val Tuple(mut, elems) = t
@@ -97,8 +92,8 @@ class Instrumentation(using State):
       // TODO: how to format a?
       val sel = ???
       val n = ???
-      assign(Call(sel, Ls(getShape2(x), n).map(toArg))(true, false)): sp =>
-        mlsSelect(getCode2(x), i): cde =>
+      assign(Call(sel, Ls(getShape(x), n).map(toArg))(true, false)): sp =>
+        mlsSelect(getCode(x), i): cde =>
           returnPair(sp, cde)
 
   def ruleDynSel(d: DynSelect): Block = ???
@@ -120,9 +115,8 @@ class Instrumentation(using State):
 
   def ruleReturn(r: Return): Block =
     transformResult(r.res): x =>
-      getShape(x): sp =>
-        mlsBlock("Return", Ls(getCode2(x))): cde =>
-          returnPair(sp, cde)
+      mlsBlock("Return", Ls(getCode(x))): cde =>
+        returnPair(getShape(x), cde)
 
   def ruleMatch(m: Match): Block = ???
 
@@ -138,12 +132,11 @@ class Instrumentation(using State):
     transformPath(rhs): y =>
       transformBlock(rest): z =>
         // TODO: valdefn needs to be before code blocks somehow?
-        (rest => Define(ValDefn(tsym, sym, y), rest)):
-          getShape(z): sp =>
-            mlsSymbol("x"): x =>
-              mlsBlock("ValDefn", Ls(x, getCode2(y))): df =>
-                mlsBlock("Define", Ls(df, getCode2(z))): cde =>
-                  returnPair(sp, cde)
+        (Define(ValDefn(tsym, sym, y), _)):
+          mlsSymbol("x"): x =>
+            mlsBlock("ValDefn", Ls(x, getCode(y))): df =>
+              mlsBlock("Define", Ls(df, getCode(z))): cde =>
+                returnPair(getShape(z), cde)
 
   def ruleBlk(b: Block): Block = ???
 
@@ -170,16 +163,13 @@ class Instrumentation(using State):
     // collect (shape, code) pair for each arg
     def rec(f: List[(Path, Path)] => Block, a: Arg, rest: Ls[(Path, Path)]) =
       transformArg(a): p =>
-        getShape(p): sh =>
-          getCode(p): cde =>
-            f((sh, cde) :: rest)
+        f((getShape(p), getCode(p)) :: rest)
 
     // collect up path for all args into a list
     // can you collect element wise instead?
-    args.foldRight((f: List[(Path, Path)] => Block) => f(Nil))((a, acc) =>
-      f => acc(rest => rec(f, a, rest))
-    ): ps =>
-      val (shapes, codes) = ps.unzip
-      k(shapes, codes)
+    args.foldRight((f: List[(Path, Path)] => Block) => f(Nil))((a, acc) => f => acc(rec(f, a, _))):
+      ps =>
+        val (shapes, codes) = ps.unzip
+        k(shapes, codes)
 
   def transformBlock(b: Block)(k: Path => Block): Block = ???
