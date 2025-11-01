@@ -28,6 +28,7 @@ class Instrumentation(using State):
   def end(l: Path): Block = Return(l, false)
 
   def assign(res: Result, name: String = "tmp")(k: Path => Block): Block =
+    // TODO: skip assignment if res: Path?
     val tmp = new TempSymbol(N, name)
     Assign(tmp, res, k(tmp.asPath))
 
@@ -82,33 +83,38 @@ class Instrumentation(using State):
       stagedBlock("Tuple", Ls(tup))(k)
 
   // helpers to create and access the components of a staged value
+  // use getCode2 for spliced result, and getCode for code
   def returnPair(shape: Path, value: Path): Block =
     assign(Tuple(true, Ls(shape, value).map(toArg)))(end)
   def getShape(p: Path)(k: Path => Block): Block = assign(getShape2(p))(k)
   def getCode(p: Path)(k: Path => Block): Block = assign(getCode2(p))(k)
+  // can we just use getShape2 everywhere?
   def getShape2(p: Path): Path = DynSelect(p, toValue(0), false)
   def getCode2(p: Path): Path = DynSelect(p, toValue(1), false)
+  // simplifies transform-extract code
+  def extract(k: (Block => Block) => Block)(rest: Path => Block): Block =
+    k(extractResult(_)(rest))
 
   // todo functions that fills out the holes in the functions above
 
-  def stagedResult(res: Result)(k: Block => Block): Block = res match
-    case Call(fun, args) => ???
-    case res: Instantiate => ???
-    case Lambda(params, body) => ???
-    case Tuple(mut, elems) => ???
-    case Record(mut, elems) => ???
-    case p: Path => stagedPath(p)
+  // def stagedResult(res: Result)(k: Block => Block): Block = res match
+  //   case Call(fun, args) => ???
+  //   case res: Instantiate => ???
+  //   case Lambda(params, body) => ???
+  //   case Tuple(mut, elems) => ???
+  //   case Record(mut, elems) => ???
+  //   case p: Path => stagedPath(p)
 
-  // probably wrong signature
-  def stagedPath(p: Path): Block = ???
+  // // probably wrong signature
+  // def stagedPath(p: Path): Block = ???
 
-  def stagedArg(arg: Arg)(k: Path => Block): Block =
-    val stagedSpread = arg.spread match
-      case Some(value) => stagedBlock("Some", Ls(toValue(value)))
-      case None => stagedBlock("None", Ls())
-    stagedSpread: s =>
-      stagedPath(arg.value): v =>
-        stagedTuple(Ls(s, v))(k)
+  // def stagedArg(arg: Arg)(k: Path => Block): Block =
+  //   val stagedSpread = arg.spread match
+  //     case Some(value) => stagedBlock("Some", Ls(toValue(value)))
+  //     case None => stagedBlock("None", Ls())
+  //   stagedSpread: s =>
+  //     stagedPath(arg.value): v =>
+  //       stagedTuple(Ls(s, v))(k)
 
   // functions that perform the instrumentation
 
@@ -124,6 +130,16 @@ class Instrumentation(using State):
       stagedBlock("ValueRef", Ls(toValue(r.l.nme))): cde =>
         returnPair(sp, cde)
 
+  def ruleTup(t: Tuple): Block =
+    val Tuple(mut, elems) = t
+    assert(!mut)
+
+    transformArgs(elems): (shapes, codes) =>
+      stagedTuple(shapes): shapes =>
+        stagedShape("Arr", Ls(shapes)): sp =>
+          assign(Tuple(false, codes.map(toArg))): cde =>
+            returnPair(sp, cde)
+
   def ruleSel(s: Select): Block =
     val Select(p, Tree.Ident(a)) = s
     transformPath(p): b =>
@@ -135,6 +151,23 @@ class Instrumentation(using State):
           stagedSelect(getCode2(x), a): cde =>
             returnPair(sp, cde)
 
+  def ruleDynSel(d: DynSelect): Block = ???
+
+  def ruleRefinedPath(p: Path): Block = ???
+
+  def ruleApp(c: Call): Block = ???
+
+  def ruleInst(i: Instantiate): Block =
+    val Instantiate(mut, cls, args) = i
+    assert(!mut)
+
+    transformArgs(args): (shapes, codes) =>
+      stagedTuple(shapes): shapes =>
+        stagedTuple(codes): codes =>
+          stagedShape("Class", Ls(cls, shapes)): sp =>
+            stagedBlock("Instantiate", Ls(cls, codes)): cde =>
+              returnPair(sp, cde)
+
   def ruleReturn(r: Return): Block =
     transformResult(r.res): b =>
       extractResult(b): tmp =>
@@ -142,34 +175,14 @@ class Instrumentation(using State):
           stagedBlock("Return", Ls(getCode2(tmp))): cde =>
             returnPair(sp, cde)
 
-  def ruleInst(i: Instantiate): Block =
-    val Instantiate(mut, cls, args) = i
-    assert(!mut)
+  def ruleMatch(m: Match): Block = ???
 
-    // collect (shape, code) pair for each arg
-    def rec(f: List[(Path, Path)] => Block, a: Arg, rest: Ls[(Path, Path)]) =
-      transformArg(a): b =>
-        extractResult(b): p =>
-          getShape(p): sh =>
-            getCode(p): cde =>
-              f((sh, cde) :: rest)
+  def ruleAssign(a: Assign): Block = ???
 
-    // // can you collect element wise?
-    // val paths = args.map(a =>
-    //   (k: Path => Block) =>
-    //     transformArg(a): b =>
-    //       extractResult(b)(k)
-    // )
-    // collect up path for all args into a list
-    args.foldRight((f: List[(Path, Path)] => Block) => f(Nil))((a, acc) =>
-      f => acc(rest => rec(f, a, rest))
-    ): ps =>
-      val (shapes, codes) = ps.unzip
-      stagedTuple(shapes): shapes =>
-        stagedTuple(codes): codes =>
-          stagedShape("Class", Ls(cls, shapes)): sp =>
-            stagedBlock("Instantiate", Ls(cls, codes)): cde =>
-              returnPair(sp, cde)
+  def ruleEnd(): Block =
+    stagedShape("Unit", Ls()): sp =>
+      stagedBlock("End", Ls()): cde =>
+        returnPair(sp, cde)
 
   def ruleVal(defn: ValDefn, rest: Block): Block =
     val ValDefn(_, sym, rhs) = defn
@@ -187,6 +200,12 @@ class Instrumentation(using State):
                       returnPair(sp, cde)
             )
 
+  def ruleBlk(b: Block): Block = ???
+
+  def ruleCls(c: ClassLikeDef, rest: Block): Block = ???
+
+  // functions for instrumentation
+
   def transformPath(p: Path)(k: Block => Block): Block =
     p match
       // case Select(p, ident) => ???
@@ -198,8 +217,30 @@ class Instrumentation(using State):
   def transformResult(r: Result)(k: Block => Block): Block =
     ???
 
-  def transformArg(p: Arg)(k: Block => Block): Block =
+  def transformArg(a: Arg)(k: Block => Block): Block =
     ???
 
-  def transformBlock(b: Block)(k: Block => Block): Block = ???
+  // provides list of shapes and list of codes to continuation
+  def transformArgs(args: List[Arg])(k: (Ls[Path], Ls[Path]) => Block): Block =
+    // collect (shape, code) pair for each arg
+    def rec(f: List[(Path, Path)] => Block, a: Arg, rest: Ls[(Path, Path)]) =
+      transformArg(a): b =>
+        extractResult(b): p =>
+          getShape(p): sh =>
+            getCode(p): cde =>
+              f((sh, cde) :: rest)
 
+    // can you collect element wise instead?
+    // val paths = args.map(a =>
+    //   (k: Path => Block) =>
+    //     transformArg(a): b =>
+    //       extractResult(b)(k)
+    // )
+    // collect up path for all args into a list
+    args.foldRight((f: List[(Path, Path)] => Block) => f(Nil))((a, acc) =>
+      f => acc(rest => rec(f, a, rest))
+    ): ps =>
+      val (shapes, codes) = ps.unzip
+      k(shapes, codes)
+
+  def transformBlock(b: Block)(k: Block => Block): Block = ???
