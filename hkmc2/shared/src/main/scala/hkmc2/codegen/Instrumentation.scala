@@ -98,7 +98,10 @@ class Instrumentation(using State):
     case Tuple(mut, elems) => ???
     case Record(mut, elems) => ???
     case p: Path => stagedPath(p)
-  
+
+  // probably wrong signature
+  def stagedPath(p: Path): Block = ???
+
   def stagedArg(arg: Arg)(k: Path => Block): Block =
     val stagedSpread = arg.spread match
       case Some(value) => stagedBlock("Some", Ls(toValue(value)))
@@ -121,6 +124,17 @@ class Instrumentation(using State):
       stagedBlock("ValueRef", Ls(toValue(r.l.nme))): cde =>
         returnPair(sp, cde)
 
+  def ruleSel(s: Select): Block =
+    val Select(p, Tree.Ident(a)) = s
+    transformPath(p): b =>
+      extractResult(b): x =>
+        // TODO: how to format a?
+        val sel = ???
+        val n = ???
+        assign(Call(sel, Ls(getShape2(x), n).map(toArg))(true, false)): sp =>
+          stagedSelect(getCode2(x), a): cde =>
+            returnPair(sp, cde)
+
   def ruleReturn(r: Return): Block =
     transformResult(r.res): b =>
       extractResult(b): tmp =>
@@ -132,23 +146,60 @@ class Instrumentation(using State):
     val Instantiate(mut, cls, args) = i
     assert(!mut)
 
-    def rec(f: List[Path] => Block, a: Arg, rest: Ls[Path]) =
+    // collect (shape, code) pair for each arg
+    def rec(f: List[(Path, Path)] => Block, a: Arg, rest: Ls[(Path, Path)]) =
       transformArg(a): b =>
         extractResult(b): p =>
-          f(p :: rest)
+          getShape(p): sh =>
+            getCode(p): cde =>
+              f((sh, cde) :: rest)
 
+    // // can you collect element wise?
+    // val paths = args.map(a =>
+    //   (k: Path => Block) =>
+    //     transformArg(a): b =>
+    //       extractResult(b)(k)
+    // )
     // collect up path for all args into a list
-    val a = args.foldRight((f: List[Path] => Block) => f(Nil))((a, acc) => f => acc(rec(f, a, _)))
-    val b = a: args =>
-      ???
+    args.foldRight((f: List[(Path, Path)] => Block) => f(Nil))((a, acc) =>
+      f => acc(rest => rec(f, a, rest))
+    ): ps =>
+      val (shapes, codes) = ps.unzip
+      stagedTuple(shapes): shapes =>
+        stagedTuple(codes): codes =>
+          stagedShape("Class", Ls(cls, shapes)): sp =>
+            stagedBlock("Instantiate", Ls(cls, codes)): cde =>
+              returnPair(sp, cde)
 
-      // val as = args.map(transformArg)
-      // collect paths from each transformed arg
+  def ruleVal(defn: ValDefn, rest: Block): Block =
+    val ValDefn(_, sym, rhs) = defn
+    transformPath(rhs): b =>
+      extractResult(b): y =>
+        transformBlock(rest): b =>
+          extractResult(b): z =>
+            // TODO: valdefn needs to be before code blocks?
+            Define(
+              ValDefn(???, sym, y),
+              getShape(z): sp =>
+                stagedSymbol("x"): x =>
+                  stagedBlock("ValDefn", Ls(x, getCode2(y))): df =>
+                    stagedBlock("Define", Ls(df, getCode2(z))): cde =>
+                      returnPair(sp, cde)
+            )
 
-    ???
+  def transformPath(p: Path)(k: Block => Block): Block =
+    p match
+      // case Select(p, ident) => ???
+      // case DynSelect(qual, fld, arrayIdx) => ???
+      case r: Value.Ref => ruleVar(r)
+      case Value.Lit(lit) => ruleLit(lit)
+      case _ => ???
 
   def transformResult(r: Result)(k: Block => Block): Block =
     ???
 
   def transformArg(p: Arg)(k: Block => Block): Block =
     ???
+
+  def transformBlock(b: Block)(k: Block => Block): Block = ???
+
