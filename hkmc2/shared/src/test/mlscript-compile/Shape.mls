@@ -13,7 +13,7 @@ class Shape with
   constructor
     Dyn
     Lit(val l: Literal)
-    Arr(val length: Int, val shapes: Array[Shape])
+    Arr(val shapes: Array[Shape]) // is length parameter needed?
     // TODO: change sym to accept multiple possible class symbols
     Class(val sym: Symbol, val shapes: Array[Shape])
     Unit
@@ -33,8 +33,8 @@ fun mrg2(s1: Shape, s2: Shape) = if s1
     and isPrimitiveTypeOf(sym, l) then Class(sym, shapes)
   is Class(sym1, shapes1) and s2 is Class(sym2, shapes2)
     and sym1 == sym2 then Class(sym1, ???)
-  is Arr(l1, s1) and s2 is Arr(l2, s2)
-    and l1 == l2 then Arr(l1, ???)
+  is Arr(s1) and s2 is Arr(s2)
+    and s1.length == s2.length then Arr(???)
   else ???
 
 fun mrg(s1: Array[Shape]) = ???
@@ -45,7 +45,7 @@ fun sel(s1: Shape, s2: Shape) =
     and n is Int then shapes.n
     [Dyn, Lit(n)] // n_i ?
     and n is Int then Dyn
-    [Arr(l, shapes), Lit(n)]
+    [Arr(shapes), Lit(n)]
     and n is Int then shapes.n
     [Dyn, Lit(n)]
     and n is Int then Dyn
@@ -80,7 +80,7 @@ fun match(s: Shape, p: Pattern): Option[Bool] =
     [Shape.Lit(l1), Lit(l2)] then Some(true)
     [Shape.Lit(l), Class(c)] and isPrimitiveTypeOf(c, l) then Some(true)
     [Shape.Class(c1, _), Class(c2)] and c1 == c2 then Some(true)
-    [Shape.Arr(n1, _), Arr(n2)] and n1 == n2 then Some(true)
+    [Shape.Arr(ls), Arr(n)] and ls.length == n then Some(true)
     [_, Wildcard] then Some(true)
     [Shape.Dyn, _] then None
     _ then Some(false)
