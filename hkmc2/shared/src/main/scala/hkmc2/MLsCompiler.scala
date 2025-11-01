@@ -88,6 +88,7 @@ class MLsCompiler(preludeFile: os.Path, mkOutput: ((Str => Unit) => Unit) => Uni
       val blk = new semantics.Term.Blk(
         semantics.Import(State.runtimeSymbol, runtimeFile.toString)
         :: semantics.Import(State.termSymbol, termFile.toString)
+        :: semantics.Import(State.blockSymbol, blockFile.toString)
         :: blk0.stats,
         blk0.res
       )
