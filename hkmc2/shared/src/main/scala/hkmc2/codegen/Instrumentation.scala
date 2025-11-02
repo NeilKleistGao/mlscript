@@ -1,6 +1,8 @@
 package hkmc2
 package codegen
 
+import scala.collection.mutable.HashMap
+
 import mlscript.utils.*, shorthands.*
 
 import semantics.*
@@ -8,8 +10,22 @@ import semantics.Elaborator.State
 
 import syntax.{Literal, Tree}
 
+// TODO: I didn't use BlockTransformer here, because in some cases it constrains the type of the continuation
+// but it seems some logic should be deferred to it to dedup code
+
+// it should be possible to convert to the BlockTransformer signatures,
+// but it would require re-extracting and re-assigning StagedPath from the output.
+
+// the continuation would basically be solely dedicated to staging then?
+// like, we do a transformation on DynSelect where we keep the fields inteact, then perform staging in the DynSelect => Block continuation?
+// the previous blocks created by the fields are handled by BlockTransformer's continuation code
+
 class Instrumentation(using State):
+  // A PathLike type is a type that can be turned into an Arg
   type PathLike = Path | Symbol | Shape
+
+  // is Elaborator.Ctx relevant?
+  type Context = HashMap[Path, Shape]
 
   def asArg(x: PathLike): Arg =
     x match
