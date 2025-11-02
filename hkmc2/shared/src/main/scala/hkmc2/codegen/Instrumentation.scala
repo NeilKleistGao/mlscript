@@ -151,10 +151,10 @@ class Instrumentation(using State):
     val Tuple(mut, elems) = t
     assert(!mut)
 
-    transformArgs(elems): (shapes, codes) =>
-      mlsTuple(shapes): shapes =>
+    transformArgs(elems): xs =>
+      mlsTuple(xs.map(_.shape)): shapes =>
         mlsShape("Arr", Ls(shapes)): sp =>
-          mlsTuple(codes): cde => // is Tuple quotes as well?
+          mlsTuple(xs.map(_.code)): cde => // is Tuple quotes as well?
             StagedPath.mk(sp, cde)(k)
 
   def ruleSel(s: Select)(k: StagedPath => Block): Block =
@@ -177,15 +177,20 @@ class Instrumentation(using State):
 
   def ruleRefinedPath(p: Path)(k: StagedPath => Block): Block = ???
 
+  // .apply is Call?  
   def ruleApp(c: Call)(k: StagedPath => Block): Block = ???
+    val Call(fun, args) = c
+    transformPath(fun): f =>
+      transformArgs(args): xs =>
+        instGlobal(f, xs)(k)
 
   def ruleInst(i: Instantiate)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
     assert(!mut)
 
-    transformArgs(args): (shapes, codes) =>
-      mlsTuple(shapes): shapes =>
-        mlsTuple(codes): codes =>
+    transformArgs(args): xs =>
+      mlsTuple(xs.map(_.shape)): shapes =>
+        mlsTuple(xs.map(_.code)): codes =>
           mlsShape("Class", Ls(cls, shapes)): sp =>
             mlsBlock("Instantiate", Ls(cls, codes)): cde =>
               StagedPath.mk(sp, cde)(k)
@@ -260,7 +265,7 @@ class Instrumentation(using State):
     transformPath(value)(k)
 
   // provides list of shapes and list of codes to continuation
-  def transformArgs(args: Ls[Arg])(k: (Ls[Shape], Ls[Path]) => Block): Block =
+  def transformArgs(args: Ls[Arg])(k: Ls[StagedPath] => Block): Block =
     // TODO: use BlockTransformer.applyListOf?
     args
       .map(transformArg)
@@ -270,10 +275,7 @@ class Instrumentation(using State):
           pathCont: p =>
             restCont: rest =>
               k(p :: rest)
-      ): ps =>
-        // collect (shape, code) pair for each arg
-        val (shapes, codes) = ps.map(p => (p.shape, p.code)).unzip
-        k(shapes, codes)
+      )(k)
   
   def transformDefine(d: Define)(k: StagedPath => Block): Block = 
     d.defn match
