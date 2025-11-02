@@ -58,11 +58,13 @@ class Instrumentation(using State):
     assign(Call(fun, args.map(asArg))(isMlsFun, false))(k)
 
   // helpers to create and access the components of a staged value
-  case class Shape(val p: Path)
+  case class Shape(p: Path)
 
+  // A StagedPath is a path that points to a (shape, code) tuple
   class StagedPath(val p: Path):
     def shape: Shape = Shape(DynSelect(p, toValue(0), false))
     def code: Path = DynSelect(p, toValue(1), false)
+    def end: Block = Return(p, false)
 
   object StagedPath:
     def mk(shape: Shape, code: Path)(k: StagedPath => Block): Block =
@@ -72,7 +74,6 @@ class Instrumentation(using State):
       shapeCont: shape =>
         codeCont: code =>
           mk(shape, code)(k)
-    def end(sp: StagedPath): Block = Return(sp.p, false)
 
   // linking functions defined in MLscipt
   val mrgSymbol = new TempSymbol(N, "mrg")
