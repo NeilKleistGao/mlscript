@@ -32,11 +32,6 @@ class Instrumentation(using State):
     val tmp = new TempSymbol(N, name)
     Assign(tmp, res, k(tmp.asPath))
 
-  def extractResult(b: Block)(k: Path => Block): Block =
-    b.mapTail match
-      case Return(r, _) => assign(r)(k)
-      case _ => ??? // impossible
-
   def mlsBlock(nme: String, args: Ls[Path | Symbol])(k: Path => Block): Block =
     val s = summon[State].blockSymbol.asPath.selSN(nme)
     assign(Instantiate(false, s, args.map(toArg)))(k)
