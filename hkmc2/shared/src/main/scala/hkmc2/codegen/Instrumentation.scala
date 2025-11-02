@@ -9,10 +9,13 @@ import semantics.Elaborator.State
 import syntax.{Literal, Tree}
 
 class Instrumentation(using State):
-  def toArg(x: Path | Symbol): Arg =
+  type PathLike = Path | Symbol | Shape
+
+  def asArg(x: PathLike): Arg =
     x match
-      case p: Path => Arg(N, p)
-      case l: Symbol => Arg(N, l.asPath)
+      case p: Path => p.asArg
+      case l: Symbol => l.asPath.asArg
+      case Shape(p) => p.asArg
 
   // null and undefined are missing
   def toValue(lit: Str | Int | BigDecimal | Bool): Value =
@@ -30,12 +33,12 @@ class Instrumentation(using State):
     val tmp = new TempSymbol(N, name)
     Assign(tmp, res, k(tmp.asPath))
 
-  def mlsBlock(nme: String, args: Ls[Path | Symbol])(k: Path => Block): Block =
+  def mlsBlock(nme: String, args: Ls[PathLike])(k: Path => Block): Block =
     val s = summon[State].blockSymbol.asPath.selSN(nme)
-    assign(Instantiate(false, s, args.map(toArg)))(k)
-  def mlsShape(nme: String, args: Ls[Path | Symbol])(k: Path => Block): Block =
+    assign(Instantiate(false, s, args.map(asArg)))(k)
+  def mlsShape(nme: String, args: Ls[PathLike])(k: Shape => Block): Block =
     val s = summon[State].shapeSymbol.asPath.selSN(nme)
-    assign(Instantiate(false, s, args.map(toArg)))(k)
+    assign(Instantiate(false, s, args.map(asArg)))(p => k(Shape(p)))
 
   // helpers corresponding to constructors
 
@@ -46,20 +49,24 @@ class Instrumentation(using State):
     // unnecessary assignment?
     assign(Select(qual, ident)(N))(k)
 
-  def mlsTuple(elems: Ls[Symbol | Path])(k: Path => Block): Block =
+  def mlsTuple(elems: Ls[PathLike])(k: Path => Block): Block =
     // is this the same as "Ls of"?
-    assign(Tuple(false, elems.map(toArg)))(k)
+    assign(Tuple(false, elems.map(asArg)))(k)
 
+  def mrg(shapes: Ls[Shape]) = ()
+  
   // helpers to create and access the components of a staged value
+  case class Shape(val p: Path)
+
   class StagedPath(val p: Path):
-    def shape: Path = DynSelect(p, toValue(0), false)
+    def shape: Shape = Shape(DynSelect(p, toValue(0), false))
     def code: Path = DynSelect(p, toValue(1), false)
 
   object StagedPath:
-    def mk(shape: Path, code: Path)(k: StagedPath => Block): Block =
-      mlsTuple(Ls(shape, code))(p => k(StagedPath(p)))
+    def mk(shape: Shape, code: Path)(k: StagedPath => Block): Block =
+      mlsTuple(Ls(shape.p, code))(p => k(StagedPath(p)))
     // in some cases this can reduce the indentation level
-    def mk(shapeCont: (Path => Block) => Block, codeCont: (Path => Block) => Block)(k: StagedPath => Block): Block =
+    def mk(shapeCont: (Shape => Block) => Block, codeCont: (Path => Block) => Block)(k: StagedPath => Block): Block =
       shapeCont: shape =>
         codeCont: code =>
           mk(shape, code)(k)
@@ -92,12 +99,15 @@ class Instrumentation(using State):
   def ruleSel(s: Select)(k: StagedPath => Block): Block =
     val Select(p, i) = s
     transformPath(p): x =>
+
       // TODO: how to format a?
       val sel = ???
       val n = ???
-      assign(Call(sel, Ls(x.shape, n).map(toArg))(true, false)): sp =>
-        mlsSelect(x.code, i): cde =>
-          StagedPath.mk(sp, cde)(k)
+      // can use shape.p?
+      // assign(Call(sel, Ls(x.shape, n).map(toArg))(true, false)): sp =>
+      //   mlsSelect(x.code, i): cde =>
+      //     StagedPath.mk(sp, cde)(k)
+      ???
 
   def ruleDynSel(d: DynSelect)(k: StagedPath => Block): Block = ???
 
@@ -172,11 +182,11 @@ class Instrumentation(using State):
     transformPath(value)(k)
 
   // provides list of shapes and list of codes to continuation
-  def transformArgs(args: List[Arg])(k: (Ls[Path], Ls[Path]) => Block): Block =
+  def transformArgs(args: Ls[Arg])(k: (Ls[Shape], Ls[Path]) => Block): Block =
     args
       .map(transformArg)
       // defer applying k while prepending new paths to the list
-      .foldRight((_: List[StagedPath] => Block)(Nil))((pathCont, restCont) =>
+      .foldRight((_: Ls[StagedPath] => Block)(Nil))((pathCont, restCont) =>
         k =>
           pathCont: p =>
             restCont: rest =>
