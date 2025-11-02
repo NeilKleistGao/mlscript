@@ -160,16 +160,17 @@ class Instrumentation(using State):
 
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: List[Arg])(k: (Ls[Path], Ls[Path]) => Block): Block =
-    // collect (shape, code) pair for each arg
-    def rec(f: List[(Path, Path)] => Block, a: Arg, rest: Ls[(Path, Path)]) =
-      transformArg(a): p =>
-        f((getShape(p), getCode(p)) :: rest)
-
-    // collect up path for all args into a list
-    // can you collect element wise instead?
-    args.foldRight((f: List[(Path, Path)] => Block) => f(Nil))((a, acc) => f => acc(rec(f, a, _))):
-      ps =>
-        val (shapes, codes) = ps.unzip
+    args
+      .map(transformArg)
+      // defer applying k while prepending new paths to the list
+      .foldRight((_: List[Path] => Block)(Nil))((pathCont, restCont) =>
+        k =>
+          pathCont: p =>
+            restCont: rest =>
+              k(p :: rest)
+      ): ps =>
+        // collect (shape, code) pair for each arg
+        val (shapes, codes) = ps.map(p => (getShape(p), getCode(p))).unzip
         k(shapes, codes)
 
   def transformBlock(b: Block)(k: Path => Block): Block = ???
