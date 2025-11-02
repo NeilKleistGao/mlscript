@@ -122,19 +122,22 @@ class Instrumentation(using State):
             StagedPath.mk(sp, cde)(k)
 
   def ruleSel(s: Select)(k: StagedPath => Block): Block =
-    val Select(p, i) = s
+    val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
-
-      // TODO: how to format a?
-      val sel = ???
+      // stage? there isn't a correct constructor for it though
+      // val n = Shape(Value.Ref(new TempSymbol(N, name)))
       val n = ???
-      // can use shape.p?
-      // assign(Call(sel, Ls(x.shape, n).map(toArg))(true, false)): sp =>
-      //   mlsSelect(x.code, i): cde =>
-      //     StagedPath.mk(sp, cde)(k)
-      ???
+      fnSel(x.shape, n): sp =>
+        mlsSelect(x.code, i): cde =>
+          StagedPath.mk(sp, cde)(k)
 
-  def ruleDynSel(d: DynSelect)(k: StagedPath => Block): Block = ???
+  def ruleDynSel(d: DynSelect)(k: StagedPath => Block): Block =
+    val DynSelect(qual, path, arrayIdx) = d
+    transformPath(qual): x =>
+      transformPath(path): y =>
+        fnSel(x.shape, y.shape): sp =>
+          mlsBlock("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
+            StagedPath.mk(sp, cde)(k)
 
   def ruleRefinedPath(p: Path)(k: StagedPath => Block): Block = ???
 
@@ -156,9 +159,19 @@ class Instrumentation(using State):
       mlsBlock("Return", Ls(x.code)): cde =>
         StagedPath.mk(x.shape, cde)(k)
 
-  def ruleMatch(m: Match)(k: StagedPath => Block): Block = ???
+  def ruleMatch(m: Match)(k: StagedPath => Block): Block =
+    val Match(p, arms, dflt, b) = m
+    transformPath(p): x =>
+      ???
 
-  def ruleAssign(a: Assign)(k: StagedPath => Block): Block = ???
+  def ruleAssign(a: Assign)(k: StagedPath => Block): Block = 
+    val Assign(x, r, b) = a
+    transformResult(r): y =>
+      (Assign(x, y.p, _)):
+        transformBlock(b): z =>
+          // need to wrap x with Symbol?
+          mlsBlock("Assign", Ls(x, y.code, z.code)): cde =>
+            StagedPath.mk(z.shape, cde)(k)
 
   def ruleEnd()(k: StagedPath => Block): Block =
     mlsShape("Unit", Ls()): sp =>
@@ -177,37 +190,42 @@ class Instrumentation(using State):
               mlsBlock("Define", Ls(df, z.code)): cde =>
                 StagedPath.mk(z.shape, cde)(k)
 
-  def ruleBlk(b: Block)(k: StagedPath => Block): Block = ???
+  def ruleBlk(b: Block)(k: StagedPath => Block): Block = 
+    transformBlock(b): x =>
+      fnCompile(x.code)(k)
 
-  def ruleCls(c: ClassLikeDef, rest: Block)(k: StagedPath => Block): Block = ???
+  // g is Program?
+  def ruleCls(c: Program, rest: Block)(k: StagedPath => Block): Block =
+    // val ClsLikeDefn(_, _, )
+    ???
 
   // functions for instrumentation
 
   def transformPath(p: Path)(k: StagedPath => Block): Block =
     p match
-      // case Select(p, ident) => ???
-      // case DynSelect(qual, fld, arrayIdx) => ???
+      case s: Select => ruleSel(s)(k)
+      case d: DynSelect => ruleDynSel(d)(k)
       case r: Value.Ref => ruleVar(r)(k)
       case Value.Lit(lit) => ruleLit(lit)(k)
-      case _ => ???
+      case _ => ??? // not supported
 
   def transformResult(r: Result)(k: StagedPath => Block): Block =
     r match
-      case Call(name, args) => ???
-      case Instantiate(mut, cls, args) => ???
-      case Lambda(params, body) => ???
-      case Tuple(mut, elems) => ???
-      case Record(mut, elems) => ???
+      case c: Call => ruleApp(c)(k)
+      case i: Instantiate => ruleInst(i)(k)
+      case t: Tuple => ruleTup(t)(k)
       case p: Path => transformPath(p)(k)
+      case _ : Lambda | _: Record => ??? // not supported
 
   def transformArg(a: Arg)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
-    ??? // arg has no shape of its own?
+    ??? // arg has no shape of its own? it's just a wrapper for Path
 
     transformPath(value)(k)
 
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: Ls[Arg])(k: (Ls[Shape], Ls[Path]) => Block): Block =
+    // TODO: use BlockTransformer.applyListOf?
     args
       .map(transformArg)
       // defer applying k while prepending new paths to the list
@@ -220,5 +238,19 @@ class Instrumentation(using State):
         // collect (shape, code) pair for each arg
         val (shapes, codes) = ps.map(p => (p.shape, p.code)).unzip
         k(shapes, codes)
+  
+  def transformDefine(d: Define)(k: StagedPath => Block): Block = 
+    d.defn match
+      case f: FunDefn => ???
+      case v: ValDefn => ruleVal(v, d.rest)(k)
+      case c: ClsLikeDefn => ???
 
-  def transformBlock(b: Block)(k: StagedPath => Block): Block = ???
+  def transformBlock(b: Block)(k: StagedPath => Block): Block =
+    b match
+      case m: Match => ruleMatch(m)(k)
+      case r: Return => ruleReturn(r)(k)
+      case a: Assign => ruleAssign(a)(k)
+      case d: Define => transformDefine(d)(k)
+      case End(_) => ruleEnd()(k)
+      case l: Label => ???
+      case _ => ??? // not supported
