@@ -11,6 +11,7 @@ type Opt[A] = Option[A]
 
 // dependancies referenced in Block classes, referencing implementation in Term.mls
 
+// TODO: convert these classes to Str
 class Ident(val name: Str) // translation of Tree.Ident
 class Symbol(val name: Str)
 
@@ -28,12 +29,14 @@ class Path with
     ValueRef(val l: Symbol)
     ValueLit(val lit: Literal)
   
+// Match pattern for staged code
 class Case with
   constructor
     Lit(val lit: Literal)
     Cls(val cls: Symbol, val path: Path)
     Tup(val len: Int, val inf: Bool)
-    Field(val name: Ident, val safe: Bool)
+    Field(val name: Ident)
+    Wildcard
 
 class Result with 
   constructor
@@ -44,26 +47,11 @@ class Result with
 
 class Defn with 
   constructor 
-    ValDefn(
-      val sym: Symbol,
-      val rhs: Path,
-    )
-    ClsLikeDefn(
-      val sym: Symbol,
-      val paramsOpt: Opt[ParamList],
-      val companion: Opt[ClsLikeBody],
-    )
-    FunDefn(
-      val sym: Symbol,
-      val params: Array[ParamList],
-      val body: Block,
-    )
+    ValDefn(val sym: Symbol, val rhs: Path)
+    ClsLikeDefn(val sym: Symbol, val paramsOpt: Opt[ParamList], val companion: Opt[ClsLikeBody])
+    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
-class ClsLikeBody(
-  val isym: Symbol,
-  val methods: Array[FunDefn],
-  val publicFields: Array[Symbol -> Symbol],
-)
+class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[Symbol -> Symbol])
 
 class Block with
   constructor

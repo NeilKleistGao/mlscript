@@ -1,5 +1,6 @@
 import "./Predef.mls"
 import "./Option.mls"
+import "./Block.mls"
 
 open Predef
 open Option
@@ -53,38 +54,34 @@ fun sel(s1: Shape, s2: Shape) =
     _ then ???
 
 fun static(s: Shape) = 
-  if s is
-    Lit then true
-    Class | Dyn then false // c vs c() ?
-    _ then ???
+  if s
+    == Dyn then false
+    is
+      Lit then true
+      Class then false
+      _ then ???
 
-module Pattern with...
+open Block
 
-class Pattern with
-  constructor
-    Lit(val lit: Literal)
-    Class(val sym: Symbol)
-    Arr(val size: Int)
-    Wildcard
-
-fun silh(p: Pattern): Shape = if p is
+fun silh(p: Case): Shape = if p is
   Lit(l) then Shape.Lit(l)
   // where to store size of argument array?
-  Class(sym) then Shape.Class(sym, ???)
+  Class(sym, path) then Shape.Class(sym, ???)
   // how to initialize array of Dyn?
-  Arr(n) then Shape.Arr(???)
+  Tup(n, inf) then Shape.Arr(???)
+  Field(name) then ???
   Wildcard then Dyn
 
-fun match(s: Shape, p: Pattern): Option[Bool] = 
+fun match(s: Shape, p: Case): Option[Bool] = 
   if [s, p] is
     [Shape.Lit(l1), Lit(l2)] then Some(true)
     [Shape.Lit(l), Class(c)] and isPrimitiveTypeOf(c, l) then Some(true)
     [Shape.Class(c1, _), Class(c2)] and c1 == c2 then Some(true)
-    [Shape.Arr(ls), Arr(n)] and ls.length == n then Some(true)
+    [Shape.Arr(ls), Tup(n, inf)] and ls.length == n then Some(true)
     [_, Wildcard] then Some(true)
     [Shape.Dyn, _] then None
     _ then Some(false)
 
-fun det(s: Shape, ps: Array[Pattern]): Option[Bool] = 
+fun det(s: Shape, ps: Array[Case]): Option[Bool] = 
   val a = ps.map(p => match(s, p) is Some(true))
   return ???
