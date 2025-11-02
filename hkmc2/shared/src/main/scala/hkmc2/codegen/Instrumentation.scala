@@ -28,7 +28,8 @@ class Instrumentation(using State):
 
   // helper for staging the constructors
 
-  def assign(res: Result, name: String = "tmp")(k: Path => Block): Block =
+  // could use `using` to allow passthrough of names
+  def assign(res: Result, name: String = "tmp")(k: Path => Block): Assign =
     // TODO: skip assignment if res: Path?
     val tmp = new TempSymbol(N, name)
     Assign(tmp, res, k(tmp.asPath))
@@ -53,8 +54,9 @@ class Instrumentation(using State):
     // is this the same as "Ls of"?
     assign(Tuple(false, elems.map(asArg)))(k)
 
-  def mrg(shapes: Ls[Shape]) = ()
-  
+  def mlsCall(fun: Path, args: Ls[PathLike], isMlsFun: Bool)(k: Path => Block): Block =
+    assign(Call(fun, args.map(asArg))(isMlsFun, false))(k)
+
   // helpers to create and access the components of a staged value
   case class Shape(val p: Path)
 
@@ -71,6 +73,28 @@ class Instrumentation(using State):
         codeCont: code =>
           mk(shape, code)(k)
     def end(sp: StagedPath): Block = Return(sp.p, false)
+
+  // linking functions defined in MLscipt
+  val mrgSymbol = new TempSymbol(N, "mrg")
+  val silhSymbol = new TempSymbol(N, "silh")
+  val matchSymbol = new TempSymbol(N, "match")
+  val selSymbol = new TempSymbol(N, "sel")
+  val staticSymbol = new TempSymbol(N, "static")
+  val compileSymbol = new TempSymbol(N, "compile")
+  
+  def fnMrg(shapes: Ls[Shape])(k: Shape => Block): Block = 
+    mlsCall(mrgSymbol.asPath, shapes, true)(s => k(Shape(s)))
+  // TODO: make fnSilh take in a wrapped Path type
+  def fnSilh(pattern: Path)(k: Shape => Block) = 
+    mlsCall(silhSymbol.asPath, Ls(pattern), true)(s => k(Shape(s)))
+  def fnMatch(s: Shape, pat: Path)(k: Path => Block) = 
+    mlsCall(matchSymbol.asPath, Ls(s, pat), true)(k)
+  def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block = 
+    mlsCall(selSymbol.asPath, Ls(s1, s2), true)(s => k(Shape(s)))
+  def fnStatic(s: Shape)(k: Path => Block) = 
+    mlsCall(staticSymbol.asPath, Ls(s), true)(k)
+  def fnCompile(x: Path)(k: StagedPath => Block): Block = 
+    mlsCall(compileSymbol.asPath, Ls(x), true)(p => k(StagedPath(p)))
 
   // functions that perform the instrumentation
 
