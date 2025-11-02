@@ -76,6 +76,7 @@ class Instrumentation(using State):
           mk(shape, code)(k)
 
   // linking functions defined in MLscipt
+
   val mrgSymbol = new TempSymbol(N, "mrg")
   val silhSymbol = new TempSymbol(N, "silh")
   val matchSymbol = new TempSymbol(N, "match")
@@ -97,7 +98,26 @@ class Instrumentation(using State):
   def fnCompile(x: Path)(k: StagedPath => Block): Block = 
     mlsCall(compileSymbol.asPath, Ls(x), true)(p => k(StagedPath(p)))
 
-  // functions that perform the instrumentation
+  // helpers for instrumenting functions 
+
+  def inst(f: StagedPath, args: Ls[StagedPath]): StagedPath =
+    if ??? then 
+      // non-staged function
+      ???
+    else 
+      // staged function 
+      ???
+
+  def instGlobal(f: StagedPath, args: Ls[StagedPath])(k: StagedPath => Block): Block =
+    def isFunction(p: Path) = ???
+    if isFunction(f.p) then
+      k(inst(???, args))
+    else 
+      mlsShape("Dyn", Ls()): sp =>
+        mlsCall(f.p, args.map(_.p), ???): cde =>
+          StagedPath.mk(sp, cde)(k)
+  
+  // instrumentation rules
 
   def ruleLit(l: Literal)(k: StagedPath => Block): Block =
     mlsShape("Lit", Ls(Value.Lit(l))): sp =>
@@ -199,7 +219,7 @@ class Instrumentation(using State):
     // val ClsLikeDefn(_, _, )
     ???
 
-  // functions for instrumentation
+  // transformations of Block
 
   def transformPath(p: Path)(k: StagedPath => Block): Block =
     p match
