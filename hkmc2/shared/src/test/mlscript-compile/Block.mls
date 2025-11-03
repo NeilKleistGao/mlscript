@@ -11,11 +11,10 @@ type Opt[A] = Option[A]
 
 // dependancies referenced in Block classes, referencing implementation in Term.mls
 
-// TODO: convert these classes to Str
 type Ident = Symbol
 
 type Literal = null | undefined | Str | Int | Num | Bool
-class Arg(val spread: Opt[Bool], val value: Path)
+class Arg(val spread: Opt[Bool], val value: Path) // unused
 
 type ParamList = Array[Symbol]
 
@@ -39,18 +38,19 @@ class Case with
 
 class Result with 
   constructor
+    // unused?
     TrivialResult(val path: Path) // only Path extends TrivialResult
-    Call(val _fun: Path, val args: Array[Arg])(isMlsFun: Bool, mayRaiseEffects: Bool)
+    Call(val _fun: Path, val args: Array[Arg])
     Instantiate(val cls: Path, val args: Array[Arg]) // assume immutable
     Tuple(val elems: Array[Arg]) // assume immutable
 
 class Defn with 
   constructor 
     ValDefn(val sym: Symbol, val rhs: Path)
-    ClsLikeDefn(val sym: Symbol, val paramsOpt: Opt[ParamList], val companion: Opt[ClsLikeBody])
+    ClsLikeDefn(val sym: Symbol, val paramsOpt: Opt[ParamList], val companion: Opt[ClsLikeBody]) // unused
     FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
-class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[Symbol -> Symbol])
+class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[Symbol -> Symbol]) // unused
 
 class Block with
   constructor
