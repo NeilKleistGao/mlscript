@@ -42,6 +42,17 @@ class Instrumentation(using State):
       case n: BigDecimal => Tree.DecLit(n)
     Value.Lit(l)
 
+  // TODO: use BlockTransformer.applyListOf?
+  extension [A](ls: Ls[(A => Block) => Block])
+    def collectApply(f: Ls[A] => Block): Block =
+      // defer applying k while prepending new paths to the list
+      ls.foldRight((_: Ls[A] => Block)(Nil))((headCont, tailCont) =>
+        k =>
+          headCont: head =>
+            tailCont: tail =>
+              k(head :: tail)
+      )(f)
+
   // helper for staging the constructors
 
   // could use `using` to allow passthrough of names
@@ -194,10 +205,67 @@ class Instrumentation(using State):
       mlsBlockMod("Return", Ls(x.code)): cde =>
         StagedPath.mk(x.shape, cde)(k)
 
-  def ruleMatch(m: Match)(using Context)(k: StagedPath => Block): Block =
-    val Match(p, arms, dflt, b) = m
+  def ruleMatch(m: Match)(using ctx: Context)(k: StagedPath => Block): Block =
+    def concat(b1: Block, b2: Block) = b1.mapTail {
+      case r: Return => r
+      case _: End => b2
+      case _ => ???
+    }
+
+    val Match(p, arms, dflt, rest) = m
+
+    val allArms =
+      // append at the end to make Ls[Opt[Case], Block]
+      (arms.map((c, b) =>
+        val concatBlock = concat(b, rest)
+        (k: ((Path, (StagedPath => Block) => Block)) => Block) =>
+          (c match {
+            // refactor as Opt[Case]
+            // convert to Block.mls Case
+            case Case.Lit(lit) => mlsBlockMod("Lit", Ls(Value.Lit(lit)))
+            case Case.Cls(cls, path) => mlsBlockMod("Cls", Ls(cls, path))
+            case Case.Tup(len, inf) => mlsBlockMod("Tup", Ls(len, inf).map(toValue))
+            case Case.Field(name, safe) => mlsBlockMod("Field", Ls(toValue(name.name)))
+          }): patt =>
+            fnSilh(patt): sp =>
+              val newCtx = ctx.clone()
+              newCtx += p -> sp
+              k(patt, transformBlock(concatBlock)(using newCtx))
+      )
+        ::: (dflt match
+          case S(b) =>
+            val concatBlock = b
+            Ls((k: ((Path, (StagedPath => Block) => Block)) => Block) =>
+              mlsBlockMod("Wildcard", Ls()): patt =>
+                fnSilh(patt): sp =>
+                  val newCtx = ctx.clone()
+                  newCtx += p -> sp
+                  k(patt, transformBlock(concatBlock)(using newCtx))
+            )
+          case N => Nil
+        ))
+
     transformPath(p): x =>
-      ???
+      allArms.collectApply: arms =>
+        val (patts, blocksCont) = arms.unzip
+        (arms.zipWithIndex.foldRight(_: Block) { case (((patt, blockCont), i), rest) =>
+          val slice = arms.slice(0, i + 1).map(_._1)
+          fnDet(x.shape, slice): scrut =>
+            blockCont: block =>
+              val cse = Case.Lit(Tree.BoolLit(false)) -> k(block)
+              Match(scrut, Ls(cse), S(rest), End())
+        }):
+          // staged block
+          blocksCont.collectApply: xs =>
+            val (sps, cdes) = xs.map(xi => (xi.shape, xi.code)).unzip
+            fnMrg(sps): s =>
+              (patts
+                .zip(cdes)
+                .foldRight(mlsBlockMod("End", Ls())) { case ((patt, cde), restCont) =>
+                  (k: Path => Block) =>
+                    restCont: rest =>
+                      mlsBlockMod("Match", Ls(x.code, patt, cde, rest))(k)
+                })(StagedPath.mk(s, _)(k))
 
   def ruleAssign(a: Assign)(using Context)(k: StagedPath => Block): Block =
     val Assign(x, r, b) = a
@@ -259,18 +327,9 @@ class Instrumentation(using State):
 
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
-    // TODO: use BlockTransformer.applyListOf?
-    args
-      .map(transformArg)
-      // defer applying k while prepending new paths to the list
-      .foldRight((_: Ls[StagedPath] => Block)(Nil))((pathCont, restCont) =>
-        k =>
-          pathCont: p =>
-            restCont: rest =>
-              k(p :: rest)
-      )(k)
-  
-  def transformDefine(d: Define)(using Context)(k: StagedPath => Block): Block = 
+    args.map(transformArg).collectApply(k)
+
+  def transformDefine(d: Define)(using Context)(k: StagedPath => Block): Block =
     d.defn match
       case f: FunDefn => ???
       case v: ValDefn => ruleVal(v, d.rest)(k)
