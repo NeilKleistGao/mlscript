@@ -223,61 +223,47 @@ class Instrumentation(using State):
       case _: End => b2
       case _ => ???
     }
+    def transformCase(cse: Opt[Case])(k: Path => Block): Block =
+      cse match
+        case S(Case.Lit(lit)) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
+        case S(Case.Cls(cls, path)) => blockCtor("Cls", Ls(cls, path))(k)
+        case S(Case.Tup(len, inf)) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
+        case S(Case.Field(name, safe)) => blockCtor("Field", Ls(toValue(name.name)))(k)
+        case N => blockCtor("Wildcard", Ls())(k)
 
     val Match(p, arms, dflt, rest) = m
 
-    val allArms =
-      // append at the end to make Ls[Opt[Case], Block]
-      (arms.map((c, b) =>
-        val concatBlock = concat(b, rest)
-        (k: ((Path, (StagedPath => Block) => Block)) => Block) =>
-          (c match {
-            // refactor as Opt[Case]
-            // convert to Block.mls Case
-            case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))
-            case Case.Cls(cls, path) => blockCtor("Cls", Ls(cls, path))
-            case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))
-            case Case.Field(name, safe) => blockCtor("Field", Ls(toValue(name.name)))
-          }): patt =>
-            fnSilh(patt): sp =>
-              val newCtx = ctx.clone()
-              newCtx += p -> sp
-              k(patt, transformBlock(concatBlock)(using newCtx))
-      )
-        ::: (dflt match
-          case S(b) =>
-            val concatBlock = b
-            Ls((k: ((Path, (StagedPath => Block) => Block)) => Block) =>
-              blockCtor("Wildcard", Ls()): patt =>
-                fnSilh(patt): sp =>
-                  val newCtx = ctx.clone()
-                  newCtx += p -> sp
-                  k(patt, transformBlock(concatBlock)(using newCtx))
-            )
-          case N => Nil
-        ))
-
     transformPath(p): x =>
-      allArms.collectApply: arms =>
-        val (patts, blocksCont) = arms.unzip
-        (arms.zipWithIndex.foldRight(_: Block) { case (((patt, blockCont), i), rest) =>
-          val slice = arms.slice(0, i + 1).map(_._1)
-          fnDet(x.shape, slice): scrut =>
-            blockCont: block =>
-              val cse = Case.Lit(Tree.BoolLit(false)) -> k(block)
-              Match(scrut, Ls(cse), S(rest), End())
-        }):
-          // staged block
-          blocksCont.collectApply: xs =>
-            val (sps, cdes) = xs.map(xi => (xi.shape, xi.code)).unzip
-            fnMrg(sps): s =>
-              (patts
-                .zip(cdes)
-                .foldRight(blockCtor("End", Ls())) { case ((patt, cde), restCont) =>
-                  (k: Path => Block) =>
-                    restCont: rest =>
-                      blockCtor("Match", Ls(x.code, patt, cde, rest))(k)
-                })(StagedPath.mk(s, _)(k))
+      (arms.map((c, b) => (S(c), b)) ++ (dflt.map((N, _))))
+        .map: (c, b) =>
+          val concatBlock = concat(b, rest)
+          (k: (((Path, (StagedPath => Block) => Block)) => Block)) =>
+            transformCase(c): patt =>
+              fnSilh(patt): sp =>
+                val newCtx = ctx.clone() += (p -> sp)
+                val blockCont = transformBlock(concatBlock)(using newCtx)
+                k(patt, blockCont)
+        .collectApply: arms =>
+          // we need to duplicate the blocks anyways, so it's fine that blocksCont gets evaluated twice
+          val (patts, blocksCont) = arms.unzip
+          (arms.zipWithIndex.foldRight(_: Block) { case (((patt, blockCont), i), rest) =>
+            val slice = arms.slice(0, i + 1).map(_._1)
+            fnDet(x.shape, slice): scrut =>
+              blockCont: block =>
+                val cse = Case.Lit(Tree.BoolLit(false)) -> k(block)
+                Match(scrut, Ls(cse), S(rest), End())
+          }):
+            // staged block
+            blocksCont.collectApply: xs =>
+              val (shapes, codes) = xs.map(xi => (xi.shape, xi.code)).unzip
+              fnMrg(shapes): s =>
+                (patts
+                  .zip(codes)
+                  .foldRight(blockCtor("End", Ls())) { case ((patt, cde), restCont) =>
+                    (k: Path => Block) =>
+                      restCont: rest =>
+                        blockCtor("Match", Ls(x.code, patt, cde, rest))(k)
+                  })(StagedPath.mk(s, _)(k))
 
   def ruleAssign(a: Assign)(using Context)(k: StagedPath => Block): Block =
     val Assign(x, r, b) = a
