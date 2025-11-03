@@ -92,26 +92,22 @@ class Instrumentation(using State):
 
   // linking functions defined in MLscipt
 
-  val mrgSymbol = new TempSymbol(N, "mrg")
-  val silhSymbol = new TempSymbol(N, "silh")
-  val matchSymbol = new TempSymbol(N, "match")
-  val selSymbol = new TempSymbol(N, "sel")
-  val staticSymbol = new TempSymbol(N, "static")
-  val compileSymbol = new TempSymbol(N, "compile")
-  
-  def fnMrg(shapes: Ls[Shape])(k: Shape => Block): Block = 
-    mlsCall(mrgSymbol.asPath, shapes, true)(s => k(Shape(s)))
+  def fnMrg(shapes: Ls[Shape])(k: Shape => Block): Block =
+    mlsShapeMod("mrg", shapes)(s => k(Shape(s)))
   // TODO: make fnSilh take in a wrapped Path type
-  def fnSilh(pattern: Path)(k: Shape => Block) = 
-    mlsCall(silhSymbol.asPath, Ls(pattern), true)(s => k(Shape(s)))
-  def fnMatch(s: Shape, pat: Path)(k: Path => Block) = 
-    mlsCall(matchSymbol.asPath, Ls(s, pat), true)(k)
-  def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block = 
-    mlsCall(selSymbol.asPath, Ls(s1, s2), true)(s => k(Shape(s)))
-  def fnStatic(s: Shape)(k: Path => Block) = 
-    mlsCall(staticSymbol.asPath, Ls(s), true)(k)
-  def fnCompile(x: Path)(k: StagedPath => Block): Block = 
-    mlsCall(compileSymbol.asPath, Ls(x), true)(p => k(StagedPath(p)))
+  def fnSilh(pattern: Path)(k: Shape => Block) =
+    mlsShapeMod("silh", Ls(pattern))(s => k(Shape(s)))
+  def fnMatch(s: Shape, pat: Path)(k: Path => Block) =
+    mlsShapeMod("match", Ls(s, pat))(k)
+  def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block =
+    mlsShapeMod("sel", Ls(s1, s2))(s => k(Shape(s)))
+  def fnStatic(s: Shape)(k: Path => Block) =
+    mlsShapeMod("static", Ls(s))(k)
+  def fnCompile(x: Path)(k: StagedPath => Block): Block =
+    mlsShapeMod("compile", Ls(x))(p => k(StagedPath(p)))
+  def fnDet(s: Shape, ps: Ls[PathLike])(k: Path => Block): Block =
+    mlsTuple(ps): tup =>
+      mlsShapeMod("det", Ls(s, tup))(k)
 
   // helpers for instrumenting functions 
 
