@@ -171,7 +171,7 @@ class Instrumentation(using State):
     transformArgs(elems): xs =>
       tuple(xs.map(_.shape)): shapes =>
         shapeCtor("Arr", Ls(shapes)): sp =>
-          tuple(xs.map(_.code)): cde => // is Tuple quotes as well?
+          blockCtor("Tuple", xs.map(_.code)): cde =>
             StagedPath.mk(sp, cde)(k)
 
   def ruleSel(s: Select)(using Context)(k: StagedPath => Block): Block =
