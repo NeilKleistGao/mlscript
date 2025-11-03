@@ -50,17 +50,16 @@ class Instrumentation(using State):
     val tmp = new TempSymbol(N, name)
     Assign(tmp, res, k(tmp.asPath))
 
-  def mlsBlock(nme: String, args: Ls[PathLike])(k: Path => Block): Block =
+  def mlsBlockMod(nme: String, args: Ls[PathLike])(k: Path => Block): Block =
     val s = summon[State].blockSymbol.asPath.selSN(nme)
     assign(Instantiate(false, s, args.map(asArg)))(k)
-  def mlsShape(nme: String, args: Ls[PathLike])(k: Shape => Block): Block =
+  def mlsShapeMod(nme: String, args: Ls[PathLike])(k: Path => Block): Block =
     val s = summon[State].shapeSymbol.asPath.selSN(nme)
-    assign(Instantiate(false, s, args.map(asArg)))(p => k(Shape(p)))
+    assign(Instantiate(false, s, args.map(asArg)))(k)
+  def mlsShape(nme: String, args: Ls[PathLike])(k: Shape => Block): Block =
+    mlsShapeMod(nme, args)(p => k(Shape(p)))
 
   // helpers corresponding to constructors
-
-  def mlsSymbol(nme: String)(k: Path => Block): Block =
-    mlsBlock("Symbol", Ls(toValue(nme)))(k)
 
   def mlsSelect(qual: Path, ident: Tree.Ident)(k: Path => Block): Block =
     // unnecessary assignment?
@@ -137,14 +136,14 @@ class Instrumentation(using State):
 
   def ruleLit(l: Literal)(k: StagedPath => Block): Block =
     mlsShape("Lit", Ls(Value.Lit(l))): sp =>
-      mlsBlock("Lit", Ls(Value.Lit(l))): cde =>
+      mlsBlockMod("Lit", Ls(Value.Lit(l))): cde =>
         StagedPath.mk(sp, cde)(k)
 
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
     // why assume it is already staged?
     val sp = StagedPath(r)
     // why not just use sp.code?
-    mlsBlock("ValueRef", Ls(toValue(r.l.nme))): cde =>
+    mlsBlockMod("ValueRef", Ls(toValue(r.l.nme))): cde =>
       StagedPath.mk(sp.shape, cde)(k)
 
   def ruleTup(t: Tuple)(using Context)(k: StagedPath => Block): Block =
@@ -172,7 +171,7 @@ class Instrumentation(using State):
     transformPath(qual): x =>
       transformPath(path): y =>
         fnSel(x.shape, y.shape): sp =>
-          mlsBlock("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
+          mlsBlockMod("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
             StagedPath.mk(sp, cde)(k)
 
   def ruleRefinedPath(p: Path)(using ctx: Context)(k: StagedPath => Block): Block = ???
@@ -192,12 +191,12 @@ class Instrumentation(using State):
       mlsTuple(xs.map(_.shape)): shapes =>
         mlsTuple(xs.map(_.code)): codes =>
           mlsShape("Class", Ls(cls, shapes)): sp =>
-            mlsBlock("Instantiate", Ls(cls, codes)): cde =>
+            mlsBlockMod("Instantiate", Ls(cls, codes)): cde =>
               StagedPath.mk(sp, cde)(k)
 
   def ruleReturn(r: Return)(using Context)(k: StagedPath => Block): Block =
     transformResult(r.res): x =>
-      mlsBlock("Return", Ls(x.code)): cde =>
+      mlsBlockMod("Return", Ls(x.code)): cde =>
         StagedPath.mk(x.shape, cde)(k)
 
   def ruleMatch(m: Match)(using Context)(k: StagedPath => Block): Block =
@@ -211,24 +210,23 @@ class Instrumentation(using State):
       (Assign(x, y.p, _)):
         transformBlock(b): z =>
           // need to wrap x with Symbol?
-          mlsBlock("Assign", Ls(x, y.code, z.code)): cde =>
+          mlsBlockMod("Assign", Ls(x, y.code, z.code)): cde =>
             StagedPath.mk(z.shape, cde)(k)
 
   def ruleEnd()(k: StagedPath => Block): Block =
     mlsShape("Unit", Ls()): sp =>
-      mlsBlock("End", Ls()): cde =>
+      mlsBlockMod("End", Ls()): cde =>
         StagedPath.mk(sp, cde)(k)
 
-  def ruleVal(defn: ValDefn, rest: Block)(using Context)(k: StagedPath => Block): Block =
-    val ValDefn(tsym, sym, rhs) = defn
-    transformPath(rhs): y =>
-      transformBlock(rest): z =>
+  def ruleVal(defn: ValDefn, b: Block)(using Context)(k: StagedPath => Block): Block =
+    val ValDefn(tsym, x, p) = defn
+    transformPath(p): y =>
+      transformBlock(b): z =>
         // TODO: valdefn needs to be before code blocks somehow?
         // y is StagedPath, not Path?
-        (Define(ValDefn(tsym, sym, y.p), _)):
-          mlsSymbol("x"): x =>
-            mlsBlock("ValDefn", Ls(x, y.code)): df =>
-              mlsBlock("Define", Ls(df, z.code)): cde =>
+        (Define(ValDefn(tsym, x, y.p), _)):
+            mlsBlockMod("ValDefn", Ls(x, y.code)): df =>
+              mlsBlockMod("Define", Ls(df, z.code)): cde =>
                 StagedPath.mk(z.shape, cde)(k)
 
   def ruleBlk(b: Block)(using Context)(k: StagedPath => Block): Block = 
