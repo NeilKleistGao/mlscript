@@ -84,7 +84,10 @@ class Instrumentation(using State):
   def blockCtor(name: String, args: Ls[PathLike])(k: Path => Block): Block =
     ctor(blockMod(name), args)(k)
   def shapeCtor(name: String, args: Ls[PathLike])(k: Shape => Block): Block =
-    ctor(shapeMod(name), args)(p => k(Shape(p)))
+    // ctor(shapeMod(name), args)(p => k(Shape(p)))
+    // override handling shape
+    if name == "Lit" then ctor(shapeMod("Lit"), args)(p => k(Shape(p)))
+    else ctor(shapeMod("Dyn"), Ls())(p => k(Shape(p)))
 
   def blockCall(name: String, args: Ls[PathLike])(k: Path => Block): Block =
     call(blockMod(name), args)(k)
@@ -303,17 +306,18 @@ class Instrumentation(using State):
 
   def transformPath(p: Path)(using Context)(k: StagedPath => Block): Block =
     p match
-      case s: Select => ruleSel(s)(k)
-      case d: DynSelect => ruleDynSel(d)(k)
+      // case s: Select => ruleSel(s)(ruleRefinedPath(_)(k))
+      // case d: DynSelect => ruleDynSel(d)(ruleRefinedPath(_)(k))
+      // case r: Value.Ref => ruleVar(r)(ruleRefinedPath(_)(k))
       case r: Value.Ref => ruleVar(r)(k)
       case Value.Lit(lit) => ruleLit(lit)(k)
       case _ => ??? // not supported
 
   def transformResult(r: Result)(using Context)(k: StagedPath => Block): Block =
     r match
-      case c: Call => ruleApp(c)(k)
-      case i: Instantiate => ruleInst(i)(k)
-      case t: Tuple => ruleTup(t)(k)
+      // case c: Call => ruleApp(c)(k)
+      // case i: Instantiate => ruleInst(i)(k)
+      // case t: Tuple => ruleTup(t)(k)
       case p: Path => transformPath(p)(k)
       case _: Lambda | _: Record => ??? // not supported
 
@@ -342,9 +346,9 @@ class Instrumentation(using State):
 
   def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     b match
-      case m: Match => ruleMatch(m)(k)
+      // case m: Match => ruleMatch(m)(k)
       case r: Return => ruleReturn(r)(k)
-      case a: Assign => ruleAssign(a)(k)
+      // case a: Assign => ruleAssign(a)(k)
       case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k)
       case _ => ??? // not supported
