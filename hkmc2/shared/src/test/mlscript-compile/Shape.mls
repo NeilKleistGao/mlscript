@@ -15,9 +15,17 @@ class Shape with
     Dyn
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape]) // is length parameter needed?
-    // TODO: change sym to accept multiple possible class symbols
+    // TODO: change sym to accept multiple possible class symbols?
     Class(val sym: Symbol, val shapes: Array[Shape])
     Unit
+
+fun isPrimitiveType(sym: Str) = 
+  if sym is
+    "Str" then true
+    "Int" then true
+    "Num" then true
+    "Bool" then true
+    else false
 
 fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
   if [sym, l] is
@@ -27,29 +35,37 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
     ["Bool", b] and b is Bool then true
     _ then false
 
+fun zipMrg[A](a: Array[A], b: Array[A]): Array[[A, A]] =
+  [...Array(a.length).keys()].map((i, _, _) => mrg2(a.at(i), b.at(i)))
+
 // TODO: look at how Array is used
 fun mrg2(s1: Shape, s2: Shape) = if s1
   == s2 then s1
-  is Lit(l) and s2 is Class(sym, shapes)
-    and isPrimitiveTypeOf(sym, l) then Class(sym, shapes)
-  is Class(sym1, shapes1) and s2 is Class(sym2, shapes2)
-    and sym1 == sym2 then Class(sym1, ???)
-  is Arr(s1) and s2 is Arr(s2)
-    and s1.length == s2.length then Arr(???)
-  else ???
+  is
+    Lit(l) and s2 is Class(sym, shapes)
+      and isPrimitiveTypeOf(sym, l)
+      then Class(sym, shapes)
+    Class(sym1, s1) and s2 is Class(sym2, s2)
+      and sym1 == sym2
+      then Class(sym1, zipMrg(s1, s2))
+    Arr(s1) and s2 is Arr(s2)
+      and s1.length == s2.length
+      then Arr(zipMrg(s1, s2))
+    else Dyn
 
-fun mrg(s1: Array[Shape]) = ???
+fun mrg(s1: Array[Shape]) = 
+  s1.reduceRight((acc, s, _, _) => mrg2(s, acc))
 
 fun sel(s1: Shape, s2: Shape) = 
   if [s1, s2] is
-    [Class(c, shapes), Lit(n)] // n_i ?
-    and n is Int then shapes.n
-    [Dyn, Lit(n)] // n_i ?
-    and n is Int then Dyn
-    [Arr(shapes), Lit(n)]
-    and n is Int then shapes.n
+    [Class(c, shapes), Lit(n)]
+      and n is Str then shapes.at(n) // field name election using Str?
     [Dyn, Lit(n)]
-    and n is Int then Dyn
+      and n is Str then Dyn
+    [Arr(shapes), Lit(n)]
+      and n is Int then shapes.at(n)
+    [Dyn, Lit(n)]
+      and n is Int then Dyn
     [Dyn, Dyn] then Dyn
     _ then ???
 
@@ -57,31 +73,35 @@ fun static(s: Shape) =
   if s
     == Dyn then false
     is
-      Lit then true
-      Class then false
-      _ then ???
+      Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
+      Class(_, shapes) then shapes.every((s, _, _) => static(s))
+      Arr(shapes) then shapes.every((s, _, _) => static(s))
 
+type SLit = Lit
 open Block
 
 fun silh(p: Case): Shape = if p is
-  Lit(l) then Shape.Lit(l)
+  Lit(l) then SLit(l)
   // where to store size of argument array?
-  Class(sym, path) then Shape.Class(sym, ???)
+  Cls(sym, path) then Class(sym, ???)
   // how to initialize array of Dyn?
-  Tup(n, inf) then Shape.Arr(???)
+  Tup(n, inf) then Arr(Array(n).fill(Dyn))
   Field(name) then ???
   Wildcard then Dyn
 
 fun match(s: Shape, p: Case): Option[Bool] = 
   if [s, p] is
-    [Shape.Lit(l1), Lit(l2)] then Some(true)
-    [Shape.Lit(l), Class(c)] and isPrimitiveTypeOf(c, l) then Some(true)
-    [Shape.Class(c1, _), Class(c2)] and c1 == c2 then Some(true)
-    [Shape.Arr(ls), Tup(n, inf)] and ls.length == n then Some(true)
-    [_, Wildcard] then Some(true)
+    [Lit(l1), Lit(l2)] then Some(true)
+    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then Some(true)
+    [Class(c1, _), Cls(c2, _)] and c1 == c2 then Some(true)
+    [Arr(ls), Tup(n, inf)] and ls.length == n then Some(true)
+    [_, Block.Wildcard] then Some(true)
     [Shape.Dyn, _] then None
     _ then Some(false)
 
-fun det(s: Shape, ps: Array[Case]): Option[Bool] = 
-  val a = ps.map(p => match(s, p) is Some(true))
-  return ???
+fun det(s: Shape, ps: Array[Case]): Bool = 
+  ps.every((p, i, a) =>
+    if i != ps.length - 1
+    then match(s, p) == Some(false)
+    else match(s, p) == Some(true)
+  )
