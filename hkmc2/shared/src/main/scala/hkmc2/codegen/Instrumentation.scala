@@ -342,5 +342,4 @@ class Instrumentation(using State):
       case a: Assign => ruleAssign(a)(k)
       case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k)
-      case l: Label => ???
       case _ => ??? // not supported
