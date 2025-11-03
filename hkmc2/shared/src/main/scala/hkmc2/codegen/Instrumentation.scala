@@ -333,8 +333,6 @@ class Instrumentation(using State):
 
   def transformArg(a: Arg)(using Context)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
-    ??? // arg has no shape of its own? it's just a wrapper for Path
-
     transformPath(value)(k)
 
   // provides list of shapes and list of codes to continuation
@@ -343,9 +341,18 @@ class Instrumentation(using State):
 
   def transformDefine(d: Define)(using Context)(k: StagedPath => Block): Block =
     d.defn match
-      case f: FunDefn => ???
+      case f @ FunDefn(owner, sym, parameters, body) =>
+        val genSym = BlockMemberSymbol("gen", Nil, true) // TODO: reuse original function name?
+        val b = transformBlock(d.rest): res =>
+          // TODO: remove it. only for test
+          // TODO: put correct parameters instead of Nil
+          call(genSym.asPath, Nil): ret =>
+            blockCall("printCode", Ls(StagedPath(ret).code)): _ => // discard result, we only care about side effect
+              res.end
+        val rest = Define(FunDefn(owner, genSym, parameters, transformBlock(body)(_.end)), b)
+        Define(f, rest)
       case v: ValDefn => ruleVal(v, d.rest)(k)
-      case c: ClsLikeDefn => ???
+      case c: ClsLikeDefn => ??? // nested class?
 
   def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     b match
@@ -355,3 +362,8 @@ class Instrumentation(using State):
       case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k)
       case _ => ??? // not supported
+
+  def transformProgram(prog: Program)(): Program =
+    // TODO imports
+    ??? // use ruleCls and ruleBlock here
+    Program(prog.imports, transformBlock(prog.main)(using new Context())(_.end))
