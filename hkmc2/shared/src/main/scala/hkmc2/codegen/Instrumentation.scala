@@ -109,25 +109,24 @@ class Instrumentation(using State):
     mlsTuple(ps): tup =>
       mlsShapeMod("det", Ls(s, tup))(k)
 
-  // helpers for instrumenting functions 
+  // helpers for instrumenting functions
 
   def inst(f: StagedPath, args: Ls[StagedPath]): StagedPath =
-    if ??? then 
+    if ??? then
       // non-staged function
       ???
-    else 
-      // staged function 
+    else
+      // staged function
       ???
 
   def instGlobal(f: StagedPath, args: Ls[StagedPath])(k: StagedPath => Block): Block =
     def isFunction(p: Path) = ???
-    if isFunction(f.p) then
-      k(inst(???, args))
-    else 
+    if isFunction(f.p) then k(inst(???, args))
+    else
       mlsShape("Dyn", Ls()): sp =>
         mlsCall(f.p, args.map(_.p), ???): cde =>
           StagedPath.mk(sp, cde)(k)
-  
+
   // instrumentation rules
 
   def ruleLit(l: Literal)(k: StagedPath => Block): Block =
@@ -172,7 +171,7 @@ class Instrumentation(using State):
 
   def ruleRefinedPath(p: Path)(using ctx: Context)(k: StagedPath => Block): Block = ???
 
-  // .apply is Call?  
+  // .apply is Call?
   def ruleApp(c: Call)(using Context)(k: StagedPath => Block): Block =
     val Call(fun, args) = c
     transformPath(fun): f =>
@@ -200,7 +199,7 @@ class Instrumentation(using State):
     transformPath(p): x =>
       ???
 
-  def ruleAssign(a: Assign)(using Context)(k: StagedPath => Block): Block = 
+  def ruleAssign(a: Assign)(using Context)(k: StagedPath => Block): Block =
     val Assign(x, r, b) = a
     transformResult(r): y =>
       (Assign(x, y.p, _)):
@@ -221,11 +220,11 @@ class Instrumentation(using State):
         // TODO: valdefn needs to be before code blocks somehow?
         // y is StagedPath, not Path?
         (Define(ValDefn(tsym, x, y.p), _)):
-            mlsBlockMod("ValDefn", Ls(x, y.code)): df =>
-              mlsBlockMod("Define", Ls(df, z.code)): cde =>
-                StagedPath.mk(z.shape, cde)(k)
+          mlsBlockMod("ValDefn", Ls(x, y.code)): df =>
+            mlsBlockMod("Define", Ls(df, z.code)): cde =>
+              StagedPath.mk(z.shape, cde)(k)
 
-  def ruleBlk(b: Block)(using Context)(k: StagedPath => Block): Block = 
+  def ruleBlk(b: Block)(using Context)(k: StagedPath => Block): Block =
     transformBlock(b): x =>
       fnCompile(x.code)(k)
 
@@ -250,7 +249,7 @@ class Instrumentation(using State):
       case i: Instantiate => ruleInst(i)(k)
       case t: Tuple => ruleTup(t)(k)
       case p: Path => transformPath(p)(k)
-      case _ : Lambda | _: Record => ??? // not supported
+      case _: Lambda | _: Record => ??? // not supported
 
   def transformArg(a: Arg)(using Context)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
