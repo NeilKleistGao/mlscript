@@ -53,24 +53,13 @@ class Instrumentation(using State):
               k(head :: tail)
       )(f)
 
-  // helper for staging the constructors
+  // helpers corresponding to constructors
 
   // could use `using` to allow passthrough of names
   def assign(res: Result, name: String = "tmp")(k: Path => Block): Assign =
     // TODO: skip assignment if res: Path?
     val tmp = new TempSymbol(N, name)
     Assign(tmp, res, k(tmp.asPath))
-
-  def mlsBlockMod(nme: String, args: Ls[PathLike])(k: Path => Block): Block =
-    val s = summon[State].blockSymbol.asPath.selSN(nme)
-    assign(Instantiate(false, s, args.map(asArg)))(k)
-  def mlsShapeMod(nme: String, args: Ls[PathLike])(k: Path => Block): Block =
-    val s = summon[State].shapeSymbol.asPath.selSN(nme)
-    assign(Instantiate(false, s, args.map(asArg)))(k)
-  def mlsShape(nme: String, args: Ls[PathLike])(k: Shape => Block): Block =
-    mlsShapeMod(nme, args)(p => k(Shape(p)))
-
-  // helpers corresponding to constructors
 
   def mlsSelect(qual: Path, ident: Tree.Ident)(k: Path => Block): Block =
     // unnecessary assignment?
@@ -80,8 +69,27 @@ class Instrumentation(using State):
     // is this the same as "Ls of"?
     assign(Tuple(false, elems.map(asArg)))(k)
 
-  def mlsCall(fun: Path, args: Ls[PathLike], isMlsFun: Bool)(k: Path => Block): Block =
+  // helper for staging the constructors
+
+  def blockMod(name: String) = summon[State].blockSymbol.asPath.selSN(name)
+  def shapeMod(name: String) = summon[State].shapeSymbol.asPath.selSN(name)
+
+  def ctor(cls: Path, args: Ls[PathLike])(k: Path => Block): Block =
+    assign(Instantiate(false, cls, args.map(asArg)))(k)
+
+  // isMlsFun is probably always true?
+  def call(fun: Path, args: Ls[PathLike], isMlsFun: Bool = true)(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false))(k)
+
+  def blockCtor(name: String, args: Ls[PathLike])(k: Path => Block): Block =
+    ctor(blockMod(name), args)(k)
+  def shapeCtor(name: String, args: Ls[PathLike])(k: Shape => Block): Block =
+    ctor(shapeMod(name), args)(p => k(Shape(p)))
+
+  def blockCall(name: String, args: Ls[PathLike])(k: Path => Block): Block =
+    call(blockMod(name), args)(k)
+  def shapeCall(name: String, args: Ls[PathLike])(k: Path => Block): Block =
+    call(shapeMod(name), args)(k)
 
   // helpers to create and access the components of a staged value
   case class Shape(p: Path)
@@ -103,22 +111,26 @@ class Instrumentation(using State):
 
   // linking functions defined in MLscipt
 
+  def fnPrintCode(p: Path)(k: Path => Block): Block =
+    blockCall("printCode", Ls(p))(k)
+  def applyCompile(r: Path)(k: Path => Block): Block =
+    blockCall("compile", Ls(r))(k)
   def fnMrg(shapes: Ls[Shape])(k: Shape => Block): Block =
-    mlsShapeMod("mrg", shapes)(s => k(Shape(s)))
+    shapeCall("mrg", shapes)(s => k(Shape(s)))
   // TODO: make fnSilh take in a wrapped Path type
   def fnSilh(pattern: Path)(k: Shape => Block) =
-    mlsShapeMod("silh", Ls(pattern))(s => k(Shape(s)))
+    shapeCall("silh", Ls(pattern))(s => k(Shape(s)))
   def fnMatch(s: Shape, pat: Path)(k: Path => Block) =
-    mlsShapeMod("match", Ls(s, pat))(k)
+    shapeCall("match", Ls(s, pat))(k)
   def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block =
-    mlsShapeMod("sel", Ls(s1, s2))(s => k(Shape(s)))
+    shapeCall("sel", Ls(s1, s2))(s => k(Shape(s)))
   def fnStatic(s: Shape)(k: Path => Block) =
-    mlsShapeMod("static", Ls(s))(k)
+    shapeCall("static", Ls(s))(k)
   def fnCompile(x: Path)(k: StagedPath => Block): Block =
-    mlsShapeMod("compile", Ls(x))(p => k(StagedPath(p)))
+    shapeCall("compile", Ls(x))(p => k(StagedPath(p)))
   def fnDet(s: Shape, ps: Ls[PathLike])(k: Path => Block): Block =
     mlsTuple(ps): tup =>
-      mlsShapeMod("det", Ls(s, tup))(k)
+      shapeCall("det", Ls(s, tup))(k)
 
   // helpers for instrumenting functions
 
@@ -134,22 +146,22 @@ class Instrumentation(using State):
     def isFunction(p: Path) = ???
     if isFunction(f.p) then k(inst(???, args))
     else
-      mlsShape("Dyn", Ls()): sp =>
-        mlsCall(f.p, args.map(_.p), ???): cde =>
+      shapeCtor("Dyn", Ls()): sp =>
+        call(f.p, args.map(_.p), ???): cde =>
           StagedPath.mk(sp, cde)(k)
 
   // instrumentation rules
 
   def ruleLit(l: Literal)(k: StagedPath => Block): Block =
-    mlsShape("Lit", Ls(Value.Lit(l))): sp =>
-      mlsBlockMod("Lit", Ls(Value.Lit(l))): cde =>
+    shapeCtor("Lit", Ls(Value.Lit(l))): sp =>
+      blockCtor("ValueLit", Ls(Value.Lit(l))): cde =>
         StagedPath.mk(sp, cde)(k)
 
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
     // why assume it is already staged?
     val sp = StagedPath(r)
     // why not just use sp.code?
-    mlsBlockMod("ValueRef", Ls(toValue(r.l.nme))): cde =>
+    blockCtor("ValueRef", Ls(toValue(r.l.nme))): cde =>
       StagedPath.mk(sp.shape, cde)(k)
 
   def ruleTup(t: Tuple)(using Context)(k: StagedPath => Block): Block =
@@ -158,7 +170,7 @@ class Instrumentation(using State):
 
     transformArgs(elems): xs =>
       mlsTuple(xs.map(_.shape)): shapes =>
-        mlsShape("Arr", Ls(shapes)): sp =>
+        shapeCtor("Arr", Ls(shapes)): sp =>
           mlsTuple(xs.map(_.code)): cde => // is Tuple quotes as well?
             StagedPath.mk(sp, cde)(k)
 
@@ -177,7 +189,7 @@ class Instrumentation(using State):
     transformPath(qual): x =>
       transformPath(path): y =>
         fnSel(x.shape, y.shape): sp =>
-          mlsBlockMod("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
+          blockCtor("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
             StagedPath.mk(sp, cde)(k)
 
   def ruleRefinedPath(p: Path)(using ctx: Context)(k: StagedPath => Block): Block = ???
@@ -196,13 +208,13 @@ class Instrumentation(using State):
     transformArgs(args): xs =>
       mlsTuple(xs.map(_.shape)): shapes =>
         mlsTuple(xs.map(_.code)): codes =>
-          mlsShape("Class", Ls(cls, shapes)): sp =>
-            mlsBlockMod("Instantiate", Ls(cls, codes)): cde =>
+          shapeCtor("Class", Ls(cls, shapes)): sp =>
+            blockCtor("Instantiate", Ls(cls, codes)): cde =>
               StagedPath.mk(sp, cde)(k)
 
   def ruleReturn(r: Return)(using Context)(k: StagedPath => Block): Block =
     transformResult(r.res): x =>
-      mlsBlockMod("Return", Ls(x.code)): cde =>
+      blockCtor("Return", Ls(x.code)): cde =>
         StagedPath.mk(x.shape, cde)(k)
 
   def ruleMatch(m: Match)(using ctx: Context)(k: StagedPath => Block): Block =
@@ -222,10 +234,10 @@ class Instrumentation(using State):
           (c match {
             // refactor as Opt[Case]
             // convert to Block.mls Case
-            case Case.Lit(lit) => mlsBlockMod("Lit", Ls(Value.Lit(lit)))
-            case Case.Cls(cls, path) => mlsBlockMod("Cls", Ls(cls, path))
-            case Case.Tup(len, inf) => mlsBlockMod("Tup", Ls(len, inf).map(toValue))
-            case Case.Field(name, safe) => mlsBlockMod("Field", Ls(toValue(name.name)))
+            case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))
+            case Case.Cls(cls, path) => blockCtor("Cls", Ls(cls, path))
+            case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))
+            case Case.Field(name, safe) => blockCtor("Field", Ls(toValue(name.name)))
           }): patt =>
             fnSilh(patt): sp =>
               val newCtx = ctx.clone()
@@ -236,7 +248,7 @@ class Instrumentation(using State):
           case S(b) =>
             val concatBlock = b
             Ls((k: ((Path, (StagedPath => Block) => Block)) => Block) =>
-              mlsBlockMod("Wildcard", Ls()): patt =>
+              blockCtor("Wildcard", Ls()): patt =>
                 fnSilh(patt): sp =>
                   val newCtx = ctx.clone()
                   newCtx += p -> sp
@@ -261,10 +273,10 @@ class Instrumentation(using State):
             fnMrg(sps): s =>
               (patts
                 .zip(cdes)
-                .foldRight(mlsBlockMod("End", Ls())) { case ((patt, cde), restCont) =>
+                .foldRight(blockCtor("End", Ls())) { case ((patt, cde), restCont) =>
                   (k: Path => Block) =>
                     restCont: rest =>
-                      mlsBlockMod("Match", Ls(x.code, patt, cde, rest))(k)
+                      blockCtor("Match", Ls(x.code, patt, cde, rest))(k)
                 })(StagedPath.mk(s, _)(k))
 
   def ruleAssign(a: Assign)(using Context)(k: StagedPath => Block): Block =
@@ -273,12 +285,12 @@ class Instrumentation(using State):
       (Assign(x, y.p, _)):
         transformBlock(b): z =>
           // need to wrap x with Symbol?
-          mlsBlockMod("Assign", Ls(x, y.code, z.code)): cde =>
+          blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
             StagedPath.mk(z.shape, cde)(k)
 
   def ruleEnd()(k: StagedPath => Block): Block =
-    mlsShape("Unit", Ls()): sp =>
-      mlsBlockMod("End", Ls()): cde =>
+    shapeCtor("Unit", Ls()): sp =>
+      blockCtor("End", Ls()): cde =>
         StagedPath.mk(sp, cde)(k)
 
   def ruleVal(defn: ValDefn, b: Block)(using Context)(k: StagedPath => Block): Block =
@@ -288,8 +300,8 @@ class Instrumentation(using State):
         // TODO: valdefn needs to be before code blocks somehow?
         // y is StagedPath, not Path?
         (Define(ValDefn(tsym, x, y.p), _)):
-          mlsBlockMod("ValDefn", Ls(x, y.code)): df =>
-            mlsBlockMod("Define", Ls(df, z.code)): cde =>
+          blockCtor("ValDefn", Ls(x, y.code)): df =>
+            blockCtor("Define", Ls(df, z.code)): cde =>
               StagedPath.mk(z.shape, cde)(k)
 
   def ruleBlk(b: Block)(using Context)(k: StagedPath => Block): Block =
