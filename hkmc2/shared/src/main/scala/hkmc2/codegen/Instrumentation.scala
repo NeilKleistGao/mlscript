@@ -61,18 +61,13 @@ class Instrumentation(using State):
     val tmp = new TempSymbol(N, name)
     Assign(tmp, res, k(tmp.asPath))
 
-  def mlsSelect(qual: Path, ident: Tree.Ident)(k: Path => Block): Block =
-    // unnecessary assignment?
-    assign(Select(qual, ident)(N))(k)
+  def select(qual: Path, ident: Tree.Ident): Path =
+    // do we need to call assign here? it's already a path anyways
+    Select(qual, ident)(N)
 
-  def mlsTuple(elems: Ls[PathLike])(k: Path => Block): Block =
+  def tuple(elems: Ls[PathLike])(k: Path => Block): Block =
     // is this the same as "Ls of"?
     assign(Tuple(false, elems.map(asArg)))(k)
-
-  // helper for staging the constructors
-
-  def blockMod(name: String) = summon[State].blockSymbol.asPath.selSN(name)
-  def shapeMod(name: String) = summon[State].shapeSymbol.asPath.selSN(name)
 
   def ctor(cls: Path, args: Ls[PathLike])(k: Path => Block): Block =
     assign(Instantiate(false, cls, args.map(asArg)))(k)
@@ -80,6 +75,11 @@ class Instrumentation(using State):
   // isMlsFun is probably always true?
   def call(fun: Path, args: Ls[PathLike], isMlsFun: Bool = true)(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false))(k)
+
+  // helper for staging the constructors
+
+  def blockMod(name: String) = summon[State].blockSymbol.asPath.selSN(name)
+  def shapeMod(name: String) = summon[State].shapeSymbol.asPath.selSN(name)
 
   def blockCtor(name: String, args: Ls[PathLike])(k: Path => Block): Block =
     ctor(blockMod(name), args)(k)
@@ -102,7 +102,7 @@ class Instrumentation(using State):
 
   object StagedPath:
     def mk(shape: Shape, code: Path)(k: StagedPath => Block): Block =
-      mlsTuple(Ls(shape.p, code))(p => k(StagedPath(p)))
+      tuple(Ls(shape.p, code))(p => k(StagedPath(p)))
     // in some cases this can reduce the indentation level
     def mk(shapeCont: (Shape => Block) => Block, codeCont: (Path => Block) => Block)(k: StagedPath => Block): Block =
       shapeCont: shape =>
@@ -129,7 +129,7 @@ class Instrumentation(using State):
   def fnCompile(x: Path)(k: StagedPath => Block): Block =
     shapeCall("compile", Ls(x))(p => k(StagedPath(p)))
   def fnDet(s: Shape, ps: Ls[PathLike])(k: Path => Block): Block =
-    mlsTuple(ps): tup =>
+    tuple(ps): tup =>
       shapeCall("det", Ls(s, tup))(k)
 
   // helpers for instrumenting functions
@@ -169,9 +169,9 @@ class Instrumentation(using State):
     assert(!mut)
 
     transformArgs(elems): xs =>
-      mlsTuple(xs.map(_.shape)): shapes =>
+      tuple(xs.map(_.shape)): shapes =>
         shapeCtor("Arr", Ls(shapes)): sp =>
-          mlsTuple(xs.map(_.code)): cde => // is Tuple quotes as well?
+          tuple(xs.map(_.code)): cde => // is Tuple quotes as well?
             StagedPath.mk(sp, cde)(k)
 
   def ruleSel(s: Select)(using Context)(k: StagedPath => Block): Block =
@@ -181,7 +181,7 @@ class Instrumentation(using State):
       // val n = Shape(Value.Ref(new TempSymbol(N, name)))
       val n = ???
       fnSel(x.shape, n): sp =>
-        mlsSelect(x.code, i): cde =>
+        select(x.code, i): cde =>
           StagedPath.mk(sp, cde)(k)
 
   def ruleDynSel(d: DynSelect)(using Context)(k: StagedPath => Block): Block =
@@ -206,8 +206,8 @@ class Instrumentation(using State):
     assert(!mut)
 
     transformArgs(args): xs =>
-      mlsTuple(xs.map(_.shape)): shapes =>
-        mlsTuple(xs.map(_.code)): codes =>
+      tuple(xs.map(_.shape)): shapes =>
+        tuple(xs.map(_.code)): codes =>
           shapeCtor("Class", Ls(cls, shapes)): sp =>
             blockCtor("Instantiate", Ls(cls, codes)): cde =>
               StagedPath.mk(sp, cde)(k)
