@@ -224,6 +224,7 @@ object Elaborator:
     val prettyPrintSymbol = TempSymbol(N, "prettyPrint")
     val termSymbol = TempSymbol(N, "Term")
     val blockSymbol = TempSymbol(N, "Block")
+    val shapeSymbol = TempSymbol(N, "Shape")
     val effectSigSymbol = ClassSymbol(DummyTypeDef(syntax.Cls), Ident("EffectSig"))
     val nonLocalRetHandlerTrm =
       val id = new Ident("NonLocalReturn")
