@@ -1,33 +1,15 @@
 
 :pt
-staged module A with
-  fun f(x) = x
-A.f(1)
+staged module A
 //│ Parsed tree:
 //│ Modified:
 //│   modifier = Keywrd of keyword 'staged'
 //│   body = TypeDef:
 //│     k = Mod
-//│     head = InfixApp:
-//│       lhs = Ident of "A"
-//│       kw = keyword 'with'
-//│       rhs = Block of Ls of 
-//│         TermDef:
-//│           k = Fun
-//│           head = App:
-//│             lhs = Ident of "f"
-//│             rhs = Tup of Ls of 
-//│               Ident of "x"
-//│           rhs = S of Ident of "x"
+//│     head = Ident of "A"
 //│     rhs = N
-//│ App:
-//│   lhs = Sel:
-//│     prefix = Ident of "A"
-//│     name = Ident of "f"
-//│   rhs = Tup of Ls of 
-//│     IntLit of 1
 
-// TODO: reject these annotations
+// TODO: reject these annotations?
 :pt
 staged object Foo
 //│ Parsed tree:
@@ -61,66 +43,12 @@ staged fun f() = 0
 //│     rhs = S of IntLit of 0
 
 :js
-:lot
 :slot
-staged module B
-//│ Lowered:
-//│ Program:
-//│   imports = Nil
-//│   main = Define:
-//│     defn = ClsLikeDefn:
-//│       owner = N
-//│       isym = class:B
-//│       sym = member:B
-//│       k = Cls
-//│       paramsOpt = N
-//│       auxParams = Nil
-//│       parentPath = N
-//│       methods = Nil
-//│       privateFields = Nil
-//│       publicFields = Nil
-//│       preCtor = End of ""
-//│       ctor = Return:
-//│         res = Select{object:Unit}:
-//│           qual = Ref of $runtime
-//│           name = Ident of "Unit"
-//│         implct = true
-//│       companion = S of ClsLikeBody:
-//│         isym = module:B
-//│         methods = Nil
-//│         privateFields = Nil
-//│         publicFields = Nil
-//│         ctor = End of ""
-//│         staged = true
-//│     rest = Assign: \
-//│     lhs = $block$res
-//│     rhs = Lit of UnitLit of false
-//│     rest = End of ""
+:w
+staged module A
+//│ ╔══[WARNING] `staged` keyword doesn't do anything currently.
+//│ ║  l.48: 	staged module A
+//│ ╙──      	       ^^^^^^^^
 //│ Pretty Lowered:
-//│   define class B in set block$res = undefined in end
+//│   define staged class A in set block$res = undefined in end
 
-:js
-:lot
-:slot
-staged fun f() = 0
-//│ Lowered:
-//│ Program:
-//│   imports = Nil
-//│   main = Define:
-//│     defn = FunDefn (staged=true):
-//│       owner = N
-//│       sym = member:f
-//│       params = Ls of 
-//│         ParamList:
-//│           flags = ()
-//│           params = Nil
-//│           restParam = N
-//│       body = Return:
-//│         res = Lit of IntLit of 0
-//│         implct = false
-//│     rest = Assign: \
-//│     lhs = $block$res
-//│     rhs = Lit of UnitLit of false
-//│     rest = End of ""
-//│ Pretty Lowered:
-//│   define staged fun f() { return 0 } in set block$res = undefined in end

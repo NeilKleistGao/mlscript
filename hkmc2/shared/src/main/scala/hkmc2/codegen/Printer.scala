@@ -63,8 +63,7 @@ object Printer:
     case fd @ FunDefn(own, sym, params, body) =>
       val docParams = doc"${own.fold("")(_.toString+"::")}${params.map(_.params.map(x => summon[Scope].allocateName(x.sym)).mkString("(", ", ", ")")).mkString("")}"
       val docBody = mkDocument(body)
-      val docStaged = if fd.staged then doc"staged " else doc""
-      doc"${docStaged}fun ${sym.nme}${docParams} { #{  # ${docBody} #}  # }"
+      doc"fun ${sym.nme}${docParams} { #{  # ${docBody} #}  # }"
     case ValDefn(tsym, sym, rhs) =>
       doc"val ${tsym.nme} = ${mkDocument(rhs)}"
     case ClsLikeDefn(own, _, sym, k, paramsOpt, auxParams, parentSym, methods,
@@ -83,7 +82,8 @@ object Printer:
       val docPubFlds = if publicFields.isEmpty then doc"" else doc" # ${pubFields}"
       val docBody = if publicFields.isEmpty && privateFields.isEmpty then doc"" else doc" { #{ ${docPrivFlds}${docPubFlds} #}  # }"
       val docCtorParams = if clsParams.isEmpty then doc"" else doc"(${ctorParams.mkString(", ")})"
-      doc"class ${own.fold("")(_.toString+"::")}${sym.nme}${docCtorParams}${docBody}"
+      val docStaged = if !sym.defn.exists(_.hasStagedModifier.isDefined) then doc"" else doc"staged "
+      doc"${docStaged}class ${own.fold("")(_.toString+"::")}${sym.nme}${docCtorParams}${docBody}"
   
   def mkDocument(arg: Arg)(using Raise, Scope): Document =
     val doc = mkDocument(arg.value)

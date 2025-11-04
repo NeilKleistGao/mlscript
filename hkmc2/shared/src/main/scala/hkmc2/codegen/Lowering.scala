@@ -178,8 +178,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
                 blockImpl(stats, res)(k)))
           case syntax.Fun =>
             val (paramLists, bodyBlock) = setupFunctionOrByNameDef(td.params, bod, S(td.sym.nme))
-            val isStaged = td.extraAnnotations.contains(Annot.Modifier(syntax.Keyword.`staged`))
-            Define(FunDefn(td.owner, td.sym, paramLists, bodyBlock, isStaged),
+            Define(FunDefn(td.owner, td.sym, paramLists, bodyBlock),
               blockImpl(stats, res)(k))
           case syntax.Ins =>
             // Implicit instances are not parameterized for now.
@@ -1027,7 +1026,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       if lift then Lifter(S(handlerPaths)).transform(flattened)
       else flattened
     
-    val res = MergeMatchArmTransformer.applyBlock(lifted)
+    val merged = MergeMatchArmTransformer.applyBlock(lifted)
+
+    val res = Instrumentation(using summon).applyBlock(merged)
     
     Program(
       imps.map(imp => imp.sym -> imp.file),
@@ -1204,4 +1205,12 @@ object MergeMatchArmTransformer extends BlockTransformer(new SymbolSubst()):
                   cse -> Begin(body, restRewritten)
             k.getOrElse(identity: Block => Block)(Match(scrut, arms ::: newArms, dfltRewritten, rest))
         case _ => m
+    case b => b
+
+class Instrumentation(using Raise) extends BlockTransformer(new SymbolSubst()):
+  override def applyDefn(d: Defn): Defn = super.applyDefn(d) match
+    case defn: ClsLikeDefn =>
+      if defn.sym.defn.exists(_.hasStagedModifier.isDefined)
+      then raise(WarningReport(msg"`staged` keyword doesn't do anything currently." -> defn.sym.toLoc :: Nil))
+      defn
     case b => b
