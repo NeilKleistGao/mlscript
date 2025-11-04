@@ -60,8 +60,8 @@ object Printer:
     case _ => TODO(blk)
   
   def mkDocument(defn: Defn)(using Raise, Scope): Document = defn match
-    case fd @ FunDefn(own, sym, params, body) =>
-      val docParams = doc"${own.fold("")(_.toString+"::")}${params.map(_.params.map(x => summon[Scope].allocateName(x.sym)).mkString("(", ", ", ")")).mkString("")}"
+    case FunDefn(own, sym, params, body) =>
+      val docParams = doc"${own.fold("")(_.toString+"::")}${params.map(_.params.map(x => summon[Scope].allocateName(x.sym)).mkString("(", ", ", ")")).mkString}"
       val docBody = mkDocument(body)
       doc"fun ${sym.nme}${docParams} { #{  # ${docBody} #}  # }"
     case ValDefn(tsym, sym, rhs) =>

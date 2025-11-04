@@ -62,7 +62,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         tl.trace[Term](s"Expanding term ${r}", post = t => s"~> ${t}"):
           r.expanded
       case t => t
-
+  
   val lowerHandlers: Bool = config.effectHandlers.isDefined
   val lift: Bool = config.liftDefns.isDefined
 

@@ -341,6 +341,7 @@ final case class FunDefn(
 ) extends Defn:
   val innerSym = N
 
+
 final case class ValDefn(
     tsym: TermSymbol,
     sym: BlockMemberSymbol,
