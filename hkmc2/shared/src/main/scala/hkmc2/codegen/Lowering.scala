@@ -1250,9 +1250,9 @@ object MergeMatchArmTransformer extends BlockTransformer(new SymbolSubst()):
     case b => b
 
 class Instrumentation(using Raise) extends BlockTransformer(new SymbolSubst()):
-  override def applyDefn(d: Defn): Defn = super.applyDefn(d) match
+  override def applyDefn(d: Defn)(k: Defn => Block): Block = d match 
     case defn: ClsLikeDefn =>
       if defn.sym.defn.exists(_.hasStagedModifier.isDefined)
       then raise(WarningReport(msg"`staged` keyword doesn't do anything currently." -> defn.sym.toLoc :: Nil))
-      defn
-    case b => b
+      super.applyDefn(defn)(k)
+    case b => super.applyDefn(b)(k)
