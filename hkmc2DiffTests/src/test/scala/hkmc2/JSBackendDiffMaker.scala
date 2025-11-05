@@ -61,7 +61,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
     if importQQ.isSet then importRuntimeModule(termNme, termFile)
     if stageCode.isSet then
       importRuntimeModule(blockNme, blockFile)
-      importRuntimeModule(shapeNme, shapeFile)
+      // importRuntimeModule(shapeNme, shapeFile)
     h
   
   private var hostCreated = false

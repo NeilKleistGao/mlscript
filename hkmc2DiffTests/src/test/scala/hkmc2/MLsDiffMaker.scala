@@ -21,7 +21,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val runtimeFile: os.Path = predefFile/os.up/"Runtime.mjs" // * Contains MLscript runtime definitions
   val termFile: os.Path = predefFile/os.up/"Term.mjs" // * Contains MLscript runtime term definitions
   val blockFile: os.Path = predefFile/os.up/"Block.mjs" // * Contains MLscript runtime block definitions
-  val shapeFile: os.Path = predefFile/os.up/"Shape.mjs" // * Contains MLscript runtime shape definitions
+  // val shapeFile: os.Path = predefFile/os.up/"Shape.mjs" // * Contains MLscript runtime shape definitions
   
   val wd = file / os.up
   
@@ -163,8 +163,10 @@ abstract class MLsDiffMaker extends DiffMaker:
       given Config = mkConfig
       processTrees(
         PrefixApp(Keywrd(`import`), StrLit(blockFile.toString)) :: Nil)
+      /*
       processTrees(
         PrefixApp(Keywrd(`import`), StrLit(shapeFile.toString)) :: Nil)
+        */
     super.init()
   
   
