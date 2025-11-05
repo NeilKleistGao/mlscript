@@ -8,6 +8,7 @@ import syntax.*
 
 import Elaborator.State
 import hkmc2.typing.Type
+import hkmc2.semantics.Elaborator.{Ctx, ctx}
 
 
 final case class QuantVar(sym: VarSymbol, ub: Opt[Term], lb: Opt[Term])
@@ -351,7 +352,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
   def mkClone(using State): Statement = this match
     case t: Term => lastWords(s"overridden implementation")
     case d: Definition => ???
-    case imp: Import => Import(imp.sym, imp.file)
+    case imp: Import => Import(imp.sym, imp.str, imp.file)
     case LetDecl(sym, annotations) => LetDecl(sym, annotations.map(_.mkClone))
     case RcdField(field, rhs) => RcdField(field.mkClone, rhs.mkClone)
     case RcdSpread(rcd) => RcdSpread(rcd.mkClone)
@@ -458,7 +459,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       td.rhs.toList ::: td.annotations.flatMap(_.subTerms)
     case pat: PatternDef =>
       pat.paramsOpt.toList.flatMap(_.subTerms) ::: pat.body.blk :: pat.annotations.flatMap(_.subTerms)
-    case Import(sym, pth) => Nil
+    case Import(sym, str, pth) => Nil
     case Try(body, finallyDo) => body :: finallyDo :: Nil
     case Handle(lhs, rhs, args, derivedClsSym, defs, bod) => rhs :: args ::: defs.flatMap(_.td.subTerms) ::: bod :: Nil
     case Neg(e) => e :: Nil
@@ -560,7 +561,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       s"${cls.kind} ${cls.sym.nme}${
         cls.tparams.map(_.showDbg).mkStringOr(", ", "[", "]")}${
         cls.paramsOpt.fold("")(_.toString)} ${cls.body}"
-    case Import(sym, file) => s"import ${sym} from ${file}"
+    case Import(sym, str, file) => s"import $str from ${file}"
     case Annotated(ann, target) => s"@${ann} ${target.showDbg}"
     case Throw(res) => s"throw ${res.showDbg}"
     case Try(body, finallyDo) => s"try ${body.showDbg} finally ${finallyDo.showDbg}"
@@ -666,7 +667,8 @@ case class ObjBody(blk: Term.Blk):
   override def toString: String = blk.showDbg
 
 
-case class Import(sym: Symbol, file: Str) extends Statement
+/** Note that the `file` Path may not represent a real file; eg when importing "fs". */
+case class Import(sym: Symbol, str: Str, file: os.Path) extends Statement
 
 
 sealed abstract class Declaration:
@@ -709,8 +711,12 @@ sealed abstract class ClassLikeDef extends TypeLikeDef:
   def moduleCompanion = companion match
     case S(sym: ModuleOrObjectSymbol) => S(sym)
     case _ => N
-  def extraAnnotations: Ls[Annot] = annotations.filter:
+  def extraAnnotations(using Ctx): Ls[Annot] = annotations.filter:
     case Annot.Modifier(Keyword.`declare` | Keyword.`abstract` | Keyword.`data`) => false
+    case Annot.Trm(trm: SynthSel) if
+      (kind is Cls) &&
+        (trm.sym.contains(ctx.builtins.annotations.bufferable) ||
+        trm.sym.contains(ctx.builtins.annotations.buffered)) => false
     case _ => true
 
 
@@ -769,7 +775,7 @@ sealed abstract class ClassDef extends ClassLikeDef:
   val annotations: Ls[Annot]
   def isData: Opt[Annot.Modifier] = annotations.collectFirst:
     case mod @ Annot.Modifier(Keyword.`data`) => mod
-  override def extraAnnotations: Ls[Annot] = super.extraAnnotations.filter:
+  override def extraAnnotations(using Ctx): Ls[Annot] = super.extraAnnotations.filter:
     case Annot.Modifier(Keyword.`data`) => false
     case _ => true
 
@@ -886,6 +892,9 @@ final case class TyParam(flags: FldFlags, vce: Opt[Bool], sym: VarSymbol) extend
       else if isContravariant then "in " else "in out ") +
     flags.show + sym
 
+
+object Param:
+  def simple(sym: VarSymbol) = Param(FldFlags.empty, sym, N, Modulefulness.none)
 
 final case class Param(flags: FldFlags, sym: VarSymbol, sign: Opt[Term], modulefulness: Modulefulness) 
 extends Declaration, AutoLocated:

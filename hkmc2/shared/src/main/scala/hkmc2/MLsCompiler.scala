@@ -85,8 +85,8 @@ class MLsCompiler(preludeFile: os.Path, mkOutput: ((Str => Unit) => Unit) => Uni
       val resolver = Resolver(rtl)
       resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
       val blk = new semantics.Term.Blk(
-        semantics.Import(State.runtimeSymbol, runtimeFile.toString)
-        :: semantics.Import(State.termSymbol, termFile.toString)
+        semantics.Import(State.runtimeSymbol, runtimeFile.toString, runtimeFile)
+        :: semantics.Import(State.termSymbol, termFile.toString, termFile)
         :: blk0.stats,
         blk0.res
       )

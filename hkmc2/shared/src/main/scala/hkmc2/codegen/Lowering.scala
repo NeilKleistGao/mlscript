@@ -4,6 +4,7 @@ package codegen
 import scala.language.implicitConversions
 import scala.annotation.tailrec
 import os.{Path as AbsPath, RelPath}
+import sourcecode.Line
 
 import mlscript.utils.*, shorthands.*
 import utils.*
@@ -154,7 +155,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     case DefineVar(sym, rhs) :: stats =>
       term(rhs): r =>
         Assign(sym, r, blockImpl(stats, res)(k))
-    case (imp @ Import(sym, path)) :: stats =>
+    case (imp: Import) :: stats =>
       raise(ErrorReport(
         msg"Imports must be at the top level" ->
         imp.toLoc :: Nil,
@@ -217,6 +218,27 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
               )
           case _ => _defn
         reportAnnotations(defn, defn.extraAnnotations)
+        val bufferableAnnots = defn.annotations.flatMap:
+          case Annot.Trm(trm: SynthSel) =>
+            if trm.sym.contains(ctx.builtins.annotations.buffered) then
+              S(false)
+            else if trm.sym.contains(ctx.builtins.annotations.bufferable) then
+              S(true)
+            else
+              N
+          case _ => N
+        if bufferableAnnots.length > 1 then
+          raise(ErrorReport(
+            msg"Only one of bufferable annotation is allowed." -> defn.toLoc :: Nil,
+            source = Diagnostic.Source.Compilation
+          ))
+        if bufferableAnnots.length >= 1 then
+          if defn.companion.isDefined then
+            raise(ErrorReport(
+              msg"No companion class is allowed with @buffered or @bufferable." -> defn.toLoc :: Nil,
+              source = Diagnostic.Source.Compilation
+            ))
+        val bufferable = bufferableAnnots.headOption
         val (mtds, publicFlds, privateFlds, ctor) = defn match
           case pd: PatternDef => compilePatternMethods(pd)
           case _ => gatherMembers(defn.body)
@@ -224,6 +246,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           case S(sym) =>
             sym.defn match
             case S(mod: ModuleOrObjectDef) =>
+              reportAnnotations(mod, mod.extraAnnotations)
               mod.ext match
               case S(ext) => fail:
                 ErrorReport(
@@ -246,6 +269,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
               End(),
               ctor,
               mod,
+              bufferable,
             ),
             blockImpl(stats, res)(k))
         case S(ext) =>
@@ -255,7 +279,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             Define(
               ClsLikeDefn(
                 defn.owner, defn.sym, defn.bsym, defn.kind, defn.paramsOpt, defn.auxParams, S(clsp),
-                mtds, privateFlds, publicFlds, pctor, ctor, mod
+                mtds, privateFlds, publicFlds, pctor, ctor, mod, bufferable,
               ),
               blockImpl(stats, res)(k)
             )
@@ -319,7 +343,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       args(fs)(args => k(Tuple(mut = false, args)))
     case ref @ st.Ref(sym) =>
       sym match
-      case ctx.builtins.source.bms | ctx.builtins.js.bms | ctx.builtins.debug.bms | ctx.builtins.annotations.bms =>
+      case ctx.builtins.source.bms | ctx.builtins.js.bms | ctx.builtins.wasm.bms | ctx.builtins.debug.bms | ctx.builtins.annotations.bms =>
         return fail:
           ErrorReport(
             msg"Module '${sym.nme}' is virtual (i.e., \"compiler fiction\"); cannot be used directly" -> t.toLoc ::
@@ -368,6 +392,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           return k(Lambda(paramLists.head, bodyBlock).withLocOf(ref))
       case bs: BlockMemberSymbol =>
         bs.defn match
+        case S(_) if bs.asCls.exists(_ is ctx.builtins.Int31) =>
+          return term(Sel(State.runtimeSymbol.ref().resolve, ref.tree)(S(bs), N).withLocOf(ref).resolve)(k)
         case S(d) if d.hasDeclareModifier.isDefined =>
           return term(Sel(State.globalThisSymbol.ref().resolve, ref.tree)(S(bs), N).withLocOf(ref).resolve)(k)
         case S(td: TermDefinition) if td.k is syntax.Fun =>
@@ -434,8 +460,20 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       // * We have to instantiate `f` again because, if `f` is a Sel, the `term`
       // * function is not called again with f. See below `Sel` and `SelProj` cases.
       f.instantiated match
+      case t if t.resolvedSym.exists(_ is ctx.builtins.js.bitand) =>
+        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("bitand")))
+      case t if t.resolvedSym.exists(_ is ctx.builtins.js.bitnot) =>
+        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("bitnot")))
+      case t if t.resolvedSym.exists(_ is ctx.builtins.js.bitor) =>
+        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("bitor")))
+      case t if t.resolvedSym.exists(_ is ctx.builtins.js.shl) =>
+        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("shl")))
       case t if t.resolvedSym.isDefined && (t.resolvedSym.get is ctx.builtins.js.try_catch) =>
         conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("try_catch")))
+      case t if t.resolvedSym.exists(_ is ctx.builtins.wasm.plus_impl) =>
+        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("plus_impl")))
+      case t if t.resolvedSym.exists(_ is ctx.builtins.Int31) =>
+        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("Int31")))
       case t if t.resolvedSym.isDefined && (t.resolvedSym.get is ctx.builtins.debug.printStack) =>
         if !config.effectHandlers.exists(_.debug) then
           return fail:
@@ -699,7 +737,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           val (mtds, publicFlds, privateFlds, ctor) = gatherMembers(rft)
           val pctor = parentConstructor(cls, as)
           val clsDef = ClsLikeDefn(N, isym, sym, syntax.Cls, N, Nil, S(sr),
-            mtds, privateFlds, publicFlds, pctor, ctor, N)
+            mtds, privateFlds, publicFlds, pctor, ctor, N, N)
           val inner = new New(sym.ref().resolve, Nil, N)
           Define(clsDef, term_nonTail(if mut then Mut(inner) else inner)(k))
       
@@ -1014,24 +1052,28 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     val desug = LambdaRewriter.desugar(blk)
     
     val handlerPaths = new HandlerPaths
-    val stackSafe = config.stackSafety match
-      case N => desug
-      case S(sts) => StackSafeTransform(sts.stackLimit, handlerPaths).transformTopLevel(desug)
-    val withHandlers = config.effectHandlers.fold(stackSafe): opt =>
-      HandlerLowering(handlerPaths, opt).translateTopLevel(stackSafe)
     
-    val flattened = withHandlers.flattened
+    val (withHandlers, doUnwindPaths) = config.effectHandlers.fold((desug, Map.empty)): opt =>
+      HandlerLowering(handlerPaths, opt).translateTopLevel(desug)
+      
+    val stackSafe = config.stackSafety match
+      case N => withHandlers
+      case S(sts) => StackSafeTransform(sts.stackLimit, handlerPaths, doUnwindPaths).transformTopLevel(withHandlers)
+    
+    val flattened = stackSafe.flattened
     
     val lifted = 
       if lift then Lifter(S(handlerPaths)).transform(flattened)
       else flattened
     
-    val merged = MergeMatchArmTransformer.applyBlock(lifted)
+    val bufferable = BufferableTransform().transform(lifted)
+    
+    val merged = MergeMatchArmTransformer.applyBlock(bufferable)
 
     val res = Instrumentation(using summon).applyBlock(merged)
     
     Program(
-      imps.map(imp => imp.sym -> imp.file),
+      imps.map(imp => imp.sym -> imp.str),
       res
     )
   
