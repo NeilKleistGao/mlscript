@@ -2,76 +2,41 @@
 :js
 :staging
 :ssjs
-:re
-fun f() = 
-  let x = 42
-  x
+staged module A with
+  fun f() = 1
 //│ JS:
-//│ f = function f(...args) {
-//│   runtime.checkArgs("f", 0, true, args.length);
-//│   let x;
-//│   x = 42;
-//│   return x
-//│ };
-//│ gen = function gen(...args) {
-//│   runtime.checkArgs("gen", 0, true, args.length);
-//│   let x, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10;
-//│   tmp2 = globalThis.Object.freeze(new Shape.Lit(42));
-//│   tmp3 = globalThis.Object.freeze(new Block.ValueLit(42));
-//│   tmp4 = globalThis.Object.freeze([
-//│     tmp2,
-//│     tmp3
-//│   ]);
-//│   x = tmp4;
-//│   tmp5 = globalThis.Object.freeze(new Block.ValueRef("x"));
-//│   tmp6 = globalThis.Object.freeze([
-//│     x[0],
-//│     tmp5
-//│   ]);
-//│   tmp7 = globalThis.Object.freeze(new Block.Return(tmp6[1]));
-//│   tmp8 = globalThis.Object.freeze([
-//│     tmp6[0],
-//│     tmp7
-//│   ]);
-//│   tmp9 = globalThis.Object.freeze(new Block.Assign(x, tmp4[1], tmp8[1]));
-//│   tmp10 = globalThis.Object.freeze([
-//│     tmp8[0],
-//│     tmp9
-//│   ]);
-//│   return tmp10
-//│ };
-//│ tmp = runtime.checkCall(gen());
+//│ globalThis.Object.freeze(class A {
+//│   static {
+//│     A1 = this
+//│   }
+//│   constructor() {
+//│     runtime.Unit;
+//│   }
+//│   static f(...args) {
+//│     runtime.checkArgs("f", 0, true, args.length);
+//│     return 1
+//│   } 
+//│   static f_gen(...args) {
+//│     runtime.checkArgs("f_gen", 0, true, args.length);
+//│     let tmp2, tmp3, tmp4, tmp5, tmp6;
+//│     tmp2 = globalThis.Object.freeze(new Shape.Lit(1));
+//│     tmp3 = globalThis.Object.freeze(new Block.ValueLit(1));
+//│     tmp4 = globalThis.Object.freeze([
+//│       tmp2,
+//│       tmp3
+//│     ]);
+//│     tmp5 = globalThis.Object.freeze(new Block.Return(tmp4[1]));
+//│     tmp6 = globalThis.Object.freeze([
+//│       tmp4[0],
+//│       tmp5
+//│     ]);
+//│     return tmp6
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "A"]; 
+//│ });
+//│ tmp = runtime.checkCall(A1.f_gen());
 //│ tmp1 = runtime.checkCall(Block.printCode(tmp[1]));
 //│ block$res = undefined;
-//│ ═══[RUNTIME ERROR] Error: Not implemented
+//│ > printCode
 
-:js
-:staging
-:ssjs
-:re
-fun g() = 12
-//│ JS:
-//│ g = function g(...args) {
-//│   runtime.checkArgs("g", 0, true, args.length);
-//│   return 12
-//│ };
-//│ gen1 = function gen(...args) {
-//│   runtime.checkArgs("gen", 0, true, args.length);
-//│   let tmp4, tmp5, tmp6, tmp7, tmp8;
-//│   tmp4 = globalThis.Object.freeze(new Shape.Lit(12));
-//│   tmp5 = globalThis.Object.freeze(new Block.ValueLit(12));
-//│   tmp6 = globalThis.Object.freeze([
-//│     tmp4,
-//│     tmp5
-//│   ]);
-//│   tmp7 = globalThis.Object.freeze(new Block.Return(tmp6[1]));
-//│   tmp8 = globalThis.Object.freeze([
-//│     tmp6[0],
-//│     tmp7
-//│   ]);
-//│   return tmp8
-//│ };
-//│ tmp2 = runtime.checkCall(gen1());
-//│ tmp3 = runtime.checkCall(Block.printCode(tmp2[1]));
-//│ block$res1 = undefined;
-//│ ═══[RUNTIME ERROR] Error: Not implemented

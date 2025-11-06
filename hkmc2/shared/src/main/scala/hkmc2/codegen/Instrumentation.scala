@@ -158,10 +158,10 @@ class InstrumentationImpl(using State):
   def transformArg(a: Arg)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
     transformPath(value)(k)
-  
+
   def transformFunDefn(f: FunDefn): FunDefn =
     val FunDefn(owner, sym, parameters, body) = f
-    val genSym = BlockMemberSymbol(sym.nme+"_gen", Nil, true) // TODO: reuse original function name?
+    val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true) // TODO: reuse original function name?
     // TODO: remove it. only for test
     // TODO: put correct parameters instead of Nil
     val b = call(genSym.asPath, Nil): ret =>
@@ -196,23 +196,38 @@ class InstrumentationImpl(using State):
 class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
   val impl = new InstrumentationImpl
 
-  def applyProgram(prgm: Program) = Program(prgm.imports, applyBlock(prgm.main))
-  
   // This stages any function definition,
   // instead of staging functions within staged modules.
   override def applyBlock(b: Block): Block = b match
     case Define(defn, rest) =>
       defn match
-        case f @ FunDefn(owner, sym, parameters, body) =>
-          val genSym = BlockMemberSymbol("gen", Nil, true) // TODO: reuse original function name?
-          val staged = FunDefn(owner, genSym, parameters, impl.transformBlock(body)(_.end))
-          // TODO: remove it. only for test
-          // TODO: put correct parameters instead of Nil
-          val b = impl.call(genSym.asPath, Nil): ret =>
-              // discard result, we only care about side effect of printCode
-              impl.blockCall("printCode", Ls(impl.StagedPath(ret).code)): _ =>
-                applyBlock(rest)
-          Define(f, Define(staged, b))
+        // case f @ FunDefn(owner, sym, parameters, body) =>
+        //   val genSym = BlockMemberSymbol("gen", Nil, true) // TODO: reuse original function name?
+        //   val staged = FunDefn(owner, genSym, parameters, impl.transformBlock(body)(_.end))
+        //   // TODO: remove it. only for test
+        //   // TODO: put correct parameters instead of Nil
+        //   val b = impl.call(genSym.asPath, Nil): ret =>
+        //     // discard result, we only care about side effect of printCode
+        //     impl.blockCall("printCode", Ls(impl.StagedPath(ret).code)): _ =>
+        //       applyBlock(rest)
+        //   Define(f, Define(staged, b))
+        // find modules with staged annotation
+        case c: ClsLikeDefn if c.sym.defn.exists(_.hasStagedModifier.isDefined) && c.companion.isDefined =>
+          val companion = c.companion.get
+          val (stagedMethods, debugPrintCode) = companion.methods.map { case f @ FunDefn(owner, sym, parameters, body) =>
+            val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true) // TODO: reuse original function name?
+            // TODO: remove it. only for test
+            // TODO: put correct parameters instead of Nil
+            // Select(c.sym, genSym.nme)
+            // c.sym.selSN(genSym.nme)
+            val b: Block = impl.call(c.sym.asPath.selSN(genSym.nme), Nil): ret =>
+              impl.blockCall("printCode", Ls(impl.StagedPath(ret).code)): _ => // discard result, we only care about side effect
+                End()
+            (f.copy(sym = genSym, body = impl.transformBlock(body)(_.end)), b)
+          }.unzip
+          val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods)
+          val newModule = c.copy(sym = c.sym, companion = Some(newCompanion))
+          val debugBlock: Block = debugPrintCode.foldRight(rest)((b1, b2) => b1.mapTail { case _ => b2 })
+          Define(newModule, debugBlock)
         case _ => b
     case _ => b
-
