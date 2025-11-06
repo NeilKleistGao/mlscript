@@ -9,6 +9,8 @@ import sourcecode.Line
 import mlscript.utils.*, shorthands.*
 import utils.*
 
+import hkmc2.codegen.Instrumentation
+
 import hkmc2.Message.MessageContext
 
 import semantics.*, ucs.FlatPattern
@@ -1068,7 +1070,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     val bufferable = BufferableTransform().transform(lifted)
     
-    val res = MergeMatchArmTransformer.applyBlock(bufferable)
+    val merged = MergeMatchArmTransformer.applyBlock(bufferable)
+
+    val res = 
+      if config.stageCode then Instrumentation(using summon).applyBlock(merged)
+      else merged
     
     Program(
       imps.map(imp => imp.sym -> imp.str),

@@ -356,7 +356,8 @@ class InstrumentationImpl(using State):
       case End(_) => ruleEnd()(k)
       case _ => ??? // not supported
 
-class InstrumentationTransformer(using State) extends BlockTransformer(new SymbolSubst()):
+// TODO: rename as InstrumentationTransformer?
+class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
   val impl = new InstrumentationImpl
 
   def applyProgram(prgm: Program) = Program(prgm.imports, applyBlock(prgm.main))
