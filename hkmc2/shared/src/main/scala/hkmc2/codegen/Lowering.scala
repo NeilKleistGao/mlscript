@@ -1068,9 +1068,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     val bufferable = BufferableTransform().transform(lifted)
     
-    val merged = MergeMatchArmTransformer.applyBlock(bufferable)
-
-    val res = Instrumentation(using summon).applyBlock(merged)
+    val res = MergeMatchArmTransformer.applyBlock(bufferable)
     
     Program(
       imps.map(imp => imp.sym -> imp.str),
@@ -1248,11 +1246,3 @@ object MergeMatchArmTransformer extends BlockTransformer(new SymbolSubst()):
             k.getOrElse(identity: Block => Block)(Match(scrut, arms ::: newArms, dfltRewritten, rest))
         case _ => m
     case b => b
-
-class Instrumentation(using Raise) extends BlockTransformer(new SymbolSubst()):
-  override def applyDefn(d: Defn)(k: Defn => Block): Block = d match 
-    case defn: ClsLikeDefn =>
-      if defn.sym.defn.exists(_.hasStagedModifier.isDefined)
-      then raise(WarningReport(msg"`staged` keyword doesn't do anything currently." -> defn.sym.toLoc :: Nil))
-      super.applyDefn(defn)(k)
-    case b => super.applyDefn(b)(k)
