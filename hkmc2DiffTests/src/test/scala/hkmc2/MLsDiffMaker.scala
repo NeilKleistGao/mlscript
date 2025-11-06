@@ -70,7 +70,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val stackSafe = Command("stackSafe")(_.trim)
   val liftDefns = NullaryCommand("lift")
   val importQQ = NullaryCommand("qq")
-  val stageCode = NullaryCommand("ds")
+  val stageCode = NullaryCommand("staging")
   
   def mkConfig: Config =
     import Config.*
