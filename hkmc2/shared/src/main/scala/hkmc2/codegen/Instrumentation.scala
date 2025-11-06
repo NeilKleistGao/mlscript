@@ -197,8 +197,22 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
   val impl = new InstrumentationImpl
 
   def applyProgram(prgm: Program) = Program(prgm.imports, applyBlock(prgm.main))
+  
+  // This stages any function definition,
+  // instead of staging functions within staged modules.
+  override def applyBlock(b: Block): Block = b match
+    case Define(defn, rest) =>
+      defn match
+        case f @ FunDefn(owner, sym, parameters, body) =>
+          val genSym = BlockMemberSymbol("gen", Nil, true) // TODO: reuse original function name?
+          val staged = FunDefn(owner, genSym, parameters, impl.transformBlock(body)(_.end))
+          // TODO: remove it. only for test
+          // TODO: put correct parameters instead of Nil
+          val b = impl.call(genSym.asPath, Nil): ret =>
+              // discard result, we only care about side effect of printCode
+              impl.blockCall("printCode", Ls(impl.StagedPath(ret).code)): _ =>
+                applyBlock(rest)
+          Define(f, Define(staged, b))
+        case _ => b
+    case _ => b
 
-  override def applyDefn(d: Defn)(k: Defn => Block): Block = d match 
-    case defn: ClsLikeDefn if defn.sym.defn.exists(_.hasStagedModifier.isDefined) && defn.companion.isDefined =>
-      ???
-    case b => super.applyDefn(b)(k)
