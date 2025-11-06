@@ -108,8 +108,8 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
             with JSBuilderArgNumSanityChecks
       val resSym = new TempSymbol(S(blk), "block$res")
       val lowered0 = if stageCode.isSet then
-        val instrumentation = new Instrumentation
-        instrumentation.transform(low.program(blk))
+        val instrumentation = new InstrumentationTransformer
+        instrumentation.applyProgram(low.program(blk))
         else low.program(blk)
       val le = lowered0.copy(main = lowered0.main.mapTail:
         case e: End =>

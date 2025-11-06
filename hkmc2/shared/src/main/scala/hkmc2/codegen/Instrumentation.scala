@@ -356,17 +356,12 @@ class InstrumentationImpl(using State):
       case End(_) => ruleEnd()(k)
       case _ => ??? // not supported
 
-  def transformProgram(prog: Program)(): Program =
-    // TODO imports
-    ??? // use ruleCls and ruleBlock here
-    Program(prog.imports, transformBlock(prog.main)(using new Context())(_.end))
+class InstrumentationTransformer(using State) extends BlockTransformer(new SymbolSubst()):
+  val impl = new InstrumentationImpl
 
-class Instrumentation(using Raise) extends BlockTransformer(new SymbolSubst()):
-  def transform(prgm: Program) = Program(prgm.imports, applyBlock(prgm.main))
+  def applyProgram(prgm: Program) = Program(prgm.imports, applyBlock(prgm.main))
 
   override def applyDefn(d: Defn)(k: Defn => Block): Block = d match 
-    case defn: ClsLikeDefn =>
-      if defn.sym.defn.exists(_.hasStagedModifier.isDefined) && defn.companion.isDefined
-      then raise(WarningReport(msg"`staged` keyword doesn't do anything currently." -> defn.sym.toLoc :: Nil))
-      super.applyDefn(defn)(k)
+    case defn: ClsLikeDefn if defn.sym.defn.exists(_.hasStagedModifier.isDefined) && defn.companion.isDefined =>
+      ???
     case b => super.applyDefn(b)(k)
