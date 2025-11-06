@@ -1352,7 +1352,7 @@ extends Importer:
     
     ctx.withMembers(members).givenIn:
       go(blk.desugStmts, Nil, Nil)
-
+  
   
   def mkBlk(acc: Ls[Statement], res: Opt[Term], hasResult: Bool): Blk | Rcd =
     // TODO forbid certain kinds of terms in records

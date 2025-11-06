@@ -1,6 +1,9 @@
 package hkmc2
 package codegen
 
+import utils.*
+import hkmc2.Message.MessageContext
+
 import scala.collection.mutable.HashMap
 
 import mlscript.utils.*, shorthands.*
@@ -20,7 +23,7 @@ import syntax.{Literal, Tree}
 // like, we do a transformation on DynSelect where we keep the fields inteact, then perform staging in the DynSelect => Block continuation?
 // the previous blocks created by the fields are handled by BlockTransformer's continuation code
 
-class Instrumentation(using State):
+class InstrumentationImpl(using State):
   // A PathLike type is a type that can be turned into an Arg
   type PathLike = Path | Symbol | Shape
 
@@ -184,8 +187,8 @@ class Instrumentation(using State):
       // val n = Shape(Value.Ref(new TempSymbol(N, name)))
       val n = ???
       fnSel(x.shape, n): sp =>
-        select(x.code, i): cde =>
-          StagedPath.mk(sp, cde)(k)
+        val cde = select(x.code, i)
+        StagedPath.mk(sp, cde)(k)
 
   def ruleDynSel(d: DynSelect)(using Context)(k: StagedPath => Block): Block =
     val DynSelect(qual, path, arrayIdx) = d
@@ -357,3 +360,13 @@ class Instrumentation(using State):
     // TODO imports
     ??? // use ruleCls and ruleBlock here
     Program(prog.imports, transformBlock(prog.main)(using new Context())(_.end))
+
+class Instrumentation(using Raise) extends BlockTransformer(new SymbolSubst()):
+  def transform(prgm: Program) = Program(prgm.imports, applyBlock(prgm.main))
+
+  override def applyDefn(d: Defn)(k: Defn => Block): Block = d match 
+    case defn: ClsLikeDefn =>
+      if defn.sym.defn.exists(_.hasStagedModifier.isDefined) && defn.companion.isDefined
+      then raise(WarningReport(msg"`staged` keyword doesn't do anything currently." -> defn.sym.toLoc :: Nil))
+      super.applyDefn(defn)(k)
+    case b => super.applyDefn(b)(k)

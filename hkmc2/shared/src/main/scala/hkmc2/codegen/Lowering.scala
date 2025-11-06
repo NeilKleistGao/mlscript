@@ -1095,6 +1095,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
   def reportAnnotations(target: Statement, annotations: Ls[Annot]): Unit =
     annotations.foreach:
       case Annot.Untyped => ()
+      case Annot.Modifier(syntax.Keyword("staged")) => ()
       case annot => raise:
         WarningReport(msg"This annotation has no effect." -> annot.toLoc :: Nil)
 

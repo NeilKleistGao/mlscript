@@ -32,6 +32,8 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   
   val runtimeNme = baseScp.allocateName(Elaborator.State.runtimeSymbol)
   val termNme = baseScp.allocateName(Elaborator.State.termSymbol)
+  val blockNme = baseScp.allocateName(Elaborator.State.blockSymbol)
+  val shapeNme = baseScp.allocateName(Elaborator.State.shapeSymbol)
   val definitionMetadataNme = baseScp.allocateName(Elaborator.State.definitionMetadataSymbol)
   val prettyPrintNme = baseScp.allocateName(Elaborator.State.prettyPrintSymbol)
   
@@ -57,6 +59,9 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
     h.execute(s"const $definitionMetadataNme = Symbol.for(\"mlscript.definitionMetadata\");")
     h.execute(s"const $prettyPrintNme = Symbol.for(\"mlscript.prettyPrint\");")
     if importQQ.isSet then importRuntimeModule(termNme, termFile)
+    if stageCode.isSet then
+      importRuntimeModule(blockNme, blockFile)
+      importRuntimeModule(shapeNme, shapeFile)
     h
   
   private var hostCreated = false
@@ -102,7 +107,10 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
           new JSBuilder
             with JSBuilderArgNumSanityChecks
       val resSym = new TempSymbol(S(blk), "block$res")
-      val lowered0 = low.program(blk)
+      val lowered0 = if stageCode.isSet then
+        val instrumentation = new Instrumentation
+        instrumentation.transform(low.program(blk))
+        else low.program(blk)
       val le = lowered0.copy(main = lowered0.main.mapTail:
         case e: End =>
           Assign(resSym, Value.Lit(syntax.Tree.UnitLit(false)), e)
