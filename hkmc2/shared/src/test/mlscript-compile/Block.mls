@@ -2,8 +2,8 @@ import "./Predef.mls"
 import "./Option.mls"
 import "./StrOps.mls"
 
-open StrOps
 open Predef
+open StrOps
 open Option
 
 module Block with...
@@ -106,7 +106,7 @@ fun showResult(r: Result): Str =
     Tuple(elems) then "Tuple(" + showArgs(elems) + ")"
 
 fun showParamList(ps: ParamList) =
-  "[" + ps.map(showSymbol).joinWith(", ") + "]"
+  "[" + ps.map(s => showSymbol(s)).join(", ") + "]"
 
 fun showDefn(d: Defn): Str =
   if d is
@@ -114,7 +114,7 @@ fun showDefn(d: Defn): Str =
       "ValDefn(" + showSymbol(sym) + ", " + showPath(rhs) + ")"
     FunDefn(sym, params, body) then
       "FunDefn(" + showSymbol(sym) + ", " +
-      "[" + params.map(showParamList).joinWith(", ") + "], " +
+      showParamList(params) + ", " +
       showBlock(body) + ")"
     ClsLikeDefn(sym, paramsOpt, companion) then
       // minimal, since this is unused in your staged Block for now
@@ -131,7 +131,7 @@ fun showBlock(b: Block): Str =
     Match(scrut, arms, dflt, rest) then
       "Match(" +
         showPath(scrut) + ", " +
-        "[" + arms.map(showArm).joinWith(", ") + "], " +
+        "[" + arms.map(showArm).join(", ") + "], " +
         showOptBlock(dflt) + ", " +
         showBlock(rest) + ")"
     Return(res, implct) then 
@@ -144,37 +144,22 @@ fun showBlock(b: Block): Str =
 
 fun show(x) =
   if x is
-    Match(_, _, _, _) then showBlock(x)
-    Return(_, _) then showBlock(x)
-    Assign(_, _, _) then showBlock(x)
-    Define(_, _) then showBlock(x)
-    End() then showBlock(x)
+    Symbol then showSymbol(x)
   else if x is
-    Select(_, _) then showPath(x)
-    DynSelect(_, _, _) then showPath(x)
-    ValueRef(_) then showPath(x)
-    ValueLit(_) then showPath(x)
+    Path then showPath(x)
   else if x is
-    TrivialResult(_) then showResult(x)
-    Call(_, _) then showResult(x)
-    Instantiate(_, _) then showResult(x)
-    Tuple(_) then showResult(x)
+    Result then showResult(x)
   else if x is
-    Lit(_) then showCase(x)
-    Cls(_, _) then showCase(x)
-    Tup(_, _) then showCase(x)
-    Field(_) then showCase(x)
-    Wildcard then showCase(x)
+    Case then showCase(x)
   else if x is
-    ValDefn(_, _) then showDefn(x)
-    FunDefn(_, _, _) then showDefn(x)
-    ClsLikeDefn(_, _, _) then showDefn(x)
+    Defn then showDefn(x)
   else if x is
-    Arg(_, _) then showArg(x)
+    Arg then showArg(x)
   else if x is
-    [a, b] then StrOps.concat of "[", show(a), ", ", show(b), "]"
+    Block then showBlock(x)
   else
     "<unknown>"
 
+fun printCode(x) = print(show(x))
 
 fun compile(p: Block) = ???
