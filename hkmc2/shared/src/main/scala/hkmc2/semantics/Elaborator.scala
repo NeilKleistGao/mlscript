@@ -989,17 +989,22 @@ extends Importer with ucs.SplitElaborator:
         go(sts, Nil, RcdSpread(term(body)) :: acc)
       case InfixApp(lhs, Keywrd(Keyword.`:`), rhs) :: sts =>
         var newCtx = ctx
-        val rhs_t = rhs match
-          case _: Under => subterm(rhs)
-          case _ => term(rhs)
-        val newAcc = lhs match
+        val (rlhs, rhs_t) = rhs match
+          case _: Under => (lhs, subterm(rhs))
+          case _ =>
+            lhs match
+            case Apps(base, tups) =>
+              val rrhs = tups.foldRight(rhs):
+                InfixApp(_, Keywrd(Keyword.`=>`), _)
+              (base, term(rrhs))
+        val newAcc = rlhs match
           case id: Ident =>
             val sym = new VarSymbol(id)
             newCtx += id.name -> sym
-            RcdField(Term.Lit(StrLit(id.name)).withLocOf(id), sym.ref(id)) ::
-            DefineVar(sym, rhs_t) ::
-            LetDecl(sym, annotations) ::
-            acc
+            RcdField(Term.Lit(StrLit(id.name)).withLocOf(id), sym.ref(id))
+              :: DefineVar(sym, rhs_t)
+              :: LetDecl(sym, annotations)
+              :: acc
           case lit: Literal =>
             reportUnusedAnnotations
             RcdField(Term.Lit(lit).withLocOf(lit), rhs_t) :: acc
@@ -1007,7 +1012,7 @@ extends Importer with ucs.SplitElaborator:
             reportUnusedAnnotations
             RcdField(term(inner), rhs_t) :: acc
           case _ =>
-            raise(ErrorReport(msg"Unexpected record key shape." -> lhs.toLoc :: Nil))
+            raise(ErrorReport(msg"Unexpected record key shape." -> rlhs.toLoc :: Nil))
             RcdField(Term.Error, rhs_t) :: acc
         newCtx.givenIn:
           go(sts, Nil, newAcc)
