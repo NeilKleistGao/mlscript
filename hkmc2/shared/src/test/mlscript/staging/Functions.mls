@@ -1,42 +1,16 @@
 
 :js
 :staging
-:ssjs
+// :ssjs
 staged module A with
   fun f() = 1
-//│ JS:
-//│ globalThis.Object.freeze(class A {
-//│   static {
-//│     A1 = this
-//│   }
-//│   constructor() {
-//│     runtime.Unit;
-//│   }
-//│   static f(...args) {
-//│     runtime.checkArgs("f", 0, true, args.length);
-//│     return 1
-//│   } 
-//│   static f_gen(...args) {
-//│     runtime.checkArgs("f_gen", 0, true, args.length);
-//│     let tmp2, tmp3, tmp4, tmp5, tmp6;
-//│     tmp2 = globalThis.Object.freeze(new Shape.Lit(1));
-//│     tmp3 = globalThis.Object.freeze(new Block.ValueLit(1));
-//│     tmp4 = globalThis.Object.freeze([
-//│       tmp2,
-//│       tmp3
-//│     ]);
-//│     tmp5 = globalThis.Object.freeze(new Block.Return(tmp4[1]));
-//│     tmp6 = globalThis.Object.freeze([
-//│       tmp4[0],
-//│       tmp5
-//│     ]);
-//│     return tmp6
-//│   }
-//│   toString() { return runtime.render(this); }
-//│   static [definitionMetadata] = ["class", "A"]; 
-//│ });
-//│ tmp = runtime.checkCall(A1.f_gen());
-//│ tmp1 = runtime.checkCall(Block.printCode(tmp[1]));
-//│ block$res = undefined;
-//│ > printCode
-
+  fun g() = 
+    let x = 42
+    let y = x
+    y
+  // I-Val doesn't work yet
+  // fun i() =
+  //   val x = 1
+  //   x
+//│ > Return(Lit(1), false)
+//│ > Assign(Symbol("x"), Lit(42), Assign(Symbol("y"), Ref(Symbol("x")), Return(Ref(Symbol("y")), false)))
