@@ -136,13 +136,13 @@ class InstrumentationImpl(using State):
   def ruleVal(defn: ValDefn, b: Block)(k: StagedPath => Block): Block =
     val ValDefn(tsym, x, p) = defn
     transformPath(p): y =>
-      transformBlock(b): z =>
-        // TODO: valdefn needs to be before code blocks somehow?
-        // y is StagedPath, not Path?
-        (Define(ValDefn(tsym, x, y.p), _)):
-          blockCtor("ValDefn", Ls(x, y.code)): df =>
-            blockCtor("Define", Ls(df, z.code)): cde =>
-              StagedPath.mk(z.shape, cde)(k)
+      // y is StagedPath, not Path?
+      (Define(ValDefn(tsym, x, y.p), _)):
+        transformBlock(b): z =>
+          blockCtor("Symbol", Ls(toValue(x.nme))): x =>
+            blockCtor("ValDefn", Ls(x, y.code)): df =>
+              blockCtor("Define", Ls(df, z.code)): cde =>
+                StagedPath.mk(z.shape, cde)(k)
 
   // transformations of Block
 
