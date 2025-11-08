@@ -109,8 +109,9 @@ class InstrumentationImpl(using State):
     // why assume it is already staged?
     val sp = StagedPath(r)
     // why not just use sp.code?
-    blockCtor("ValueRef", Ls(toValue(r.l.nme))): cde =>
-      StagedPath.mk(sp.shape, cde)(k)
+    blockCtor("Symbol", Ls(toValue(r.l.nme))): sym =>
+      blockCtor("ValueRef", Ls(sym)): cde =>
+        StagedPath.mk(sp.shape, cde)(k)
 
   def ruleReturn(r: Return)(k: StagedPath => Block): Block =
     transformResult(r.res): x =>
@@ -122,9 +123,10 @@ class InstrumentationImpl(using State):
     transformResult(r): y =>
       (Assign(x, y.p, _)):
         transformBlock(b): z =>
-          // need to wrap x with Symbol?
-          blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
-            StagedPath.mk(z.shape, cde)(k)
+          blockCtor("Symbol", Ls(toValue(x.nme))): x =>
+            // need to wrap x with Symbol?
+            blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
+              StagedPath.mk(z.shape, cde)(k)
 
   def ruleEnd()(k: StagedPath => Block): Block =
     shapeCtor("Unit", Ls()): sp =>
@@ -152,7 +154,10 @@ class InstrumentationImpl(using State):
 
   def transformResult(r: Result)(k: StagedPath => Block): Block =
     r match
-      case p: Path => transformPath(p)(k)
+      case p: Path =>
+        transformPath(p): p =>
+          blockCtor("TrivialResult", Ls(p.code)): cde =>
+            StagedPath.mk(p.shape, cde)(k)
       case _ => ??? // not supported
 
   def transformArg(a: Arg)(k: StagedPath => Block): Block =
