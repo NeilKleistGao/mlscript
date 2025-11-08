@@ -24,10 +24,9 @@ import syntax.{Literal, Tree}
 // the previous blocks created by the fields are handled by BlockTransformer's continuation code
 
 class InstrumentationImpl(using State):
-  // A PathLike type is a type that can be turned into an Arg
-  type PathLike = Path | Symbol | Shape
+  type ArgWrappable = Path | Symbol | Shape
 
-  def asArg(x: PathLike): Arg =
+  def asArg(x: ArgWrappable): Arg =
     x match
       case p: Path => p.asArg
       case l: Symbol => l.asPath.asArg
@@ -52,15 +51,15 @@ class InstrumentationImpl(using State):
   def select(qual: Path, ident: Tree.Ident): Path =
     Select(qual, ident)(N)
 
-  def tuple(elems: Ls[PathLike], symName: String = "tmp")(k: Path => Block): Block =
+  def tuple(elems: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
     // is this the same as "Ls of"?
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
-  def ctor(cls: Path, args: Ls[PathLike], symName: String = "tmp")(k: Path => Block): Block =
+  def ctor(cls: Path, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
     assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
 
   // isMlsFun is probably always true?
-  def call(fun: Path, args: Ls[PathLike], isMlsFun: Bool = true, symName: String = "tmp")(k: Path => Block): Block =
+  def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: String = "tmp")(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false), symName)(k)
 
   // helper for staging the constructors
@@ -68,14 +67,14 @@ class InstrumentationImpl(using State):
   def blockMod(name: String) = summon[State].blockSymbol.asPath.selSN(name)
   def shapeMod(name: String) = summon[State].shapeSymbol.asPath.selSN(name)
 
-  def blockCtor(name: String, args: Ls[PathLike], symName: String = "tmp")(k: Path => Block): Block =
+  def blockCtor(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
     ctor(blockMod(name), args, symName = symName)(k)
-  def shapeCtor(name: String, args: Ls[PathLike], symName: String = "tmp")(k: Shape => Block): Block =
+  def shapeCtor(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Shape => Block): Block =
     ctor(shapeMod(name), args, symName = symName)(p => k(Shape(p)))
 
-  def blockCall(name: String, args: Ls[PathLike], symName: String = "tmp")(k: Path => Block): Block =
+  def blockCall(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, symName = symName)(k)
-  def shapeCall(name: String, args: Ls[PathLike], symName: String = "tmp")(k: Path => Block): Block =
+  def shapeCall(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
     call(shapeMod(name), args, symName = symName)(k)
 
   // helpers to create and access the components of a staged value
