@@ -166,7 +166,7 @@ class InstrumentationImpl(using State):
 
   def transformFunDefn(f: FunDefn): FunDefn =
     val FunDefn(owner, sym, parameters, body) = f
-    val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true) // TODO: reuse original function name?
+    val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true)
     // TODO: remove it. only for test
     // TODO: put correct parameters instead of Nil
     val b = call(genSym.asPath, Nil): ret =>
@@ -176,8 +176,9 @@ class InstrumentationImpl(using State):
 
   def transformDefine(d: Define)(k: StagedPath => Block): Block =
     d.defn match
+      // duplicated because we need a reference to genSym here
       case f @ FunDefn(owner, sym, parameters, body) =>
-        val genSym = BlockMemberSymbol("gen", Nil, true) // TODO: reuse original function name?
+        val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true)
         val b = transformBlock(d.rest): res =>
           // TODO: remove it. only for test
           // TODO: put correct parameters instead of Nil
@@ -223,8 +224,6 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
             val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true) // TODO: reuse original function name?
             // TODO: remove it. only for test
             // TODO: put correct parameters instead of Nil
-            // Select(c.sym, genSym.nme)
-            // c.sym.selSN(genSym.nme)
             val b: Block = impl.call(c.sym.asPath.selSN(genSym.nme), Nil): ret =>
               impl.blockCall("printCode", Ls(impl.StagedPath(ret).code)): _ => // discard result, we only care about side effect
                 End()
