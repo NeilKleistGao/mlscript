@@ -201,8 +201,8 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
 
   // This stages any function definition,
   // instead of staging functions within staged modules.
-  override def applyBlock(b: Block): Block = b match
-    case Define(defn, rest) =>
+  override def applyBlock(b: Block): Block = super.applyBlock(b) match
+    case d @ Define(defn, rest) =>
       defn match
         // case f @ FunDefn(owner, sym, parameters, body) =>
         //   val genSym = BlockMemberSymbol("gen", Nil, true) // TODO: reuse original function name?
@@ -230,5 +230,5 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
           val newModule = c.copy(sym = c.sym, companion = Some(newCompanion))
           val debugBlock: Block = debugPrintCode.foldRight(rest)((b1, b2) => b1.mapTail { case _ => b2 })
           Define(newModule, debugBlock)
-        case _ => b
-    case _ => b
+        case _ => d
+    case b => b
