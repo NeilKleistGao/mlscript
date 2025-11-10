@@ -54,34 +54,34 @@ class InstrumentationImpl(using State):
 
   // helpers corresponding to constructors
 
-  def assign(res: Result, symName: String = "tmp")(k: Path => Block): Assign =
+  def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Assign =
     // TODO: skip assignment if res: Path?
     val tmp = new TempSymbol(N, symName)
     Assign(tmp, res, k(tmp.asPath))
 
-  def tuple(elems: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
+  def tuple(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
-  def ctor(cls: Path, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
+  def ctor(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
 
   // isMlsFun is probably always true?
-  def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: String = "tmp")(k: Path => Block): Block =
+  def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false), symName)(k)
 
   // helper for staging the constructors
 
-  def blockMod(name: String) = summon[State].blockSymbol.asPath.selSN(name)
-  def shapeMod(name: String) = summon[State].shapeSymbol.asPath.selSN(name)
+  def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
+  def shapeMod(name: Str) = summon[State].shapeSymbol.asPath.selSN(name)
 
-  def blockCtor(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
+  def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     ctor(blockMod(name), args)(k)
-  def shapeCtor(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Shape => Block): Block =
+  def shapeCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Shape => Block): Block =
     ctor(shapeMod(name), args)(p => k(Shape(p)))
 
-  def blockCall(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
+  def blockCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, symName = symName)(k)
-  def shapeCall(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
+  def shapeCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(shapeMod(name), args, symName = symName)(k)
 
   // helpers to create and access the components of a staged value
@@ -94,7 +94,7 @@ class InstrumentationImpl(using State):
     def end: Block = Return(p, false)
 
   object StagedPath:
-    def mk(shape: Shape, code: Path, symName: String = "tmp")(k: StagedPath => Block): Block =
+    def mk(shape: Shape, code: Path, symName: Str = "tmp")(k: StagedPath => Block): Block =
       tuple(Ls(shape.p, code), symName)(p => k(StagedPath(p)))
 
   // linking functions defined in MLscipt
