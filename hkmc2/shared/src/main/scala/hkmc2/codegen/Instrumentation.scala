@@ -41,6 +41,17 @@ class InstrumentationImpl(using State):
       case n: BigDecimal => Tree.DecLit(n)
     Value.Lit(l)
 
+    // TODO: use BlockTransformer.applyListOf?
+  extension [A](ls: Ls[(A => Block) => Block])
+    def collectApply(f: Ls[A] => Block): Block =
+      // defer applying k while prepending new paths to the list
+      ls.foldRight((_: Ls[A] => Block)(Nil))((headCont, tailCont) =>
+        k =>
+          headCont: head =>
+            tailCont: tail =>
+              k(head :: tail)
+      )(f)
+
   // helpers corresponding to constructors
 
   def assign(res: Result, symName: String = "tmp")(k: Path => Block): Assign =
@@ -106,6 +117,15 @@ class InstrumentationImpl(using State):
       blockCtor("ValueRef", Ls(sym)): cde =>
         StagedPath.mk(sp.shape, cde, "var")(k)
 
+  def ruleTup(t: Tuple)(k: StagedPath => Block): Block =
+    assert(!t.mut)
+    transformArgs(t.elems): xs =>
+      tuple(xs.map(_.shape)): shapes =>
+        shapeCtor("Arr", Ls(shapes)): sp =>
+          tuple(xs.map(_.code)): codes =>
+            blockCtor("Tuple", Ls(codes)): cde =>
+              StagedPath.mk(sp, cde, "tup")(k)
+
   def ruleReturn(r: Return)(k: StagedPath => Block): Block =
     transformResult(r.res): x =>
       blockCtor("Return", Ls(x.code)): cde =>
@@ -150,11 +170,16 @@ class InstrumentationImpl(using State):
         transformPath(p): p =>
           blockCtor("TrivialResult", Ls(p.code)): cde =>
             StagedPath.mk(p.shape, cde)(k)
+      case t: Tuple => ruleTup(t)(k)
       case _ => ??? // not supported
 
   def transformArg(a: Arg)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
     transformPath(value)(k)
+
+  // provides list of shapes and list of codes to continuation
+  def transformArgs(args: Ls[Arg])(k: Ls[StagedPath] => Block): Block =
+    args.map(transformArg).collectApply(k)
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
@@ -185,6 +210,8 @@ class InstrumentationImpl(using State):
       case a: Assign => ruleAssign(a)(k)
       case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k)
+      // temporary measure to accept returning an array
+      case Begin(b1, b2) => transformBlock(b1.mapTail { case _ => b2 })(k)
       case _ => ??? // not supported
 
 // TODO: rename as InstrumentationTransformer?
