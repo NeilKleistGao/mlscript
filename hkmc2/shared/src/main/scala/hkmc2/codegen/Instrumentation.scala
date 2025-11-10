@@ -102,6 +102,8 @@ class InstrumentationImpl(using State):
 
   def fnPrintCode(p: Path)(k: Path => Block): Block =
     blockCall("printCode", Ls(p))(k)
+  def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block =
+    shapeCall("sel", Ls(s1, s2))(s => k(Shape(s)))
 
   // instrumentation rules
 
@@ -125,6 +127,29 @@ class InstrumentationImpl(using State):
           tuple(xs.map(_.code)): codes =>
             blockCtor("Tuple", Ls(codes)): cde =>
               StagedPath.mk(sp, cde, "tup")(k)
+
+  def ruleSel(s: Select)(k: StagedPath => Block): Block =
+    val Select(p, i @ Tree.Ident(name)) = s
+    transformPath(p): x =>
+      // TODO: figure out actual shape
+      shapeCtor("Dyn", Ls()): n =>
+        fnSel(x.shape, n): sp =>
+          blockCtor("Symbol", Ls(toValue(name))): name =>
+            blockCtor("Select", Ls(x.code, name)): cde =>
+              StagedPath.mk(sp, cde, "sel")(k)
+
+  def ruleInst(i: Instantiate)(k: StagedPath => Block): Block =
+    val Instantiate(mut, cls, args) = i
+    assert(!mut)
+    transformArgs(args): xs =>
+      tuple(xs.map(_.shape)): shapes =>
+        tuple(xs.map(_.code)): codes =>
+          // NOTE: this was not needed in the formalization
+          // but it seems to be necessary to stage the path?
+          transformPath(cls): cls =>
+            shapeCtor("Class", Ls(cls.code, shapes)): sp =>
+              blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
+                StagedPath.mk(sp, cde, "inst")(k)
 
   def ruleReturn(r: Return)(k: StagedPath => Block): Block =
     transformResult(r.res): x =>
@@ -162,6 +187,7 @@ class InstrumentationImpl(using State):
     p match
       case r: Value.Ref => ruleVar(r)(k)
       case l: Value.Lit => ruleLit(l)(k)
+      case s: Select => ruleSel(s)(k)
       case _ => ??? // not supported
 
   def transformResult(r: Result)(k: StagedPath => Block): Block =
@@ -171,6 +197,7 @@ class InstrumentationImpl(using State):
           blockCtor("TrivialResult", Ls(p.code)): cde =>
             StagedPath.mk(p.shape, cde)(k)
       case t: Tuple => ruleTup(t)(k)
+      case i: Instantiate => ruleInst(i)(k)
       case _ => ??? // not supported
 
   def transformArg(a: Arg)(k: StagedPath => Block): Block =

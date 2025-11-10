@@ -2,6 +2,7 @@
 :js
 :staging
 // :ssjs
+class B()
 staged module A with
   fun f() = 1
   fun g() = 
@@ -12,7 +13,18 @@ staged module A with
     val x = 1
     x
   fun i() = [1, 2]
+  fun j() = new B()
 //│ > Return(Lit(1), false)
 //│ > Assign(Symbol("x"), Lit(42), Assign(Symbol("y"), Ref(Symbol("x")), Return(Ref(Symbol("y")), false)))
 //│ > Define(ValDefn(Symbol("x"), Lit(1)), Return(Ref(Symbol("x")), false))
 //│ > Return(Tuple([Lit(1), Lit(2)]), false)
+//│ > Return(Instantiate(Select(Ref(Symbol("B")), Symbol("class")), []), false)
+
+// collision with class name?
+:js
+:staging
+:fixme
+class A()
+staged module A with
+  fun f() = 1
+//│ ═══[RUNTIME ERROR] TypeError: A3.f_gen is not a function
