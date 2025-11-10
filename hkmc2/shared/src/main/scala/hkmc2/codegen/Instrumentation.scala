@@ -48,9 +48,6 @@ class InstrumentationImpl(using State):
     val tmp = new TempSymbol(N, symName)
     Assign(tmp, res, k(tmp.asPath))
 
-  def select(qual: Path, ident: Tree.Ident): Path =
-    Select(qual, ident)(N)
-
   def tuple(elems: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
     // is this the same as "Ls of"?
     assign(Tuple(false, elems.map(asArg)), symName)(k)
@@ -105,7 +102,6 @@ class InstrumentationImpl(using State):
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
     // why assume it is already staged?
     val sp = StagedPath(r)
-    // why not just use sp.code?
     blockCtor("Symbol", Ls(toValue(r.l.nme))): sym =>
       blockCtor("ValueRef", Ls(sym)): cde =>
         StagedPath.mk(sp.shape, cde, "var")(k)
@@ -121,7 +117,6 @@ class InstrumentationImpl(using State):
       (Assign(x, y.p, _)):
         transformBlock(b): z =>
           blockCtor("Symbol", Ls(toValue(x.nme))): x =>
-            // need to wrap x with Symbol?
             blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
               StagedPath.mk(z.shape, cde, "ass")(k)
 
@@ -209,7 +204,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
             .unzip
           val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods)
           val newModule = c.copy(sym = c.sym, companion = Some(newCompanion))
-          val debugBlock: Block = debugPrintCode.foldRight(rest)((b1, b2) => b1.mapTail { case _ => b2 })
+          val debugBlock = debugPrintCode.foldRight(rest)((b1, b2) => b1.mapTail { case _ => b2 })
           Define(newModule, debugBlock)
         case _ => d
     case b => b
