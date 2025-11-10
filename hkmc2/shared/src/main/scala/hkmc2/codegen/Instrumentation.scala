@@ -105,9 +105,9 @@ class InstrumentationImpl(using State):
 
   // instrumentation rules
 
-  def ruleLit(l: Literal)(k: StagedPath => Block): Block =
-    shapeCtor("Lit", Ls(Value.Lit(l))): sp =>
-      blockCtor("ValueLit", Ls(Value.Lit(l))): cde =>
+  def ruleLit(l: Value.Lit)(k: StagedPath => Block): Block =
+    shapeCtor("Lit", Ls(l)): sp =>
+      blockCtor("ValueLit", Ls(l)): cde =>
         StagedPath.mk(sp, cde, "lit")(k)
 
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
@@ -161,7 +161,7 @@ class InstrumentationImpl(using State):
   def transformPath(p: Path)(k: StagedPath => Block): Block =
     p match
       case r: Value.Ref => ruleVar(r)(k)
-      case Value.Lit(lit) => ruleLit(lit)(k)
+      case l: Value.Lit => ruleLit(l)(k)
       case _ => ??? // not supported
 
   def transformResult(r: Result)(k: StagedPath => Block): Block =
