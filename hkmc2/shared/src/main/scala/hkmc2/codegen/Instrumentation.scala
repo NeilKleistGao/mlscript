@@ -75,9 +75,9 @@ class InstrumentationImpl(using State):
   def shapeMod(name: String) = summon[State].shapeSymbol.asPath.selSN(name)
 
   def blockCtor(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
-    ctor(blockMod(name), args, symName = symName)(k)
+    ctor(blockMod(name), args)(k)
   def shapeCtor(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Shape => Block): Block =
-    ctor(shapeMod(name), args, symName = symName)(p => k(Shape(p)))
+    ctor(shapeMod(name), args)(p => k(Shape(p)))
 
   def blockCall(name: String, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, symName = symName)(k)
@@ -153,7 +153,7 @@ class InstrumentationImpl(using State):
   def ruleReturn(r: Return)(k: StagedPath => Block): Block =
     transformResult(r.res): x =>
       blockCtor("Return", Ls(x.code)): cde =>
-        StagedPath.mk(x.shape, cde, "ret")(k)
+        StagedPath.mk(x.shape, cde, "return")(k)
 
   def ruleAssign(a: Assign)(k: StagedPath => Block): Block =
     val Assign(x, r, b) = a
@@ -162,7 +162,7 @@ class InstrumentationImpl(using State):
         transformBlock(b): z =>
           blockCtor("Symbol", Ls(toValue(x.nme))): x =>
             blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
-              StagedPath.mk(z.shape, cde, "ass")(k)
+              StagedPath.mk(z.shape, cde, "assign")(k)
 
   def ruleEnd()(k: StagedPath => Block): Block =
     shapeCtor("Unit", Ls()): sp =>
