@@ -60,7 +60,6 @@ class InstrumentationImpl(using State):
     Assign(tmp, res, k(tmp.asPath))
 
   def tuple(elems: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
-    // is this the same as "Ls of"?
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
   def ctor(cls: Path, args: Ls[ArgWrappable], symName: String = "tmp")(k: Path => Block): Block =
