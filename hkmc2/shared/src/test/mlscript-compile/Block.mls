@@ -16,7 +16,7 @@ class Symbol(val name: Str)
 type Ident = Symbol
 
 type Literal = null | undefined | Str | Int | Num | Bool
-class Arg(val spread: Opt[Bool], val value: Path) // unused
+type Arg = Path
 
 type ParamList = Array[Symbol]
 
@@ -81,13 +81,8 @@ fun showPath(p: Path): Str =
     ValueLit(lit) then
       "Lit(" + showLiteral(lit) + ")"
 
-fun showArg(a: Arg) =
-  if a.spread is
-    Some(true) then "..." + showPath(a.value)
-    _ then showPath(a.value)
-
 fun showArgs(args: Array[Arg]) =
-  "[" + args.map(showArg).joinWith(", ") + "]"
+  "[" + args.map(showPath).joinWith(", ") + "]"
 
 // Case (match arm patterns)
 fun showCase(c: Case): Str =
@@ -149,7 +144,6 @@ fun show(x) =
     Result then showResult(x)
     Case then showCase(x)
     Defn then showDefn(x)
-    Arg then showArg(x)
     Block then showBlock(x)
   else
     "<unknown>"
