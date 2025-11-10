@@ -161,29 +161,26 @@ class InstrumentationImpl(using State):
     val Arg(spread, value) = a
     transformPath(value)(k)
 
-  def transformFunDefn(f: FunDefn): FunDefn =
-    val FunDefn(owner, sym, parameters, body) = f
-    val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true)
+  // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
+  // so we pass modSym instead
+  def transformFunDefn(modSym: Symbol, f: FunDefn): (FunDefn, Block) =
+    val genSym = BlockMemberSymbol(f.sym.nme + "_gen", Nil, true)
     // TODO: remove it. only for test
     // TODO: put correct parameters instead of Nil
-    val b = call(genSym.asPath, Nil): ret =>
-      blockCall("printCode", Ls(StagedPath(ret).code)): _ => // discard result, we only care about side effect
-        transformBlock(body)(_.end)
-    FunDefn(owner, genSym, parameters, transformBlock(body)(_.end))
+    val debug =
+      call(modSym.asPath.selSN(genSym.nme), Nil): ret =>
+        blockCall("printCode", Ls(StagedPath(ret).code)): _ => // discard result, we only care about side effect
+          End()
+
+    (
+      f.copy(sym = genSym, body = transformBlock(f.body)(_.end)),
+      debug
+    )
 
   def transformDefine(d: Define)(k: StagedPath => Block): Block =
     d.defn match
       // duplicated because we need a reference to genSym here
-      case f @ FunDefn(owner, sym, parameters, body) =>
-        val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true)
-        val b = transformBlock(d.rest): res =>
-          // TODO: remove it. only for test
-          // TODO: put correct parameters instead of Nil
-          call(genSym.asPath, Nil): ret =>
-            blockCall("printCode", Ls(StagedPath(ret).code)): _ => // discard result, we only care about side effect
-              res.end
-        val rest = Define(FunDefn(owner, genSym, parameters, transformBlock(body)(_.end)), b)
-        Define(f, rest)
+      case f: FunDefn => ???
       case v: ValDefn => ruleVal(v, d.rest)(k)
       case c: ClsLikeDefn => ??? // nested class?
 
@@ -204,28 +201,12 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
   override def applyBlock(b: Block): Block = super.applyBlock(b) match
     case d @ Define(defn, rest) =>
       defn match
-        // case f @ FunDefn(owner, sym, parameters, body) =>
-        //   val genSym = BlockMemberSymbol("gen", Nil, true) // TODO: reuse original function name?
-        //   val staged = FunDefn(owner, genSym, parameters, impl.transformBlock(body)(_.end))
-        //   // TODO: remove it. only for test
-        //   // TODO: put correct parameters instead of Nil
-        //   val b = impl.call(genSym.asPath, Nil): ret =>
-        //     // discard result, we only care about side effect of printCode
-        //     impl.blockCall("printCode", Ls(impl.StagedPath(ret).code)): _ =>
-        //       applyBlock(rest)
-        //   Define(f, Define(staged, b))
         // find modules with staged annotation
         case c: ClsLikeDefn if c.sym.defn.exists(_.hasStagedModifier.isDefined) && c.companion.isDefined =>
           val companion = c.companion.get
-          val (stagedMethods, debugPrintCode) = companion.methods.map { case f @ FunDefn(owner, sym, parameters, body) =>
-            val genSym = BlockMemberSymbol(sym.nme + "_gen", Nil, true) // TODO: reuse original function name?
-            // TODO: remove it. only for test
-            // TODO: put correct parameters instead of Nil
-            val b: Block = impl.call(c.sym.asPath.selSN(genSym.nme), Nil): ret =>
-              impl.blockCall("printCode", Ls(impl.StagedPath(ret).code)): _ => // discard result, we only care about side effect
-                End()
-            (f.copy(sym = genSym, body = impl.transformBlock(body)(_.end)), b)
-          }.unzip
+          val (stagedMethods, debugPrintCode) = companion.methods
+            .map(impl.transformFunDefn(c.sym, _))
+            .unzip
           val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods)
           val newModule = c.copy(sym = c.sym, companion = Some(newCompanion))
           val debugBlock: Block = debugPrintCode.foldRight(rest)((b1, b2) => b1.mapTail { case _ => b2 })
