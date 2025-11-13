@@ -14,7 +14,7 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, doUnwindMap: Map[
   
   val doUnwindFns = doUnwindMap.values.collect:
       case s: Select if s.symbol.isDefined => s.symbol.get
-      case Value.Ref(sym) => sym
+      case Value.Ref(sym, _) => sym
     .toSet
 
   private val runtimePath: Path = State.runtimeSymbol.asPath
@@ -50,7 +50,7 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, doUnwindMap: Map[
   // Rewrites anything that can contain a Call to increase the stack depth
   def transform(b: Block, curDepth: => Symbol, isTopLevel: Bool = false): Block =
     def usesStack(r: Result) = r match
-      case Call(Value.Ref(_: BuiltinSymbol), _) => false
+      case Call(Value.Ref(_: BuiltinSymbol, _), _) => false
       case c: Call if !c.mayRaiseEffects => false // a call can only trigger a stack delay if it can raise effects
       case _: Call | _: Instantiate => true
       case _ => false
@@ -98,7 +98,7 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, doUnwindMap: Map[
     new BlockTraverserShallow:
       applyBlock(b)
       override def applyResult(r: Result): Unit = r match
-        case Call(Value.Ref(_: BuiltinSymbol), _) => ()
+        case Call(Value.Ref(_: BuiltinSymbol, _), _) => ()
         case _: Call | _: Instantiate => trivial = false
         case _ => ()
     trivial
@@ -166,7 +166,7 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, doUnwindMap: Map[
       // However, due to how tightly coupled the stack safety and handler lowering are, it might be
       // better to simply merge the two passes in the future.
       val (blk, defns) = doUnwindPath.get match
-        case Value.Ref(sym) => rewritten.floatOutDefns()
+        case Value.Ref(sym, _) => rewritten.floatOutDefns()
         case _ => (rewritten, Nil)
       defns.foldLeft(blk)((acc, defn) => Define(defn, acc))
 

@@ -33,7 +33,7 @@ object HandlerLowering:
         
   private case class LinkState(res: Local, cls: Path, uid: Path)
   
-  type FnOrCls = Either[BlockMemberSymbol, MemberSymbol[? <: ClassLikeDef] & InnerSymbol]
+  type FnOrCls = Either[BlockMemberSymbol, DefinitionSymbol[? <: ClassLikeDef] & InnerSymbol]
   
   // isTopLevel:
   // whether the current block is the top level block, as we do not emit code for continuation class on the top level
@@ -132,7 +132,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     def apply(res: Local, uid: StateId, rest: Block) =
       Assign(res, PureCall(Value.Ref(resumptionSymbol), List(Value.Lit(Tree.IntLit(uid)))), rest)
     def unapply(blk: Block) = blk match
-      case Assign(res, PureCall(Value.Ref(`resumptionSymbol`), List(Value.Lit(Tree.IntLit(uid)))), rest) =>
+      case Assign(res, PureCall(Value.Ref(`resumptionSymbol`, _), List(Value.Lit(Tree.IntLit(uid)))), rest) =>
         Some(res, uid, rest)
       case _ => None
   
@@ -141,7 +141,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     def apply(res: Local, uid: StateId) =
       Assign(res, PureCall(Value.Ref(returnContSymbol), List(Value.Lit(Tree.IntLit(uid)))), End(""))
     def unapply(blk: Block) = blk match
-      case Assign(res, PureCall(Value.Ref(`returnContSymbol`), List(Value.Lit(Tree.IntLit(uid)))), _) =>
+      case Assign(res, PureCall(Value.Ref(`returnContSymbol`, _), List(Value.Lit(Tree.IntLit(uid)))), _) =>
         Some(res, uid)
       case _ => None
   
@@ -157,7 +157,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     def unapply(blk: Block) = blk match
       case Assign(
           res,
-          PureCall(Value.Ref(`callSymbol`), List(Value.Lit(Tree.IntLit(uid)))),
+          PureCall(Value.Ref(`callSymbol`, _), List(Value.Lit(Tree.IntLit(uid)))),
           Assign(_, c, rest)) =>
         Some(res, uid, c, rest)
       case _ => None
@@ -167,7 +167,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     def apply(uid: StateId) =
       Return(PureCall(Value.Ref(transitionSymbol), List(Value.Lit(Tree.IntLit(uid)))), false)
     def unapply(blk: Block) = blk match
-      case Return(PureCall(Value.Ref(`transitionSymbol`), List(Value.Lit(Tree.IntLit(uid)))), false) =>
+      case Return(PureCall(Value.Ref(`transitionSymbol`, _), List(Value.Lit(Tree.IntLit(uid)))), false) =>
         S(uid)
       case _ => N
   
@@ -175,7 +175,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     private val fnEndSymbol = freshTmp("fnEnd")
     def apply() = Return(PureCall(Value.Ref(fnEndSymbol), Nil), false)
     def unapply(blk: Block) = blk match
-      case Return(PureCall(Value.Ref(`fnEndSymbol`), Nil), false) => true
+      case Return(PureCall(Value.Ref(`fnEndSymbol`, _), Nil), false) => true
       case _ => false
   
   private class FreshId:
@@ -522,7 +522,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
               ResultPlaceholder(res, freshId(), c2, k(Value.Ref(res)))
         case r => super.applyResult(r)(k)
       override def applyPath(p: Path)(k: Path => Block): Block = p match
-        case Value.Ref(`getLocalsSym`) => k(handlerCtx.debugInfo.prevLocalsFn.get)
+        case Value.Ref(`getLocalsSym`, _) => k(handlerCtx.debugInfo.prevLocalsFn.get)
         case _ => super.applyPath(p)(k)
       override def applyLam(lam: Lambda): Lambda =
         // This should normally be unreachable due to prior desugaring of lambda
@@ -591,7 +591,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
         f.owner match
         case None => S(Call(f.sym.asPath, params)(true, true))
         case Some(owner) => 
-          S(Call(Select(owner.asPath, Tree.Ident(f.sym.nme))(S(f.sym)), params)(true, true))
+          S(Call(Select(owner.asPath, Tree.Ident(f.sym.nme))(N), params)(true, true))
       case _ => None // TODO: more than one plist
     
     FunDefn(f.owner, f.sym, f.params, translateBlock(f.body,
@@ -657,7 +657,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
         handler.sym, handler.params,
         Define(
           fDef,
-          Return(PureCall(paths.mkEffectPath, h.cls.asPath :: Value.Ref(sym) :: Nil), false)))
+          Return(PureCall(paths.mkEffectPath, h.cls.asPath :: Value.Ref(sym, N) :: Nil), false)))
     
     // Some limited handling of effects extending classes and having access to their fields.
     // Currently does not support super() raising effects.
@@ -687,7 +687,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     
     val body = blockBuilder
       .define(clsDefn)
-      .assign(h.lhs, Instantiate(mut = true, Value.Ref(clsDefn.sym), Nil))
+      .assign(h.lhs, Instantiate(mut = true, Value.Ref(clsDefn.sym, S(h.cls)), Nil))
       .rest(handlerBody)
     
     val defn = FunDefn(
@@ -735,7 +735,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
       val transform = new BlockTransformerShallow(SymbolSubst()):
         override def applyResult(r: Result)(k: Result => Block): Block = 
           r match
-            case c @ Call(Value.Ref(s: BuiltinSymbol), _) => ()
+            case c @ Call(Value.Ref(s: BuiltinSymbol, _), _) => ()
             case c: Call if !c.mayRaiseEffects => ()
             case _: Call | _: Instantiate => containsCall = true
             case _ => ()
@@ -792,7 +792,8 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
           override def applyBlock(b: Block): Block = b match
             case ReturnCont(res, uid) => Return(Call(
                 Select(clsSym.asPath, Tree.Ident("doUnwind"))(
-                  N /* this refers to the method defined in Runtime.FunctionContFrame */ ),
+                  N /* this refers to the method defined in Runtime.FunctionContFrame */
+                ),
                 res.asPath.asArg :: Value.Lit(Tree.IntLit(uid)).asArg :: Nil)(true, false),
                 false
               )
