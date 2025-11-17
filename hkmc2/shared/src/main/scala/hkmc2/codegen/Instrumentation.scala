@@ -34,7 +34,7 @@ class InstrumentationImpl(using State):
       case n: BigDecimal => Tree.DecLit(n)
     Value.Lit(l)
 
-    // TODO: use BlockTransformer.applyListOf?
+  // TODO: use BlockTransformer.applyListOf?
   extension [A](ls: Ls[(A => Block) => Block])
     def collectApply(f: Ls[A] => Block): Block =
       // defer applying k while prepending new paths to the list
@@ -104,6 +104,7 @@ class InstrumentationImpl(using State):
       blockCtor("ValueLit", Ls(l)): cde =>
         StagedPath.mk(sp, cde, "lit")(k)
 
+  // outdated
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
     // why assume it is already staged?
     val sp = StagedPath(r)
@@ -158,10 +159,12 @@ class InstrumentationImpl(using State):
               StagedPath.mk(z.shape, cde, "assign")(k)
 
   def ruleEnd()(k: StagedPath => Block): Block =
-    shapeCtor("Unit", Ls()): sp =>
-      blockCtor("End", Ls()): cde =>
-        StagedPath.mk(sp, cde, "end")(k)
+    assign(State.globalThisSymbol.asPath.selSN("Set")): newSet =>
+      shapeCtor("Multiple", Ls(newSet)): sp =>
+        blockCtor("End", Ls()): cde =>
+          StagedPath.mk(sp, cde, "end")(k)
 
+  // converted to ruleLet?
   def ruleVal(defn: ValDefn, b: Block)(k: StagedPath => Block): Block =
     val ValDefn(tsym, x, p) = defn
     transformPath(p): y =>

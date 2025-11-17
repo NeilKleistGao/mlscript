@@ -15,9 +15,8 @@ class Shape with
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape]) // is length parameter needed?
-    // TODO: change sym to accept multiple possible class symbols?
     Class(val sym: Symbol, val shapes: Array[Shape])
-    Unit()
+    Multiple(val shapes: Set) // empty represents bottom
 
 fun isPrimitiveType(sym: Str) = 
   if sym is
@@ -58,24 +57,28 @@ fun mrg(s1: Array[Shape]) =
 
 fun sel(s1: Shape, s2: Shape) = 
   if [s1, s2] is
-    [Class(c, shapes), Lit(n)]
-      and n is Str then shapes.at(n) // field name election using Str?
-    [Dyn, Lit(n)]
-      and n is Str then Dyn
-    [Arr(shapes), Lit(n)]
-      and n is Int then shapes.at(n)
-    [Dyn, Lit(n)]
-      and n is Int then Dyn
-    [Dyn, Dyn] then Dyn
+    [Class(c, shapes), Lit(n)] and n is Str
+      then shapes.at(n) // field name election using Str?
+    [Dyn, Lit(n)] and n is Str
+      then Dyn
+    [Arr(shapes), Lit(n)] and n is Int
+      then shapes.at(n)
+    [Arr(shapes), Dyn] then
+      Multiple(new Set(shapes))
+    [Dyn, Lit(n)] and n is Int
+      then Dyn
+    [Dyn, Dyn]
+      then Dyn
+    [Multiple(shapes), s2]
+      then Multiple(new Set(shapes.values().map((s, _) => sel(s, s2))))
     _ then Dyn // temp, makes call not error
 
 fun static(s: Shape) = 
-  if s
-    == Dyn then false
-    is
-      Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
-      Class(_, shapes) then shapes.every((s, _, _) => static(s))
-      Arr(shapes) then shapes.every((s, _, _) => static(s))
+  if s is
+    Dyn then false
+    Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
+    Class(_, shapes) then shapes.every((s, _, _) => static(s))
+    Arr(shapes) then shapes.every((s, _, _) => static(s))
 
 type SLit = Lit
 open Block
@@ -89,19 +92,13 @@ fun silh(p: Case): Shape = if p is
   Field(name) then ???
   Wildcard then Dyn
 
-fun match(s: Shape, p: Case): Option[Bool] = 
+fun filter(s: Shape, p: Case): Shape =
   if [s, p] is
-    [Lit(l1), Lit(l2)] then Some(true)
-    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then Some(true)
-    [Class(c1, _), Cls(c2, _)] and c1 == c2 then Some(true)
-    [Arr(ls), Tup(n, inf)] and ls.length == n then Some(true)
-    [_, Block.Wildcard] then Some(true)
-    [Shape.Dyn, _] then None
-    _ then Some(false)
-
-fun det(s: Shape, ps: Array[Case]): Bool = 
-  ps.every((p, i, a) =>
-    if i != ps.length - 1
-    then match(s, p) == Some(false)
-    else match(s, p) == Some(true)
-  )
+    [_, Wildcard] then s
+    [Lit(l1), Lit(l2)] and l1 == l2 then l1 // typo? should be Lit(l1)?
+    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then s
+    [Arr(ls), Tup(n, _)] and ls.length == n then s
+    [Class(c1, _), Cls(c2, _)] and c1 == c2 then s
+    [Dyn, _] then silh(p)
+    [Multiple(shapes), _] then Multiple(shapes.map((s, _, _) => filter(s, p)))
+    _ then Multiple(new Set())
