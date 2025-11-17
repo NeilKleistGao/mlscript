@@ -224,7 +224,6 @@ class InstrumentationImpl(using State):
 
   def transformDefine(d: Define)(using ctx: Context)(k: StagedPath => Block): Block =
     d.defn match
-      // duplicated because we need a reference to genSym here
       case f: FunDefn => ???
       case v: ValDefn => ruleVal(v, d.rest)(k)
       case c: ClsLikeDefn => ??? // nested class?
@@ -245,8 +244,6 @@ class InstrumentationImpl(using State):
 class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
   val impl = new InstrumentationImpl
 
-  // This stages any function definition,
-  // instead of staging functions within staged modules.
   override def applyBlock(b: Block): Block = super.applyBlock(b) match
     case d @ Define(defn, rest) =>
       defn match
