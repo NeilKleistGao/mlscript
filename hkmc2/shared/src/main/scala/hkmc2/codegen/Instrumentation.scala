@@ -18,6 +18,7 @@ import syntax.{Literal, Tree}
 
 class InstrumentationImpl(using State):
   type ArgWrappable = Path | Symbol | Shape
+  type Context = HashMap[Path, StagedPath]
 
   def asArg(x: ArgWrappable): Arg =
     x match
@@ -112,7 +113,7 @@ class InstrumentationImpl(using State):
       blockCtor("ValueRef", Ls(sym)): cde =>
         StagedPath.mk(sp.shape, cde, "var")(k)
 
-  def ruleTup(t: Tuple)(k: StagedPath => Block): Block =
+  def ruleTup(t: Tuple)(using ctx: Context)(k: StagedPath => Block): Block =
     assert(!t.mut)
     transformArgs(t.elems): xs =>
       tuple(xs.map(_.shape)): shapes =>
@@ -121,7 +122,7 @@ class InstrumentationImpl(using State):
             blockCtor("Tuple", Ls(codes)): cde =>
               StagedPath.mk(sp, cde, "tup")(k)
 
-  def ruleSel(s: Select)(k: StagedPath => Block): Block =
+  def ruleSel(s: Select)(using ctx: Context)(k: StagedPath => Block): Block =
     val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
       // TODO: figure out actual shape
@@ -131,7 +132,7 @@ class InstrumentationImpl(using State):
             blockCtor("Select", Ls(x.code, name)): cde =>
               StagedPath.mk(sp, cde, "sel")(k)
 
-  def ruleInst(i: Instantiate)(k: StagedPath => Block): Block =
+  def ruleInst(i: Instantiate)(using ctx: Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
     assert(!mut)
     transformArgs(args): xs =>
@@ -144,19 +145,20 @@ class InstrumentationImpl(using State):
               blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
                 StagedPath.mk(sp, cde, "inst")(k)
 
-  def ruleReturn(r: Return)(k: StagedPath => Block): Block =
+  def ruleReturn(r: Return)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformResult(r.res): x =>
       blockCtor("Return", Ls(x.code)): cde =>
-        StagedPath.mk(x.shape, cde, "return")(k)
+        StagedPath.mk(x.shape, cde, "return")(k(_, ctx))
 
-  def ruleAssign(a: Assign)(k: StagedPath => Block): Block =
+  // outdated
+  def ruleAssign(a: Assign)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
     transformResult(r): y =>
       (Assign(x, y.p, _)):
-        transformBlock(b): z =>
+        transformBlock(b): z => // have ctx here?
           blockCtor("Symbol", Ls(toValue(x.nme))): x =>
             blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
-              StagedPath.mk(z.shape, cde, "assign")(k)
+              StagedPath.mk(z.shape, cde, "assign")(k(_, ctx))
 
   def ruleEnd()(k: StagedPath => Block): Block =
     assign(State.globalThisSymbol.asPath.selSN("Set")): newSet =>
@@ -165,7 +167,8 @@ class InstrumentationImpl(using State):
           StagedPath.mk(sp, cde, "end")(k)
 
   // converted to ruleLet?
-  def ruleVal(defn: ValDefn, b: Block)(k: StagedPath => Block): Block =
+  // outdated
+  def ruleVal(defn: ValDefn, b: Block)(using ctx: Context)(k: StagedPath => Block): Block =
     val ValDefn(tsym, x, p) = defn
     transformPath(p): y =>
       // y is StagedPath, not Path?
@@ -178,14 +181,14 @@ class InstrumentationImpl(using State):
 
   // transformations of Block
 
-  def transformPath(p: Path)(k: StagedPath => Block): Block =
+  def transformPath(p: Path)(using ctx: Context)(k: StagedPath => Block): Block =
     p match
       case r: Value.Ref => ruleVar(r)(k)
       case l: Value.Lit => ruleLit(l)(k)
       case s: Select => ruleSel(s)(k)
-      case _ => ??? // not supported
+      case _ => ??? // not supporteda
 
-  def transformResult(r: Result)(k: StagedPath => Block): Block =
+  def transformResult(r: Result)(using ctx: Context)(k: StagedPath => Block): Block =
     r match
       case p: Path =>
         transformPath(p): p =>
@@ -195,17 +198,17 @@ class InstrumentationImpl(using State):
       case i: Instantiate => ruleInst(i)(k)
       case _ => ??? // not supported
 
-  def transformArg(a: Arg)(k: StagedPath => Block): Block =
+  def transformArg(a: Arg)(using ctx: Context)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
     transformPath(value)(k)
 
   // provides list of shapes and list of codes to continuation
-  def transformArgs(args: Ls[Arg])(k: Ls[StagedPath] => Block): Block =
+  def transformArgs(args: Ls[Arg])(using ctx: Context)(k: Ls[StagedPath] => Block): Block =
     args.map(transformArg).collectApply(k)
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
-  def transformFunDefn(modSym: Symbol, f: FunDefn): (FunDefn, Block) =
+  def transformFunDefn(modSym: Symbol, f: FunDefn)(using ctx: Context): (FunDefn, Block) =
     val genSym = BlockMemberSymbol(f.sym.nme + "_gen", Nil, true)
     // TODO: remove it. only for test
     // TODO: put correct parameters instead of Nil
@@ -219,17 +222,19 @@ class InstrumentationImpl(using State):
       debug
     )
 
-  def transformDefine(d: Define)(k: StagedPath => Block): Block =
+  def transformDefine(d: Define)(using ctx: Context)(k: StagedPath => Block): Block =
     d.defn match
       // duplicated because we need a reference to genSym here
       case f: FunDefn => ???
       case v: ValDefn => ruleVal(v, d.rest)(k)
       case c: ClsLikeDefn => ??? // nested class?
 
-  def transformBlock(b: Block)(k: StagedPath => Block): Block =
+  def transformBlock(b: Block)(using ctx: Context)(k: StagedPath => Block): Block =
+    // ruleBlk?
+    val k2 = (p: StagedPath, ctx: Context) => k(p)
     b match
-      case r: Return => ruleReturn(r)(k)
-      case a: Assign => ruleAssign(a)(k)
+      case r: Return => ruleReturn(r)(k2)
+      case a: Assign => ruleAssign(a)(k2)
       case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k)
       // temporary measure to accept returning an array
@@ -249,7 +254,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
         case c: ClsLikeDefn if c.sym.defn.exists(_.hasStagedModifier.isDefined) && c.companion.isDefined =>
           val companion = c.companion.get
           val (stagedMethods, debugPrintCode) = companion.methods
-            .map(impl.transformFunDefn(c.sym, _))
+            .map(impl.transformFunDefn(c.sym, _)(using new HashMap())) // fold instead to retain env?
             .unzip
           val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods)
           val newModule = c.copy(sym = c.sym, companion = Some(newCompanion))
