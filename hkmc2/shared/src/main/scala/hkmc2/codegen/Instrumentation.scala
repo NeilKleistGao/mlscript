@@ -35,6 +35,13 @@ class InstrumentationImpl(using State):
       case n: BigDecimal => Tree.DecLit(n)
     Value.Lit(l)
 
+  def concat(b1: Block, b2: Block): Block =
+    b1.mapTail {
+      case _: Return => b2
+      case _: End => b2
+      case _ => ???
+    }
+
   // TODO: use BlockTransformer.applyListOf?
   extension [A](ls: Ls[(A => Block) => Block])
     def collectApply(f: Ls[A] => Block): Block =
@@ -69,9 +76,9 @@ class InstrumentationImpl(using State):
   def shapeMod(name: Str) = summon[State].shapeSymbol.asPath.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    ctor(blockMod(name), args)(k)
+    ctor(blockMod(name), args, symName)(k)
   def shapeCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Shape => Block): Block =
-    ctor(shapeMod(name), args)(p => k(Shape(p)))
+    ctor(shapeMod(name), args, symName)(p => k(Shape(p)))
 
   def blockCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, symName = symName)(k)
@@ -217,10 +224,7 @@ class InstrumentationImpl(using State):
         blockCall("printCode", Ls(StagedPath(ret).code)): _ => // discard result, we only care about side effect
           End()
 
-    (
-      f.copy(sym = genSym, body = transformBlock(f.body)(_.end)),
-      debug
-    )
+    (f.copy(sym = genSym, body = transformBlock(f.body)(_.end)), debug)
 
   def transformDefine(d: Define)(using ctx: Context)(k: StagedPath => Block): Block =
     d.defn match
@@ -237,8 +241,7 @@ class InstrumentationImpl(using State):
       case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k)
       // temporary measure to accept returning an array
-      case Begin(b1, b2) => transformBlock(b1.mapTail { case _ => b2 })(k)
-      case _ => ??? // not supported
+      case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)
 
 // TODO: rename as InstrumentationTransformer?
 class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
@@ -255,7 +258,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
             .unzip
           val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods)
           val newModule = c.copy(sym = c.sym, companion = Some(newCompanion))
-          val debugBlock = debugPrintCode.foldRight(rest)((b1, b2) => b1.mapTail { case _ => b2 })
+          val debugBlock = debugPrintCode.foldRight(rest)(impl.concat)
           Define(newModule, debugBlock)
         case _ => d
     case b => b
