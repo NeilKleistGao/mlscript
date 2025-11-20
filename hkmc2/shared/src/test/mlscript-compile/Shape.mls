@@ -33,10 +33,10 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
     ["Int", i] and i is Int then true
     ["Num", n] and n is Num then true
     ["Bool", b] and b is Bool then true
-    _ then false
+    else false
 
-fun zipMrg[A](a: Array[A], b: Array[A]): Array[[A, A]] =
-  [...Array(a.length).keys()].map((i, _, _) => mrg2(a.at(i), b.at(i)))
+fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
+  a.map((a, i, _) => mrg2(a, b.at(i)))
 
 // TODO: look at how Array is used
 fun mrg2(s1: Shape, s2: Shape) = if s1
@@ -51,7 +51,7 @@ fun mrg2(s1: Shape, s2: Shape) = if s1
     Arr(s1) and s2 is Arr(s2)
       and s1.length == s2.length
       then Arr(zipMrg(s1, s2))
-    else Dyn
+    else Dyn()
 
 fun mrg(s1: Array[Shape]) = 
   s1.reduceRight((acc, s, _, _) => mrg2(s, acc))
@@ -61,16 +61,16 @@ fun sel(s1: Shape, s2: Shape) =
     [Class(c, shapes), Lit(n)] and n is Str
       then shapes.at(n) // field name election using Str?
     [Dyn, Lit(n)] and n is Str
-      then Dyn
+      then Dyn()
     [Arr(shapes), Lit(n)] and n is Int
       then shapes.at(n)
     [Arr(shapes), Dyn] then
-      Dyn // TODO
+      Dyn() // TODO
     [Dyn, Lit(n)] and n is Int
-      then Dyn
+      then Dyn()
     [Dyn, Dyn]
-      then Dyn
-    else Dyn // temp, makes call not error
+      then Dyn()
+    else Dyn() // temp, makes call not error
 
 fun static(s: Shape) = 
   if s is
@@ -88,14 +88,14 @@ fun silh(p: Case): Shape = if p is
   Cls(sym, path) then Class(sym, ???)
   // how to initialize array of Dyn?
   Tup(n, inf) then Arr(Array(n).fill(Dyn))
-  Wildcard then Dyn
+  Wildcard then Dyn()
 
 fun filter(s: Shape, p: Case): Shape =
   if [s, p] is
     [_, Wildcard] then s
-    [Lit(l1), Lit(l2)] and l1 == l2 then l1 // typo? should be Lit(l1)?
+    [Lit(l1), Lit(l2)] and l1 == l2 then s
     [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then s
     [Arr(ls), Tup(n, _)] and ls.length == n then s
     [Class(c1, _), Cls(c2, _)] and c1 == c2 then s
     [Dyn, _] then silh(p)
-    else Dyn // TODO
+    else Dyn() // TODO
