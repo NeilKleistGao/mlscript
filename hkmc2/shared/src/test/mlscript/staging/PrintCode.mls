@@ -3,12 +3,12 @@
 
 //│ Block = class Block {
 //│   Symbol: fun Symbol { class: class Symbol },
-//│   Arg: fun Arg { class: class Arg },
 //│   Path: class Path,
 //│   Select: fun Select { class: class Select },
 //│   DynSelect: fun DynSelect { class: class DynSelect },
 //│   ValueRef: fun ValueRef { class: class ValueRef },
 //│   ValueLit: fun ValueLit { class: class ValueLit },
+//│   Arg: fun Arg { class: class Arg },
 //│   Case: class Case,
 //│   Lit: fun Lit { class: class Lit },
 //│   Cls: fun Cls { class: class Cls },
@@ -25,6 +25,7 @@
 //│   ClsLikeDefn: fun ClsLikeDefn { class: class ClsLikeDefn },
 //│   FunDefn: fun FunDefn { class: class FunDefn },
 //│   ClsLikeBody: fun ClsLikeBody { class: class ClsLikeBody },
+//│   Arm: fun Arm { class: class Arm },
 //│   Block: class Block,
 //│   Match: fun Match { class: class Match },
 //│   Return: fun Return { class: class Return },
@@ -34,21 +35,37 @@
 //│ }
 //│ Shape = class Shape {
 //│   Shape: class Shape,
-//│   Dyn: class Dyn,
+//│   Dyn: fun Dyn { class: class Dyn },
 //│   Lit: fun Lit { class: class Lit },
 //│   Arr: fun Arr { class: class Arr },
 //│   Class: fun Class { class: class Class },
-//│   Unit: class Unit
+//│   Unit: fun Unit { class: class Unit }
 //│ }
-//│ Shape = class Shape {
-//│   Shape: class Shape,
-//│   Dyn: class Dyn,
-//│   Lit: fun Lit { class: class Lit },
-//│   Arr: fun Arr { class: class Arr },
-//│   Class: fun Class { class: class Class },
-//│   Unit: class Unit
-//│ }
+import "../../mlscript-compile/Option.mls"
+open Option
 
-Block.printCode(Block.FunDefn(Block.Symbol("f"), [Block.Symbol("x")], Block.Return(Block.TrivialResult(Block.ValueLit(1)), false)))
-//│ > FunDefn(Symbol("f"), [Symbol("x")], Return(Lit(1), false))
-
+Block.printCode(Block.Define(Block.FunDefn(Block.Symbol("f"), [Block.Symbol("x")], Block.Return(Block.TrivialResult(Block.ValueRef(Block.Symbol("x"))), false)), Block.Return(Block.TrivialResult(Block.ValueRef(Block.Symbol("x"))), false)))
+Block.printCode(
+    Block.Define(
+        Block.ClsLikeDefn(Block.Symbol("C"), Some([Block.Symbol("x"), Block.Symbol("y")]), None), 
+        Block.Assign(
+            Block.Symbol("x"), 
+            Block.Instantiate(
+                Block.ValueRef(Block.Symbol("C")), [Block.Arg(Some(false), Block.ValueLit("1")), Block.Arg(Some(false), Block.ValueLit("2"))]
+            ), 
+            Block.Return(
+                Block.TrivialResult(
+                    Block.Select(Block.ValueRef(Block.Symbol("x")), Block.Symbol("y"))
+                ),
+                false
+            )
+        )
+    )
+)
+Block.printCode(Block.Return(Block.Tuple([Block.Arg(None, Block.ValueLit(1)), Block.Arg(None, Block.ValueLit(2))]), false))
+//│ > fun f(x) = x
+//│ > x
+//│ > class C(x, y)
+//│ > let x = new C(1,2)
+//│ > x.y
+//│ > (1,2)
