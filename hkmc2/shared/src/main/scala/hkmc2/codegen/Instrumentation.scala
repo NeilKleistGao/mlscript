@@ -20,7 +20,7 @@ import syntax.{Literal, Tree}
 // but it would require re-extracting and re-assigning StagedPath from the output.
 
 // the continuation would basically be solely dedicated to staging then?
-// like, we do a transformation on DynSelect where we keep the fields inteact, then perform staging in the DynSelect => Block continuation?
+// like, we do a transformation on DynSelect where we keep the fields intact, then perform staging in the DynSelect => Block continuation?
 // the previous blocks created by the fields are handled by BlockTransformer's continuation code
 
 class InstrumentationImpl(using State):
