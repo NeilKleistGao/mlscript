@@ -233,14 +233,19 @@ class InstrumentationImpl(using State):
       case c: ClsLikeDefn => ??? // nested class?
 
   def transformBlock(b: Block)(using ctx: Context)(k: StagedPath => Block): Block =
+    transformBlock(b)((p, _) => k(p))
+
+  def transformBlock(b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     // ruleBlk?
-    val k2 = (p: StagedPath, ctx: Context) => k(p)
+    val k2 = k(_, ctx)
     b match
-      case r: Return => ruleReturn(r)(k2)
-      case a: Assign => ruleAssign(a)(k2)
-      case d: Define => transformDefine(d)(k)
-      case End(_) => ruleEnd()(k)
+      case r: Return => ruleReturn(r)(k)
+      case a: Assign => ruleAssign(a)(k)
+      case d: Define => transformDefine(d)(k2)
+      case End(_) => ruleEnd()(k2)
+      case _: Match => ???
       // temporary measure to accept returning an array
+      // use BlockTransformer here?
       case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)
 
 // TODO: rename as InstrumentationTransformer?
