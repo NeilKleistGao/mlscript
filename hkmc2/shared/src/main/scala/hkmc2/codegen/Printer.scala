@@ -100,10 +100,10 @@ object Printer:
     case Select(qual, name) =>
       val docQual = mkDocument(qual)
       doc"${docQual}.${name.name}"
-    case DynSelect(qual, fld, true) =>
-      val docQual = mkDocument(qual)
-      val docFld = mkDocument(fld)
-      doc"${docQual}[${docFld}]"
+    case DynSelect(qual, fld, ai) =>
+      if ai
+      then doc"${mkDocument(qual)}.at(${mkDocument(fld)})"
+      else doc"${mkDocument(qual)}[${mkDocument(fld)}]"
     case x: Value => mkDocument(x)
     case _ => TODO(path)
 
