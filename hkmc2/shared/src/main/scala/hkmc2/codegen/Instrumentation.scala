@@ -114,11 +114,10 @@ class InstrumentationImpl(using State):
 
   // outdated
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
-    // why assume it is already staged?
-    val sp = StagedPath(r)
     blockCtor("Symbol", Ls(toValue(r.l.nme))): sym =>
       blockCtor("ValueRef", Ls(sym)): cde =>
-        StagedPath.mk(sp.shape, cde, "var")(k)
+        shapeCtor("Dyn", Ls()): sp => // keep dynamic for now
+          StagedPath.mk(sp, cde, "var")(k)
 
   def ruleTup(t: Tuple)(using ctx: Context)(k: StagedPath => Block): Block =
     assert(!t.mut)
@@ -132,12 +131,19 @@ class InstrumentationImpl(using State):
   def ruleSel(s: Select)(using ctx: Context)(k: StagedPath => Block): Block =
     val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
-      // TODO: figure out actual shape
-      shapeCtor("Dyn", Ls()): n =>
+      shapeCtor("Lit", Ls(toValue(name))): n =>
         fnSel(x.shape, n): sp =>
           blockCtor("Symbol", Ls(toValue(name))): name =>
             blockCtor("Select", Ls(x.code, name)): cde =>
               StagedPath.mk(sp, cde, "sel")(k)
+
+  def ruleDynSel(d: DynSelect)(using ctx: Context)(k: StagedPath => Block): Block =
+    val DynSelect(qual, fld, arrayIdx) = d
+    transformPath(qual): x =>
+      transformPath(fld): y =>
+        fnSel(x.shape, y.shape): sp =>
+          blockCtor("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
+            StagedPath.mk(sp, cde, "dynsel")(k)
 
   def ruleInst(i: Instantiate)(using ctx: Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
@@ -145,8 +151,7 @@ class InstrumentationImpl(using State):
     transformArgs(args): xs =>
       tuple(xs.map(_.shape)): shapes =>
         tuple(xs.map(_.code)): codes =>
-          // NOTE: this was not needed in the formalization
-          // but it seems to be necessary to stage the path?
+          // reuse instrumentation logic, shape of cls is discarded
           transformPath(cls): cls =>
             shapeCtor("Class", Ls(cls.code, shapes)): sp =>
               blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
@@ -162,7 +167,7 @@ class InstrumentationImpl(using State):
     val Assign(x, r, b) = a
     transformResult(r): y =>
       (Assign(x, y.p, _)):
-        transformBlock(b): z => // have ctx here?
+        transformBlock(b): (z, ctx) => // have ctx here?
           blockCtor("Symbol", Ls(toValue(x.nme))): x =>
             blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
               StagedPath.mk(z.shape, cde, "assign")(k(_, ctx))
@@ -189,11 +194,14 @@ class InstrumentationImpl(using State):
   // transformations of Block
 
   def transformPath(p: Path)(using ctx: Context)(k: StagedPath => Block): Block =
-    p match
-      case r: Value.Ref => ruleVar(r)(k)
-      case l: Value.Lit => ruleLit(l)(k)
-      case s: Select => ruleSel(s)(k)
-      case _ => ??? // not supporteda
+    // rulePath
+    ctx.get(p).map(k).getOrElse:
+      p match
+        case r: Value.Ref => ruleVar(r)(k)
+        case l: Value.Lit => ruleLit(l)(k)
+        case s: Select => ruleSel(s)(k)
+        case d: DynSelect => ruleDynSel(d)(k)
+        case _ => ??? // not supported
 
   def transformResult(r: Result)(using ctx: Context)(k: StagedPath => Block): Block =
     r match
