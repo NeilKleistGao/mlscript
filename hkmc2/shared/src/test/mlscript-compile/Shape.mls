@@ -7,13 +7,17 @@ type Literal = null | undefined | Str | Int | Num | Bool
 
 module Shape with...
 
+// TODO: implement ShapeSet
+class ShapeSet(val s: Shape)
+
+fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(Dyn())
+
 class Shape with
   constructor
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape]) // is length parameter needed?
     Class(val sym: Symbol, val shapes: Array[Shape])
-    Multiple(val shapes: Set) // empty represents bottom
 
 fun isPrimitiveType(sym: Str) = 
   if sym is
@@ -61,14 +65,12 @@ fun sel(s1: Shape, s2: Shape) =
     [Arr(shapes), Lit(n)] and n is Int
       then shapes.at(n)
     [Arr(shapes), Dyn] then
-      Multiple(new Set(shapes))
+      Dyn // TODO
     [Dyn, Lit(n)] and n is Int
       then Dyn
     [Dyn, Dyn]
       then Dyn
-    [Multiple(shapes), s2]
-      then Multiple(new Set(shapes.values().map((s, _) => sel(s, s2))))
-    _ then Dyn // temp, makes call not error
+    else Dyn // temp, makes call not error
 
 fun static(s: Shape) = 
   if s is
@@ -96,5 +98,4 @@ fun filter(s: Shape, p: Case): Shape =
     [Arr(ls), Tup(n, _)] and ls.length == n then s
     [Class(c1, _), Cls(c2, _)] and c1 == c2 then s
     [Dyn, _] then silh(p)
-    [Multiple(shapes), _] then Multiple(shapes.map((s, _, _) => filter(s, p)))
-    _ then Multiple(new Set())
+    else Dyn // TODO

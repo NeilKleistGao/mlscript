@@ -173,10 +173,9 @@ class InstrumentationImpl(using State):
               StagedPath.mk(z.shape, cde, "assign")(k(_, ctx))
 
   def ruleEnd()(k: StagedPath => Block): Block =
-    assign(State.globalThisSymbol.asPath.selSN("Set")): newSet =>
-      shapeCtor("Multiple", Ls(newSet)): sp =>
-        blockCtor("End", Ls()): cde =>
-          StagedPath.mk(sp, cde, "end")(k)
+    shapeCtor("Dyn", Ls()): sp =>
+      blockCtor("End", Ls()): cde =>
+        StagedPath.mk(sp, cde, "end")(k)
 
   // converted to ruleLet?
   // outdated
