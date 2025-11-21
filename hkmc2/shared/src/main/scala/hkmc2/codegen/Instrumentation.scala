@@ -166,39 +166,36 @@ class InstrumentationImpl(using State):
 
   def ruleAssign(a: Assign)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
-    // if ctx contains x, x was defined earlier
-    // otherwise, x is defined here
-    ctx.get(x.asPath) match
-      case S(x1) =>
-        transformResult(r): y =>
-          fnUnion(y.shape, x1.shape): sp =>
-            blockCtor("Symbol", Ls(toValue(x.nme))): xSym =>
+    transformResult(r): y =>
+      blockCtor("Symbol", Ls(toValue(x.nme))): xSym =>
+        // if ctx contains x, x was defined earlier
+        // otherwise, x is defined here
+        ctx.get(x.asPath) match
+          case S(x1) =>
+            fnUnion(y.shape, x1.shape): sp =>
               blockCtor("ValueRef", Ls(xSym)): xStaged =>
-                StagedPath.mk(sp, xStaged, "assign_x2"): x2 =>
+                StagedPath.mk(sp, xStaged): x2 =>
+                  given Context = ctx.clone() += x.asPath -> x2
                   (Assign(x, x2.p, _)):
-                    given Context = ctx.clone() += x.asPath -> x2
                     transformBlock(b): (z, ctx) =>
-                      blockCtor("Assign", Ls(xSym, y.code, z.code), "assign_cde"): cde =>
+                      blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
                         StagedPath.mk(z.shape, cde, "assign")(k(_, summon))
-      case N =>
-        transformResult(r): y =>
-          (Assign(x, y.p, _)):
-            transformBlock(b): (z, ctx) =>
-              blockCtor("Symbol", Ls(toValue(x.nme))): x =>
-                blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
-                  StagedPath.mk(z.shape, cde, "assign")(k(_, ctx))
+          case N =>
+            (Assign(x, y.p, _)):
+              transformBlock(b): (z, ctx) =>
+                blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
+                  StagedPath.mk(z.shape, cde, "assign")(k(_, summon))
 
   def ruleLet(x: BlockMemberSymbol, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
-    val y = TempSymbol(N, "tmp")
     shapeCtor("Bot", Ls()): bot =>
       blockCtor("Symbol", Ls(toValue(x.nme))): xSym =>
-        StagedPath.mk(bot, xSym, "let_y"): y =>
+        StagedPath.mk(bot, xSym): y =>
           (Assign(x, y.p, _)):
             given Context = ctx.clone() += x.asPath -> y
             transformBlock(b): (z, ctx) =>
-              blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false))), "let_undef"): undefined =>
+              blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undefined =>
                 blockCtor("TrivialResult", Ls(undefined)): undefined =>
-                  blockCtor("Assign", Ls(xSym, undefined, z.code), "let_code"): cde =>
+                  blockCtor("Assign", Ls(xSym, undefined, z.code)): cde =>
                     StagedPath.mk(z.shape, cde, "_let")(k(_, summon))
 
   def ruleEnd()(k: StagedPath => Block): Block =
