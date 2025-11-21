@@ -105,7 +105,6 @@ object Printer:
       then doc"${mkDocument(qual)}.at(${mkDocument(fld)})"
       else doc"${mkDocument(qual)}[${mkDocument(fld)}]"
     case x: Value => mkDocument(x)
-    case _ => TODO(path)
 
   def mkDocument(result: Result)(using Raise, Scope): Document = result match
     case Call(fun, args) => doc"${mkDocument(fun)}(${args.map(mkDocument).mkDocument(", ")})"

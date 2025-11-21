@@ -94,7 +94,7 @@ class InstrumentationImpl(using State):
   case class Shape(p: Path)
 
   // A StagedPath is a path that points to a (shape, code) tuple
-  class StagedPath(val p: Path):
+  case class StagedPath(p: Path):
     def shape: Shape = Shape(DynSelect(p, toValue(0), false))
     def code: Path = DynSelect(p, toValue(1), false)
     def end: Block = Return(p, false)
@@ -113,6 +113,15 @@ class InstrumentationImpl(using State):
   def fnUnion(s1: Shape, s2: Shape)(k: Shape => Block): Block =
     shapeCall("union", Ls(s1, s2))(s => k(Shape(s)))
 
+  // transformation helpers
+
+  def transformSymbol(sym: Symbol)(k: Path => Block) = blockCtor("Symbol", Ls(toValue(sym.nme)))(k)
+
+  def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
+    xOpt match
+      case S(x) => f(x)(optionSome(_)(k))
+      case N => optionNone()(k)
+
   // instrumentation rules
 
   def ruleLit(l: Value.Lit)(k: StagedPath => Block): Block =
@@ -127,7 +136,7 @@ class InstrumentationImpl(using State):
         shapeCtor("Dyn", Ls()): sp => // keep dynamic for now
           StagedPath.mk(sp, cde, "var")(k)
 
-  def ruleTup(t: Tuple)(using ctx: Context)(k: StagedPath => Block): Block =
+  def ruleTup(t: Tuple)(using Context)(k: StagedPath => Block): Block =
     assert(!t.mut)
     transformArgs(t.elems): xs =>
       tuple(xs.map(_.shape)): shapes =>
@@ -136,7 +145,7 @@ class InstrumentationImpl(using State):
             blockCtor("Tuple", Ls(codes)): cde =>
               StagedPath.mk(sp, cde, "tup")(k)
 
-  def ruleSel(s: Select)(using ctx: Context)(k: StagedPath => Block): Block =
+  def ruleSel(s: Select)(using Context)(k: StagedPath => Block): Block =
     val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
       shapeCtor("Lit", Ls(toValue(name))): n =>
@@ -145,7 +154,7 @@ class InstrumentationImpl(using State):
             blockCtor("Select", Ls(x.code, name)): cde =>
               StagedPath.mk(sp, cde, "sel")(k)
 
-  def ruleDynSel(d: DynSelect)(using ctx: Context)(k: StagedPath => Block): Block =
+  def ruleDynSel(d: DynSelect)(using Context)(k: StagedPath => Block): Block =
     val DynSelect(qual, fld, arrayIdx) = d
     transformPath(qual): x =>
       transformPath(fld): y =>
@@ -153,7 +162,7 @@ class InstrumentationImpl(using State):
           blockCtor("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
             StagedPath.mk(sp, cde, "dynsel")(k)
 
-  def ruleInst(i: Instantiate)(using ctx: Context)(k: StagedPath => Block): Block =
+  def ruleInst(i: Instantiate)(using Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
     assert(!mut)
     transformArgs(args): xs =>
@@ -165,15 +174,15 @@ class InstrumentationImpl(using State):
               blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
                 StagedPath.mk(sp, cde, "inst")(k)
 
-  def ruleReturn(r: Return)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleReturn(r: Return)(using Context)(k: (StagedPath, Context) => Block): Block =
     transformResult(r.res): x =>
       blockCtor("Return", Ls(x.code, toValue(false))): cde =>
-        StagedPath.mk(x.shape, cde, "return")(k(_, ctx))
+        StagedPath.mk(x.shape, cde, "return")(k(_, summon))
 
   def ruleAssign(a: Assign)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
     transformResult(r): y =>
-      blockCtor("Symbol", Ls(toValue(x.nme))): xSym =>
+      transformSymbol(x): xSym =>
         // if ctx contains x, x was defined earlier
         // otherwise, x is defined here
         ctx.get(x.asPath) match
@@ -188,13 +197,13 @@ class InstrumentationImpl(using State):
                         StagedPath.mk(z.shape, cde, "assign")(k(_, summon))
           case N =>
             (Assign(x, y.p, _)):
-              transformBlock(b): (z, ctx) =>
+              transformBlock(b): z => // ignore ctx
                 blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
                   StagedPath.mk(z.shape, cde, "assign")(k(_, summon))
 
   def ruleLet(x: BlockMemberSymbol, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     shapeCtor("Bot", Ls()): bot =>
-      blockCtor("Symbol", Ls(toValue(x.nme))): xSym =>
+      transformSymbol(x): xSym =>
         StagedPath.mk(bot, xSym): y =>
           (Assign(x, y.p, _)):
             given Context = ctx.clone() += x.asPath -> y
@@ -209,27 +218,20 @@ class InstrumentationImpl(using State):
       blockCtor("End", Ls()): cde =>
         StagedPath.mk(sp, cde, "end")(k)
 
-  def ruleCls(cls: ClsLikeDefn, rest: Block)(using ctx: Context)(k: Path => Block): Block =
+  def ruleCls(cls: ClsLikeDefn, rest: Block)(using Context)(k: Path => Block): Block =
     (Define(cls, _)):
       transformBlock(rest): p =>
-        blockCtor("Symbol", Ls(toValue(cls.sym.nme))): c =>
+        transformSymbol(cls.sym): c =>
           def stageParamList(ps: ParamList)(k: Path => Block) =
-            ps.params.map(p => transformSymbol(p.sym)).collectApply: params =>
-              tuple(params)(k)
+            ps.params.map(p => transformSymbol(p.sym)).collectApply(tuple(_)(k))
           transformOption(cls.paramsOpt, stageParamList): paramsOpt =>
-            assert(cls.companion.isEmpty) // does not support nested module
+            assert(cls.companion.isEmpty) // nested module not supported
             optionNone(): none =>
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
 
 
   // transformations of Block
-
-
-  def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
-    xOpt match
-      case S(x) => f(x)(optionSome(_)(k))
-      case N => optionNone()(k)
 
   def transformPath(p: Path)(using ctx: Context)(k: StagedPath => Block): Block =
     // rulePath
@@ -241,7 +243,7 @@ class InstrumentationImpl(using State):
         case d: DynSelect => ruleDynSel(d)(k)
         case _ => ??? // not supported
 
-  def transformResult(r: Result)(using ctx: Context)(k: StagedPath => Block): Block =
+  def transformResult(r: Result)(using Context)(k: StagedPath => Block): Block =
     r match
       case p: Path =>
         transformPath(p): p =>
@@ -251,7 +253,7 @@ class InstrumentationImpl(using State):
       case i: Instantiate => ruleInst(i)(k)
       case _ => ??? // not supported
 
-  def transformArg(a: Arg)(using ctx: Context)(k: StagedPath => Block): Block =
+  def transformArg(a: Arg)(using Context)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
     optionNone(): opt =>
       transformPath(value): value =>
@@ -259,12 +261,12 @@ class InstrumentationImpl(using State):
           StagedPath.mk(value.shape, cde)(k)
 
   // provides list of shapes and list of codes to continuation
-  def transformArgs(args: Ls[Arg])(using ctx: Context)(k: Ls[StagedPath] => Block): Block =
+  def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
     args.map(transformArg).collectApply(k)
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
-  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn)(using ctx: Context): (FunDefn, Block) =
+  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn)(using Context): (FunDefn, Block) =
     val genSym = BlockMemberSymbol(f.sym.nme + "_gen", Nil, true)
     // TODO: remove it. only for test
     // TODO: put correct parameters instead of Nil
@@ -287,12 +289,12 @@ class InstrumentationImpl(using State):
           ruleEnd(): b =>
             fnPrintCode(p)(_ => k(b, ctx))
 
-  def transformBlock(b: Block)(using ctx: Context)(k: StagedPath => Block): Block =
+  def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     transformBlock(b)((p, _) => k(p))
 
-  def transformBlock(b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+  def transformBlock(b: Block)(using Context)(k: (StagedPath, Context) => Block): Block =
     // ruleBlk?
-    val k2 = k(_, ctx)
+    val k2 = k(_, summon)
     b match
       case r: Return => ruleReturn(r)(k)
       case a: Assign => ruleAssign(a)(k)
