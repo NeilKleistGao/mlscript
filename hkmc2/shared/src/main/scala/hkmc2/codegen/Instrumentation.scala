@@ -74,11 +74,16 @@ class InstrumentationImpl(using State):
 
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
   def shapeMod(name: Str) = summon[State].shapeSymbol.asPath.selSN(name)
+  def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     ctor(blockMod(name), args, symName)(k)
   def shapeCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Shape => Block): Block =
     ctor(shapeMod(name), args, symName)(p => k(Shape(p)))
+  def optionSome(arg: ArgWrappable, symName: Str = "tmp")(k: Path => Block): Block =
+    ctor(optionMod("Some"), Ls(arg), symName)(k)
+  def optionNone(symName: Str = "tmp")(k: Path => Block): Block =
+    assign(optionMod("None"), symName)(k)
 
   def blockCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, symName = symName)(k)
@@ -207,6 +212,12 @@ class InstrumentationImpl(using State):
 
   // transformations of Block
 
+
+  def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
+    xOpt match
+      case S(x) => f(x)(optionSome(_)(k))
+      case N => optionNone()(k)
+
   def transformPath(p: Path)(using ctx: Context)(k: StagedPath => Block): Block =
     // rulePath
     ctx.get(p).map(k).getOrElse:
@@ -229,7 +240,10 @@ class InstrumentationImpl(using State):
 
   def transformArg(a: Arg)(using ctx: Context)(k: StagedPath => Block): Block =
     val Arg(spread, value) = a
-    transformPath(value)(k)
+    optionNone(): opt =>
+      transformPath(value): value =>
+        blockCtor("Arg", Ls(opt, value.code)): cde =>
+          StagedPath.mk(value.shape, cde)(k)
 
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: Ls[Arg])(using ctx: Context)(k: Ls[StagedPath] => Block): Block =

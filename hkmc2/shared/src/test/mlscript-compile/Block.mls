@@ -16,11 +16,12 @@ class Symbol(val name: Str)
 type Ident = Symbol
 
 type Literal = null | undefined | Str | Int | Num | Bool
-type Arg = Path
 
 type ParamList = Array[Symbol]
 
 // Classes defined in Block.scala
+
+class Arg(val spread: Opt[Bool], val value: Path) 
 
 class Path with
   constructor
@@ -84,8 +85,12 @@ fun showPath(p: Path): Str =
     ValueLit(lit) then
       "Lit(" + showLiteral(lit) + ")"
 
+fun showArg(arg: Arg) =
+  if arg.spread is Some(true) then "..." + showPath(arg.value)
+  else showPath(arg.value)
+
 fun showArgs(args: Array[Arg]) =
-  "[" + args.map(showPath).join(", ") + "]"
+  "[" + args.map(showArg).join(", ") + "]"
 
 // Case (match arm patterns)
 fun showCase(c: Case): Str =
