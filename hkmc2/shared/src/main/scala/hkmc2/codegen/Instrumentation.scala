@@ -106,6 +106,7 @@ class InstrumentationImpl(using State):
   // linking functions defined in MLscipt
 
   def fnPrintCode(p: Path)(k: Path => Block): Block =
+    // discard result, we only care about side effect
     blockCall("printCode", Ls(p))(k)
   def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block =
     shapeCall("sel", Ls(s1, s2))(s => k(Shape(s)))
@@ -208,6 +209,18 @@ class InstrumentationImpl(using State):
       blockCtor("End", Ls()): cde =>
         StagedPath.mk(sp, cde, "end")(k)
 
+  def ruleCls(cls: ClsLikeDefn, rest: Block)(using ctx: Context)(k: Path => Block): Block =
+    (Define(cls, _)):
+      transformBlock(rest): p =>
+        blockCtor("Symbol", Ls(toValue(cls.sym.nme))): c =>
+          def stageParamList(ps: ParamList)(k: Path => Block) =
+            ps.params.map(p => transformSymbol(p.sym)).collectApply: params =>
+              tuple(params)(k)
+          transformOption(cls.paramsOpt, stageParamList): paramsOpt =>
+            assert(cls.companion.isEmpty) // does not support nested module
+            optionNone(): none =>
+              blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
+                blockCtor("Define", Ls(cls, p.code))(k)
 
 
   // transformations of Block
@@ -251,15 +264,16 @@ class InstrumentationImpl(using State):
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
-  def transformFunDefn(modSym: Symbol, f: FunDefn)(using ctx: Context): (FunDefn, Block) =
+  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn)(using ctx: Context): (FunDefn, Block) =
     val genSym = BlockMemberSymbol(f.sym.nme + "_gen", Nil, true)
     // TODO: remove it. only for test
     // TODO: put correct parameters instead of Nil
+    val sym = modSym.asPath.selSN(genSym.nme)
     val debug =
-      call(modSym.asPath.selSN(genSym.nme), Nil): ret =>
-        blockCall("printCode", Ls(StagedPath(ret).code)): _ => // discard result, we only care about side effect
-          End()
+      call(sym, Nil): ret =>
+        fnPrintCode(StagedPath(ret).code)(_ => End())
 
+    // NOTE: this debug printing only works for top-level modules, nested modules don't work
     (f.copy(sym = genSym, body = transformBlock(f.body)(_.end)), debug)
 
   def transformDefine(d: Define)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
@@ -268,7 +282,10 @@ class InstrumentationImpl(using State):
       case v: ValDefn =>
         val ValDefn(t, x, r) = v
         ruleLet(x, Assign(x, r, d.rest))(k)
-      case c: ClsLikeDefn => ??? // nested class?
+      case c: ClsLikeDefn =>
+        ruleCls(c, d.rest): p =>
+          ruleEnd(): b =>
+            fnPrintCode(p)(_ => k(b, ctx))
 
   def transformBlock(b: Block)(using ctx: Context)(k: StagedPath => Block): Block =
     transformBlock(b)((p, _) => k(p))
@@ -295,12 +312,15 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       defn match
         // find modules with staged annotation
         case c: ClsLikeDefn if c.sym.defn.exists(_.hasStagedModifier.isDefined) && c.companion.isDefined =>
+          val sym = c.sym.subst
           val companion = c.companion.get
           val (stagedMethods, debugPrintCode) = companion.methods
-            .map(impl.transformFunDefn(c.sym, _)(using new HashMap())) // fold instead to retain env?
+            .map(impl.transformFunDefn(sym, _)(using new HashMap())) // fold instead to retain env?
             .unzip
-          val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods)
-          val newModule = c.copy(sym = c.sym, companion = Some(newCompanion))
+          val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
+          val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
+          val newModule = c.copy(sym = sym, companion = S(newCompanion))
+          // debug is printed without calling the instrumented function
           val debugBlock = debugPrintCode.foldRight(rest)(impl.concat)
           Define(newModule, debugBlock)
         case _ => d
