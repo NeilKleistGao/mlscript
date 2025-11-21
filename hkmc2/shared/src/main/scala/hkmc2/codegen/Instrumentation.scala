@@ -104,6 +104,8 @@ class InstrumentationImpl(using State):
     blockCall("printCode", Ls(p))(k)
   def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block =
     shapeCall("sel", Ls(s1, s2))(s => k(Shape(s)))
+  def fnUnion(s1: Shape, s2: Shape)(k: Shape => Block): Block =
+    shapeCall("union", Ls(s1, s2))(s => k(Shape(s)))
 
   // instrumentation rules
 
@@ -159,36 +161,52 @@ class InstrumentationImpl(using State):
 
   def ruleReturn(r: Return)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformResult(r.res): x =>
-      blockCtor("Return", Ls(x.code)): cde =>
+      blockCtor("Return", Ls(x.code, toValue(false))): cde =>
         StagedPath.mk(x.shape, cde, "return")(k(_, ctx))
 
-  // outdated
   def ruleAssign(a: Assign)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
-    transformResult(r): y =>
-      (Assign(x, y.p, _)):
-        transformBlock(b): (z, ctx) => // have ctx here?
-          blockCtor("Symbol", Ls(toValue(x.nme))): x =>
-            blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
-              StagedPath.mk(z.shape, cde, "assign")(k(_, ctx))
+    // if ctx contains x, x was defined earlier
+    // otherwise, x is defined here
+    ctx.get(x.asPath) match
+      case S(x1) =>
+        transformResult(r): y =>
+          fnUnion(y.shape, x1.shape): sp =>
+            blockCtor("Symbol", Ls(toValue(x.nme))): xSym =>
+              blockCtor("ValueRef", Ls(xSym)): xStaged =>
+                StagedPath.mk(sp, xStaged, "assign_x2"): x2 =>
+                  (Assign(x, x2.p, _)):
+                    given Context = ctx.clone() += x.asPath -> x2
+                    transformBlock(b): (z, ctx) =>
+                      blockCtor("Assign", Ls(xSym, y.code, z.code), "assign_cde"): cde =>
+                        StagedPath.mk(z.shape, cde, "assign")(k(_, summon))
+      case N =>
+        transformResult(r): y =>
+          (Assign(x, y.p, _)):
+            transformBlock(b): (z, ctx) =>
+              blockCtor("Symbol", Ls(toValue(x.nme))): x =>
+                blockCtor("Assign", Ls(x, y.code, z.code)): cde =>
+                  StagedPath.mk(z.shape, cde, "assign")(k(_, ctx))
+
+  def ruleLet(x: BlockMemberSymbol, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+    val y = TempSymbol(N, "tmp")
+    shapeCtor("Bot", Ls()): bot =>
+      blockCtor("Symbol", Ls(toValue(x.nme))): xSym =>
+        StagedPath.mk(bot, xSym, "let_y"): y =>
+          (Assign(x, y.p, _)):
+            given Context = ctx.clone() += x.asPath -> y
+            transformBlock(b): (z, ctx) =>
+              blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false))), "let_undef"): undefined =>
+                blockCtor("TrivialResult", Ls(undefined)): undefined =>
+                  blockCtor("Assign", Ls(xSym, undefined, z.code), "let_code"): cde =>
+                    StagedPath.mk(z.shape, cde, "_let")(k(_, summon))
 
   def ruleEnd()(k: StagedPath => Block): Block =
     shapeCtor("Dyn", Ls()): sp =>
       blockCtor("End", Ls()): cde =>
         StagedPath.mk(sp, cde, "end")(k)
 
-  // converted to ruleLet?
-  // outdated
-  def ruleVal(defn: ValDefn, b: Block)(using ctx: Context)(k: StagedPath => Block): Block =
-    val ValDefn(tsym, x, p) = defn
-    transformPath(p): y =>
-      // y is StagedPath, not Path?
-      (Define(ValDefn(tsym, x, y.p), _)):
-        transformBlock(b): z =>
-          blockCtor("Symbol", Ls(toValue(x.nme))): x =>
-            blockCtor("ValDefn", Ls(x, y.code)): df =>
-              blockCtor("Define", Ls(df, z.code)): cde =>
-                StagedPath.mk(z.shape, cde, "val")(k)
+
 
   // transformations of Block
 
@@ -233,10 +251,12 @@ class InstrumentationImpl(using State):
 
     (f.copy(sym = genSym, body = transformBlock(f.body)(_.end)), debug)
 
-  def transformDefine(d: Define)(using ctx: Context)(k: StagedPath => Block): Block =
+  def transformDefine(d: Define)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     d.defn match
       case f: FunDefn => ???
-      case v: ValDefn => ruleVal(v, d.rest)(k)
+      case v: ValDefn =>
+        val ValDefn(t, x, r) = v
+        ruleLet(x, Assign(x, r, d.rest))(k)
       case c: ClsLikeDefn => ??? // nested class?
 
   def transformBlock(b: Block)(using ctx: Context)(k: StagedPath => Block): Block =
@@ -248,7 +268,7 @@ class InstrumentationImpl(using State):
     b match
       case r: Return => ruleReturn(r)(k)
       case a: Assign => ruleAssign(a)(k)
-      case d: Define => transformDefine(d)(k2)
+      case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k2)
       case _: Match => ???
       // temporary measure to accept returning an array
