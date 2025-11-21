@@ -12,6 +12,13 @@ class ShapeSet(val s: Shape)
 
 fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(Dyn())
 
+class Pattern with
+  constructor
+    PLit(val lit: Literal)
+    Cls(val cls: Symbol)
+    Tup(val len: Int)
+    Wildcard()
+
 class Shape with
   constructor
     Dyn()
@@ -83,20 +90,20 @@ fun static(s: Shape) =
 type SLit = Lit
 open Block
 
-fun silh(p: Case): Shape = if p is
-  Lit(l) then SLit(l)
+fun silh(p: Pattern): Shape = if p is
+  PLit(l) then SLit(l)
   // where to store size of argument array?
-  Cls(sym, path) then Class(sym, ???)
+  Cls(sym) then Class(sym, ???)
   // how to initialize array of Dyn?
-  Tup(n, inf) then Arr(Array(n).fill(Dyn))
+  Tup(n) then Arr(Array(n).fill(Dyn))
   Wildcard then Dyn()
 
-fun filter(s: Shape, p: Case): Shape =
+fun filter(s: Shape, p: Pattern): Shape =
   if [s, p] is
     [_, Wildcard] then s
-    [Lit(l1), Lit(l2)] and l1 == l2 then s
-    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then s
-    [Arr(ls), Tup(n, _)] and ls.length == n then s
-    [Class(c1, _), Cls(c2, _)] and c1 == c2 then s
+    [Lit(l1), PLit(l2)] and l1 == l2 then s
+    [Lit(l), Cls(c)] and isPrimitiveTypeOf(c, l) then s
+    [Arr(ls), Tup(n)] and ls.length == n then s
+    [Class(c1, _), Cls(c2)] and c1 == c2 then s
     [Dyn, _] then silh(p)
     else Dyn() // TODO
