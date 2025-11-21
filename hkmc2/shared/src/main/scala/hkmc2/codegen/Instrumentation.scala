@@ -53,6 +53,17 @@ class InstrumentationImpl(using State):
               k(head :: tail)
       )(f)
 
+  // possible to wrangle to the form above, but unweildy to do so in practice
+  extension [A, B](ls: Ls[B => ((A, B) => Block) => Block])
+    def collectApply(b: B)(f: (Ls[A], B) => Block): Block =
+      ls.foldRight((b: B) => (f: (Ls[A], B) => Block) => f(Nil, b))((headCont, tailCont) =>
+        b =>
+          k =>
+            headCont(b): (head, b) =>
+              tailCont(b): (tail, b) =>
+                k(head :: tail, b)
+      )(b)(f)
+
   // helpers corresponding to constructors
 
   def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Assign =
@@ -108,8 +119,12 @@ class InstrumentationImpl(using State):
   def fnPrintCode(p: Path)(k: Path => Block): Block =
     // discard result, we only care about side effect
     blockCall("printCode", Ls(p))(k)
+  def fnMrg(s1: Shape, s2: Shape)(k: Shape => Block): Block =
+    shapeCall("mrg", Ls(s1, s2))(s => k(Shape(s)))
   def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block =
     shapeCall("sel", Ls(s1, s2))(s => k(Shape(s)))
+  def fnFilter(s1: Shape, s2: Path)(k: Shape => Block): Block =
+    shapeCall("filter", Ls(s1, s2))(s => k(Shape(s)))
   def fnUnion(s1: Shape, s2: Shape)(k: Shape => Block): Block =
     shapeCall("union", Ls(s1, s2))(s => k(Shape(s)))
 
@@ -179,6 +194,16 @@ class InstrumentationImpl(using State):
       blockCtor("Return", Ls(x.code, toValue(false))): cde =>
         StagedPath.mk(x.shape, cde, "return")(k(_, summon))
 
+  def ruleMatch(m: Match)(using Context)(k: (StagedPath, Context) => Block): Block =
+    val Match(p, ks, dflt, rest) = m
+    transformPath(p): x =>
+      ruleBranches(x, p, ks, dflt): (sp, scrut, arms, dflt, ctx1) =>
+        transformBlock(rest)(using ctx1): (z, ctx2) =>
+          fnMrg(sp, z.shape): sp =>
+            transformOption(dflt, p => (_(p))): dflt =>
+              blockCtor("Match", Ls(scrut, arms, dflt, z.code)): cde =>
+                StagedPath.mk(sp, cde)(k(_, ctx2))
+
   def ruleAssign(a: Assign)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
     transformResult(r): y =>
@@ -214,9 +239,13 @@ class InstrumentationImpl(using State):
                     StagedPath.mk(z.shape, cde, "_let")(k(_, summon))
 
   def ruleEnd()(k: StagedPath => Block): Block =
-    shapeCtor("Dyn", Ls()): sp =>
+    shapeCtor("Bot", Ls()): sp =>
       blockCtor("End", Ls()): cde =>
         StagedPath.mk(sp, cde, "end")(k)
+
+  def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
+    transformBlock(b): x =>
+      k(x.code)
 
   def ruleCls(cls: ClsLikeDefn, rest: Block)(using Context)(k: Path => Block): Block =
     (Define(cls, _)):
@@ -230,6 +259,44 @@ class InstrumentationImpl(using State):
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
 
+  // horrible abstraction boundary
+  def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block])(using
+      ctx: Context
+  )(k: (Shape, Path, Path, Opt[Path], Context) => Block): Block =
+    // TODO: do filtering
+    def f(arm: Case -> Block)(ctx: Context)(k: (StagedPath, Context) => Block): Block =
+      ruleBranch(x, p, arm._1, arm._2)(using ctx)(k)
+
+    arms.map(f).collectApply(summon): (arms, ctx) =>
+      shapeCtor("Dyn", Ls()): sp => // TODO
+        tuple(arms.map(_.code)): arms =>
+          dflt match
+            case S(dflt) =>
+              transformBlock(dflt)(using ctx): (dflt, ctx) =>
+                k(sp, x.code, arms, S(dflt.code), ctx)
+            case N => k(sp, x.code, arms, N, ctx)
+
+  def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+    transformCase(cse): cse =>
+      fnFilter(x.shape, cse): sp =>
+        StagedPath.mk(sp, x.code): x0 =>
+          // val bot = summon[State].shapeSymbol.asPath.selSN("Bot").
+          // we want the ClassLikeSymbol for Shape.Bot
+//│         _1 = Cls:
+//│           cls = class:Bot
+//│           path = Select{class:Bot}:
+//│             qual = Select{member:Bot}:
+//│               qual = Ref of member:Shape
+//│               name = Ident of "Bot"
+//│             name = Ident of "class"
+          val arm = Case.Cls(???, shapeMod("Bot").selSN("class")) -> ruleEnd()(k(_, ctx))
+          (Match(x.shape.p, Ls(arm), N, _)):
+            given Context = ctx.clone() += p -> x0
+            transformBlock(b): (y1, ctx) =>
+              blockCtor("End", Ls()): end =>
+                // TODO: use Arm type instead of Tup
+                blockCtor("Tup", Ls(cse, y1.code)): cde =>
+                  StagedPath.mk(y1.shape, cde)(k(_, ctx.clone() -= p))
 
   // transformations of Block
 
@@ -263,6 +330,13 @@ class InstrumentationImpl(using State):
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
     args.map(transformArg).collectApply(k)
+
+  def transformCase(cse: Case)(k: Path => Block): Block =
+    cse match
+      case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
+      case Case.Cls(cls, path) => blockCtor("Cls", Ls(cls, path))(k)
+      case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
+      case Case.Field(name, safe) => ??? // not supported
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
