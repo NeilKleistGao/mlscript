@@ -4,11 +4,9 @@ import "./Block.mls"
 open Predef
 
 type Literal = null | undefined | Str | Int | Num | Bool
+type Symbol = Block.Symbol
 
 module Shape with...
-
-// TODO: implement ShapeSet
-class ShapeSet(val s: Shape)
 
 fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(Dyn())
 
@@ -26,6 +24,26 @@ class Shape with
     Arr(val shapes: Array[Shape]) // is length parameter needed?
     Class(val sym: Symbol, val params: Array[[Symbol, Shape]])
     Bot() // temp stub for ShapeSet
+
+class ShapeSet(val m: Map) with
+  fun add(s: Shape) = m.set(hash(s), s)
+  fun contains(s: Shape) = m.get(hash(s)) != ()
+  fun union(s: ShapeSet) = new Map([...m, ...s.m])
+  fun isEmpty() = m.size == 0
+
+class ShapeMap(val m: Map) with
+  fun add(s: ShapeSet, code: Block.Path) = m.set([...s.m.keys()].toSorted().join(", "), code)
+  // returns () if does not exist, change to Option?
+  fun get(s: ShapeSet) = m.get([...s.m.keys()].toSorted().join(", ")) 
+
+fun show(s: Shape) = if s is
+  Dyn then "Dyn"
+  Lit(lit) then "Lit(" + Block.showLiteral(lit) + ")"
+  Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
+  Class(sym, params) then "Class(" + sym.name + ", [" + params.map(p => p.0.name + ":" + show(p.1)).join(", ") + "])"
+  Bot() then "Bot()"
+
+fun hash(s: Shape) = show(s)
 
 fun isPrimitiveType(sym: Str) = 
   if sym is
