@@ -1,0 +1,27 @@
+import "./Shape.mls"
+
+open Shape { show }
+
+type ShapeSet = ShapeSet.ShapeSet
+
+module ShapeSet with...
+
+fun hash(s: Shape) = show(s)
+
+class ShapeSet(val underlying: Map) with
+  set this.(Symbol.iterator) =
+    () => underlying.(Symbol.iterator)()
+
+  fun keys() = [...underlying.keys()].toSorted()
+
+  fun isEmpty() = underlying.size == 0
+ 
+  fun add(s: Shape) = underlying.set(hash(s), s)
+
+  fun contains(s: Shape) = underlying.has(hash(s))
+
+fun create() = ShapeSet(new Map)
+
+fun union(s1: ShapeSet, s2: ShapeSet) = new Map([...s1, ...s2])
+
+fun unionArray(arr: Array[ShapeSet]) = arr.reduce(union)
