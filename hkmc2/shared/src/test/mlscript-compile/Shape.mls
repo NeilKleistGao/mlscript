@@ -5,17 +5,9 @@ open Predef
 
 type Literal = null | undefined | Str | Int | Num | Bool
 type Symbol = Block.Symbol
+type Shape = Shape.Shape
 
 module Shape with...
-
-fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(Dyn())
-
-class Pattern with
-  constructor
-    PLit(val lit: Literal)
-    Cls(val cls: Symbol)
-    Tup(val len: Int)
-    Wildcard()
 
 class Shape with
   constructor
@@ -54,7 +46,7 @@ fun isPrimitiveType(sym: Str) =
     else false
 
 fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
-  if [sym, l] is
+  if [sym.name, l] is
     ["Str", l] and l is Str then true
     ["Int", i] and i is Int then true
     ["Num", n] and n is Num then true
@@ -64,7 +56,6 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
 fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
   a.map((a, i, _) => mrg2(a, b.at(i)))
 
-// TODO: look at how Array is used
 fun mrg2(s1: Shape, s2: Shape) = if s1
   == s2 then s1
   is
@@ -72,7 +63,7 @@ fun mrg2(s1: Shape, s2: Shape) = if s1
       and isPrimitiveTypeOf(sym, l)
       then Class(sym, shapes)
     Class(sym1, s1) and s2 is Class(sym2, s2)
-      and sym1 == sym2
+      and sym1.name == sym2.name
       then Class(sym1, zipMrg(s1, s2))
     Arr(s1) and s2 is Arr(s2)
       and s1.length == s2.length
@@ -107,12 +98,22 @@ fun static(s: Shape) =
 
 type SLit = Lit
 open Block
+type Pattern = Pattern.Pattern
+
+module Pattern with...
+
+class Pattern with
+  constructor
+    PLit(val lit: Literal)
+    Cls(val cls: Symbol, val n: Int)
+    Tup(val len: Int)
+    Wildcard()
+
 
 fun silh(p: Pattern): Shape = if p is
   PLit(l) then SLit(l)
   // where to store size of argument array?
-  Cls(sym) then Class(sym, ???)
-  // how to initialize array of Dyn?
+  Cls(sym, n) then Class(sym, Array(n).fill(Dyn))
   Tup(n) then Arr(Array(n).fill(Dyn))
   Wildcard then Dyn()
 
@@ -120,8 +121,8 @@ fun filter(s: Shape, p: Pattern): Shape =
   if [s, p] is
     [_, Wildcard] then s
     [Lit(l1), PLit(l2)] and l1 == l2 then s
-    [Lit(l), Cls(c)] and isPrimitiveTypeOf(c, l) then s
+    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then s
     [Arr(ls), Tup(n)] and ls.length == n then s
-    [Class(c1, _), Cls(c2)] and c1 == c2 then s
+    [Class(c1, _), Cls(c2, _)] and c1.name == c2.name then s
     [Dyn, _] then silh(p)
     else Dyn() // TODO
