@@ -60,21 +60,23 @@ fun mrg2(s1: Shape, s2: Shape) = if s1
 fun mrg(s1: Array[Shape]) = 
   s1.reduceRight((acc, s, _, _) => mrg2(s, acc))
 
-fun sel(s1: Shape, s2: Shape) = 
+fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
     [Class(c, shapes), Lit(n)] and n is Str
-      then shapes.at(n) // field name election using Str?
+      then if shapes.find(_.0.name == n)
+        == () then []
+        is param then [param.1]
     [Dyn, Lit(n)] and n is Str
-      then Dyn()
+      then [Dyn()]
     [Arr(shapes), Lit(n)] and n is Int
-      then shapes.at(n)
+      then [shapes.(n)]
     [Arr(shapes), Dyn] then
-      Dyn() // TODO
+      shapes
     [Dyn, Lit(n)] and n is Int
-      then Dyn()
+      then [Dyn()]
     [Dyn, Dyn]
-      then Dyn()
-    else Dyn() // temp, makes call not error
+      then [Dyn()]
+    else [] // TODO: return no possibility instead of err?
 
 fun static(s: Shape) = 
   if s is
@@ -84,7 +86,6 @@ fun static(s: Shape) =
     Arr(shapes) then shapes.every(static)
 
 type SLit = Lit
-open Block
 type Pattern = Pattern.Pattern
 
 module Pattern with...
@@ -96,7 +97,6 @@ class Pattern with
     Tup(val len: Int)
     Wildcard()
 
-
 fun silh(p: Pattern): Shape = if p is
   PLit(l) then SLit(l)
   // where to store size of argument array?
@@ -104,12 +104,12 @@ fun silh(p: Pattern): Shape = if p is
   Tup(n) then Arr(Array(n).fill(Dyn))
   Wildcard then Dyn()
 
-fun filter(s: Shape, p: Pattern): Shape =
+fun filter(s: Shape, p: Pattern): Array[Shape] =
   if [s, p] is
-    [_, Wildcard] then s
-    [Lit(l1), PLit(l2)] and l1 == l2 then s
-    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then s
-    [Arr(ls), Tup(n)] and ls.length == n then s
-    [Class(c1, _), Cls(c2, _)] and c1.name == c2.name then s
-    [Dyn, _] then silh(p)
-    else Dyn() // TODO
+    [_, Wildcard] then [s]
+    [Lit(l1), PLit(l2)] and l1 == l2 then [s]
+    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s]
+    [Arr(ls), Tup(n)] and ls.length == n then [s]
+    [Class(c1, _), Cls(c2, _)] and c1.name == c2.name then [s]
+    [Dyn, _] then [silh(p)]
+    else []

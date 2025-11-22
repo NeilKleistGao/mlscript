@@ -1,6 +1,10 @@
+import "./Predef.mls"
 import "./Shape.mls"
+import "./Block.mls"
 
-open Shape { show }
+open Predef
+open Shape { show, Pattern }
+open Block { Symbol }
 
 type ShapeSet = ShapeSet.ShapeSet
 
@@ -9,19 +13,58 @@ module ShapeSet with...
 fun hash(s: Shape) = show(s)
 
 class ShapeSet(val underlying: Map) with
-  set this.(Symbol.iterator) =
-    () => underlying.(Symbol.iterator)()
-
   fun keys() = [...underlying.keys()].toSorted()
+
+  fun values() = underlying.values().toArray()
 
   fun isEmpty() = underlying.size == 0
  
-  fun add(s: Shape) = underlying.set(hash(s), s)
-
   fun contains(s: Shape) = underlying.has(hash(s))
+
+  fun flatMap(f) = liftMany(values().flatMap(f))
+
+  fun filter(p: Pattern) = flatMap(Pattern.filter(_, p))
+
+  fun sel(s: ShapeSet) = 
+    prod(values(), s.values())
+      .flatMap(pair => Shape.sel(pair.0, pair.1))
+      |> liftMany
 
 fun create() = ShapeSet(new Map)
 
-fun union(s1: ShapeSet, s2: ShapeSet) = new Map([...s1, ...s2])
+fun lift(s: Shape) = ShapeSet(new Map([[hash(s), s]]))
 
-fun unionArray(arr: Array[ShapeSet]) = arr.reduce(union)
+fun liftMany(arr: Array[Shape]) = ShapeSet(new Map(arr.map(s => [hash(s), s])))
+
+// combining ShapeSet
+
+fun union(s1: ShapeSet, s2: ShapeSet) = new Map([...s1.underlying, ...s2.underlying])
+
+fun flat(arr: Array[ShapeSet]) = arr.reduce(union)
+
+// Cartesian product: https://stackoverflow.com/a/43053803
+fun prod(a, b) = a.flatMap(d => b.map(e => [d, e].flat()))
+
+open Shape
+
+// lifted constructors
+
+fun mkBot() = create()
+
+fun mkDyn() = lift(Dyn())
+
+fun mkLit(l) = lift(Lit(l))
+
+fun mkArr(shapes: Array[ShapeSet]) = 
+  shapes
+    .map(_.underlying.values().toArray())
+    .reduce(prod)
+    .map(Arr)
+    |> liftMany
+
+fun mkClass(sym: Symbol, params: Array[[Symbol, ShapeSet]]) = 
+  params
+    .map(p => p.1.underlying.values().map(s => [[p.0, s]]).toArray())
+    .reduce(prod)
+    .map(Class(sym, _))
+    |> liftMany
