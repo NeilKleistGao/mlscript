@@ -46,12 +46,12 @@ fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
 fun mrg2(s1: Shape, s2: Shape) = if s1
   == s2 then s1
   is
-    Lit(l) and s2 is Class(sym, shapes)
+    Lit(l) and s2 is Class(sym, params)
       and isPrimitiveTypeOf(sym, l)
-      then Class(sym, shapes)
-    Class(sym1, s1) and s2 is Class(sym2, s2)
+      then Class(sym, params)
+    Class(sym1, ps) and s2 is Class(sym2, s2)
       and sym1.name == sym2.name
-      then Class(sym1, zipMrg(s1, s2))
+      then Class(sym1, ps.map(p => [p.0, zipMrg(p.1, s2)]))
     Arr(s1) and s2 is Arr(s2)
       and s1.length == s2.length
       then Arr(zipMrg(s1, s2))
@@ -62,8 +62,8 @@ fun mrg(s1: Array[Shape]) =
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
-    [Class(c, shapes), Lit(n)] and n is Str
-      then if shapes.find(_.0.name == n)
+    [Class(c, params), Lit(n)] and n is Str
+      then if params.find(_.0.name == n)
         == () then []
         is param then [param.1]
     [Dyn, Lit(n)] and n is Str
@@ -82,7 +82,7 @@ fun static(s: Shape) =
   if s is
     Dyn then false
     Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
-    Class(_, shapes) then shapes.every(static)
+    Class(_, params) then params.every(static(_.1))
     Arr(shapes) then shapes.every(static)
 
 type SLit = Lit
@@ -99,8 +99,7 @@ class Pattern with
 
 fun silh(p: Pattern): Shape = if p is
   PLit(l) then SLit(l)
-  // where to store size of argument array?
-  Cls(sym, n) then Class(sym, Array(n).fill(Dyn))
+  Cls(sym, n) then Class(sym, Array(n).fill(["TODO", Dyn]))
   Tup(n) then Arr(Array(n).fill(Dyn))
   Wildcard then Dyn()
 
