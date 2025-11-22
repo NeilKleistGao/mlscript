@@ -234,9 +234,8 @@ class InstrumentationImpl(using State):
             given Context = ctx.clone() += x.asPath -> y
             transformBlock(b): (z, ctx) =>
               blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undefined =>
-                blockCtor("TrivialResult", Ls(undefined)): undefined =>
-                  blockCtor("Assign", Ls(xSym, undefined, z.code)): cde =>
-                    StagedPath.mk(z.shape, cde, "_let")(k(_, summon))
+                blockCtor("Assign", Ls(xSym, undefined, z.code)): cde =>
+                  StagedPath.mk(z.shape, cde, "_let")(k(_, summon))
 
   def ruleEnd()(k: StagedPath => Block): Block =
     shapeCtor("Bot", Ls()): sp =>
@@ -312,10 +311,7 @@ class InstrumentationImpl(using State):
 
   def transformResult(r: Result)(using Context)(k: StagedPath => Block): Block =
     r match
-      case p: Path =>
-        transformPath(p): p =>
-          blockCtor("TrivialResult", Ls(p.code)): cde =>
-            StagedPath.mk(p.shape, cde)(k)
+      case p: Path => transformPath(p)(k)
       case t: Tuple => ruleTup(t)(k)
       case i: Instantiate => ruleInst(i)(k)
       case _ => ??? // not supported

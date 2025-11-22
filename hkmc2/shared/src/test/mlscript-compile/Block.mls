@@ -23,14 +23,6 @@ type ParamList = Array[Symbol]
 
 class Arg(val spread: Opt[Bool], val value: Path) 
 
-class Path with
-  constructor
-    Select(val qual: Path, val name: Ident)
-    DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool)
-    ValueRef(val l: Symbol)
-    ValueLit(val lit: Literal)
-  
-// Match pattern for staged code
 class Case with
   constructor
     Lit(val lit: Literal)
@@ -39,11 +31,16 @@ class Case with
 
 class Result with 
   constructor
-    // unused?
-    TrivialResult(val path: Path) // only Path extends TrivialResult
     Call(val _fun: Path, val args: Array[Arg])
     Instantiate(val cls: Path, val args: Array[Arg]) // assume immutable
     Tuple(val elems: Array[Arg]) // assume immutable
+
+class Path extends Result with
+  constructor
+    Select(val qual: Path, val name: Ident)
+    DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool) // is arrayIdx used?
+    ValueRef(val l: Symbol)
+    ValueLit(val lit: Literal)
 
 class Defn with 
   constructor 
@@ -100,7 +97,7 @@ fun showCase(c: Case): Str =
 
 fun showResult(r: Result): Str =
   if r is
-    TrivialResult(path) then showPath(path)
+    Path then showPath(r)
     Call(f, args) then "Call(" + showPath(f) + ", " + showArgs(args) + ")"
     Instantiate(cls, args) then "Instantiate(" + showPath(cls) + ", " + showArgs(args) + ")"
     Tuple(elems) then "Tuple(" + showArgs(elems) + ")"
