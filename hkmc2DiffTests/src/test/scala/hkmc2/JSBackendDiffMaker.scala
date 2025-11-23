@@ -33,7 +33,6 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   val runtimeNme = baseScp.allocateName(Elaborator.State.runtimeSymbol)
   val termNme = baseScp.allocateName(Elaborator.State.termSymbol)
   val blockNme = baseScp.allocateName(Elaborator.State.blockSymbol)
-  val optionNme = baseScp.allocateName(Elaborator.State.optionSymbol)
   val shapeSetNme = baseScp.allocateName(Elaborator.State.shapeSetSymbol)
   val definitionMetadataNme = baseScp.allocateName(Elaborator.State.definitionMetadataSymbol)
   val prettyPrintNme = baseScp.allocateName(Elaborator.State.prettyPrintSymbol)
@@ -61,6 +60,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
     h.execute(s"const $prettyPrintNme = Symbol.for(\"mlscript.prettyPrint\");")
     if importQQ.isSet then importRuntimeModule(termNme, termFile)
     if stageCode.isSet then
+      val optionNme = baseScp.allocateName(Elaborator.State.optionSymbol)
       importRuntimeModule(blockNme, blockFile)
       importRuntimeModule(optionNme, optionFile)
       importRuntimeModule(shapeSetNme, shapeSetFile)
