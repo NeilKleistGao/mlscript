@@ -188,11 +188,10 @@ class InstrumentationImpl(using State):
               StagedPath.mk(sp, cde, "sel")(k)
 
   def ruleDynSel(d: DynSelect)(using Context)(k: StagedPath => Block): Block =
-    val DynSelect(qual, fld, arrayIdx) = d
-    transformPath(qual): x =>
-      transformPath(fld): y =>
+    transformPath(d.qual): x =>
+      transformPath(d.fld): y =>
         fnSel(x.shapes, y.shapes): sp =>
-          blockCtor("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
+          blockCtor("DynSelect", Ls(x.code, y.code, toValue(d.arrayIdx))): cde =>
             StagedPath.mk(sp, cde, "dynsel")(k)
 
   def ruleInst(i: Instantiate)(using Context)(k: StagedPath => Block): Block =
@@ -200,8 +199,6 @@ class InstrumentationImpl(using State):
     assert(!mut, "mutable instantiation not supported")
     transformArgs(args): xs =>
       tuple(xs.map(_.shapes)): shapes =>
-        // reuse instrumentation logic, shape of cls is discarded
-        // possible to skip this? this triggers unnecessary "out of context" Dyn shape thing
         val sym = cls match
           case Select(Value.Ref(l), _) => l
           case _ => ???
@@ -209,6 +206,8 @@ class InstrumentationImpl(using State):
           // TODO: add back class names
           val fieldName = new TempSymbol(N, "TODO")
           shapeClass(sym, xs.map(x => (fieldName, x.shapes))): sp =>
+            // reuse instrumentation logic, shape of cls is discarded
+            // possible to skip this? this uses ruleVar, which is not in formalization
             transformPath(cls): cls =>
               tuple(xs.map(_.code)): codes =>
                 blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
@@ -270,8 +269,7 @@ class InstrumentationImpl(using State):
         StagedPath.mk(sp, cde, "end")(k)
 
   def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
-    transformBlock(b): x =>
-      k(x.code)
+    transformBlock(b)(k apply _.code)
 
   def ruleCls(cls: ClsLikeDefn, rest: Block)(using Context)(k: Path => Block): Block =
     (Define(cls, _)):
@@ -285,9 +283,7 @@ class InstrumentationImpl(using State):
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
 
-  def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block])(using
-      Context
-  )(k: (StagedPath, Context) => Block): Block =
+  def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block])(using Context)(k: (StagedPath, Context) => Block): Block =
     arms.map((cse, block) => (f: StagedPath => Context => Block) => (ruleBranch(x, p, cse, block)(using _)).flip(f(_)(_)))
       .collectApply
       .pipe(_.flip(summon)): arms =>
@@ -390,16 +386,16 @@ class InstrumentationImpl(using State):
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
     (f.copy(sym = genSym, body = transformBlock(f.body)(_.end)), debug)
 
-  def transformDefine(d: Define)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+  def transformDefine(d: Define)(using Context)(k: (StagedPath, Context) => Block): Block =
     d.defn match
       case f: FunDefn => ???
       case v: ValDefn =>
-        val ValDefn(t, x, r) = v
+        val ValDefn(_, x, r) = v
         ruleLet(x, Assign(x, r, d.rest))(k)
       case c: ClsLikeDefn =>
         ruleCls(c, d.rest): p =>
           ruleEnd(): b =>
-            fnPrintCode(p)(k(b, ctx))
+            fnPrintCode(p)(k(b, summon))
 
   def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     transformBlock(b)((p, _) => k(p))
@@ -416,6 +412,7 @@ class InstrumentationImpl(using State):
       // temporary measure to accept returning an array
       // use BlockTransformer here?
       case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)
+      case _ => ??? // not supported
 
 // TODO: rename as InstrumentationTransformer?
 class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
