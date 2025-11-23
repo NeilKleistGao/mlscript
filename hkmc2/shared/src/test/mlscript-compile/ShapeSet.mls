@@ -1,10 +1,10 @@
 import "./Predef.mls"
-import "./Shape.mls"
 import "./Block.mls"
+import "./Shape.mls"
 
 open Predef
-open Shape { show, Pattern }
 open Block { Symbol }
+open Shape { show }
 
 type ShapeSet = ShapeSet.ShapeSet
 
@@ -70,7 +70,7 @@ fun mkClass(sym: Symbol, params: Array[[Symbol, ShapeSet]]) =
 
 // helper functions
 
-fun filter(s: ShapeSet, p: Pattern) = s.flatMap(Pattern.filter(_, p))
+fun filter(s: ShapeSet, p: Pattern.Pattern) = s.flatMap(Pattern.filter(_, p))
 
 fun sel(s1: ShapeSet, s2: ShapeSet) = 
   prod([s1.values(), s2.values()])
@@ -79,3 +79,32 @@ fun sel(s1: ShapeSet, s2: ShapeSet) =
 
 fun mrg(s1: ShapeSet, s2: ShapeSet) = 
   mkDyn() // TODO
+
+open Block { Literal }
+open Shape { isPrimitiveTypeOf }
+
+module Pattern with...
+
+class Pattern with
+  constructor
+    PLit(val lit: Literal)
+    Cls(val cls: Symbol, val n: Int)
+    Tup(val len: Int)
+    Wildcard()
+
+fun silh(p: Pattern): Shape = if p is
+  PLit(l) then Lit(l)
+  Cls(sym, n) then Class(sym, Array(n).fill(["TODO", Dyn]))
+  Tup(n) then Arr(Array(n).fill(Dyn))
+  Wildcard then Dyn()
+
+fun filter(s: Shape, p: Pattern): Array[Shape] =
+  if [s, p] is
+    [_, Wildcard] then [s]
+    [Lit(l1), PLit(l2)] and l1 == l2 then [s]
+    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s]
+    [Arr(ls), Tup(n)] and ls.length == n then [s]
+    [Class(c1, _), Cls(c2, _)] and c1.name == c2.name then [s]
+    [Dyn, _] then [silh(p)]
+    else []
+

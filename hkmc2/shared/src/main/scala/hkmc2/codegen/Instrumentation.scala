@@ -17,14 +17,14 @@ import syntax.{Literal, Tree}
 // but it doesn't accept the current context, so applications seem limited
 
 class InstrumentationImpl(using State):
-  type ArgWrappable = Path | Symbol | Shape
+  type ArgWrappable = Path | Symbol | ShapeSet
   type Context = HashMap[Path, StagedPath]
 
   def asArg(x: ArgWrappable): Arg =
     x match
       case p: Path => p.asArg
       case l: Symbol => l.asPath.asArg
-      case Shape(p) => p.asArg
+      case ShapeSet(p) => p.asArg
 
   // null and undefined are missing
   def toValue(lit: Str | Int | BigDecimal | Bool): Value =
@@ -84,13 +84,14 @@ class InstrumentationImpl(using State):
   // helper for staging the constructors
 
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
-  def shapeMod(name: Str) = summon[State].shapeSymbol.asPath.selSN(name)
   def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
+  def patternMod(name: Str) = summon[State].shapeSetSymbol.asPath.selSN("Pattern").selSN(name)
+  def shapeSetMod(name: Str) = summon[State].shapeSetSymbol.asPath.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     ctor(blockMod(name), args, symName)(k)
-  def shapeCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Shape => Block): Block =
-    ctor(shapeMod(name), args, symName)(p => k(Shape(p)))
+  def patternCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
+    ctor(patternMod(name), args, symName)(k)
   def optionSome(arg: ArgWrappable, symName: Str = "tmp")(k: Path => Block): Block =
     ctor(optionMod("Some"), Ls(arg), symName)(k)
   def optionNone(symName: Str = "tmp")(k: Path => Block): Block =
@@ -98,35 +99,55 @@ class InstrumentationImpl(using State):
 
   def blockCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, symName = symName)(k)
-  def shapeCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    call(shapeMod(name), args, symName = symName)(k)
+  def shapeSetCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
+    call(shapeSetMod(name), args, symName = symName)(k)
 
   // helpers to create and access the components of a staged value
-  case class Shape(p: Path)
+  case class ShapeSet(p: Path)
 
-  // A StagedPath is a path that points to a (shape, code) tuple
+  // A StagedPath is a path that points to a (ShapeSet, code) tuple
   case class StagedPath(p: Path):
-    def shape: Shape = Shape(DynSelect(p, toValue(0), false))
+    def shapes: ShapeSet = ShapeSet(DynSelect(p, toValue(0), false))
     def code: Path = DynSelect(p, toValue(1), false)
     def end: Block = Return(p, false)
 
   object StagedPath:
-    def mk(shape: Shape, code: Path, symName: Str = "tmp")(k: StagedPath => Block): Block =
-      tuple(Ls(shape.p, code), symName)(p => k(StagedPath(p)))
+    def mk(shapeSet: ShapeSet, code: Path, symName: Str = "tmp")(k: StagedPath => Block): Block =
+      tuple(Ls(shapeSet.p, code), symName)(p => k(StagedPath(p)))
 
   // linking functions defined in MLscipt
 
   def fnPrintCode(p: Path)(k: Path => Block): Block =
     // discard result, we only care about side effect
     blockCall("printCode", Ls(p))(k)
-  def fnMrg(s1: Shape, s2: Shape)(k: Shape => Block): Block =
-    shapeCall("mrg", Ls(s1, s2))(s => k(Shape(s)))
-  def fnSel(s1: Shape, s2: Shape)(k: Shape => Block): Block =
-    shapeCall("sel", Ls(s1, s2))(s => k(Shape(s)))
-  def fnFilter(s1: Shape, s2: Path)(k: Shape => Block): Block =
-    shapeCall("filter", Ls(s1, s2))(s => k(Shape(s)))
-  def fnUnion(s1: Shape, s2: Shape)(k: Shape => Block): Block =
-    shapeCall("union", Ls(s1, s2))(s => k(Shape(s)))
+
+  def shapeBot()(k: ShapeSet => Block): Block =
+    shapeSetCall("mkBot", Ls())(s => k(ShapeSet(s)))
+  def shapeDyn()(k: ShapeSet => Block): Block =
+    shapeSetCall("mkDyn", Ls())(s => k(ShapeSet(s)))
+  def shapeLit(p: Path)(k: ShapeSet => Block): Block =
+    shapeSetCall("mkLit", Ls(p))(s => k(ShapeSet(s)))
+  def shapeArr(ps: Ls[ShapeSet])(k: ShapeSet => Block): Block =
+    tuple(ps, "test"): tup =>
+      shapeSetCall("mkArr", Ls(tup))(s => k(ShapeSet(s)))
+  def shapeClass(cls: Path, params: Ls[(Symbol, ShapeSet)])(k: ShapeSet => Block): Block =
+    params.map((n, s) =>
+      (k: Path => Block) =>
+        transformSymbol(n): n =>
+          tuple(Ls(n, s)): tup =>
+            k(tup)
+    ).collectApply: ls =>
+      tuple(ls): params =>
+        shapeSetCall("mkClass", Ls(cls, params))(s => k(ShapeSet(s)))
+
+  def fnMrg(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
+    shapeSetCall("mrg", Ls(s1, s2))(s => k(ShapeSet(s)))
+  def fnSel(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
+    shapeSetCall("sel", Ls(s1, s2))(s => k(ShapeSet(s)))
+  def fnFilter(s1: ShapeSet, s2: Path)(k: ShapeSet => Block): Block =
+    shapeSetCall("filter", Ls(s1, s2))(s => k(ShapeSet(s)))
+  def fnUnion(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
+    shapeSetCall("union", Ls(s1, s2))(s => k(ShapeSet(s)))
 
   // transformation helpers
 
@@ -140,31 +161,31 @@ class InstrumentationImpl(using State):
   // instrumentation rules
 
   def ruleLit(l: Value.Lit)(k: StagedPath => Block): Block =
-    shapeCtor("Lit", Ls(l)): sp =>
+    shapeLit(l): sp =>
       blockCtor("ValueLit", Ls(l)): cde =>
         StagedPath.mk(sp, cde, "lit")(k)
 
-  // outdated
+  // not in formalization
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
     blockCtor("Symbol", Ls(toValue(r.l.nme))): sym =>
       blockCtor("ValueRef", Ls(sym)): cde =>
-        shapeCtor("Dyn", Ls()): sp => // keep dynamic for now
+        // variable defined outside of scope, may be a reference to a class
+        shapeDyn(): sp =>
           StagedPath.mk(sp, cde, "var")(k)
 
   def ruleTup(t: Tuple)(using Context)(k: StagedPath => Block): Block =
     assert(!t.mut)
     transformArgs(t.elems): xs =>
-      tuple(xs.map(_.shape)): shapes =>
-        shapeCtor("Arr", Ls(shapes)): sp =>
-          tuple(xs.map(_.code)): codes =>
-            blockCtor("Tuple", Ls(codes)): cde =>
-              StagedPath.mk(sp, cde, "tup")(k)
+      shapeArr(xs.map(_.shapes)): sp =>
+        tuple(xs.map(_.code)): codes =>
+          blockCtor("Tuple", Ls(codes)): cde =>
+            StagedPath.mk(sp, cde, "tup")(k)
 
   def ruleSel(s: Select)(using Context)(k: StagedPath => Block): Block =
     val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
-      shapeCtor("Lit", Ls(toValue(name))): n =>
-        fnSel(x.shape, n): sp =>
+      shapeLit(toValue(name)): n =>
+        fnSel(x.shapes, n): sp =>
           blockCtor("Symbol", Ls(toValue(name))): name =>
             blockCtor("Select", Ls(x.code, name)): cde =>
               StagedPath.mk(sp, cde, "sel")(k)
@@ -173,7 +194,7 @@ class InstrumentationImpl(using State):
     val DynSelect(qual, fld, arrayIdx) = d
     transformPath(qual): x =>
       transformPath(fld): y =>
-        fnSel(x.shape, y.shape): sp =>
+        fnSel(x.shapes, y.shapes): sp =>
           blockCtor("DynSelect", Ls(x.code, y.code, toValue(arrayIdx))): cde =>
             StagedPath.mk(sp, cde, "dynsel")(k)
 
@@ -181,25 +202,32 @@ class InstrumentationImpl(using State):
     val Instantiate(mut, cls, args) = i
     assert(!mut)
     transformArgs(args): xs =>
-      tuple(xs.map(_.shape)): shapes =>
-        tuple(xs.map(_.code)): codes =>
-          // reuse instrumentation logic, shape of cls is discarded
-          transformPath(cls): cls =>
-            shapeCtor("Class", Ls(cls.code, shapes)): sp =>
-              blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
-                StagedPath.mk(sp, cde, "inst")(k)
+      tuple(xs.map(_.shapes)): shapes =>
+        // reuse instrumentation logic, shape of cls is discarded
+        // possible to skip this? this triggers unnecessary "out of context" Dyn shape thing
+        val sym = cls match
+          case Select(Value.Ref(l), _) => l
+          case _ => ???
+        transformSymbol(sym): sym =>
+          // TODO: add back class names
+          val fieldName = new TempSymbol(N, "TODO")
+          shapeClass(sym, xs.map(x => (fieldName, x.shapes))): sp =>
+            transformPath(cls): cls =>
+              tuple(xs.map(_.code)): codes =>
+                blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
+                  StagedPath.mk(sp, cde, "inst")(k)
 
   def ruleReturn(r: Return)(using Context)(k: (StagedPath, Context) => Block): Block =
     transformResult(r.res): x =>
       blockCtor("Return", Ls(x.code, toValue(false))): cde =>
-        StagedPath.mk(x.shape, cde, "return")(k(_, summon))
+        StagedPath.mk(x.shapes, cde, "return")(k(_, summon))
 
   def ruleMatch(m: Match)(using Context)(k: (StagedPath, Context) => Block): Block =
     val Match(p, ks, dflt, rest) = m
     transformPath(p): x =>
       ruleBranches(x, p, ks, dflt): (sp, scrut, arms, dflt, ctx1) =>
         transformBlock(rest)(using ctx1): (z, ctx2) =>
-          fnMrg(sp, z.shape): sp =>
+          fnMrg(sp, z.shapes): sp =>
             transformOption(dflt, p => (_(p))): dflt =>
               blockCtor("Match", Ls(scrut, arms, dflt, z.code)): cde =>
                 StagedPath.mk(sp, cde)(k(_, ctx2))
@@ -208,26 +236,29 @@ class InstrumentationImpl(using State):
     val Assign(x, r, b) = a
     transformResult(r): y =>
       transformSymbol(x): xSym =>
-        // if ctx contains x, x was defined earlier
-        // otherwise, x is defined here
-        ctx.get(x.asPath) match
-          case S(x1) =>
-            fnUnion(y.shape, x1.shape): sp =>
-              blockCtor("ValueRef", Ls(xSym)): xStaged =>
+        blockCtor("ValueRef", Ls(xSym)): xStaged =>
+          // if ctx contains x, x was defined earlier
+          // otherwise, x is defined here
+          ctx.get(x.asPath) match
+            case S(x1) =>
+              fnUnion(y.shapes, x1.shapes): sp =>
                 StagedPath.mk(sp, xStaged): x2 =>
-                  given Context = ctx.clone() += x.asPath -> x2
                   (Assign(x, x2.p, _)):
+                    given Context = ctx.clone() += x.asPath -> x2
                     transformBlock(b): (z, ctx) =>
                       blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
-                        StagedPath.mk(z.shape, cde, "assign")(k(_, summon))
-          case N =>
-            (Assign(x, y.p, _)):
-              transformBlock(b): z => // ignore ctx
-                blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
-                  StagedPath.mk(z.shape, cde, "assign")(k(_, summon))
+                        StagedPath.mk(z.shapes, cde, "assign")(k(_, ctx))
+            case N =>
+              StagedPath.mk(y.shapes, xStaged): x2 =>
+                // propagate shape information for future references to x
+                (Assign(x, y.p, _)):
+                  given Context = ctx.clone() += x.asPath -> x2
+                  transformBlock(b): (z, ctx) =>
+                    blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
+                      StagedPath.mk(z.shapes, cde, "assign")(k(_, ctx))
 
   def ruleLet(x: BlockMemberSymbol, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
-    shapeCtor("Bot", Ls()): bot =>
+    shapeBot(): bot =>
       transformSymbol(x): xSym =>
         StagedPath.mk(bot, xSym): y =>
           (Assign(x, y.p, _)):
@@ -235,10 +266,10 @@ class InstrumentationImpl(using State):
             transformBlock(b): (z, ctx) =>
               blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undefined =>
                 blockCtor("Assign", Ls(xSym, undefined, z.code)): cde =>
-                  StagedPath.mk(z.shape, cde, "_let")(k(_, summon))
+                  StagedPath.mk(z.shapes, cde, "_let")(k(_, summon))
 
   def ruleEnd()(k: StagedPath => Block): Block =
-    shapeCtor("Bot", Ls()): sp =>
+    shapeBot(): sp =>
       blockCtor("End", Ls()): cde =>
         StagedPath.mk(sp, cde, "end")(k)
 
@@ -261,13 +292,13 @@ class InstrumentationImpl(using State):
   // horrible abstraction boundary
   def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block])(using
       ctx: Context
-  )(k: (Shape, Path, Path, Opt[Path], Context) => Block): Block =
+  )(k: (ShapeSet, Path, Path, Opt[Path], Context) => Block): Block =
     // TODO: do filtering
     def f(arm: Case -> Block)(ctx: Context)(k: (StagedPath, Context) => Block): Block =
       ruleBranch(x, p, arm._1, arm._2)(using ctx)(k)
 
     arms.map(f).collectApply(summon): (arms, ctx) =>
-      shapeCtor("Dyn", Ls()): sp => // TODO
+      shapeDyn(): sp => // TODO
         tuple(arms.map(_.code)): arms =>
           dflt match
             case S(dflt) =>
@@ -277,25 +308,16 @@ class InstrumentationImpl(using State):
 
   def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformCase(cse): cse =>
-      fnFilter(x.shape, cse): sp =>
+      fnFilter(x.shapes, cse): sp =>
         StagedPath.mk(sp, x.code): x0 =>
-          // val bot = summon[State].shapeSymbol.asPath.selSN("Bot").
-          // we want the ClassLikeSymbol for Shape.Bot
-//│         _1 = Cls:
-//│           cls = class:Bot
-//│           path = Select{class:Bot}:
-//│             qual = Select{member:Bot}:
-//│               qual = Ref of member:Shape
-//│               name = Ident of "Bot"
-//│             name = Ident of "class"
-          val arm = Case.Cls(???, shapeMod("Bot").selSN("class")) -> ruleEnd()(k(_, ctx))
-          (Match(x.shape.p, Ls(arm), N, _)):
+          val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()(k(_, ctx))
+          (Match(x0.shapes.p.selSN("isEmpty"), Ls(arm), N, _)):
             given Context = ctx.clone() += p -> x0
             transformBlock(b): (y1, ctx) =>
               blockCtor("End", Ls()): end =>
                 // TODO: use Arm type instead of Tup
                 blockCtor("Tup", Ls(cse, y1.code)): cde =>
-                  StagedPath.mk(y1.shape, cde)(k(_, ctx.clone() -= p))
+                  StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
 
   // transformations of Block
 
@@ -321,7 +343,7 @@ class InstrumentationImpl(using State):
     optionNone(): opt =>
       transformPath(value): value =>
         blockCtor("Arg", Ls(opt, value.code)): cde =>
-          StagedPath.mk(value.shape, cde)(k)
+          StagedPath.mk(value.shapes, cde)(k)
 
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
@@ -329,9 +351,13 @@ class InstrumentationImpl(using State):
 
   def transformCase(cse: Case)(k: Path => Block): Block =
     cse match
-      case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
-      case Case.Cls(cls, path) => blockCtor("Cls", Ls(cls, path))(k)
-      case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
+      case Case.Lit(lit) => patternCtor("Lit", Ls(Value.Lit(lit)))(k)
+      // wrong 2nd argument
+      case Case.Cls(cls, path) =>
+        // TODO: retrieve argument names from symbol?
+        transformSymbol(cls): cls =>
+          patternCtor("Cls", Ls(cls, toValue(0)))(k)
+      case Case.Tup(len, inf) => patternCtor("Tup", Ls(len, inf).map(toValue))(k)
       case Case.Field(name, safe) => ??? // not supported
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function

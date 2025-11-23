@@ -234,7 +234,6 @@ object Elaborator:
     val prettyPrintSymbol = TempSymbol(N, "prettyPrint")
     val termSymbol = TempSymbol(N, "Term")
     val blockSymbol = TempSymbol(N, "Block")
-    val shapeSymbol = TempSymbol(N, "Shape")
     val shapeSetSymbol = TempSymbol(N, "ShapeSet")
     val optionSymbol = TempSymbol(N, "Option")
     val wasmSymbol = TempSymbol(N, "wasm")

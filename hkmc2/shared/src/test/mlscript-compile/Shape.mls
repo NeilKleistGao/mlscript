@@ -1,7 +1,4 @@
-import "./Predef.mls"
 import "./Block.mls"
-
-open Predef
 
 type Literal = null | undefined | Str | Int | Num | Bool
 type Symbol = Block.Symbol
@@ -84,31 +81,3 @@ fun static(s: Shape) =
     Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
     Class(_, params) then params.every(static(_.1))
     Arr(shapes) then shapes.every(static)
-
-type SLit = Lit
-type Pattern = Pattern.Pattern
-
-module Pattern with...
-
-class Pattern with
-  constructor
-    PLit(val lit: Literal)
-    Cls(val cls: Symbol, val n: Int)
-    Tup(val len: Int)
-    Wildcard()
-
-fun silh(p: Pattern): Shape = if p is
-  PLit(l) then SLit(l)
-  Cls(sym, n) then Class(sym, Array(n).fill(["TODO", Dyn]))
-  Tup(n) then Arr(Array(n).fill(Dyn))
-  Wildcard then Dyn()
-
-fun filter(s: Shape, p: Pattern): Array[Shape] =
-  if [s, p] is
-    [_, Wildcard] then [s]
-    [Lit(l1), PLit(l2)] and l1 == l2 then [s]
-    [Lit(l), Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s]
-    [Arr(ls), Tup(n)] and ls.length == n then [s]
-    [Class(c1, _), Cls(c2, _)] and c1.name == c2.name then [s]
-    [Dyn, _] then [silh(p)]
-    else []
