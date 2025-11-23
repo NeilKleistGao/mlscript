@@ -16,6 +16,9 @@ import syntax.{Literal, Tree}
 // it seems some logic should be deferred to BlockTransformer to dedup code
 // but it doesn't accept the current context, so applications seem limited
 
+// it should be possible to cache some common constructions (End, Option) into the context
+// this avoids having to rebuild the same structure everytime
+
 class InstrumentationImpl(using State):
   type ArgWrappable = Path | Symbol | ShapeSet
   type Context = HashMap[Path, StagedPath]
@@ -52,7 +55,7 @@ class InstrumentationImpl(using State):
               k(head :: tail)
       )(f)
 
-  // possible to wrangle to the form above, but unweildy to do so in practice
+  // possible to wrangle to the form above, but unwieldy to do so in practice
   extension [A, B](ls: Ls[B => ((A, B) => Block) => Block])
     def collectApply(b: B)(f: (Ls[A], B) => Block): Block =
       ls.foldRight((b: B) => (f: (Ls[A], B) => Block) => f(Nil, b))((headCont, tailCont) =>
