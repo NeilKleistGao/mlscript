@@ -85,13 +85,10 @@ class InstrumentationImpl(using State):
 
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
   def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
-  def patternMod(name: Str) = summon[State].shapeSetSymbol.asPath.selSN("Pattern").selSN(name)
   def shapeSetMod(name: Str) = summon[State].shapeSetSymbol.asPath.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     ctor(blockMod(name), args, symName)(k)
-  def patternCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    ctor(patternMod(name), args, symName)(k)
   def optionSome(arg: ArgWrappable, symName: Str = "tmp")(k: Path => Block): Block =
     ctor(optionMod("Some"), Ls(arg), symName)(k)
   def optionNone(symName: Str = "tmp")(k: Path => Block): Block =
@@ -299,9 +296,10 @@ class InstrumentationImpl(using State):
       shapeDyn(): sp => // TODO
         tuple(arms.map(_.code)): arms =>
           blockCtor("End", Ls()): e =>
+            // unable to use transformOption here because ctx is changed here
             dflt match
               case S(dflt) =>
-                transformBlock(dflt)(using ctx): (dflt, ctx) =>
+                ruleWildCard(x, p, dflt): (dflt, ctx) =>
                   optionSome(dflt.code): dflt =>
                     blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
                       StagedPath.mk(sp, m)(k(_, ctx))
@@ -314,15 +312,25 @@ class InstrumentationImpl(using State):
     transformCase(cse): cse =>
       fnFilter(x.shapes, cse): sp =>
         StagedPath.mk(sp, x.code): x0 =>
-          val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()(k(_, ctx))
           call(x0.shapes.p.selSN("isEmpty"), Ls()): scrut =>
+            val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()(p => Return(p.p, false))
             (Match(scrut, Ls(arm), N, _)):
               given Context = ctx.clone() += p -> x0
               transformBlock(b): (y1, ctx) =>
-                blockCtor("End", Ls()): end =>
-                  // TODO: use Arm type instead of Tup
-                  blockCtor("Tup", Ls(cse, y1.code)): cde =>
-                    StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
+                // TODO: use Arm type instead of Tup
+                tuple(Ls(cse, y1.code)): cde =>
+                  StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
+
+  // this partially performs rules from filter to account for difference in Block.Case and Match pattern in the formalization
+  // to avoid defining the `_` pattern in Block.Case, we use the fact that filter(s, _) = s
+  def ruleWildCard(x: StagedPath, p: Path, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+    // when pattern = _, x0 = x
+    call(x.shapes.p.selSN("isEmpty"), Ls()): scrut =>
+      val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()(p => Return(p.p, false))
+      (Match(scrut, Ls(arm), N, _)):
+        given Context = ctx.clone() += p -> x
+        transformBlock(b): (y1, ctx) =>
+          k(y1, ctx.clone() -= p)
 
   // transformations of Block
 
@@ -354,15 +362,14 @@ class InstrumentationImpl(using State):
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
     args.map(transformArg).collectApply(k)
 
-  def transformCase(cse: Case)(k: Path => Block): Block =
+  def transformCase(cse: Case)(using Context)(k: Path => Block): Block =
     cse match
-      case Case.Lit(lit) => patternCtor("Lit", Ls(Value.Lit(lit)))(k)
-      // wrong 2nd argument
+      case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
       case Case.Cls(cls, path) =>
-        // TODO: retrieve argument names from symbol?
         transformSymbol(cls): cls =>
-          patternCtor("Cls", Ls(cls, toValue(0)))(k)
-      case Case.Tup(len, inf) => patternCtor("Tup", Ls(len, inf).map(toValue))(k)
+          transformPath(path): path =>
+            blockCtor("Cls", Ls(cls, path.code))(k)
+      case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
       case Case.Field(name, safe) => ??? // not supported
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
@@ -403,7 +410,7 @@ class InstrumentationImpl(using State):
       case a: Assign => ruleAssign(a)(k)
       case d: Define => transformDefine(d)(k)
       case End(_) => ruleEnd()(k2)
-      case _: Match => ???
+      case m: Match => ruleMatch(m)(k)
       // temporary measure to accept returning an array
       // use BlockTransformer here?
       case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)

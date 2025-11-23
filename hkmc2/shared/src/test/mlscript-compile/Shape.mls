@@ -81,3 +81,19 @@ fun static(s: Shape) =
     Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
     Class(_, params) then params.every(static(_.1))
     Arr(shapes) then shapes.every(static)
+
+open Block { Case }
+
+fun silh(p: Case): Shape = if p is
+  Block.Lit(l) then Lit(l)
+  Block.Cls(sym, path) then Class(sym, Array(1).fill(["TODO", Dyn]))
+  Block.Tup(n) then Arr(Array(n).fill(Dyn))
+
+fun filter(s: Shape, p: Case): Array[Shape] =
+  if [s, p] is
+    [Lit(l1), Block.Lit(l2)] and l1 == l2 then [s]
+    [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s]
+    [Arr(ls), Block.Tup(n)] and ls.length == n then [s]
+    [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
+    [Dyn, _] then [silh(p)]
+    else []
