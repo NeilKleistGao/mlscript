@@ -119,7 +119,8 @@ class InstrumentationImpl(using State):
 
   def fnPrintCode(p: Path)(k: Path => Block): Block =
     // discard result, we only care about side effect
-    blockCall("printCode", Ls(p))(k)
+  def fnConcat(p1: Path, p2: Path)(k: Path => Block): Block =
+    blockCall("concat", Ls(p1, p2))(k)
 
   def shapeBot()(k: ShapeSet => Block): Block =
     shapeSetCall("mkBot", Ls())(s => k(ShapeSet(s)))
@@ -225,12 +226,11 @@ class InstrumentationImpl(using State):
   def ruleMatch(m: Match)(using Context)(k: (StagedPath, Context) => Block): Block =
     val Match(p, ks, dflt, rest) = m
     transformPath(p): x =>
-      ruleBranches(x, p, ks, dflt): (sp, scrut, arms, dflt, ctx1) =>
+      ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
         transformBlock(rest)(using ctx1): (z, ctx2) =>
-          fnMrg(sp, z.shapes): sp =>
-            transformOption(dflt, p => (_(p))): dflt =>
-              blockCtor("Match", Ls(scrut, arms, dflt, z.code)): cde =>
-                StagedPath.mk(sp, cde)(k(_, ctx2))
+          fnMrg(stagedMatch.shapes, z.shapes): sp =>
+            fnConcat(stagedMatch.code, z.code): cde =>
+              StagedPath.mk(sp, cde)(k(_, ctx2))
 
   def ruleAssign(a: Assign)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
@@ -289,35 +289,37 @@ class InstrumentationImpl(using State):
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
 
-  // horrible abstraction boundary
   def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block])(using
-      ctx: Context
-  )(k: (ShapeSet, Path, Path, Opt[Path], Context) => Block): Block =
-    // TODO: do filtering
-    def f(arm: Case -> Block)(ctx: Context)(k: (StagedPath, Context) => Block): Block =
-      ruleBranch(x, p, arm._1, arm._2)(using ctx)(k)
-
-    arms.map(f).collectApply(summon): (arms, ctx) =>
+      Context
+  )(k: (StagedPath, Context) => Block): Block =
+    arms.map((cse, block) => ruleBranch(x, p, cse, block)(using _)).collectApply(summon): (arms, ctx) =>
       shapeDyn(): sp => // TODO
         tuple(arms.map(_.code)): arms =>
-          dflt match
-            case S(dflt) =>
-              transformBlock(dflt)(using ctx): (dflt, ctx) =>
-                k(sp, x.code, arms, S(dflt.code), ctx)
-            case N => k(sp, x.code, arms, N, ctx)
+          blockCtor("End", Ls()): e =>
+            dflt match
+              case S(dflt) =>
+                transformBlock(dflt)(using ctx): (dflt, ctx) =>
+                  optionSome(dflt.code): dflt =>
+                    blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
+                      StagedPath.mk(sp, m)(k(_, ctx))
+              case N =>
+                optionNone(): none =>
+                  blockCtor("Match", Ls(x.code, arms, none, e)): m =>
+                    StagedPath.mk(sp, m)(k(_, ctx))
 
   def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformCase(cse): cse =>
       fnFilter(x.shapes, cse): sp =>
         StagedPath.mk(sp, x.code): x0 =>
           val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()(k(_, ctx))
-          (Match(x0.shapes.p.selSN("isEmpty"), Ls(arm), N, _)):
-            given Context = ctx.clone() += p -> x0
-            transformBlock(b): (y1, ctx) =>
-              blockCtor("End", Ls()): end =>
-                // TODO: use Arm type instead of Tup
-                blockCtor("Tup", Ls(cse, y1.code)): cde =>
-                  StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
+          call(x0.shapes.p.selSN("isEmpty"), Ls()): scrut =>
+            (Match(scrut, Ls(arm), N, _)):
+              given Context = ctx.clone() += p -> x0
+              transformBlock(b): (y1, ctx) =>
+                blockCtor("End", Ls()): end =>
+                  // TODO: use Arm type instead of Tup
+                  blockCtor("Tup", Ls(cse, y1.code)): cde =>
+                    StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
 
   // transformations of Block
 

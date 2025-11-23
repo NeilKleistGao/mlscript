@@ -57,6 +57,13 @@ class Block with
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
     End()
+  
+fun concat(b1: Block, b2: Block) = if b1 is
+  Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, concat(rest, b2))
+  Return(res, implct) then b2 // discard return?
+  Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
+  Define(defn, rest) then Define(defn, concat(rest, b2))
+  End() then b2
 
 fun showBool(b: Bool) = if b then "true" else "false"
 
