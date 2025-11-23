@@ -117,8 +117,11 @@ class InstrumentationImpl(using State):
 
   // linking functions defined in MLscipt
 
-  def fnPrintCode(p: Path)(k: Path => Block): Block =
+  def fnPrintCode(p: Path)(k: Block): Block =
     // discard result, we only care about side effect
+    blockCall("printCode", Ls(p))(_ => k)
+  def fnPrintShapeSet(p: ShapeSet)(rest: Block): Block =
+    shapeSetCall("printShapeSet", Ls(p.p))(_ => rest)
   def fnConcat(p1: Path, p2: Path)(k: Path => Block): Block =
     blockCall("concat", Ls(p1, p2))(k)
 
@@ -371,7 +374,9 @@ class InstrumentationImpl(using State):
     val sym = modSym.asPath.selSN(genSym.nme)
     val debug =
       call(sym, Nil): ret =>
-        fnPrintCode(StagedPath(ret).code)(_ => End())
+        val p = StagedPath(ret)
+        (fnPrintShapeSet(p.shapes)(_)):
+          fnPrintCode(p.code)(End())
 
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
     (f.copy(sym = genSym, body = transformBlock(f.body)(_.end)), debug)
@@ -385,7 +390,7 @@ class InstrumentationImpl(using State):
       case c: ClsLikeDefn =>
         ruleCls(c, d.rest): p =>
           ruleEnd(): b =>
-            fnPrintCode(p)(_ => k(b, ctx))
+            fnPrintCode(p)(k(b, ctx))
 
   def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     transformBlock(b)((p, _) => k(p))
