@@ -17,6 +17,14 @@ staged module B with
   fun i() = [1, 2]
   fun j() = new A()
   fun k() = [1].(0)
+  fun l() =
+    if 9 is
+        8 then 1
+        9 then 2 
+        Int then 3
+        Bool then 4
+        // TODO: Case.Tup
+        else 0
 //│ > Define(ClsLikeDefn(Symbol("D"), ([]), TODO), End)
 //│ > Define(ClsLikeDefn(Symbol("C"), ([Symbol("a"), Symbol("b")]), TODO), End)
 //│ > Lit(1)
@@ -31,6 +39,8 @@ staged module B with
 //│ > Return(Instantiate(Select(Ref(Symbol("A")), Symbol("class")), []), false)
 //│ > Lit(1)
 //│ > Assign(Symbol("tmp"), Tuple([Lit(1)]), Return(DynSelect(Ref(Symbol("tmp")), Lit(0), false), false))
+//│ > Dyn
+//│ > Assign(Symbol("scrut"), Lit(9), Match(Ref(Symbol("scrut")), [Lit(8) -> End, Lit(9) -> Return(Lit(2), false), Cls(Symbol("Int"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(3), false), Cls(Symbol("Bool"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> End], Return(Lit(0), false), End))
 
 // collision with class name?
 :js
@@ -50,8 +60,8 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.49: 	  staged module B with
+//│ ║  l.59: 	  staged module B with
 //│ ║        	                ^^^^^^
-//│ ║  l.50: 	    fun f() = 1
+//│ ║  l.60: 	    fun f() = 1
 //│ ╙──      	^^^^^^^^^^^^^^^
 //│ ═══[RUNTIME ERROR] ReferenceError: B is not defined

@@ -37,7 +37,6 @@ class InstrumentationImpl(using State):
 
   def concat(b1: Block, b2: Block): Block =
     b1.mapTail {
-      case _: Return => b2
       case _: End => b2
       case _ => ???
     }
@@ -135,8 +134,7 @@ class InstrumentationImpl(using State):
     params.map((n, s) =>
       (k: Path => Block) =>
         transformSymbol(n): n =>
-          tuple(Ls(n, s)): tup =>
-            k(tup)
+          tuple(Ls(n, s))(k)
     ).collectApply: ls =>
       tuple(ls): params =>
         shapeSetCall("mkClass", Ls(cls, params))(s => k(ShapeSet(s)))
@@ -149,6 +147,9 @@ class InstrumentationImpl(using State):
     shapeSetCall("filter", Ls(s1, s2))(s => k(ShapeSet(s)))
   def fnUnion(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
     shapeSetCall("union", Ls(s1, s2))(s => k(ShapeSet(s)))
+  def fnFlat(s: Ls[ShapeSet])(k: ShapeSet => Block): Block =
+    tuple(s): tup =>
+      shapeSetCall("flat", Ls(tup))(s => k(ShapeSet(s)))
 
   // transformation helpers
 
@@ -293,7 +294,7 @@ class InstrumentationImpl(using State):
       Context
   )(k: (StagedPath, Context) => Block): Block =
     arms.map((cse, block) => ruleBranch(x, p, cse, block)(using _)).collectApply(summon): (arms, ctx) =>
-      shapeDyn(): sp => // TODO
+      fnFlat(arms.map(_.shapes)): sp =>
         tuple(arms.map(_.code)): arms =>
           blockCtor("End", Ls()): e =>
             // unable to use transformOption here because ctx is changed here
@@ -313,13 +314,16 @@ class InstrumentationImpl(using State):
       fnFilter(x.shapes, cse): sp =>
         StagedPath.mk(sp, x.code): x0 =>
           call(x0.shapes.p.selSN("isEmpty"), Ls()): scrut =>
-            val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()(p => Return(p.p, false))
-            (Match(scrut, Ls(arm), N, _)):
-              given Context = ctx.clone() += p -> x0
-              transformBlock(b): (y1, ctx) =>
-                // TODO: use Arm type instead of Tup
-                tuple(Ls(cse, y1.code)): cde =>
-                  StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
+            ruleEnd(): e =>
+              tuple(Ls(cse, e.code)): armStaged =>
+                StagedPath.mk(e.shapes, armStaged): badArm =>
+                  val arm = Case.Lit(Tree.BoolLit(true)) -> k(badArm, ctx)
+                  (Match(scrut, Ls(arm), N, _)):
+                    given Context = ctx.clone() += p -> x0
+                    transformBlock(b): (y1, ctx) =>
+                      // TODO: use Arm type instead of Tup
+                      tuple(Ls(cse, y1.code)): cde =>
+                        StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
 
   // this partially performs rules from filter to account for difference in Block.Case and Match pattern in the formalization
   // to avoid defining the `_` pattern in Block.Case, we use the fact that filter(s, _) = s
