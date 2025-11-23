@@ -18,7 +18,7 @@ import syntax.{Literal, Tree}
 // but it doesn't accept the current context, so applications seem limited
 
 // it should be possible to cache some common constructions (End, Option) into the context
-// this avoids having to rebuild the same structure everytime
+// this avoids having to rebuild the same shapes everytime they are needed
 
 class InstrumentationImpl(using State):
   type ArgWrappable = Path | Symbol | ShapeSet
@@ -297,11 +297,11 @@ class InstrumentationImpl(using State):
                     ruleWildCard(x, p, dflt): (dflt, ctx) =>
                       optionSome(dflt.code): dflt =>
                         blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
-                          StagedPath.mk(sp, m)(k(_, ctx))
+                          StagedPath.mk(sp, m, "branches")(k(_, ctx))
                   case N =>
                     optionNone(): none =>
                       blockCtor("Match", Ls(x.code, arms, none, e)): m =>
-                        StagedPath.mk(sp, m)(k(_, ctx))
+                        StagedPath.mk(sp, m, "branches")(k(_, ctx))
 
   def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformCase(cse): cse =>
@@ -310,6 +310,7 @@ class InstrumentationImpl(using State):
           call(x0.shapes.p.selSN("isEmpty"), Ls()): scrut =>
             ruleEnd(): e =>
               tuple(Ls(cse, e.code)): armStaged =>
+                // returns Case -> Block, instead of End as in formalization
                 StagedPath.mk(e.shapes, armStaged): badArm =>
                   val arm = Case.Lit(Tree.BoolLit(true)) -> k(badArm, ctx)
                   (Match(scrut, Ls(arm), N, _)):
@@ -317,9 +318,10 @@ class InstrumentationImpl(using State):
                     transformBlock(b): (y1, ctx) =>
                       // TODO: use Arm type instead of Tup
                       tuple(Ls(cse, y1.code)): cde =>
-                        StagedPath.mk(y1.shapes, cde)(k(_, ctx.clone() -= p))
+                        StagedPath.mk(y1.shapes, cde, "branch")(k(_, ctx.clone() -= p))
 
-  // this partially performs rules from filter to account for difference in Block.Case and Match pattern in the formalization
+  // not in formalization
+  // this partially applies rules from filter to account for difference in Block.Case and Match pattern in the formalization
   // to avoid defining the `_` pattern in Block.Case, we use the fact that filter(s, _) = s
   def ruleWildCard(x: StagedPath, p: Path, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     // when pattern = _, x0 = x
