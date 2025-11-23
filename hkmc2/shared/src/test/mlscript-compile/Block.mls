@@ -121,8 +121,13 @@ fun showDefn(d: Defn): Str =
       showParamList(params) + ", " +
       showBlock(body) + ")"
     ClsLikeDefn(sym, paramsOpt, companion) then
-      // minimal, since this is unused in your staged Block for now
-      "ClsLikeDefn(" + showSymbol(sym) + ")"
+      // TODO: print rest of the arguments
+      "ClsLikeDefn(" + showSymbol(sym) + ", " +
+      if paramsOpt is
+        Some(params) then "(" + showParamList(params) + ")"
+        None then "([])"
+      + ", " +
+      "TODO" + ")"
 
 fun showOptBlock(ob: Opt[Block]) =
   if ob is Some(b) then showBlock(b) else "None"
