@@ -5,6 +5,7 @@ import utils.*
 import hkmc2.Message.MessageContext
 
 import scala.collection.mutable.HashMap
+import scala.util.chaining._
 
 import mlscript.utils.*, shorthands.*
 
@@ -44,27 +45,18 @@ class InstrumentationImpl(using State):
       case _ => ???
     }
 
-  // TODO: use BlockTransformer.applyListOf?
-  extension [A](ls: Ls[(A => Block) => Block])
-    def collectApply(f: Ls[A] => Block): Block =
-      // defer applying k while prepending new paths to the list
-      ls.foldRight((_: Ls[A] => Block)(Nil))((headCont, tailCont) =>
+  extension [A, B](ls: Ls[(A => B) => B])
+    def collectApply(f: Ls[A] => B): B =
+      // defer applying k while prepending new elements to the list
+      ls.foldRight((_: Ls[A] => B)(Nil))((headCont, tailCont) =>
         k =>
           headCont: head =>
             tailCont: tail =>
               k(head :: tail)
       )(f)
 
-  // possible to wrangle to the form above, but unwieldy to do so in practice
-  extension [A, B](ls: Ls[B => ((A, B) => Block) => Block])
-    def collectApply(b: B)(f: (Ls[A], B) => Block): Block =
-      ls.foldRight((b: B) => (f: (Ls[A], B) => Block) => f(Nil, b))((headCont, tailCont) =>
-        b =>
-          k =>
-            headCont(b): (head, b) =>
-              tailCont(b): (tail, b) =>
-                k(head :: tail, b)
-      )(b)(f)
+  extension [A, B, C](f: A => B => C)
+    def flip: B => A => C = b => f(_)(b)
 
   // helpers corresponding to constructors
 
@@ -296,21 +288,24 @@ class InstrumentationImpl(using State):
   def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block])(using
       Context
   )(k: (StagedPath, Context) => Block): Block =
-    arms.map((cse, block) => ruleBranch(x, p, cse, block)(using _)).collectApply(summon): (arms, ctx) =>
-      fnFlat(arms.map(_.shapes)): sp =>
-        tuple(arms.map(_.code)): arms =>
-          blockCtor("End", Ls()): e =>
-            // unable to use transformOption here because ctx is changed here
-            dflt match
-              case S(dflt) =>
-                ruleWildCard(x, p, dflt): (dflt, ctx) =>
-                  optionSome(dflt.code): dflt =>
-                    blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
-                      StagedPath.mk(sp, m)(k(_, ctx))
-              case N =>
-                optionNone(): none =>
-                  blockCtor("Match", Ls(x.code, arms, none, e)): m =>
-                    StagedPath.mk(sp, m)(k(_, ctx))
+    arms.map((cse, block) => (f: StagedPath => Context => Block) => (ruleBranch(x, p, cse, block)(using _)).flip(f(_)(_)))
+      .collectApply
+      .pipe(_.flip(summon)): arms =>
+        ctx =>
+          fnFlat(arms.map(_.shapes)): sp =>
+            tuple(arms.map(_.code)): arms =>
+              blockCtor("End", Ls()): e =>
+                // unable to use transformOption here because ctx is changed here
+                dflt match
+                  case S(dflt) =>
+                    ruleWildCard(x, p, dflt): (dflt, ctx) =>
+                      optionSome(dflt.code): dflt =>
+                        blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
+                          StagedPath.mk(sp, m)(k(_, ctx))
+                  case N =>
+                    optionNone(): none =>
+                      blockCtor("Match", Ls(x.code, arms, none, e)): m =>
+                        StagedPath.mk(sp, m)(k(_, ctx))
 
   def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformCase(cse): cse =>
