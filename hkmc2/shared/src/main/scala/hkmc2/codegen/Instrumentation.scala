@@ -174,7 +174,7 @@ class InstrumentationImpl(using State):
           StagedPath.mk(sp, cde, "var")(k)
 
   def ruleTup(t: Tuple)(using Context)(k: StagedPath => Block): Block =
-    assert(!t.mut)
+    assert(!t.mut, "mutable tuple not supported")
     transformArgs(t.elems): xs =>
       shapeArr(xs.map(_.shapes)): sp =>
         tuple(xs.map(_.code)): codes =>
@@ -200,7 +200,7 @@ class InstrumentationImpl(using State):
 
   def ruleInst(i: Instantiate)(using Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
-    assert(!mut)
+    assert(!mut, "mutable instantiation not supported")
     transformArgs(args): xs =>
       tuple(xs.map(_.shapes)): shapes =>
         // reuse instrumentation logic, shape of cls is discarded
@@ -284,7 +284,7 @@ class InstrumentationImpl(using State):
           def stageParamList(ps: ParamList)(k: Path => Block) =
             ps.params.map(p => transformSymbol(p.sym)).collectApply(tuple(_)(k))
           transformOption(cls.paramsOpt, stageParamList): paramsOpt =>
-            assert(cls.companion.isEmpty) // nested module not supported
+            assert(cls.companion.isEmpty, "nested module not supported")
             optionNone(): none =>
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
