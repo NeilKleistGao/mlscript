@@ -199,10 +199,10 @@ class InstrumentationImpl(using State):
     assert(!mut, "mutable instantiation not supported")
     transformArgs(args): xs =>
       tuple(xs.map(_.shapes)): shapes =>
-        val sym = cls match
-          case Select(Value.Ref(l, _), _) => l
-          case _ => ???
-        transformSymbol(sym): sym =>
+        // val sym = cls match
+        //   case Select(Value.Ref(l, _), _) => l
+        //   case _ => ???
+        transformSymbol(TempSymbol(N, "TODO")): sym =>
           // TODO: add back class names
           val fieldName = new TempSymbol(N, "TODO")
           shapeClass(sym, xs.map(x => (fieldName, x.shapes))): sp =>
@@ -425,7 +425,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
     case d @ Define(defn, rest) =>
       defn match
         // find modules with staged annotation
-        case c: ClsLikeDefn if c.isym.defn.exists(_.hasStagedModifier.isDefined) && c.companion.isDefined =>
+        case c: ClsLikeDefn if c.companion.isDefined =>
           val sym = c.sym.subst
           val companion = c.companion.get
           val (stagedMethods, debugPrintCode) = companion.methods
