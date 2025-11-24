@@ -123,14 +123,9 @@ class InstrumentationImpl(using State):
   def shapeArr(ps: Ls[ShapeSet])(k: ShapeSet => Block): Block =
     tuple(ps, "test"): tup =>
       shapeSetCall("mkArr", Ls(tup))(s => k(ShapeSet(s)))
-  def shapeClass(cls: Path, params: Ls[(Symbol, ShapeSet)])(k: ShapeSet => Block): Block =
-    params.map((n, s) =>
-      (k: Path => Block) =>
-        transformSymbol(n): n =>
-          tuple(Ls(n, s))(k)
-    ).collectApply: ls =>
-      tuple(ls): params =>
-        shapeSetCall("mkClass", Ls(cls, params))(s => k(ShapeSet(s)))
+  def shapeClass(cls: Path, params: Ls[ShapeSet])(k: ShapeSet => Block): Block =
+    tuple(params): params =>
+      shapeSetCall("mkClass", Ls(cls, params))(s => k(ShapeSet(s)))
 
   def fnConcat(p1: Path, p2: Path)(k: Path => Block): Block =
     blockCall("concat", Ls(p1, p2))(k)
@@ -204,8 +199,7 @@ class InstrumentationImpl(using State):
         //   case _ => ???
         transformSymbol(TempSymbol(N, "TODO")): sym =>
           // TODO: add back class names
-          val fieldName = new TempSymbol(N, "TODO")
-          shapeClass(sym, xs.map(x => (fieldName, x.shapes))): sp =>
+          shapeClass(sym, xs.map(_.shapes)): sp =>
             // reuse instrumentation logic, shape of cls is discarded
             // possible to skip this? this uses ruleVar, which is not in formalization
             transformPath(cls): cls =>

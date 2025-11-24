@@ -10,16 +10,14 @@ class Shape with
   constructor
     Dyn()
     Lit(val l: Literal)
-    Arr(val shapes: Array[Shape]) // is length parameter needed?
-    Class(val sym: Symbol, val params: Array[[Symbol, Shape]])
-    Bot() // temp stub for ShapeSet
+    Arr(val shapes: Array[Shape])
+    Class(val sym: Symbol, val params: Array[Shape])
 
 fun show(s: Shape) = if s is
   Dyn then "Dyn"
   Lit(lit) then "Lit(" + Block.showLiteral(lit) + ")"
   Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
-  Class(sym, params) then "Class(" + sym.name + ", [" + params.map(p => p.0.name + ":" + show(p.1)).join(", ") + "])"
-  Bot() then "Bot()"
+  Class(sym, params) then "Class(" + sym.name + ", [" + params.map(show).join(", ") + "])"
 
 fun isPrimitiveType(sym: Str) = 
   if sym is
@@ -60,7 +58,7 @@ fun mrg(s1: Array[Shape]) =
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
     [Class(c, params), Lit(n)] and n is Str
-      then if params.find(_.0.name == n)
+      then if () // TODO: get parameter from context
         == () then []
         is param then [param.1]
     [Dyn, Lit(n)] and n is Str
@@ -86,7 +84,7 @@ open Block { Case }
 
 fun silh(p: Case): Shape = if p is
   Block.Lit(l) then Lit(l)
-  Block.Cls(sym, path) then Class(sym, Array(1).fill(["TODO", Dyn]))
+  Block.Cls(sym, path) then Class(sym, Array(1).fill(Dyn)) // TODO: find length of argument
   Block.Tup(n) then Arr(Array(n).fill(Dyn))
 
 fun filter(s: Shape, p: Case): Array[Shape] =
