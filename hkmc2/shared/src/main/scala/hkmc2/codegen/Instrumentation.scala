@@ -146,7 +146,7 @@ class InstrumentationImpl(using State):
   def transformSymbol[S <: Symbol](sym: S)(k: Path => Block): Block =
     sym match
       case clsSym: ClassSymbol =>
-        stageParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
+        transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
           blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt))(k)
       case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), "sym")(k)
 
@@ -277,7 +277,7 @@ class InstrumentationImpl(using State):
     (Define(cls, _)):
       transformBlock(rest): p =>
         transformSymbol(cls.sym): c =>
-          stageParamsOpt(cls.paramsOpt): paramsOpt =>
+          transformParamsOpt(cls.paramsOpt): paramsOpt =>
             optionNone(): none => // TODO: handle companion object
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
@@ -359,11 +359,11 @@ class InstrumentationImpl(using State):
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
     args.map(transformArg).collectApply(k)
 
-  def stageParamList(ps: ParamList)(k: Path => Block) =
+  def transformParamList(ps: ParamList)(k: Path => Block) =
     ps.params.map(p => transformSymbol(p.sym)).collectApply(tuple(_)(k))
 
-  def stageParamsOpt(pOpt: Opt[ParamList])(k: Path => Block) =
-    transformOption(pOpt, stageParamList)(k)
+  def transformParamsOpt(pOpt: Opt[ParamList])(k: Path => Block) =
+    transformOption(pOpt, transformParamList)(k)
 
   def transformCase(cse: Case)(using Context)(k: Path => Block): Block =
     cse match
