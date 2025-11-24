@@ -58,12 +58,12 @@ class InstrumentationImpl(using State):
   extension [A, B, C](f: A => B => C)
     def flip: B => A => C = b => f(_)(b)
 
-  // helpers corresponding to constructors
+  // helpers for constructing Block
 
   def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Assign =
     // TODO: skip assignment if res: Path?
-    val tmp = new TempSymbol(N, symName)
-    Assign(tmp, res, k(tmp.asPath))
+    val sym = new TempSymbol(N, symName)
+    Assign(sym, res, k(sym.asPath))
 
   def tuple(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Tuple(false, elems.map(asArg)), symName)(k)
@@ -75,7 +75,7 @@ class InstrumentationImpl(using State):
   def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false), symName)(k)
 
-  // helper for staging the constructors
+  // helpers for instrumenting Block
 
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
   def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
@@ -113,8 +113,6 @@ class InstrumentationImpl(using State):
     blockCall("printCode", Ls(p))(_ => k)
   def fnPrintShapeSet(p: ShapeSet)(rest: Block): Block =
     shapeSetCall("printShapeSet", Ls(p.p))(_ => rest)
-  def fnConcat(p1: Path, p2: Path)(k: Path => Block): Block =
-    blockCall("concat", Ls(p1, p2))(k)
 
   def shapeBot()(k: ShapeSet => Block): Block =
     shapeSetCall("mkBot", Ls())(s => k(ShapeSet(s)))
@@ -134,6 +132,8 @@ class InstrumentationImpl(using State):
       tuple(ls): params =>
         shapeSetCall("mkClass", Ls(cls, params))(s => k(ShapeSet(s)))
 
+  def fnConcat(p1: Path, p2: Path)(k: Path => Block): Block =
+    blockCall("concat", Ls(p1, p2))(k)
   def fnMrg(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
     shapeSetCall("mrg", Ls(s1, s2))(s => k(ShapeSet(s)))
   def fnSel(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
@@ -349,6 +349,7 @@ class InstrumentationImpl(using State):
       case p: Path => transformPath(p)(k)
       case t: Tuple => ruleTup(t)(k)
       case i: Instantiate => ruleInst(i)(k)
+      case c: Call => ???
       case _ => ??? // not supported
 
   def transformArg(a: Arg)(using Context)(k: StagedPath => Block): Block =
@@ -399,11 +400,11 @@ class InstrumentationImpl(using State):
           ruleEnd(): b =>
             fnPrintCode(p)(k(b, summon))
 
+  // ruleBlk?
   def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     transformBlock(b)((p, _) => k(p))
 
   def transformBlock(b: Block)(using Context)(k: (StagedPath, Context) => Block): Block =
-    // ruleBlk?
     val k2 = k(_, summon)
     b match
       case r: Return => ruleReturn(r)(k)
