@@ -146,15 +146,8 @@ class InstrumentationImpl(using State):
   def transformSymbol[S <: Symbol](sym: S)(k: Path => Block): Block =
     sym match
       case clsSym: ClassSymbol =>
-        clsSym.defn.get.paramsOpt match
-          case S(ps) =>
-            ps.params.map(p => transformSymbol(p.sym)).collectApply: params =>
-              tuple(params): params =>
-                optionSome(params): paramsOpt =>
-                  blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt))(k)
-          case N =>
-            optionNone(): none =>
-              blockCtor("ClassSymbol", Ls(toValue(sym.nme), none))(k)
+        stageParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
+          blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt))(k)
       case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), "sym")(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
@@ -284,10 +277,8 @@ class InstrumentationImpl(using State):
     (Define(cls, _)):
       transformBlock(rest): p =>
         transformSymbol(cls.sym): c =>
-          def stageParamList(ps: ParamList)(k: Path => Block) =
-            ps.params.map(p => transformSymbol(p.sym)).collectApply(tuple(_)(k))
-          transformOption(cls.paramsOpt, stageParamList): paramsOpt =>
-            optionNone(): none => // TODO: companion object
+          stageParamsOpt(cls.paramsOpt): paramsOpt =>
+            optionNone(): none => // TODO: handle companion object
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
 
@@ -299,17 +290,14 @@ class InstrumentationImpl(using State):
           fnFlat(arms.map(_.shapes)): sp =>
             tuple(arms.map(_.code)): arms =>
               blockCtor("End", Ls()): e =>
-                // unable to use transformOption here because ctx is changed here
-                dflt match
-                  case S(dflt) =>
-                    ruleWildCard(x, p, dflt): (dflt, ctx) =>
-                      optionSome(dflt.code): dflt =>
-                        blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
-                          StagedPath(sp, m, "branches")(k(_, ctx))
-                  case N =>
-                    optionNone(): none =>
-                      blockCtor("Match", Ls(x.code, arms, none, e)): m =>
-                        StagedPath(sp, m, "branches")(k(_, ctx))
+                // TODO: use transformOption here
+                def dfltStaged(k: (Path, Context) => Block) = dflt match
+                  case S(dflt) => ruleWildCard(x, p, dflt): (dflt, ctx) =>
+                      optionSome(dflt.code)(k(_, ctx))
+                  case N => optionNone()(k(_, ctx))
+                dfltStaged: (dflt, ctx) =>
+                  blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
+                    StagedPath(sp, m, "branches")(k(_, ctx))
 
   def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformCase(cse): cse =>
@@ -370,6 +358,12 @@ class InstrumentationImpl(using State):
   // provides list of shapes and list of codes to continuation
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
     args.map(transformArg).collectApply(k)
+
+  def stageParamList(ps: ParamList)(k: Path => Block) =
+    ps.params.map(p => transformSymbol(p.sym)).collectApply(tuple(_)(k))
+
+  def stageParamsOpt(pOpt: Opt[ParamList])(k: Path => Block) =
+    transformOption(pOpt, stageParamList)(k)
 
   def transformCase(cse: Case)(using Context)(k: Path => Block): Block =
     cse match
@@ -442,7 +436,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
           val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
           val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
           val newModule = c.copy(sym = sym, companion = S(newCompanion))
-          // debug is printed without calling the instrumented function
+          // debug is printed after definition
           val debugBlock = debugPrintCode.foldRight(rest)(impl.concat)
           Define(newModule, debugBlock)
         case _ => d
