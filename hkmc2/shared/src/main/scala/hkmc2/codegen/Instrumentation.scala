@@ -143,7 +143,19 @@ class InstrumentationImpl(using State):
 
   // transformation helpers
 
-  def transformSymbol(sym: Symbol)(k: Path => Block) = blockCtor("Symbol", Ls(toValue(sym.nme)))(k)
+  def transformSymbol[S <: Symbol](sym: S)(k: Path => Block): Block =
+    sym match
+      case clsSym: ClassSymbol =>
+        clsSym.defn.get.paramsOpt match
+          case S(ps) =>
+            ps.params.map(p => transformSymbol(p.sym)).collectApply: params =>
+              tuple(params): params =>
+                optionSome(params): paramsOpt =>
+                  blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt))(k)
+          case N =>
+            optionNone(): none =>
+              blockCtor("ClassSymbol", Ls(toValue(sym.nme), none))(k)
+      case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), "sym")(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
     xOpt match
@@ -159,7 +171,8 @@ class InstrumentationImpl(using State):
 
   // not in formalization
   def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
-    blockCtor("Symbol", Ls(toValue(r.l.nme))): sym =>
+    val Value.Ref(l, disamb) = r
+    transformSymbol(disamb.getOrElse(l)): sym =>
       blockCtor("ValueRef", Ls(sym)): cde =>
         // variable defined outside of scope, may be a reference to a class
         shapeDyn(): sp =>
@@ -194,11 +207,12 @@ class InstrumentationImpl(using State):
     assert(!mut, "mutable instantiation not supported")
     transformArgs(args): xs =>
       tuple(xs.map(_.shapes)): shapes =>
-        // val sym = cls match
-        //   case Select(Value.Ref(l, _), _) => l
-        //   case _ => ???
-        transformSymbol(TempSymbol(N, "TODO")): sym =>
-          // TODO: add back class names
+        val sym = cls match
+          // TODO: if class is staged, we can just use Symbol without storing the arguments
+          case Value.Ref(l, S(disamb)) => transformSymbol(disamb)
+          case s: Select if s.symbol.isDefined => transformSymbol(s.symbol.get)
+          case _ => transformSymbol(TempSymbol(N, "TODO"))
+        sym: sym =>
           shapeClass(sym, xs.map(_.shapes)): sp =>
             // reuse instrumentation logic, shape of cls is discarded
             // possible to skip this? this uses ruleVar, which is not in formalization

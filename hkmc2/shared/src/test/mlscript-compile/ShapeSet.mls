@@ -3,7 +3,7 @@ import "./Block.mls"
 import "./Shape.mls"
 
 open Predef
-open Block { Symbol }
+open Block { ClassSymbol }
 open Shape { show }
 
 type ShapeSet = ShapeSet.ShapeSet
@@ -61,7 +61,7 @@ fun mkArr(shapes: Array[ShapeSet]) =
     .map(x => Arr(x))
     |> liftMany
 
-fun mkClass(sym: Symbol, params: Array[ShapeSet]) = 
+fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) = 
   params.map((s, _, _) => s.underlying.values().toArray())
     |> prod
     .map((s, _, _) => Class(sym, s))

@@ -1,10 +1,7 @@
 
 :js
 :staging
-class A(a)
-staged module B with
-  class Class(a, b)
-  class NoArg
+staged module Expressions with
   fun lit() = 1
   fun assign() = 
     let x = 42
@@ -14,18 +11,15 @@ staged module B with
     val x = 1
     x
   fun tup() = [1, 2]
-  fun inst() = new A(1)
   fun dynsel() = [1].(0)
   fun match() =
     if 9 is
-        8 then 1
-        9 then 2 
-        Int then 3
-        Bool then 4
-        // TODO: Case.Tup
-        else 0
-//│ > Define(ClsLikeDefn(Symbol("NoArg"), ([]), TODO), End)
-//│ > Define(ClsLikeDefn(Symbol("Class"), ([Symbol("a"), Symbol("b")]), TODO), End)
+      8 then 1
+      9 then 2 
+      Int then 3
+      Bool then 4
+      // [1, 2] then 5 // TODO: Case.Tup, needs handling for Label, Break
+      else 0
 //│ > Lit(1)
 //│ > Return(Lit(1), false)
 //│ > Lit(42)
@@ -34,12 +28,25 @@ staged module B with
 //│ > Assign(Symbol("x"), Lit(undefined), Assign(Symbol("x"), Lit(1), Return(Ref(Symbol("x")), false)))
 //│ > Arr(Lit(1), Lit(2))
 //│ > Return(Tuple([Lit(1), Lit(2)]), false)
-//│ > Class(TODO, [Lit(1)])
-//│ > Return(Instantiate(Ref(Symbol("A")), [Lit(1)]), false)
 //│ > Lit(1)
 //│ > Assign(Symbol("tmp"), Tuple([Lit(1)]), Return(DynSelect(Ref(Symbol("tmp")), Lit(0), false), false))
 //│ > Dyn
-//│ > Assign(Symbol("scrut"), Lit(9), Match(Ref(Symbol("scrut")), [Lit(8) -> End, Lit(9) -> Return(Lit(2), false), Cls(Symbol("Int"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(3), false), Cls(Symbol("Bool"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> End], Return(Lit(0), false), End))
+//│ > Assign(Symbol("scrut"), Lit(9), Match(Ref(Symbol("scrut")), [Lit(8) -> End, Lit(9) -> Return(Lit(2), false), Cls(ClassSymbol("Int"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(3), false), Cls(ClassSymbol("Bool"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> End], Return(Lit(0), false), End))
+
+:js
+:staging
+class Outside(a)
+staged module ClassInstrumentation with
+  class Class(a, b)
+  class NoArg
+  fun inst1() = new Outside(1)
+  fun inst2() = new NoArg
+//│ > Define(ClsLikeDefn(Symbol("NoArg"), (), TODO), End)
+//│ > Define(ClsLikeDefn(Symbol("Class"), ([Symbol("a"), Symbol("b")]), TODO), End)
+//│ > Class(ClassSymbol("Outside":[Symbol("a")]), [Lit(1)])
+//│ > Return(Instantiate(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false)
+//│ > Class(ClassSymbol("NoArg"), [])
+//│ > Return(Instantiate(Select(Ref(Symbol("ClassInstrumentation")), Symbol("NoArg")), []), false)
 
 // collision with class name?
 :js
@@ -48,7 +55,7 @@ staged module B with
 class A()
 staged module A with
   fun f() = 1
-//│ ═══[RUNTIME ERROR] TypeError: A3.f_gen is not a function
+//│ ═══[RUNTIME ERROR] TypeError: A1.f_gen is not a function
 
 // unable to reference the class when calling the instrumented function for debugging
 :js
@@ -57,4 +64,4 @@ staged module A with
 module A with
   staged module B with
     fun f() = 1
-//│ /!!!\ Uncaught error: scala.NotImplementedError: an implementation is missing
+//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed: nested module not supported

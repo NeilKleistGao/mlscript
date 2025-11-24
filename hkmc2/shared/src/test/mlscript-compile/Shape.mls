@@ -1,9 +1,10 @@
 import "./Block.mls"
+import "./Option.mls"
 
 type Literal = null | undefined | Str | Int | Num | Bool
 
 open Block { ClassSymbol, showSymbol, isPrimitiveType, isPrimitiveTypeOf }
-type Symbol = Block.Symbol
+open Option
 type Shape = Shape.Shape
 
 module Shape with...
@@ -13,16 +14,14 @@ class Shape with
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape])
-    Class(val sym: Symbol, val params: Array[Shape])
+    Class(val sym: ClassSymbol, val params: Array[Shape])
 
-fun show(s: Shape) = if s is
-  Dyn then "Dyn"
-  Lit(lit) then "Lit(" + Block.showLiteral(lit) + ")"
-  Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
-  Class(sym, params) then "Class(" + sym.name + ", [" + params.map(show).join(", ") + "])"
-
-
-
+fun show(s: Shape) =
+  if s is
+    Dyn then "Dyn"
+    Lit(lit) then "Lit(" + Block.showLiteral(lit) + ")"
+    Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
+    Class(sym, params) then "Class(" + showSymbol(sym) + ", [" + params.map(show).join(", ") + "])"
 
 fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
   a.map((a, i, _) => mrg2(a, b.at(i)))
@@ -46,10 +45,11 @@ fun mrg(s1: Array[Shape]) =
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
-    [Class(c, params), Lit(n)] and n is Str
-      then if () // TODO: get parameter from context
+    [Class(sym, params), Lit(n)] and n is Str
+      and sym.args is Some(args)
+      and args.find(_ == n)
         == () then []
-        is param then [param.1]
+        is i then [params.(i)]
     [Dyn, Lit(n)] and n is Str
       then [Dyn()]
     [Arr(shapes), Lit(n)] and n is Int
@@ -73,7 +73,9 @@ open Block { Case }
 
 fun silh(p: Case): Shape = if p is
   Block.Lit(l) then Lit(l)
-  Block.Cls(sym, path) then Class(sym, Array(1).fill(Dyn)) // TODO: find length of argument
+  Block.Cls(sym, path) then
+    val size = if sym.args is Some(i) then i else 0
+    Class(sym, Array(size).fill(Dyn))
   Block.Tup(n) then Arr(Array(n).fill(Dyn))
 
 fun filter(s: Shape, p: Case): Array[Shape] =

@@ -14,11 +14,13 @@ type Opt[A] = Option[A]
 
 class Symbol(val name: Str)
 type Ident = Symbol
+// this is so that we're able to retrieve information about the class from the symbol
+class ClassSymbol(val name: Str, val args: Opt[Array[Symbol]]) extends Symbol(name)
 
 type Literal = null | undefined | Str | Int | Num | Bool
 
-fun isPrimitiveType(sym: Str) = 
-  if sym is
+fun isPrimitiveType(sym: Symbol) = 
+  if sym.name is
     "Str" then true
     "Int" then true
     "Num" then true
@@ -89,7 +91,16 @@ fun showLiteral(l: Literal) =
     null then "null"
     else l.toString()
 
-fun showSymbol(s: Symbol) = "Symbol(" + "\"" + s.name + "\"" + ")"
+fun showSymbol(s: Symbol) =
+  // console.log("printing " + s)
+  if s is
+    ClassSymbol(name, args) then 
+      "ClassSymbol(" + "\"" + name + "\"" +
+      if args
+          is Some(args) then ":[" + args.map(showSymbol).join(", ") + "]"
+          is None then ""
+      + ")"
+    _ then "Symbol(" + "\"" + s.name + "\"" + ")"
 
 fun showIdent(i: Ident) = showSymbol(i)
 
@@ -141,7 +152,7 @@ fun showDefn(d: Defn): Str =
       "ClsLikeDefn(" + showSymbol(sym) + ", " +
       if paramsOpt is
         Some(params) then "(" + showParamList(params) + ")"
-        None then "([])"
+        None then "()"
       + ", " +
       "TODO" + ")"
 
