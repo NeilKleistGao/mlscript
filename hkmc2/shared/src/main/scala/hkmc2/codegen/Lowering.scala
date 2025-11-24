@@ -9,8 +9,6 @@ import sourcecode.Line
 import mlscript.utils.*, shorthands.*
 import utils.*
 
-import hkmc2.codegen.Instrumentation
-
 import hkmc2.Message.MessageContext
 
 import codegen.Instrumentation
