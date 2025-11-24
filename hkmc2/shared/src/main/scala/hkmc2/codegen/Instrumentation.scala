@@ -73,7 +73,7 @@ class InstrumentationImpl(using State):
 
   // isMlsFun is probably always true?
   def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Call(fun, args.map(asArg))(isMlsFun, false), symName)(k)
+    assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
 
   // helpers for instrumenting Block
 
@@ -200,7 +200,7 @@ class InstrumentationImpl(using State):
     transformArgs(args): xs =>
       tuple(xs.map(_.shapes)): shapes =>
         val sym = cls match
-          case Select(Value.Ref(l), _) => l
+          case Select(Value.Ref(l, _), _) => l
           case _ => ???
         transformSymbol(sym): sym =>
           // TODO: add back class names
@@ -387,7 +387,7 @@ class InstrumentationImpl(using State):
           fnPrintCode(p.code)(End())
 
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
-    (f.copy(sym = genSym, body = transformBlock(f.body)(_.end)), debug)
+    (f.copy(sym = genSym, body = transformBlock(f.body)(_.end))(false), debug)
 
   def transformDefine(d: Define)(using Context)(k: (StagedPath, Context) => Block): Block =
     d.defn match
@@ -425,7 +425,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
     case d @ Define(defn, rest) =>
       defn match
         // find modules with staged annotation
-        case c: ClsLikeDefn if c.sym.defn.exists(_.hasStagedModifier.isDefined) && c.companion.isDefined =>
+        case c: ClsLikeDefn if c.isym.defn.exists(_.hasStagedModifier.isDefined) && c.companion.isDefined =>
           val sym = c.sym.subst
           val companion = c.companion.get
           val (stagedMethods, debugPrintCode) = companion.methods
