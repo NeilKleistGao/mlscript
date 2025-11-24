@@ -157,78 +157,77 @@ class InstrumentationImpl(using State):
 
   // instrumentation rules
 
-  def ruleLit(l: Value.Lit)(k: StagedPath => Block): Block =
+  def ruleLit(l: Value.Lit, symName: String = "lit")(k: StagedPath => Block): Block =
     shapeLit(l): sp =>
       blockCtor("ValueLit", Ls(l)): cde =>
-        StagedPath(sp, cde, "lit")(k)
+        StagedPath(sp, cde, symName)(k)
 
   // not in formalization
-  def ruleVar(r: Value.Ref)(k: StagedPath => Block): Block =
+  def ruleVar(r: Value.Ref, symName: String = "var")(k: StagedPath => Block): Block =
     val Value.Ref(l, disamb) = r
     transformSymbol(disamb.getOrElse(l)): sym =>
       blockCtor("ValueRef", Ls(sym)): cde =>
         // variable defined outside of scope, may be a reference to a class
         shapeDyn(): sp =>
-          StagedPath(sp, cde, "var")(k)
+          StagedPath(sp, cde, symName)(k)
 
-  def ruleTup(t: Tuple)(using Context)(k: StagedPath => Block): Block =
+  def ruleTup(t: Tuple, symName: String = "tup")(using Context)(k: StagedPath => Block): Block =
     assert(!t.mut, "mutable tuple not supported")
     transformArgs(t.elems): xs =>
       shapeArr(xs.map(_.shapes)): sp =>
         tuple(xs.map(_.code)): codes =>
           blockCtor("Tuple", Ls(codes)): cde =>
-            StagedPath(sp, cde, "tup")(k)
+            StagedPath(sp, cde, symName)(k)
 
-  def ruleSel(s: Select)(using Context)(k: StagedPath => Block): Block =
+  def ruleSel(s: Select, symName: String = "sel")(using Context)(k: StagedPath => Block): Block =
     val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
       shapeLit(toValue(name)): n =>
         fnSel(x.shapes, n): sp =>
           blockCtor("Symbol", Ls(toValue(name))): name =>
             blockCtor("Select", Ls(x.code, name)): cde =>
-              StagedPath(sp, cde, "sel")(k)
+              StagedPath(sp, cde, symName)(k)
 
-  def ruleDynSel(d: DynSelect)(using Context)(k: StagedPath => Block): Block =
+  def ruleDynSel(d: DynSelect, symName: String = "dynsel")(using Context)(k: StagedPath => Block): Block =
     transformPath(d.qual): x =>
       transformPath(d.fld): y =>
         fnSel(x.shapes, y.shapes): sp =>
           blockCtor("DynSelect", Ls(x.code, y.code, toValue(d.arrayIdx))): cde =>
-            StagedPath(sp, cde, "dynsel")(k)
+            StagedPath(sp, cde, symName)(k)
 
-  def ruleInst(i: Instantiate)(using Context)(k: StagedPath => Block): Block =
+  def ruleInst(i: Instantiate, symName: String = "inst")(using Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
     assert(!mut, "mutable instantiation not supported")
     transformArgs(args): xs =>
-      tuple(xs.map(_.shapes)): shapes =>
-        val sym = cls match
-          // TODO: if class is staged, we can just use Symbol without storing the arguments
-          case Value.Ref(l, S(disamb)) => transformSymbol(disamb)
-          case s: Select if s.symbol.isDefined => transformSymbol(s.symbol.get)
-          case _ => transformSymbol(TempSymbol(N, "TODO"))
-        sym: sym =>
-          shapeClass(sym, xs.map(_.shapes)): sp =>
-            // reuse instrumentation logic, shape of cls is discarded
-            // possible to skip this? this uses ruleVar, which is not in formalization
-            transformPath(cls): cls =>
-              tuple(xs.map(_.code)): codes =>
-                blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
-                  StagedPath(sp, cde, "inst")(k)
+      val sym = cls match
+        // TODO: if class is staged, we can just use Symbol without storing the arguments
+        case Value.Ref(l, S(disamb)) => transformSymbol(disamb)
+        case s: Select if s.symbol.isDefined => transformSymbol(s.symbol.get)
+        case _ => transformSymbol(TempSymbol(N, "TODO"))
+      sym: sym =>
+        shapeClass(sym, xs.map(_.shapes)): sp =>
+          // reuse instrumentation logic, shape of cls is discarded
+          // possible to skip this? this uses ruleVar, which is not in formalization
+          transformPath(cls): cls =>
+            tuple(xs.map(_.code)): codes =>
+              blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
+                StagedPath(sp, cde, symName)(k)
 
-  def ruleReturn(r: Return)(using Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleReturn(r: Return, symName: String = "return")(using Context)(k: (StagedPath, Context) => Block): Block =
     transformResult(r.res): x =>
       blockCtor("Return", Ls(x.code, toValue(false))): cde =>
-        StagedPath(x.shapes, cde, "return")(k(_, summon))
+        StagedPath(x.shapes, cde, symName)(k(_, summon))
 
-  def ruleMatch(m: Match)(using Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleMatch(m: Match, symName: String = "match")(using Context)(k: (StagedPath, Context) => Block): Block =
     val Match(p, ks, dflt, rest) = m
     transformPath(p): x =>
       ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
         transformBlock(rest)(using ctx1): (z, ctx2) =>
           fnMrg(stagedMatch.shapes, z.shapes): sp =>
             fnConcat(stagedMatch.code, z.code): cde =>
-              StagedPath(sp, cde)(k(_, ctx2))
+              StagedPath(sp, cde, symName)(k(_, ctx2))
 
-  def ruleAssign(a: Assign)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleAssign(a: Assign, symName: String = "assign")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
     transformResult(r): y =>
       transformSymbol(x): xSym =>
@@ -243,7 +242,7 @@ class InstrumentationImpl(using State):
                     given Context = ctx.clone() += x.asPath -> x2
                     transformBlock(b): (z, ctx) =>
                       blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
-                        StagedPath(z.shapes, cde, "assign")(k(_, ctx))
+                        StagedPath(z.shapes, cde, symName)(k(_, ctx))
             case N =>
               StagedPath(y.shapes, xStaged): x2 =>
                 // propagate shape information for future references to x
@@ -251,9 +250,9 @@ class InstrumentationImpl(using State):
                   given Context = ctx.clone() += x.asPath -> x2
                   transformBlock(b): (z, ctx) =>
                     blockCtor("Assign", Ls(xSym, y.code, z.code)): cde =>
-                      StagedPath(z.shapes, cde, "assign")(k(_, ctx))
+                      StagedPath(z.shapes, cde, symName)(k(_, ctx))
 
-  def ruleLet(x: BlockMemberSymbol, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleLet(x: BlockMemberSymbol, b: Block, symName: String = "_let")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     shapeBot(): bot =>
       transformSymbol(x): xSym =>
         StagedPath(bot, xSym): y =>
@@ -262,12 +261,12 @@ class InstrumentationImpl(using State):
             transformBlock(b): (z, ctx) =>
               blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undefined =>
                 blockCtor("Assign", Ls(xSym, undefined, z.code)): cde =>
-                  StagedPath(z.shapes, cde, "_let")(k(_, summon))
+                  StagedPath(z.shapes, cde, symName)(k(_, summon))
 
-  def ruleEnd()(k: StagedPath => Block): Block =
+  def ruleEnd(symName: String = "inst")(k: StagedPath => Block): Block =
     shapeBot(): sp =>
       blockCtor("End", Ls()): cde =>
-        StagedPath(sp, cde, "end")(k)
+        StagedPath(sp, cde, symName)(k)
 
   def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)(k apply _.code)
@@ -282,7 +281,7 @@ class InstrumentationImpl(using State):
               blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
 
-  def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block])(using Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block], symName: String = "branches")(using Context)(k: (StagedPath, Context) => Block): Block =
     arms.map((cse, block) => (f: StagedPath => Context => Block) => (ruleBranch(x, p, cse, block)(using _)).flip(f(_)(_)))
       .collectApply
       .pipe(_.flip(summon)): arms =>
@@ -297,24 +296,24 @@ class InstrumentationImpl(using State):
                   case N => optionNone()(k(_, ctx))
                 dfltStaged: (dflt, ctx) =>
                   blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
-                    StagedPath(sp, m, "branches")(k(_, ctx))
+                    StagedPath(sp, m, symName)(k(_, ctx))
 
-  def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block, symName: String = "branch")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformCase(cse): cse =>
       fnFilter(x.shapes, cse): sp =>
-        StagedPath(sp, x.code): x0 =>
-          call(x0.shapes.p.selSN("isEmpty"), Ls()): scrut =>
-            ruleEnd(): e =>
-              tuple(Ls(cse, e.code)): armStaged =>
-                // returns Case -> Block, instead of End as in formalization
-                StagedPath(e.shapes, armStaged): badArm =>
-                  val arm = Case.Lit(Tree.BoolLit(true)) -> k(badArm, ctx)
-                  (Match(scrut, Ls(arm), N, _)):
+        call(sp.p.selSN("isEmpty"), Ls()): scrut =>
+          ruleEnd(): e =>
+            tuple(Ls(cse, e.code)): armStaged =>
+              // returns Case -> Block, instead of End as in formalization
+              StagedPath(e.shapes, armStaged): badArm =>
+                val arm = Case.Lit(Tree.BoolLit(true)) -> k(badArm, ctx)
+                (Match(scrut, Ls(arm), N, _)):
+                  StagedPath(sp, x.code): x0 =>
                     given Context = ctx.clone() += p -> x0
                     transformBlock(b): (y1, ctx) =>
                       // TODO: use Arm type instead of Tup
                       tuple(Ls(cse, y1.code)): cde =>
-                        StagedPath(y1.shapes, cde, "branch")(k(_, ctx.clone() -= p))
+                        StagedPath(y1.shapes, cde, symName)(k(_, ctx.clone() -= p))
 
   // not in formalization
   // this partially applies rules from filter to account for difference in Block.Case and Match pattern in the formalization
