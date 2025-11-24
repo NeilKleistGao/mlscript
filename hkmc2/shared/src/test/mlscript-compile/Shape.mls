@@ -1,6 +1,8 @@
 import "./Block.mls"
 
 type Literal = null | undefined | Str | Int | Num | Bool
+
+open Block { ClassSymbol, showSymbol, isPrimitiveType, isPrimitiveTypeOf }
 type Symbol = Block.Symbol
 type Shape = Shape.Shape
 
@@ -19,21 +21,8 @@ fun show(s: Shape) = if s is
   Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
   Class(sym, params) then "Class(" + sym.name + ", [" + params.map(show).join(", ") + "])"
 
-fun isPrimitiveType(sym: Str) = 
-  if sym is
-    "Str" then true
-    "Int" then true
-    "Num" then true
-    "Bool" then true
-    else false
 
-fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
-  if [sym.name, l] is
-    ["Str", l] and l is Str then true
-    ["Int", i] and i is Int then true
-    ["Num", n] and n is Num then true
-    ["Bool", b] and b is Bool then true
-    else false
+
 
 fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
   a.map((a, i, _) => mrg2(a, b.at(i)))
