@@ -101,9 +101,7 @@ object Printer:
       val docQual = mkDocument(qual)
       doc"${docQual}.${name.name}"
     case DynSelect(qual, fld, ai) =>
-      if ai
-      then doc"${mkDocument(qual)}.at(${mkDocument(fld)})"
-      else doc"${mkDocument(qual)}[${mkDocument(fld)}]"
+      doc"${mkDocument(qual)}.(${mkDocument(fld)})"
     case x: Value => mkDocument(x)
 
   def mkDocument(result: Result)(using Raise, Scope): Document = result match
