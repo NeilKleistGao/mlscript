@@ -275,10 +275,10 @@ class InstrumentationImpl(using State):
     assert(cls.companion.isEmpty, "nested module not supported")
     (Define(cls, _)):
       transformBlock(rest): p =>
-        transformSymbol(cls.sym): c =>
-          transformParamsOpt(cls.paramsOpt): paramsOpt =>
+        transformParamsOpt(cls.paramsOpt): paramsOpt =>
+          transformSymbol(cls.isym): c =>
             optionNone(): none => // TODO: handle companion object
-              blockCtor("ClsLikeDefn", Ls(c, paramsOpt, none)): cls =>
+              blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
                 blockCtor("Define", Ls(cls, p.code))(k)
 
   def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block], symName: String = "branches")(using Context)(k: (StagedPath, Context) => Block): Block =
