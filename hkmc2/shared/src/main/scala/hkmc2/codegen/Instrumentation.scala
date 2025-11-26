@@ -194,6 +194,15 @@ class InstrumentationImpl(using State):
           blockCtor("DynSelect", Ls(x.code, y.code, toValue(d.arrayIdx))): cde =>
             StagedPath(sp, cde, symName)(k)
 
+  // TODO
+  def ruleApp(c: Call, symName: String = "app")(using Context)(k: StagedPath => Block): Block =
+    transformPath(c.fun): fun =>
+      transformArgs(c.args): args =>
+        tuple(args.map(_._1.code)): tup =>
+          shapeDyn(): dyn =>
+            blockCtor("Call", Ls(fun.code, tup)): res =>
+              StagedPath(dyn, res, symName)(k)
+
   def ruleInst(i: Instantiate, symName: String = "inst")(using Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
     assert(!mut, "mutable instantiation not supported")
@@ -345,7 +354,7 @@ class InstrumentationImpl(using State):
       case p: Path => transformPath(p)(k)
       case t: Tuple => ruleTup(t)(k)
       case i: Instantiate => ruleInst(i)(k)
-      case c: Call => ???
+      case c: Call => ruleApp(c)(k)
       case _ => ??? // not supported
 
   def transformArg(a: Arg)(using Context)(k: ((StagedPath, Bool)) => Block): Block =
@@ -402,6 +411,14 @@ class InstrumentationImpl(using State):
           ruleEnd(): b =>
             fnPrintCode(p)(k(b, summon))
 
+  // TODO
+  // discards result of sub
+  def transformBegin(b: Begin)(using Context)(k: (StagedPath, Context) => Block): Block =
+    transformBlock(b.sub): (sub, ctx) =>
+      transformBlock(b.rest): (rest, ctx) =>
+        fnConcat(sub.code, rest.code): block =>
+          StagedPath(rest.shapes, block)(k(_, ctx))
+
   // ruleBlk?
   def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     transformBlock(b)((p, _) => k(p))
@@ -416,7 +433,8 @@ class InstrumentationImpl(using State):
       case m: Match => ruleMatch(m)(k)
       // temporary measure to accept returning an array
       // use BlockTransformer here?
-      case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)
+      case b: Begin => transformBegin(b)(k)
+      // case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)
       case _ => ??? // not supported
 
 // TODO: rename as InstrumentationTransformer?
