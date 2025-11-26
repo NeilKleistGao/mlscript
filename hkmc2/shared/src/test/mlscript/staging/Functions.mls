@@ -33,9 +33,8 @@
 //│ }
 //│ ShapeSet = class ShapeSet { ShapeSet: fun ShapeSet { class: class ShapeSet } }
 
-:slot
 :js
-staged module Expressions with
+staged module Expressions with 
   fun lit() = 1
   fun assign() = 
     let x = 42
@@ -54,29 +53,6 @@ staged module Expressions with
       Bool then 4
       // [1, 2] then 5 // TODO: Case.Tup, needs handling for Label, Break
       else 0
-//│ Pretty Lowered:
-//│  
-//│ define staged class Expressions in
-//│ set tmp = Expressions.lit_gen() in
-//│ set tmp1 = shapeSet.printShapeSet(tmp.(0)) in
-//│ set tmp2 = Block.printCode(tmp.(1)) in
-//│ set tmp3 = Expressions.assign_gen() in
-//│ set tmp4 = shapeSet.printShapeSet(tmp3.(0)) in
-//│ set tmp5 = Block.printCode(tmp3.(1)) in
-//│ set tmp6 = Expressions._var_gen() in
-//│ set tmp7 = shapeSet.printShapeSet(tmp6.(0)) in
-//│ set tmp8 = Block.printCode(tmp6.(1)) in
-//│ set tmp9 = Expressions.tup_gen() in
-//│ set tmp10 = shapeSet.printShapeSet(tmp9.(0)) in
-//│ set tmp11 = Block.printCode(tmp9.(1)) in
-//│ set tmp12 = Expressions.dynsel_gen() in
-//│ set tmp13 = shapeSet.printShapeSet(tmp12.(0)) in
-//│ set tmp14 = Block.printCode(tmp12.(1)) in
-//│ set tmp15 = Expressions.match_gen() in
-//│ set tmp16 = shapeSet.printShapeSet(tmp15.(0)) in
-//│ set tmp17 = Block.printCode(tmp15.(1)) in
-//│ set block$res2 = undefined in
-//│ end
 //│ > Lit(1)
 //│ > 1
 //│ > Lit(42)
@@ -95,8 +71,8 @@ staged module Expressions with
 //│ > Dyn
 //│ > let scrut = 9
 //│ > if scrut is
-//│ > _ then undefined
-//│ > _ then undefined
+//│ > <unknown case> then <unknown block>
+//│ > <unknown case> then <unknown block>
 //│ > else 0
 //│ > 
 
@@ -104,13 +80,13 @@ staged module Expressions with
 :staging
 class Outside(a)
 staged module ClassInstrumentation with
-  class Inside(a, b)
+  class Inside(a, b) // not printed correctly
   class NoArg
   fun inst1() = new Outside(1)
   fun inst2() = new NoArg
 //│ > class NoArg()
 //│ > 
-//│ > class Inside()
+//│ > class Inside(a, b)
 //│ > 
 //│ > Class(Outside, [Lit(1)])
 //│ > new Outside(1)
@@ -135,8 +111,8 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.134: 	  staged module B with
+//│ ║  l.110: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.135: 	    fun f() = 1
+//│ ║  l.111: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
 //│ ═══[RUNTIME ERROR] ReferenceError: B is not defined
