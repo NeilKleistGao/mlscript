@@ -9,16 +9,14 @@ type Opt[A] = Option[A]
 
 // dependancies referenced in Block classes, referencing implementation in Term.mls
 
-type Literal = null | undefined | Str | Int | Num | Bool
-
-type ParamList = Array[Symbol]
-
 class Symbol(val name: Str)
 type Ident = Symbol
 // this is so that we're able to retrieve information about the class from the symbol
-class ClassSymbol(val name: Str, val paramsOpt: Opt[ParamList]) extends Symbol(name)
+class ClassSymbol(val name: Str, val args: Opt[Array[Symbol]]) extends Symbol(name)
 
-// Classes defined in Block.scala
+type Literal = null | undefined | Str | Int | Num | Bool
+
+type ParamList = Array[Symbol]
 
 class Arg(val spread: Opt[Bool], val value: Path)
   
@@ -26,7 +24,7 @@ class Case with
   constructor
     Lit(val lit: Literal)
     Cls(val cls: Symbol, val path: Path)
-    Tup(val len: Int)
+    Tup(val len: Int) // TODO: remove inf?
 
 class Result with 
   constructor
@@ -44,8 +42,8 @@ class Path extends Result with
 class Defn with 
   constructor 
     ValDefn(val sym: Symbol, val rhs: Path)
-    ClsLikeDefn(val sym: Symbol, val companion: Opt[ClsLikeBody]) // companion unused
-    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
+    ClsLikeDefn(val sym: Symbol, val paramsOpt: Opt[ParamList], val companion: Opt[ClsLikeBody]) // unused
+    FunDefn(val sym: Symbol, val params: ParamList, val body: Block, val stage: Bool)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
 
@@ -116,10 +114,10 @@ fun showDefn(d) =
   if d is
     ValDefn(sym, rhs) then
       "let " + showSymbol(sym) + " = " + showPath(rhs)
-    FunDefn(sym, params, body) then
+    FunDefn(sym, params, body, stage) then
       "fun " + showSymbol(sym) + "(" + params.map(showSymbol) + ") =" +
       (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
-    ClsLikeDefn(sym, paramsOpt) then
+    ClsLikeDefn(sym, paramsOpt, _) then
       "class " + showSymbol(sym) + showParamsOpt(paramsOpt)
 
 fun showBlock(b) =
