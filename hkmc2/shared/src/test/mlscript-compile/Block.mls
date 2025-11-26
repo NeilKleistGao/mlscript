@@ -85,7 +85,7 @@ fun showArg(a) =
   (if a.spread is Some(true) then "..." else "") + showPath(a.value)
 
 fun showArgs(args) =
-  args.map(showArg)
+  args.map(showArg).join(", ")
 
 fun showResult(r) =
   if r is
@@ -97,7 +97,7 @@ fun showResult(r) =
 fun showCase(c) =
   if c is
     Lit(l) then showLiteral(l)
-    Cls(cls, p) then showSymbol(cls) + "(" + showPath(p) + ")"
+    Cls(cls, p) then showSymbol(cls)
     Tup(len) then "Tuple"
     _ then "_"
 
@@ -117,10 +117,11 @@ fun showDefn(d) =
     ValDefn(sym, rhs) then
       "let " + showSymbol(sym) + " = " + showPath(rhs)
     FunDefn(sym, params, body) then
-      "fun " + showSymbol(sym) + "(" + params.map(showSymbol) + ") =" +
+      "fun " + showSymbol(sym) + params.map(showParams).join("") + " =" +
       (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
-    ClsLikeDefn(sym, paramsOpt) then
-      "class " + showSymbol(sym) + showParamsOpt(paramsOpt)
+    ClsLikeDefn(sym, _) then 
+      if sym is 
+        ClassSymbol(n, paramsOpt) then "class " + n + showParamsOpt(paramsOpt)
 
 fun showBlock(b) =
   if b is
@@ -136,7 +137,7 @@ fun showBlock(b) =
       (if dflt is Some(db) then "\nelse " + showBlock(db) else "") +
       "\n" + showBlock(rest)
     End() then ""
-    x then x
+    _ then "<Unknown Block>"
 
 fun printCode(p: Block) =
   let s = showBlock(p) in
