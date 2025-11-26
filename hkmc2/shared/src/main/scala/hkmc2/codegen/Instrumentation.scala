@@ -305,14 +305,18 @@ class InstrumentationImpl(using State):
       fnFilter(x.shapes, cse): sp =>
         call(sp.p.selSN("isEmpty"), Ls()): scrut =>
           ruleEnd(): e =>
-            val arm = Case.Lit(Tree.BoolLit(true)) -> k(e, ctx)
-            (Match(scrut, Ls(arm), N, _)):
+            val res = new TempSymbol(N, "tmp")
+            val arm = Case.Lit(Tree.BoolLit(true)) -> Assign(res, e.p, End())
+            val dflt =
               StagedPath(sp, x.code): x0 =>
                 given Context = ctx.clone() += p -> x0
                 transformBlock(b): (y1, ctx) =>
                   // TODO: use Arm type instead of Tup
                   tuple(Ls(cse, y1.code)): cde =>
-                    StagedPath(y1.shapes, cde, symName)(k(_, ctx.clone() -= p))
+                    StagedPath(y1.shapes, cde, symName): ret =>
+                      Assign(res, ret.p, End())
+            (Match(scrut, Ls(arm), S(dflt), _)):
+              k(StagedPath(Value.Ref(res)), ctx.clone() -= p)
 
   // this partially applies rules from filter to account for difference between Block.Case and Match pattern in the formalization
   // to avoid defining the `_` pattern in Block.Case, we apply filter(s, _) = s
