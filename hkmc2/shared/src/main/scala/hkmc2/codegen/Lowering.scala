@@ -212,8 +212,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             case S(comp) => comp.defn.getOrElse(wat("Module companion without definition", mod.companion))
             case N =>
               val clsSymb = new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id)
-              val stagedAnnots = mod.annotations.collect { 
-                case Annot.Modifier(Keyword.`staged`) => Annot.Modifier(Keyword.`staged`) 
+              val stagedAnnots = mod.annotations.filter { 
+                case Annot.Modifier(Keyword.`staged`) => true
               }
               val newDefn = ClassDef.Plain(mod.owner, syntax.Cls, clsSymb,
                 mod.bsym,
