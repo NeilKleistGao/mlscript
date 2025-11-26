@@ -79,13 +79,13 @@ fun showPath(p) =
     DynSelect(qual, fld, idx) then showPath(qual) + "[" + showPath(fld) + "]"
     ValueRef(s) then showSymbol(s)
     ValueLit(l) then showLiteral(l)
-    _ then "<unknown path>"
+    _ then "<unknown>"
 
 fun showArg(a) =
   (if a.spread is Some(true) then "..." else "") + showPath(a.value)
 
 fun showArgs(args) =
-  args.map(showArg).join(",")
+  args.map(showArg)
 
 fun showResult(r) =
   if r is
@@ -93,14 +93,13 @@ fun showResult(r) =
     Instantiate(cls, args) then "new " + showPath(cls) + "(" + showArgs(args) + ")"
     Tuple(elems) then "[" + showArgs(elems) + "]"
     Path then showPath(r)
-    _ then "<unknown result>"
 
 fun showCase(c) =
   if c is
     Lit(l) then showLiteral(l)
-    Cls(cls, p) then showSymbol(cls)
+    Cls(cls, p) then showSymbol(cls) + "(" + showPath(p) + ")"
     Tup(len) then "Tuple"
-    _ then "<unknown case>"
+    _ then "_"
 
 fun showArm(a) =
   showCase(a.cse) + " then " + showBlock(a.body)
@@ -117,13 +116,11 @@ fun showDefn(d) =
   if d is
     ValDefn(sym, rhs) then
       "let " + showSymbol(sym) + " = " + showPath(rhs)
-    FunDefn(sym, p, body) then
-      "fun " + showSymbol(sym) + showParams(p) + " =" +
+    FunDefn(sym, params, body) then
+      "fun " + showSymbol(sym) + "(" + params.map(showSymbol) + ") =" +
       (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
-    ClsLikeDefn(sym, _) then 
-      if sym is 
-        ClassSymbol(n, paramsOpt) then "class " + n + showParamsOpt(paramsOpt)
-    _ then "<unknown defn>"
+    ClsLikeDefn(sym, paramsOpt) then
+      "class " + showSymbol(sym) + showParamsOpt(paramsOpt)
 
 fun showBlock(b) =
   if b is
@@ -139,7 +136,7 @@ fun showBlock(b) =
       (if dflt is Some(db) then "\nelse " + showBlock(db) else "") +
       "\n" + showBlock(rest)
     End() then ""
-    _ then "<unknown block>"
+    x then x
 
 fun printCode(p: Block) =
   let s = showBlock(p) in
