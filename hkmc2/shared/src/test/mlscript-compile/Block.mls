@@ -98,8 +98,12 @@ fun showPath(p: Path): Str =
       "Lit(" + showLiteral(lit) + ")"
 
 fun showArg(arg: Arg) =
-  if arg.spread is Some(true) then "..." + showPath(arg.value)
-  else showPath(arg.value)
+  if arg.spread is
+    Some(true) then "..."
+    Some(false) then ".."
+    else ""
+  + showPath(arg.value)
+  
 
 fun showArgs(args: Array[Arg]) =
   "[" + args.map(showArg).join(", ") + "]"
