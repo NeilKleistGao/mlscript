@@ -142,12 +142,12 @@ class InstrumentationImpl(using State):
 
   // transformation helpers
 
-  def transformSymbol[S <: Symbol](sym: S)(k: Path => Block): Block =
+  def transformSymbol[S <: Symbol](sym: S, symName: Str = "sym")(k: Path => Block): Block =
     sym match
       case clsSym: ClassSymbol =>
         transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
-          blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt))(k)
-      case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), "sym")(k)
+          blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt), symName)(k)
+      case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
     xOpt match
