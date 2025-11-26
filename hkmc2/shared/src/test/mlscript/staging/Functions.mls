@@ -106,20 +106,20 @@ staged module Expressions with
 :staging
 class Outside(a)
 staged module ClassInstrumentation with
-  class Class(a, b)
+  class Inside(a, b)
   class NoArg
   fun inst1() = new Outside(1)
   fun inst2() = new NoArg
 //│ > class NoArg()
 //│ > 
-//│ > class Class(a, b)
+//│ > class Inside(a, b)
 //│ > 
 //│ > Class(Outside, [Lit(1)])
 //│ > new Outside(1)
 //│ > Class(NoArg, [])
 //│ > new ClassInstrumentation.NoArg()
 
-// collision with class name?
+// debug printing fails, collision with class name?
 :js
 :staging
 :fixme
@@ -128,7 +128,7 @@ staged module A with
   fun f() = 1
 //│ ═══[RUNTIME ERROR] TypeError: A1.f_gen is not a function
 
-// unable to reference the class when calling the instrumented function for debugging
+// debug printing fails, unable to reference the class when calling the instrumented function
 :js
 :staging
 :fixme
