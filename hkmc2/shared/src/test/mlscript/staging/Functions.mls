@@ -97,8 +97,6 @@ staged module Expressions with
 //│ > if scrut is
 //│ > _ then undefined
 //│ > _ then undefined
-//│ > _ then undefined
-//│ > _ then undefined
 //│ > else 0
 //│ > 
 
@@ -112,7 +110,7 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
 //│ > class NoArg()
 //│ > 
-//│ > class Inside(a, b)
+//│ > class Inside()
 //│ > 
 //│ > Class(Outside, [Lit(1)])
 //│ > new Outside(1)
@@ -135,4 +133,10 @@ staged module A with
 module A with
   staged module B with
     fun f() = 1
-//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed: nested module not supported
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
+//│ ╟── which references the symbol introduced here
+//│ ║  l.134: 	  staged module B with
+//│ ║         	                ^^^^^^
+//│ ║  l.135: 	    fun f() = 1
+//│ ╙──       	^^^^^^^^^^^^^^^
+//│ ═══[RUNTIME ERROR] ReferenceError: B is not defined
