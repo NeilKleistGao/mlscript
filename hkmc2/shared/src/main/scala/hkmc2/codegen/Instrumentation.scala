@@ -311,8 +311,7 @@ class InstrumentationImpl(using State):
               StagedPath(sp, x.code): x0 =>
                 given Context = ctx.clone() += p -> x0
                 transformBlock(b): (y1, ctx) =>
-                  // TODO: use Arm type instead of Tup
-                  tuple(Ls(cse, y1.code)): cde =>
+                  blockCtor("Arm", Ls(cse, y1.code)): cde =>
                     StagedPath(y1.shapes, cde, symName): ret =>
                       Assign(res, ret.p, End())
             (Match(scrut, Ls(arm), S(dflt), _)):

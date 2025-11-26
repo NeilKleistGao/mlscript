@@ -18,6 +18,22 @@ type Ident = Symbol
 // this is so that we're able to retrieve information about the class from the symbol
 class ClassSymbol(val name: Str, val paramsOpt: Opt[ParamList]) extends Symbol(name)
 
+fun isPrimitiveType(sym: Symbol) = 
+  if sym.name is
+    "Str" then true
+    "Int" then true
+    "Num" then true
+    "Bool" then true
+    else false
+
+fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
+  if [sym.name, l] is
+    ["Str", l] and l is Str then true
+    ["Int", i] and i is Int then true
+    ["Num", n] and n is Num then true
+    ["Bool", b] and b is Bool then true
+    else false
+
 // Classes defined in Block.scala
 
 class Arg(val spread: Opt[Bool], val value: Path)
@@ -25,7 +41,7 @@ class Arg(val spread: Opt[Bool], val value: Path)
 class Case with
   constructor
     Lit(val lit: Literal)
-    Cls(val cls: Symbol, val path: Path)
+    Cls(val cls: ClassSymbol, val path: Path)
     Tup(val len: Int)
 
 class Result with 
@@ -44,7 +60,7 @@ class Path extends Result with
 class Defn with 
   constructor 
     ValDefn(val sym: Symbol, val rhs: Path)
-    ClsLikeDefn(val sym: Symbol, val companion: Opt[ClsLikeBody]) // companion unused
+    ClsLikeDefn(val sym: ClassSymbol, val companion: Opt[ClsLikeBody]) // companion unused
     FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
@@ -98,7 +114,9 @@ fun showResult(r) =
 fun showCase(c) =
   if c is
     Lit(l) then showLiteral(l)
-    Cls(cls, p) then showSymbol(cls)
+    Cls(cls, p) then showSymbol(cls) +
+      if isPrimitiveType(cls) then ""
+        else showParamsOpt(cls.paramsOpt)
     Tup(len) then "Tuple"
     _ then "<unknown case>"
 
@@ -108,7 +126,7 @@ fun showArm(a) =
 fun showParamsOpt(p) = 
   if p is
     Some(s) then showParams(s)
-    None then "()"
+    None then ""
 
 fun showParams(p: ParamList) =
   "(" + p.map(showSymbol).join(", ") + ")"  
@@ -120,9 +138,7 @@ fun showDefn(d) =
     FunDefn(sym, p, body) then
       "fun " + showSymbol(sym) + showParams(p) + " =" +
       (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
-    ClsLikeDefn(sym, _) then 
-      if sym is 
-        ClassSymbol(n, paramsOpt) then "class " + n + showParamsOpt(paramsOpt)
+    ClsLikeDefn(sym, _) then "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
     _ then "<unknown defn>"
 
 fun showBlock(b) =

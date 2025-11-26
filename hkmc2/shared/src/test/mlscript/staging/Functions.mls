@@ -1,40 +1,7 @@
+
 :js
 :staging
-
-//│ Block = class Block {
-//│   Symbol: fun Symbol { class: class Symbol },
-//│   ClassSymbol: fun ClassSymbol { class: class ClassSymbol },
-//│   Arg: fun Arg { class: class Arg },
-//│   Case: class Case,
-//│   Lit: fun Lit { class: class Lit },
-//│   Cls: fun Cls { class: class Cls },
-//│   Tup: fun Tup { class: class Tup },
-//│   Result: class Result,
-//│   Call: fun Call { class: class Call },
-//│   Instantiate: fun Instantiate { class: class Instantiate },
-//│   Tuple: fun Tuple { class: class Tuple },
-//│   Path: class Path,
-//│   Select: fun Select { class: class Select },
-//│   DynSelect: fun DynSelect { class: class DynSelect },
-//│   ValueRef: fun ValueRef { class: class ValueRef },
-//│   ValueLit: fun ValueLit { class: class ValueLit },
-//│   Defn: class Defn,
-//│   ValDefn: fun ValDefn { class: class ValDefn },
-//│   ClsLikeDefn: fun ClsLikeDefn { class: class ClsLikeDefn },
-//│   FunDefn: fun FunDefn { class: class FunDefn },
-//│   ClsLikeBody: fun ClsLikeBody { class: class ClsLikeBody },
-//│   Arm: fun Arm { class: class Arm },
-//│   Block: class Block,
-//│   Match: fun Match { class: class Match },
-//│   Return: fun Return { class: class Return },
-//│   Assign: fun Assign { class: class Assign },
-//│   Define: fun Define { class: class Define },
-//│   End: fun End { class: class End }
-//│ }
-//│ ShapeSet = class ShapeSet { ShapeSet: fun ShapeSet { class: class ShapeSet } }
-
-:js
-staged module Expressions with 
+staged module Expressions with
   fun lit() = 1
   fun assign() = 
     let x = 42
@@ -71,20 +38,25 @@ staged module Expressions with
 //│ > Dyn
 //│ > let scrut = 9
 //│ > if scrut is
-//│ > <unknown case> then <unknown block>
-//│ > <unknown case> then <unknown block>
+//│ > 9 then 2
+//│ > Int then 3
 //│ > else 0
 //│ > 
 
 :js
 :staging
-class Outside(a)
+class Outside(val a, val b)
+let x = Outside(1, 2)
 staged module ClassInstrumentation with
   class Inside(a, b) // not printed correctly
   class NoArg
   fun inst1() = new Outside(1)
   fun inst2() = new NoArg
-//│ > class NoArg()
+  fun match() = 
+    if x is
+      Outside(x, y) then 1
+      else 2
+//│ > class NoArg
 //│ > 
 //│ > class Inside(a, b)
 //│ > 
@@ -92,6 +64,16 @@ staged module ClassInstrumentation with
 //│ > new Outside(1)
 //│ > Class(NoArg, [])
 //│ > new ClassInstrumentation.NoArg()
+//│ > Dyn
+//│ > if x is
+//│ > Outside(a, b) then let argument0$ = x.a
+//│ > let argument1$ = x.b
+//│ > let y = argument1$
+//│ > let x = argument0$
+//│ > 1
+//│ > else 2
+//│ > 
+//│ x = Outside(1, 2)
 
 // debug printing fails, collision with class name?
 :js
@@ -111,8 +93,8 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.110: 	  staged module B with
-//│ ║         	                ^^^^^^
-//│ ║  l.111: 	    fun f() = 1
-//│ ╙──       	^^^^^^^^^^^^^^^
+//│ ║  l.92: 	  staged module B with
+//│ ║        	                ^^^^^^
+//│ ║  l.93: 	    fun f() = 1
+//│ ╙──      	^^^^^^^^^^^^^^^
 //│ ═══[RUNTIME ERROR] ReferenceError: B is not defined
