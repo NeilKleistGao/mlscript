@@ -79,7 +79,7 @@ fun showPath(p) =
     DynSelect(qual, fld, idx) then showPath(qual) + "[" + showPath(fld) + "]"
     ValueRef(s) then showSymbol(s)
     ValueLit(l) then showLiteral(l)
-    _ then "<unknown>"
+    _ then "<unknown path>"
 
 fun showArg(a) =
   (if a.spread is Some(true) then "..." else "") + showPath(a.value)
@@ -93,13 +93,14 @@ fun showResult(r) =
     Instantiate(cls, args) then "new " + showPath(cls) + "(" + showArgs(args) + ")"
     Tuple(elems) then "[" + showArgs(elems) + "]"
     Path then showPath(r)
+    _ then "<unknown result>"
 
 fun showCase(c) =
   if c is
     Lit(l) then showLiteral(l)
     Cls(cls, p) then showSymbol(cls)
     Tup(len) then "Tuple"
-    _ then "_"
+    _ then "<unknown case>"
 
 fun showArm(a) =
   showCase(a.cse) + " then " + showBlock(a.body)
@@ -122,6 +123,7 @@ fun showDefn(d) =
     ClsLikeDefn(sym, _) then 
       if sym is 
         ClassSymbol(n, paramsOpt) then "class " + n + showParamsOpt(paramsOpt)
+    _ then "<unknown defn>"
 
 fun showBlock(b) =
   if b is
@@ -137,7 +139,7 @@ fun showBlock(b) =
       (if dflt is Some(db) then "\nelse " + showBlock(db) else "") +
       "\n" + showBlock(rest)
     End() then ""
-    _ then "<Unknown Block>"
+    _ then "<unknown block>"
 
 fun printCode(p: Block) =
   let s = showBlock(p) in
