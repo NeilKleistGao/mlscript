@@ -3,6 +3,7 @@
 
 //│ Block = class Block {
 //│   Symbol: fun Symbol { class: class Symbol },
+//│   ClassSymbol: fun ClassSymbol { class: class ClassSymbol },
 //│   Arg: fun Arg { class: class Arg },
 //│   Case: class Case,
 //│   Lit: fun Lit { class: class Lit },
@@ -22,6 +23,7 @@
 //│   ClsLikeDefn: fun ClsLikeDefn { class: class ClsLikeDefn },
 //│   FunDefn: fun FunDefn { class: class FunDefn },
 //│   ClsLikeBody: fun ClsLikeBody { class: class ClsLikeBody },
+//│   Arm: fun Arm { class: class Arm },
 //│   Block: class Block,
 //│   Match: fun Match { class: class Match },
 //│   Return: fun Return { class: class Return },
@@ -30,7 +32,42 @@
 //│   End: fun End { class: class End }
 //│ }
 //│ ShapeSet = class ShapeSet { ShapeSet: fun ShapeSet { class: class ShapeSet } }
+import "../../mlscript-compile/Option.mls"
+open Option
 
-Block.printCode(Block.FunDefn(Block.Symbol("f"), [Block.Symbol("x")], Block.Return(Block.ValueLit(1), false)))
-//│ > FunDefn(Symbol("f"), [Symbol("x")], Return(Lit(1), false))
+Block.printCode(Block.Return(Block.ValueLit(1),false))  
+//│ > 1
+
+Block.printCode(Block.Define(Block.FunDefn(Block.Symbol("f"), [Block.Symbol("x")], Block.Return(Block.ValueRef(Block.Symbol("x"))), false), Block.Return(Block.ValueRef(Block.Symbol("x"))), false))
+//│ > fun f(x) = x
+//│ > x
+
+Block.printCode(
+    Block.Define(
+        Block.ClsLikeDefn(Block.Symbol("C"), Some([Block.Symbol("x"), Block.Symbol("y")]), None), 
+        Block.Assign(
+            Block.Symbol("x"), 
+            Block.Instantiate(
+                Block.ValueRef(Block.Symbol("C")), [Block.Arg(Some(false), Block.ValueLit("1")), Block.Arg(Some(false), Block.ValueLit("2"))]
+            ), 
+            Block.Return(
+                Block.Select(Block.ValueRef(Block.Symbol("x")), Block.Symbol("y"))
+                false
+            )
+        )
+    )
+)
+//│ > class C(x, y)
+//│ > let x = new C(1,2)
+//│ > x.y
+
+Block.printCode(Block.Return(Block.Tuple([Block.Arg(None, Block.ValueLit(1)), Block.Arg(None, Block.ValueLit(2))]), false))
+//│ > [1,2]
+
+Block.printCode(Block.Match(Block.ValueLit(2), [Block.Arm(Block.Lit(1), Block.Return(Block.ValueLit(1), false)), Block.Arm(Block.Lit(2), Block.Return(Block.ValueLit(2), false))], Some(Block.Return(Block.ValueLit(3), false)), Block.End()))
+//│ > if 2 is
+//│ > 1 then 1
+//│ > 2 then 2
+//│ > else 3
+//│ > 
 
