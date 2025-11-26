@@ -48,7 +48,7 @@ staged module ClassInstrumentation with
 //│ > Class(ClassSymbol("NoArg"), [])
 //│ > Return(Instantiate(Select(Ref(Symbol("ClassInstrumentation")), Symbol("NoArg")), []), false)
 
-// collision with class name?
+// debug printing fails, collision with class name?
 :js
 :staging
 :fixme
@@ -57,11 +57,17 @@ staged module A with
   fun f() = 1
 //│ ═══[RUNTIME ERROR] TypeError: A1.f_gen is not a function
 
-// unable to reference the class when calling the instrumented function for debugging
+// debug printing fails, unable to reference the class when calling the instrumented function
 :js
 :staging
 :fixme
 module A with
   staged module B with
     fun f() = 1
-//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed: nested module not supported
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
+//│ ╟── which references the symbol introduced here
+//│ ║  l.65: 	  staged module B with
+//│ ║        	                ^^^^^^
+//│ ║  l.66: 	    fun f() = 1
+//│ ╙──      	^^^^^^^^^^^^^^^
+//│ ═══[RUNTIME ERROR] ReferenceError: B is not defined

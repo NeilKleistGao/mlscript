@@ -427,7 +427,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
     case d @ Define(defn, rest) =>
       defn match
         // find modules with staged annotation
-        case c: ClsLikeDefn if c.companion.isDefined =>
+        case c: ClsLikeDefn if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
           val sym = c.sym.subst
           val companion = c.companion.get
           val (stagedMethods, debugPrintCode) = companion.methods
