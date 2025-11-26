@@ -262,7 +262,7 @@ class InstrumentationImpl(using State):
                 blockCtor("Assign", Ls(xSym, undefined, z.code)): cde =>
                   StagedPath(z.shapes, cde, symName)(k(_, summon))
 
-  def ruleEnd(symName: String = "inst")(k: StagedPath => Block): Block =
+  def ruleEnd(symName: String = "end")(k: StagedPath => Block): Block =
     shapeBot(): sp =>
       blockCtor("End", Ls()): cde =>
         StagedPath(sp, cde, symName)(k)
