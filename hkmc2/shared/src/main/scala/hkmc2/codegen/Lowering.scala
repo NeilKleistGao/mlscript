@@ -20,7 +20,7 @@ import semantics.Term.{Throw => _, *}
 import semantics.Elaborator.{State, Ctx, ctx}
 
 import syntax.{Literal, Tree}
-import hkmc2.syntax.Fun
+import hkmc2.syntax.{Fun, Keyword}
 
 
 abstract class TailOp extends (Result => Block)
@@ -212,13 +212,16 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             case S(comp) => comp.defn.getOrElse(wat("Module companion without definition", mod.companion))
             case N =>
               val clsSymb = new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id)
+              val stagedAnnots = mod.annotations.collect { 
+                case Annot.Modifier(Keyword.`staged`) => Annot.Modifier(Keyword.`staged`) 
+              }
               val newDefn = ClassDef.Plain(mod.owner, syntax.Cls, clsSymb,
                 mod.bsym,
                 Nil,
                 N,
                 ObjBody(Blk(Nil, UnitVal())),
                 S(mod.sym),
-                mod.annotations,
+                stagedAnnots
               )
               clsSymb.defn = S(newDefn)
               newDefn
