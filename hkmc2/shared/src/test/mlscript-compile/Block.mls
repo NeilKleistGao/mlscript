@@ -1,6 +1,9 @@
+import "./Predef.mls"
 import "./Option.mls"
 import "./StrOps.mls"
 
+open Predef
+open StrOps
 open Option
 
 module Block with...
@@ -18,8 +21,10 @@ type Literal = null | undefined | Str | Int | Num | Bool
 
 type ParamList = Array[Symbol]
 
-class Arg(val spread: Opt[Bool], val value: Path)
-  
+// Classes defined in Block.scala
+
+class Arg(val spread: Opt[Bool], val value: Path) 
+
 class Case with
   constructor
     Lit(val lit: Literal)
@@ -43,20 +48,18 @@ class Defn with
   constructor 
     ValDefn(val sym: Symbol, val rhs: Path)
     ClsLikeDefn(val sym: Symbol, val paramsOpt: Opt[ParamList], val companion: Opt[ClsLikeBody]) // unused
-    FunDefn(val sym: Symbol, val params: ParamList, val body: Block, val stage: Bool)
+    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
 
-class Arm(val cse: Case, val body: Block)
-
 class Block with
   constructor
-    Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
+    Match(val scrut: Path, val arms: Array[[Case, Block]], val dflt: Opt[Block], val rest: Block)
     Return(val res: Result, val implct: Bool)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
     End()
-
+  
 fun concat(b1: Block, b2: Block) = if b1 is
   Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, concat(rest, b2))
   Return(res, implct) then b2 // discard return?
@@ -64,78 +67,112 @@ fun concat(b1: Block, b2: Block) = if b1 is
   Define(defn, rest) then Define(defn, concat(rest, b2))
   End() then b2
 
-fun showSymbol(s) = s.name
+fun showBool(b: Bool) = if b then "true" else "false"
 
-fun showLiteral(l) = 
+fun showLiteral(l: Literal) =
   if l is 
     undefined then "undefined"
-    _ then l.toString()
+    null then "null"
+    else l.toString()
 
-fun showPath(p) =
+fun showSymbol(s: Symbol) =
+  // console.log("printing " + s)
+  if s is
+    ClassSymbol(name, args) then 
+      "ClassSymbol(" + "\"" + name + "\"" +
+      if args
+          is Some(args) then ":[" + args.map(showSymbol).join(", ") + "]"
+          is None then ""
+      + ")"
+    _ then "Symbol(" + "\"" + s.name + "\"" + ")"
+
+fun showIdent(i: Ident) = showSymbol(i)
+
+fun showPath(p: Path): Str =
   if p is
-    Select(qual, name) then showPath(qual) + "." + showSymbol(name)
-    DynSelect(qual, fld, idx) then showPath(qual) + "[" + showPath(fld) + "]"
-    ValueRef(s) then showSymbol(s)
-    ValueLit(l) then showLiteral(l)
-    _ then "<unknown>"
+    Select(qual, name) then
+      "Select(" + showPath(qual) + ", " + showIdent(name) + ")"
+    DynSelect(qual, fld, arrayIdx) then
+      "DynSelect(" + showPath(qual) + ", " + showPath(fld) + ", " + showBool(arrayIdx) + ")"
+    ValueRef(l) then
+      "Ref(" + showSymbol(l) + ")"
+    ValueLit(lit) then
+      "Lit(" + showLiteral(lit) + ")"
 
-fun showArg(a) =
-  (if a.spread is Some(true) then "..." else "") + showPath(a.value)
+fun showArg(arg: Arg) =
+  if arg.spread is Some(true) then "..." + showPath(arg.value)
+  else showPath(arg.value)
 
-fun showArgs(args) =
-  args.map(showArg)
+fun showArgs(args: Array[Arg]) =
+  "[" + args.map(showArg).join(", ") + "]"
 
-fun showResult(r) =
-  if r is
-    Call(f, args) then showPath(f) + "(" + showArgs(args) + ")"
-    Instantiate(cls, args) then "new " + showPath(cls) + "(" + showArgs(args) + ")"
-    Tuple(elems) then "[" + showArgs(elems) + "]"
-    Path then showPath(r)
-
-fun showCase(c) =
+// Case (match arm patterns)
+fun showCase(c: Case): Str =
   if c is
-    Lit(l) then showLiteral(l)
-    Cls(cls, p) then showSymbol(cls) + "(" + showPath(p) + ")"
-    Tup(len) then "Tuple"
-    _ then "_"
+    Lit(lit) then "Lit(" + showLiteral(lit) + ")"
+    Cls(cls, path) then "Cls(" + showSymbol(cls) + ", " + showPath(path) + ")"
+    Tup(len) then "Tup(" + len + ")"
 
-fun showArm(a) =
-  showCase(a.cse) + " then " + showBlock(a.body)
+fun showResult(r: Result): Str =
+  if r is
+    Path then showPath(r)
+    Call(f, args) then "Call(" + showPath(f) + ", " + showArgs(args) + ")"
+    Instantiate(cls, args) then "Instantiate(" + showPath(cls) + ", " + showArgs(args) + ")"
+    Tuple(elems) then "Tuple(" + showArgs(elems) + ")"
 
-fun showParamsOpt(p) = 
-  if p is
-    Some(s) then showParams(s)
-    None then "()"
+fun showParamList(ps: ParamList) =
+  "[" + ps.map(s => showSymbol(s)).join(", ") + "]"
 
-fun showParams(p: ParamList) =
-  "(" + p.map(showSymbol).join(", ") + ")"  
-
-fun showDefn(d) =
+fun showDefn(d: Defn): Str =
   if d is
     ValDefn(sym, rhs) then
-      "let " + showSymbol(sym) + " = " + showPath(rhs)
-    FunDefn(sym, params, body, stage) then
-      "fun " + showSymbol(sym) + "(" + params.map(showSymbol) + ") =" +
-      (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
-    ClsLikeDefn(sym, paramsOpt, _) then
-      "class " + showSymbol(sym) + showParamsOpt(paramsOpt)
+      "ValDefn(" + showSymbol(sym) + ", " + showPath(rhs) + ")"
+    FunDefn(sym, params, body) then
+      "FunDefn(" + showSymbol(sym) + ", " +
+      showParamList(params) + ", " +
+      showBlock(body) + ")"
+    ClsLikeDefn(sym, paramsOpt, companion) then
+      // TODO: print rest of the arguments
+      "ClsLikeDefn(" + showSymbol(sym) + ", " +
+      if paramsOpt is
+        Some(params) then "(" + showParamList(params) + ")"
+        None then "()"
+      + ", " +
+      "TODO" + ")"
 
-fun showBlock(b) =
+fun showOptBlock(ob: Opt[Block]) =
+  if ob is Some(b) then showBlock(b) else "None"
+
+fun showArm(pair: Case -> Block) =
+  if pair is [cse, body] then showCase(cse) + " -> " + showBlock(body) else "<bad-arm>"
+
+fun showBlock(b: Block): Str =
   if b is
-    Assign(lhs, rhs, rest) then
-      "let " + showSymbol(lhs) + " = " + showResult(rhs) + "\n" + showBlock(rest)
-    Define(d, rest) then
-      showDefn(d) + "\n" + showBlock(rest)
-    Return(res, _) then
-      showResult(res)
     Match(scrut, arms, dflt, rest) then
-      "if " + showPath(scrut) + " is\n"
-      + arms.map(showArm).join("\n") +
-      (if dflt is Some(db) then "\nelse " + showBlock(db) else "") +
-      "\n" + showBlock(rest)
-    End() then ""
-    x then x
+      "Match(" +
+        showPath(scrut) + ", " +
+        "[" + arms.map(showArm).join(", ") + "], " +
+        showOptBlock(dflt) + ", " +
+        showBlock(rest) + ")"
+    Return(res, implct) then 
+      "Return(" + showResult(res) + ", " + showBool(implct) + ")"
+    Assign(lhs, rhs, rest) then 
+      "Assign(" + showSymbol(lhs) + ", " + showResult(rhs) + ", " + showBlock(rest) + ")"
+    Define(defn, rest) then 
+      "Define(" + showDefn(defn) + ", " + showBlock(rest) + ")"
+    End() then "End"
 
-fun printCode(p: Block) =
-  let s = showBlock(p) in
-    console.log(s)
+fun show(x) =
+  if x is
+    Symbol then showSymbol(x)
+    Path then showPath(x)
+    Result then showResult(x)
+    Case then showCase(x)
+    Defn then showDefn(x)
+    Block then showBlock(x)
+  else
+    "<unknown>"
+
+fun printCode(x) = print(show(x))
+
+fun compile(p: Block) = ???
