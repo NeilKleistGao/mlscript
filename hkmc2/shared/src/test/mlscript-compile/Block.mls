@@ -85,7 +85,7 @@ fun showArg(a) =
   (if a.spread is Some(true) then "..." else "") + showPath(a.value)
 
 fun showArgs(args) =
-  args.map(showArg).join(", ")
+  args.map(showArg).join(",")
 
 fun showResult(r) =
   if r is
@@ -117,8 +117,8 @@ fun showDefn(d) =
   if d is
     ValDefn(sym, rhs) then
       "let " + showSymbol(sym) + " = " + showPath(rhs)
-    FunDefn(sym, params, body) then
-      "fun " + showSymbol(sym) + params.map(showParams).join("") + " =" +
+    FunDefn(sym, p, body) then
+      "fun " + showSymbol(sym) + showParams(p) + " =" +
       (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
     ClsLikeDefn(sym, _) then 
       if sym is 
