@@ -211,14 +211,17 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             mod.classCompanion match
             case S(comp) => comp.defn.getOrElse(wat("Module companion without definition", mod.companion))
             case N =>
-              ClassDef.Plain(mod.owner, syntax.Cls, new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id),
+              val clsSymb = new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id)
+              val newDefn = ClassDef.Plain(mod.owner, syntax.Cls, clsSymb,
                 mod.bsym,
                 Nil,
                 N,
                 ObjBody(Blk(Nil, UnitVal())),
                 S(mod.sym),
-                Nil,
+                mod.annotations,
               )
+              clsSymb.defn = S(newDefn)
+              newDefn
           case _ => _defn
         reportAnnotations(defn, defn.extraAnnotations)
         val bufferableAnnots = defn.annotations.flatMap:
