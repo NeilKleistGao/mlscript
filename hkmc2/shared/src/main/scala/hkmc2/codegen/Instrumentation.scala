@@ -120,9 +120,9 @@ class InstrumentationImpl(using State):
     shapeSetCall("mkDyn", Ls())(s => k(ShapeSet(s)))
   def shapeLit(p: Path)(k: ShapeSet => Block): Block =
     shapeSetCall("mkLit", Ls(p))(s => k(ShapeSet(s)))
-  def shapeArr(ps: Ls[ShapeSet])(k: ShapeSet => Block): Block =
+  def shapeArr(ps: Ls[ShapeSet], inf: Bool)(k: ShapeSet => Block): Block =
     tuple(ps, "test"): tup =>
-      shapeSetCall("mkArr", Ls(tup))(s => k(ShapeSet(s)))
+      shapeSetCall("mkArr", Ls(tup, toValue(inf)))(s => k(ShapeSet(s)))
   def shapeClass(cls: Path, params: Ls[ShapeSet])(k: ShapeSet => Block): Block =
     tuple(params): params =>
       shapeSetCall("mkClass", Ls(cls, params))(s => k(ShapeSet(s)))
@@ -173,8 +173,8 @@ class InstrumentationImpl(using State):
   def ruleTup(t: Tuple, symName: String = "tup")(using Context)(k: StagedPath => Block): Block =
     assert(!t.mut, "mutable tuple not supported")
     transformArgs(t.elems): xs =>
-      shapeArr(xs.map(_.shapes)): sp =>
-        tuple(xs.map(_.code)): codes =>
+      shapeArr(xs.map(_._1.shapes), xs.exists(_._2)): sp =>
+        tuple(xs.map(_._1.code)): codes =>
           blockCtor("Tuple", Ls(codes)): cde =>
             StagedPath(sp, cde, symName)(k)
 
@@ -204,11 +204,11 @@ class InstrumentationImpl(using State):
         case s: Select if s.symbol.isDefined => transformSymbol(s.symbol.get)
         case _ => transformSymbol(TempSymbol(N, "TODO"))
       sym: sym =>
-        shapeClass(sym, xs.map(_.shapes)): sp =>
+        shapeClass(sym, xs.map(_._1.shapes)): sp =>
           // reuse instrumentation logic, shape of cls is discarded
           // possible to skip this? this uses ruleVar, which is not in formalization
           transformPath(cls): cls =>
-            tuple(xs.map(_.code)): codes =>
+            tuple(xs.map(_._1.code)): codes =>
               blockCtor("Instantiate", Ls(cls.code, codes)): cde =>
                 StagedPath(sp, cde, symName)(k)
 
@@ -348,15 +348,15 @@ class InstrumentationImpl(using State):
       case c: Call => ???
       case _ => ??? // not supported
 
-  def transformArg(a: Arg)(using Context)(k: StagedPath => Block): Block =
+  def transformArg(a: Arg)(using Context)(k: ((StagedPath, Bool)) => Block): Block =
     val Arg(spread, value) = a
-    optionNone(): opt =>
+    transformOption(spread, bool => assign(toValue(bool))): spreadStaged =>
       transformPath(value): value =>
-        blockCtor("Arg", Ls(opt, value.code)): cde =>
-          StagedPath(value.shapes, cde)(k)
+        blockCtor("Arg", Ls(spreadStaged, value.code)): cde =>
+          StagedPath(value.shapes, cde): res =>
+            k(res, spread.isDefined)
 
-  // provides list of shapes and list of codes to continuation
-  def transformArgs(args: Ls[Arg])(using Context)(k: Ls[StagedPath] => Block): Block =
+  def transformArgs(args: Ls[Arg])(using Context)(k: Ls[(StagedPath, Bool)] => Block): Block =
     args.map(transformArg).collectApply(k)
 
   def transformParamList(ps: ParamList)(k: Path => Block) =

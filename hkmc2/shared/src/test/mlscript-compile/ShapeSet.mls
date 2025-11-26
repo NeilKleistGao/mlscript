@@ -54,11 +54,11 @@ fun mkDyn() = lift(Dyn())
 
 fun mkLit(l) = lift(Lit(l))
 
-fun mkArr(shapes: Array[ShapeSet]) = 
+fun mkArr(shapes: Array[ShapeSet], inf: Bool) = 
   shapes
     .map(_.underlying.values().toArray())
     |> prod
-    .map(x => Arr(x))
+    .map(x => Arr(x, inf))
     |> liftMany
 
 fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) = 
