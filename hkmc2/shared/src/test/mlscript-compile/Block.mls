@@ -12,16 +12,14 @@ type Opt[A] = Option[A]
 
 // dependancies referenced in Block classes, referencing implementation in Term.mls
 
-class Symbol(val name: Str)
-type Ident = Symbol
-// this is so that we're able to retrieve information about the class from the symbol
-class ClassSymbol(val name: Str, val args: Opt[Array[Symbol]]) extends Symbol(name)
-
 type Literal = null | undefined | Str | Int | Num | Bool
 
 type ParamList = Array[Symbol]
 
-// Classes defined in Block.scala
+class Symbol(val name: Str)
+type Ident = Symbol
+// this is so that we're able to retrieve information about the class from the symbol
+class ClassSymbol(val name: Str, val paramsOpt: Opt[ParamList]) extends Symbol(name)
 
 class Arg(val spread: Opt[Bool], val value: Path) 
 
@@ -29,7 +27,7 @@ class Case with
   constructor
     Lit(val lit: Literal)
     Cls(val cls: Symbol, val path: Path)
-    Tup(val len: Int) // TODO: remove inf?
+    Tup(val len: Int)
 
 class Result with 
   constructor
@@ -47,8 +45,8 @@ class Path extends Result with
 class Defn with 
   constructor 
     ValDefn(val sym: Symbol, val rhs: Path)
-    ClsLikeDefn(val sym: Symbol, val paramsOpt: Opt[ParamList], val companion: Opt[ClsLikeBody]) // unused
-    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
+    ClsLikeDefn(val sym: ClassSymbol, val paramsOpt: Opt[ParamList], val companion: Opt[ClsLikeBody]) // unused
+    FunDefn(val sym: Symbol, val params: ParamList, val body: Block, val stage: Bool)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
 
