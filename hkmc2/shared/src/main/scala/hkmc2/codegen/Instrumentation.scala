@@ -271,10 +271,10 @@ class InstrumentationImpl(using State):
                 blockCtor("Assign", Ls(xSym, undefined, z.code)): cde =>
                   StagedPath(z.shapes, cde, symName)(k(_, summon))
 
-  def ruleEnd(symName: String = "end")(k: StagedPath => Block): Block =
+  def ruleEnd(symName: String = "end")(using Context)(k: (StagedPath, Context) => Block): Block =
     shapeBot(): sp =>
       blockCtor("End", Ls()): cde =>
-        StagedPath(sp, cde, symName)(k)
+        StagedPath(sp, cde, symName)(k(_, summon))
 
   def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)(k apply _.code)
@@ -313,7 +313,7 @@ class InstrumentationImpl(using State):
     transformCase(cse): cse =>
       fnFilter(x.shapes, cse): sp =>
         call(sp.p.selSN("isEmpty"), Ls()): scrut =>
-          ruleEnd(): e =>
+          ruleEnd(): (e, ctx) =>
             val res = new TempSymbol(N, "tmp")
             val arm = Case.Lit(Tree.BoolLit(true)) -> Assign(res, e.p, End())
             val dflt =
@@ -331,7 +331,7 @@ class InstrumentationImpl(using State):
   // to avoid defining the `_` pattern in Block.Case, we apply filter(s, _) = s
   def ruleWildCard(x: StagedPath, p: Path, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     call(x.shapes.p.selSN("isEmpty"), Ls()): scrut =>
-      val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()(p => Return(p.p, false))
+      val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()((p, _) => Return(p.p, false))
       (Match(scrut, Ls(arm), N, _)):
         given Context = ctx.clone() += p -> x
         transformBlock(b): (y1, ctx) =>
@@ -408,8 +408,8 @@ class InstrumentationImpl(using State):
         ruleLet(x, Assign(x, r, d.rest))(k)
       case c: ClsLikeDefn =>
         ruleCls(c, d.rest): p =>
-          ruleEnd(): b =>
-            fnPrintCode(p)(k(b, summon))
+          ruleEnd(): (b, ctx) =>
+            fnPrintCode(p)(k(b, ctx))
 
   // TODO
   // discards result of sub
@@ -429,7 +429,7 @@ class InstrumentationImpl(using State):
       case r: Return => ruleReturn(r)(k)
       case a: Assign => ruleAssign(a)(k)
       case d: Define => transformDefine(d)(k)
-      case End(_) => ruleEnd()(k2)
+      case End(_) => ruleEnd()(k)
       case m: Match => ruleMatch(m)(k)
       // temporary measure to accept returning an array
       // use BlockTransformer here?
