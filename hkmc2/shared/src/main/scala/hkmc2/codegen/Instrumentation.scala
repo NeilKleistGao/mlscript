@@ -137,6 +137,8 @@ class InstrumentationImpl(using State):
     shapeSetCall("sel", Ls(s1, s2))(s => k(ShapeSet(s)))
   def fnFilter(s1: ShapeSet, s2: Path)(k: ShapeSet => Block): Block =
     shapeSetCall("filter", Ls(s1, s2))(s => k(ShapeSet(s)))
+  def fnRest(s1: ShapeSet, s2: Path)(k: ShapeSet => Block): Block =
+    shapeSetCall("rest", Ls(s1, s2))(s => k(ShapeSet(s)))
   def fnUnion(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
     shapeSetCall("union", Ls(s1, s2))(s => k(ShapeSet(s)))
 
@@ -231,7 +233,7 @@ class InstrumentationImpl(using State):
     transformPath(p): x =>
       ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
         transformBlock(rest)(using ctx1): (z, ctx2) =>
-          fnMrg(stagedMatch.shapes, z.shapes): sp =>
+          fnUnion(stagedMatch.shapes, z.shapes): sp =>
             fnConcat(stagedMatch.code, z.code): cde =>
               StagedPath(sp, cde, symName)(k(_, ctx2))
 
@@ -290,52 +292,56 @@ class InstrumentationImpl(using State):
                 blockCtor("Define", Ls(cls, p.code))(k)
 
   def ruleBranches(x: StagedPath, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block], symName: String = "branches")(using Context)(k: (StagedPath, Context) => Block): Block =
-    arms.map((cse, block) => (f: StagedPath => Context => Block) => (ruleBranch(x, p, cse, block)(using _)).flip(f(_)(_)))
-      .collectApply
-      .pipe(_.flip(summon)): arms =>
-        ctx =>
-          tuple(arms.map(_.p)): tup =>
-            fnPruneBadArms(tup): res =>
-              val result = StagedPath(res)
-              val sp = result.shapes
-              val arms = result.code
-              blockCtor("End", Ls()): e =>
-                // TODO: use transformOption here
-                def dfltStaged(k: (Path, Context) => Block) = dflt match
-                  case S(dflt) => ruleWildCard(x, p, dflt): (dflt, ctx) =>
-                      optionSome(dflt.code)(k(_, ctx))
-                  case N => optionNone()(k(_, ctx))
-                dfltStaged: (dflt, ctx) =>
-                  blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
-                    StagedPath(sp, m, symName)(k(_, ctx))
+    def applyRuleBranch(cse: Case, block: Block)(f: StagedPath => (Context, StagedPath) => Block)(ctx: Context, x: StagedPath): Block =
+      ruleBranch(x, p, cse, block)(using ctx)((y, ctx, x) => f(y)(ctx, x))
 
-  def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block, symName: String = "branch")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+    val a = arms.map(applyRuleBranch).collectApply
+    ((f: (Ls[StagedPath], Context) => Block) => a(ys => (ctx, _) => f(ys, ctx))(summon, x)): (arms, ctx) =>
+      tuple(arms.map(_.p)): tup =>
+        fnPruneBadArms(tup): res =>
+          val result = StagedPath(res)
+          val sp = result.shapes
+          val arms = result.code
+          blockCtor("End", Ls()): e =>
+            // TODO: use transformOption here
+            def dfltStaged(k: (Path, Context) => Block) = dflt match
+              case S(dflt) => ruleWildCard(x, p, dflt): (dflt, ctx) =>
+                  optionSome(dflt.code)(k(_, ctx))
+              case N => optionNone()(k(_, ctx))
+            dfltStaged: (dflt, ctx) =>
+              blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
+                StagedPath(sp, m, symName)(k(_, ctx))
+
+  def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block, symName: String = "branch")(using Context)(k: (StagedPath, Context, StagedPath) => Block): Block =
     transformCase(cse): cse =>
-      fnFilter(x.shapes, cse): sp =>
-        call(sp.p.selSN("isEmpty"), Ls()): scrut =>
-          ruleEnd(): (e, ctx) =>
-            val res = new TempSymbol(N, "tmp")
-            val arm = Case.Lit(Tree.BoolLit(true)) -> Assign(res, e.p, End())
-            val dflt =
-              StagedPath(sp, x.code): x0 =>
-                given Context = ctx.clone() += p -> x0
-                transformBlock(b): (y1, ctx) =>
-                  // TODO: use Arm type instead of Tup
-                  tuple(Ls(cse, y1.code)): cde =>
-                    StagedPath(y1.shapes, cde, symName): ret =>
-                      Assign(res, ret.p, End())
-            (Match(scrut, Ls(arm), S(dflt), _)):
-              k(StagedPath(Value.Ref(res)), ctx.clone() -= p)
+      fnFilter(x.shapes, cse): filtered =>
+        StagedPath(filtered, x.code): x0 =>
+          fnRest(x.shapes, cse): rest =>
+            StagedPath(rest, x.code): x1 =>
+              call(filtered.p.selSN("isEmpty"), Ls()): scrut =>
+                ruleEnd(): (e, ctx) =>
+                  val res = new TempSymbol(N, "tmp")
+                  val arm = Case.Lit(Tree.BoolLit(true)) -> Assign(res, e.p, End())
+                  transformBlock(b)(using ctx.clone() += p -> x0): (y, ctx) =>
+                    // TODO: use Arm type instead of Tup
+                    tuple(Ls(cse, y.code)): cde =>
+                      StagedPath(y.shapes, cde, symName): ret =>
+                        val dflt = Assign(res, ret.p, End())
+                        (Match(scrut, Ls(arm), S(dflt), _)):
+                          k(StagedPath(Value.Ref(res)), ctx.clone() -= p, x1)
 
-  // this partially applies rules from filter to account for difference between Block.Case and Match pattern in the formalization
-  // to avoid defining the `_` pattern in Block.Case, we apply filter(s, _) = s
+  // this partially applies rules to account for difference between Block.Case and Match pattern in the formalization
+  // to avoid defining the `_` pattern in Block.Case, we apply filter(s, _) = s and rest(s, _) = bot
   def ruleWildCard(x: StagedPath, p: Path, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     call(x.shapes.p.selSN("isEmpty"), Ls()): scrut =>
-      val arm = Case.Lit(Tree.BoolLit(true)) -> ruleEnd()((p, _) => Return(p.p, false))
-      (Match(scrut, Ls(arm), N, _)):
+      ruleEnd(): (e, ctx) =>
+        val res = new TempSymbol(N, "tmp")
+        val arm = Case.Lit(Tree.BoolLit(true)) -> Assign(res, e.p, End())
         given Context = ctx.clone() += p -> x
-        transformBlock(b): (y1, ctx) =>
-          k(y1, ctx.clone() -= p)
+        transformBlock(b): (y, ctx) =>
+          val dflt = Assign(res, y.p, End())
+          (Match(scrut, Ls(arm), S(dflt), _)):
+            k(StagedPath(Value.Ref(res)), ctx.clone() -= p)
 
   // transformations of Block
 

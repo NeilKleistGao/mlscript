@@ -96,6 +96,7 @@ fun silh(p: Case): Shape = if p is
     Class(sym, Array(size).fill(Dyn))
   Block.Tup(n, inf) then Arr(Array(n).fill(Dyn), inf)
 
+// TODO: use Option instead, since all of them return at most one shape
 fun filter(s: Shape, p: Case): Array[Shape] =
   if [s, p] is
     [Lit(l1), Block.Lit(l2)] and l1 == l2 then [s]
@@ -106,3 +107,14 @@ fun filter(s: Shape, p: Case): Array[Shape] =
     [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
     [Dyn, _] then [silh(p)]
     else []
+
+fun rest(s: Shape, p: Case): Array[Shape] =
+  if [s, p] is
+    [Lit(l1), Block.Lit(l2)] and l1 == l2 then []
+    [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then []
+    [Arr(ls, false), Block.Tup(n, false)] and ls.length == n then []
+    [Arr(ls, true), _] then [s] // TODO
+    [_, Block.Tup(ls, true)] then [s] // TODO
+    [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then []
+    [Dyn, _] then [s]
+    else [s]
