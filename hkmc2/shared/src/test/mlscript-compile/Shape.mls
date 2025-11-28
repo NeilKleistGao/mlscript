@@ -31,6 +31,9 @@ class Shape with
     Arr(val shapes: Array[Shape], val inf: Bool)
     Class(val sym: ClassSymbol, val params: Array[Shape])
 
+// FIXME: hack to check equality of classes if they have the same paramters
+fun equals(a: Shape, b: Shape) = show(a) == show(b)
+
 fun show(s: Shape) =
   if s is
     Dyn then "Dyn"
@@ -42,8 +45,7 @@ fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
   a.map((a, i, _) => mrg2(a, b.at(i)))
 
 fun mrg2(s1: Shape, s2: Shape) =
-  // we want different objects with same parameters to be equal
-  if show(s1) == show(s2) then s1
+  if equals(s1, s2) then s1
   else if [s1, s2] is 
     [Lit(l), Class(sym, params)]
       and isPrimitiveTypeOf(sym, l)

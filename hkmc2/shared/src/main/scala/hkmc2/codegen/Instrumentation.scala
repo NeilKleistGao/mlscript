@@ -131,8 +131,6 @@ class InstrumentationImpl(using State):
     blockCall("concat", Ls(p1, p2))(k)
   def fnPruneBadArms(arms: Path)(k: Path => Block): Block =
     shapeSetCall("pruneBadArms", Ls(arms))(k)
-  def fnMrg(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
-    shapeSetCall("mrg", Ls(s1, s2))(s => k(ShapeSet(s)))
   def fnSel(s1: ShapeSet, s2: ShapeSet)(k: ShapeSet => Block): Block =
     shapeSetCall("sel", Ls(s1, s2))(s => k(ShapeSet(s)))
   def fnFilter(s1: ShapeSet, s2: Path)(k: ShapeSet => Block): Block =
