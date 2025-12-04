@@ -28,8 +28,8 @@ case class ConcreteProd(path: Path, ctor: ProdCtor)
 
 
 enum SelectionTarget:
-  case ObjectMember(sym: FieldSymbol)
-  case CompanionMember(comp: Term, sym: FieldSymbol)
+  case ObjectMember(sym: MemberSymbol)
+  case CompanionMember(comp: Term, sym: MemberSymbol)
 
 
 
@@ -41,7 +41,8 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
   def typeBody(b: ObjBody): Unit =
     typeProd(b.blk)
   
-  def typeProd(t: Term, insideSelAppChain: Boolean = false): Producer = typeProdImpl(t.expanded, insideSelAppChain)
+  def typeProd(t: Term, insideSelAppChain: Boolean = false): Producer =
+    typeProdImpl(t.expanded, insideSelAppChain)
   
   def typeProdImpl(t: Term, insideSelAppChain: Boolean): Producer =
   trace[P](s"Typing producer: ${t.showDbg}", post = res => s": ${res.showDbg}"):
@@ -60,6 +61,14 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
     
     t match
     
+    case Resolved(trm, sym) =>
+      val _ = typeProd(trm)
+      sym match
+      case cls: ClassSymbol => P.Ctor(cls, Nil)(t)
+      case cls: ModuleOrObjectSymbol => P.Ctor(cls, Nil)(t)
+      case ts: TermSymbol => P.Flow(ts.bms.get.flow)
+      // typeProd(trm)
+      
     case Ref(sym) =>
       sym match
       case sym: VarSymbol => P.Flow(sym)
@@ -69,6 +78,9 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       case bs: BuiltinSymbol =>
         bs.signature
       case bms: BlockMemberSymbol =>
+        
+        // TODO: what if this is not resolved yet?
+        
         P.Flow(bms.flow)
       case _: Symbol =>
         log(s"/!\\ Unhandled symbol type: ${sym} (${sym.getClass.getSimpleName}) /!\\")
@@ -141,19 +153,22 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       P.Flow(sym)
     
     case sel @ Sel(pre, nme) =>
-      selsToExpand += sel
+      // selsToExpand += sel
       log(s"Selection ${sel.showDbg} ${sel.typ}")
       checkLDS(pre): pre_t =>
         sel.resolvedSym match
-        case S(sym: BlockMemberSymbol) => P.Flow(sym.flow)
+        case S(sym: BlockMemberSymbol) =>
+          log(s"RES ${sym.nme} in ${sel.showDbg}")
+          P.Flow(sym.flow)
         case S(sym) =>
+          selsToExpand += sel
           log(s"Unhandled symbol reference ${sym.nme} in ${sel.showDbg}")
           P.Unknown(sel)
         case N =>
+          selsToExpand += sel
           val sym = sel.resSym
           constrain(pre_t, C.Sel(nme, C.Flow(sym))(sel))
           P.Flow(sym)
-
     
     case nw @ New(cls, args, rft) =>
       rft match
@@ -458,8 +473,10 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
     (moduleSym :: outermostPath).reverse match
     case Nil => die
     case sym :: syms => S:
-      syms.foldLeft(sym.bms.getOrElse(die).ref(): Term): (a, b) =>
-        Sel(a, Tree.Ident(b.nme))(S(b.bms.getOrElse(die)), N, N)
+      syms.foldLeft(sym.asInstanceOf[DefinitionSymbol[?]]//FIXME
+        .bms.getOrElse(die).ref(): Term): (a, b) =>
+        Sel(a, Tree.Ident(b.nme))(S(b.asInstanceOf[DefinitionSymbol[?]]//FIXME
+          .bms.getOrElse(die)), N, N)
   
   
   import hkmc2.document.*

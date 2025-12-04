@@ -57,20 +57,18 @@ fun test(x) = x.m
 // :df
 fun test(x: Foo) = x.m
 //│ Flowed:
-//│   fun test¹(x²: Foo⁰) ‹flow:test¹› = x².m⁰
+//│   fun test¹(x²: Foo⁰{ ~> Foo⁰ }) ‹flow:test¹› = x².m‹?›{ ~> x².m⁰ }
 //│ where
 //│     x²  <~  type Foo
-//│     x²  ~>  {m: ⋅m¹}
-//│     flow:test¹  <~  ((type Foo) -> ⋅m¹)
+//│     flow:test¹  <~  ((type Foo) -> flow:m⁰)
 
 let f = (x: Foo) => x.m
 //│ Flowed:
 //│   let f⁰,
-//│   f⁰ = (x³: Foo⁰) => x³.m⁰
+//│   f⁰ = (x³: Foo⁰{ ~> Foo⁰ }) => x³.m‹?›{ ~> x³.m⁰ }
 //│ where
-//│     f⁰  <~  ((type Foo) -> ⋅m²)
+//│     f⁰  <~  ((type Foo) -> flow:m⁰)
 //│     x³  <~  type Foo
-//│     x³  ~>  {m: ⋅m²}
 //│ f = fun f
 
 

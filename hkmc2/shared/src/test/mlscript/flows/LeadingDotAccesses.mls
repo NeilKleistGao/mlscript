@@ -11,7 +11,7 @@ fun f(x : A) = x
 :sf
 f(.a)
 //│ Flowed:
-//│   f⁰(_?_.a{ ~> A⁰.a⁰ })‹app⁰›
+//│   f⁰{ ~> f⁰ }(_?_.a{ ~> A⁰.a⁰ })‹app⁰›
 //│ where
 //│     app⁰  <~  type A
 //│ = A
@@ -19,7 +19,7 @@ f(.a)
 :sf
 f(.a.b)
 //│ Flowed:
-//│   f⁰(A⁰.a⁰.b⁰)‹app¹›
+//│   f⁰{ ~> f⁰ }(A⁰.a⁰.b⁰)‹app¹›
 //│ where
 //│     app¹  <~  type A
 //│ = A
@@ -30,7 +30,7 @@ f(z)
 //│ Flowed:
 //│   let z⁰,
 //│   z⁰ = _?_.a{ ~> A⁰.a⁰ },
-//│   f⁰(z⁰)‹app²›
+//│   f⁰{ ~> f⁰ }(z⁰)‹app²›
 //│ where
 //│     z⁰  <~  _?_.a
 //│     z⁰  ~>  type A
@@ -56,7 +56,7 @@ f(z).c(4).b
 :sf
 f(.a.c(1).b.c(4))
 //│ Flowed:
-//│   f⁰(A⁰.a⁰.c⁰(1)‹app⁶›.b⁰.c⁰(4)‹app⁷›)‹app⁸›
+//│   f⁰{ ~> f⁰ }(A⁰.a⁰.c⁰(1)‹app⁶›.b⁰.c⁰(4)‹app⁷›)‹app⁸›
 //│ where
 //│     app⁸  <~  type A
 //│     app⁷  <~  A
@@ -84,11 +84,11 @@ g(d)
 //│ ║  l.8: 	  fun a = new A
 //│ ╙──     	  ^^^^^^^^^^^^^
 //│ Flowed:
-//│   fun g⁰(x⁰: C⁰) ‹flow:g⁰› = x⁰,
+//│   fun g⁰(x⁰: C⁰{ ~> C⁰ }) ‹flow:g⁰› = x⁰,
 //│   let d⁰,
 //│   d⁰ = _?_.a{ ~> ‹error› },
-//│   f⁰(d⁰)‹app⁹›,
-//│   g⁰(d⁰)‹app¹⁰›
+//│   f⁰{ ~> f⁰ }(d⁰)‹app⁹›,
+//│   g⁰{ ~> g⁰ }(d⁰)‹app¹⁰›
 //│ where
 //│     x⁰  <~  type C
 //│     x⁰  ->  app¹⁰
@@ -108,8 +108,8 @@ g(d)
 f(.a)
 g(.a)
 //│ Flowed:
-//│   f⁰(_?_.a{ ~> A⁰.a⁰ })‹app¹¹›,
-//│   g⁰(_?_.a{ ~> C⁰.a¹ })‹app¹²›
+//│   f⁰{ ~> f⁰ }(_?_.a{ ~> A⁰.a⁰ })‹app¹¹›,
+//│   g⁰{ ~> g⁰ }(_?_.a{ ~> C⁰.a¹ })‹app¹²›
 //│ where
 //│     app¹¹  <~  type A
 //│     app¹²  <~  type C
@@ -123,7 +123,7 @@ f(.w)
 //│ ║  l.121: 	f(.w)
 //│ ╙──       	  ^^
 //│ Flowed:
-//│   f⁰(_?_.w{ ~> ‹error› })‹app¹³›
+//│   f⁰{ ~> f⁰ }(_?_.w{ ~> ‹error› })‹app¹³›
 //│ where
 //│     app¹³  <~  type A
 //│ ═══[RUNTIME ERROR] Error: Function 'f' expected 1 argument but got 0

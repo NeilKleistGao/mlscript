@@ -18,14 +18,12 @@ module Foo with
 //│     val a⁰ ‹flow:a⁰› = 123
 //│   },
 //│   module Foo {
-//│     fun foo⁰(x⁰: Foo⁰) ‹flow:foo⁰› = x⁰.a⁰
+//│     fun foo⁰(x⁰: Foo⁰{ ~> Foo⁰ }) ‹flow:foo⁰› = x⁰.a‹?›{ ~> x⁰.a⁰ }
 //│   }
 //│ where
 //│     x⁰  <~  type Foo
-//│     x⁰  ~>  {a: ⋅a⁰}
 //│     flow:a⁰  <~  123
-//│     flow:a⁰  ->  ⋅a⁰
-//│     flow:foo⁰  <~  ((type Foo) -> ⋅a⁰)
+//│     flow:foo⁰  <~  ((type Foo) -> flow:a⁰)
 
 let f = new Foo()
 //│ Flowed:
@@ -46,7 +44,7 @@ f.a
 :re
 f.a.b
 //│ ╔══[ERROR] Unresolved selection:
-//│ ║  l.47: 	f.a.b
+//│ ║  l.45: 	f.a.b
 //│ ║        	^^^^^
 //│ ╟── Type `123` does not contain member 'b'
 //│ ║  l.13: 	  val a = 123
@@ -63,7 +61,7 @@ f.foo
 //│   f⁰.foo‹?›{ ~> Foo⁰.foo⁰(f⁰)‹app⁰› }
 //│ where
 //│     f⁰  <~  Foo()
-//│     f⁰  ~>  {a: ⋅a¹}  {a: ⋅a²}  {foo: ⋅foo⁰}
+//│     f⁰  ~>  {a: ⋅a⁰}  {a: ⋅a¹}  {foo: ⋅foo⁰}
 //│ JS (unsanitized):
 //│ Foo1.foo(f)
 //│ = 123
@@ -77,10 +75,10 @@ fun id(x) = x
 
 id(f).foo
 //│ Flowed:
-//│   id⁰(f⁰)‹app¹›.foo‹?›{ ~> Foo⁰.foo⁰(id⁰(f⁰)‹app¹›)‹app²› }
+//│   id⁰{ ~> id⁰ }(f⁰)‹app¹›.foo‹?›{ ~> Foo⁰.foo⁰(id⁰(f⁰)‹app¹›)‹app²› }
 //│ where
 //│     f⁰  <~  Foo()
-//│     f⁰  ~>  {a: ⋅a¹}  {a: ⋅a²}  {foo: ⋅foo⁰}
+//│     f⁰  ~>  {a: ⋅a⁰}  {a: ⋅a¹}  {foo: ⋅foo⁰}
 //│     f⁰  ->  x¹
 //│     app¹  <~  Foo()
 //│     app¹  ~>  {foo: ⋅foo¹}
@@ -100,7 +98,7 @@ id(f).foo
 //│   id¹(f⁰)‹app³›.foo‹?›{ ~> Foo⁰.foo⁰(id¹(f⁰)‹app³›)‹app⁴› }
 //│ where
 //│     f⁰  <~  Foo()
-//│     f⁰  ~>  {a: ⋅a¹}  {a: ⋅a²}  {foo: ⋅foo⁰}
+//│     f⁰  ~>  {a: ⋅a⁰}  {a: ⋅a¹}  {foo: ⋅foo⁰}
 //│     f⁰  ->  x¹  x²
 //│     id¹  <~  ((x²) -> x²)
 //│     id¹  ~>  ((f⁰) -> app³)
@@ -117,7 +115,7 @@ fun id(x) = x
 
 id(0)
 //│ Flowed:
-//│   id²(0)‹app⁵›
+//│   id²{ ~> id² }(0)‹app⁵›
 //│ where
 //│     app⁵  <~  0
 //│ = 0
@@ -126,16 +124,16 @@ id(0)
 :e
 id(f).foo
 //│ ╔══[ERROR] Unresolved selection:
-//│ ║  l.127: 	id(f).foo
+//│ ║  l.125: 	id(f).foo
 //│ ║         	^^^^^^^^^
 //│ ╟── Type `0` does not contain member 'foo'
-//│ ║  l.118: 	id(0)
+//│ ║  l.116: 	id(0)
 //│ ╙──       	   ^
 //│ Flowed:
-//│   id²(f⁰)‹app⁶›.foo‹?›{ ~> Foo⁰.foo⁰(id²(f⁰)‹app⁶›)‹app⁷› }
+//│   id²{ ~> id² }(f⁰)‹app⁶›.foo‹?›{ ~> Foo⁰.foo⁰(id²(f⁰)‹app⁶›)‹app⁷› }
 //│ where
 //│     f⁰  <~  Foo()
-//│     f⁰  ~>  {a: ⋅a¹}  {a: ⋅a²}  {foo: ⋅foo⁰}
+//│     f⁰  ~>  {a: ⋅a⁰}  {a: ⋅a¹}  {foo: ⋅foo⁰}
 //│     f⁰  ->  x¹  x²  x³
 //│     app⁶  <~  0  Foo()
 //│     app⁶  ~>  {foo: ⋅foo³}
@@ -145,7 +143,7 @@ id(f).foo
 :e
 fun test(g) = g.foo
 //│ ╔══[ERROR] Cannot resolve selection
-//│ ║  l.146: 	fun test(g) = g.foo
+//│ ║  l.144: 	fun test(g) = g.foo
 //│ ╙──       	              ^^^^^
 //│ Flowed:
 //│   fun test⁰(g⁰) ‹flow:test⁰› = g⁰.foo‹?›
@@ -156,10 +154,10 @@ fun test(g) = g.foo
 :re
 test(f)
 //│ Flowed:
-//│   test⁰(f⁰)‹app⁸›
+//│   test⁰{ ~> test⁰ }(f⁰)‹app⁸›
 //│ where
 //│     f⁰  <~  Foo()
-//│     f⁰  ~>  {a: ⋅a¹}  {a: ⋅a²}  {foo: ⋅foo⁰}
+//│     f⁰  ~>  {a: ⋅a⁰}  {a: ⋅a¹}  {foo: ⋅foo⁰}
 //│     f⁰  ->  x¹  x²  x³  g⁰
 //│ ═══[RUNTIME ERROR] Error: Access to required field 'foo' yielded 'undefined'
 
@@ -168,10 +166,10 @@ fun test(g) = g.foo
 test(f)
 //│ Flowed:
 //│   fun test¹(g¹) ‹flow:test¹› = g¹.foo‹?›{ ~> Foo⁰.foo⁰(g¹)‹app⁹› },
-//│   test¹(f⁰)‹app¹⁰›
+//│   test¹{ ~> test¹ }(f⁰)‹app¹⁰›
 //│ where
 //│     f⁰  <~  Foo()
-//│     f⁰  ~>  {a: ⋅a¹}  {a: ⋅a²}  {foo: ⋅foo⁰}
+//│     f⁰  ~>  {a: ⋅a⁰}  {a: ⋅a¹}  {foo: ⋅foo⁰}
 //│     f⁰  ->  x¹  x²  x³  g⁰  g¹
 //│     g¹  <~  Foo()
 //│     g¹  ~>  {foo: ⋅foo⁵}
@@ -189,24 +187,22 @@ module AA with
 //│   module AA {
 //│     module BB {
 //│       class CC {
-//│         val x⁴: Int⁰ ‹flow:x⁰› = 1
+//│         val x⁴: Int⁰{ ~> Int⁰ } ‹flow:x⁰› = 1
 //│       },
 //│       module CC {
-//│         fun getX⁰(self⁰: ⟨BB⁰.⟩CC⁰) ‹flow:getX⁰› = self⁰.x⁴
+//│         fun getX⁰(self⁰: ⟨BB⁰.⟩CC⁰) ‹flow:getX⁰› = self⁰.x‹?›{ ~> self⁰.x⁴ }
 //│       }
 //│     }
 //│   }
 //│ where
 //│     self⁰  <~  type CC
-//│     self⁰  ~>  {x: ⋅x⁰}
 //│     flow:x⁰  <~  1
-//│     flow:x⁰  ->  ⋅x⁰
-//│     flow:getX⁰  <~  ((type CC) -> ⋅x⁰)
+//│     flow:getX⁰  <~  ((type CC) -> flow:x⁰)
 
 :sjs
 new AA.BB.CC().x
 //│ Flowed:
-//│   new AA⁰.BB¹.CC⁰().x⁴
+//│   new AA⁰.BB¹.CC⁰().x‹?›{ ~> new AA⁰.BB¹.CC⁰().x⁴ }
 //│ where
 //│     
 //│ JS (unsanitized):
@@ -249,7 +245,7 @@ let foo =
 :re
 foo.test
 //│ ╔══[ERROR] Cannot access companion A from the context of this selection
-//│ ║  l.250: 	foo.test
+//│ ║  l.246: 	foo.test
 //│ ╙──       	^^^^^^^^
 //│ Flowed:
 //│   foo¹.test‹?›
@@ -286,7 +282,7 @@ let foo =
 :re
 foo.test
 //│ ╔══[ERROR] Cannot access companion A from the context of this selection
-//│ ║  l.287: 	foo.test
+//│ ║  l.283: 	foo.test
 //│ ╙──       	^^^^^^^^
 //│ Flowed:
 //│   foo².test‹?›
@@ -300,28 +296,25 @@ class CC(val x: Int)
 module CC with
   fun getX(self: CC) = self.x
 //│ Flowed:
-//│   class CC(valx⁵: Int⁰) {
+//│   class CC(valx⁵: Int⁰{ ~> Int⁰ }) {
 //│     val x⁶ ‹flow:x¹› = x⁵
 //│   },
 //│   module CC {
-//│     fun getX¹(self¹: CC¹) ‹flow:getX¹› = self¹.x⁶
+//│     fun getX¹(self¹: CC¹{ ~> CC¹ }) ‹flow:getX¹› = self¹.x‹?›{ ~> self¹.x⁶ }
 //│   }
 //│ where
 //│     x⁵  <~  type Int
 //│     x⁵  ->  flow:x¹
 //│     self¹  <~  type CC
-//│     self¹  ~>  {x: ⋅x¹}
 //│     flow:x¹  <~  type Int
-//│     flow:x¹  ->  ⋅x¹
-//│     flow:getX¹  <~  ((type CC) -> ⋅x¹)
+//│     flow:getX¹  <~  ((type CC) -> flow:x¹)
 
 :fixme // TODO: handle lifted class defs
 CC(123).getX
 //│ Flowed:
 //│   CC¹(123)‹app¹³›.getX‹?›{ ~> CC¹.getX¹(CC¹(123)‹app¹³›)‹app¹⁴› }
 //│ where
-//│     app¹³  <~  CC
-//│     app¹³  ~>  {getX: ⋅getX⁰}
+//│     
 //│ ═══[RUNTIME ERROR] TypeError: CC2.getX is not a function
 
 
@@ -334,7 +327,7 @@ module CC with
 //│     
 //│   },
 //│   module CC {
-//│     fun oops⁰(x⁷: CC²) ‹flow:oops⁰› = x⁷.oops‹?›{ ~> CC².oops⁰(x⁷)‹app¹⁵› }
+//│     fun oops⁰(x⁷: CC²{ ~> CC² }) ‹flow:oops⁰› = x⁷.oops‹?›{ ~> CC².oops⁰(x⁷)‹app¹⁵› }
 //│   }
 //│ where
 //│     x⁷  <~  type CC
@@ -360,18 +353,16 @@ module CC with
 //│     val okay⁰ ‹flow:okay⁰› = 123
 //│   },
 //│   module CC {
-//│     fun okay¹(x⁸: CC³) ‹flow:okay¹› = x⁸.okay⁰
+//│     fun okay¹(x⁸: CC³{ ~> CC³ }) ‹flow:okay¹› = x⁸.okay‹?›{ ~> x⁸.okay⁰ }
 //│   }
 //│ where
 //│     x⁸  <~  type CC
-//│     x⁸  ~>  {okay: ⋅okay⁰}
 //│     flow:okay⁰  <~  123
-//│     flow:okay⁰  ->  ⋅okay⁰
-//│     flow:okay¹  <~  ((type CC) -> ⋅okay⁰)
+//│     flow:okay¹  <~  ((type CC) -> flow:okay⁰)
 
 new CC().okay
 //│ Flowed:
-//│   new CC³().okay⁰
+//│   new CC³().okay‹?›{ ~> new CC³().okay⁰ }
 //│ where
 //│     
 //│ = 123
