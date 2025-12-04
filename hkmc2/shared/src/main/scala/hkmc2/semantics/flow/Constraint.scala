@@ -25,12 +25,14 @@ enum Producer:
   case Fun(lhs: Consumer, rhs: Producer, captures: Ls[(Producer, Consumer)])
   case Tup(elems: Ls[Opt[SpreadKind] -> Producer])
   case Ctor(sym: CtorSymbol, args: List[Producer])(val trm: Term) extends Producer, CtorImpl
+  case LeadingDotSel(trm: Term.LeadingDotSel)
   case Typ(typ: Type)
-  case Unknown(t: Statement)
+  case Unknown(s: Statement) // `s` is just for error reporting/debugging purposes
   
   
   def toLoc: Opt[Loc] = this match
     case self: Ctor => self.trm.toLoc
+    case self: LeadingDotSel => self.trm.toLoc
     case Unknown(t) => t.toLoc
     case _ => None
   
@@ -41,6 +43,7 @@ enum Producer:
     case tup: Tup => Document.bracketed("[", "]")(showTupElems(tup))
     case Ctor(LitSymbol(UnitLit(false)), Nil) => "()"
     case Ctor(sym, args) => doc"${sym.nme}${args.map(_.showAsParams).mkDocument()}"
+    case LeadingDotSel(trm) => doc"${trm.showDbg}"
     case Typ(typ) => doc"type ${typ.show}"
     case Unknown(t) => doc"¿${t.showDbg}?"
   
@@ -62,6 +65,7 @@ enum Producer:
     case Ctor(sym, Nil) => sym.nme
     case Tup(args) => s"[${args.map((spd, a) => spd.fold("")(_.str) + a.showDbg).mkString(", ")}]"
     case Ctor(sym, args) => s"${sym.nme}${args.map(_.showDbgAsParams).mkString}"
+    case sel @ LeadingDotSel(trm) => trm.showDbg
     case Typ(typ) => s"type ${typ.showDbg}"
     case Unknown(t) => s"¿${t.showDbg}?"
   

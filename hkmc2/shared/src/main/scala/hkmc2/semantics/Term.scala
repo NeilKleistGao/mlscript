@@ -75,6 +75,7 @@ sealed trait ResolvableImpl:
       case t: Term.TyApp => t.copy()(t.typ)
       case t: Term.Sel => t.copy()(t.sym, t.typ, t.originalCtx)
       case t: Term.SynthSel => t.copy()(t.sym, t.typ)
+      case t: Term.LeadingDotSel => t.copy()(t.originalCtx)
     .withLocOf(this)
     .asInstanceOf
   
@@ -93,6 +94,7 @@ sealed trait ResolvableImpl:
       case t: Term.TyApp => t.copy()(S(typ))
       case t: Term.Sel => t.copy()(t.sym, S(typ), t.originalCtx)(using t.state)
       case t: Term.SynthSel => t.copy()(t.sym, S(typ))
+      case _: Term.LeadingDotSel => lastWords(s"Cannot attach a type to leading dot selection: ${this.showDbg}")
     .withLocOf(this)
     .asInstanceOf
   
@@ -196,6 +198,11 @@ object Resolvable:
         defn,
       ))
 
+trait LeadingDotSelImpl(using State):
+  self: Term.LeadingDotSel =>
+  val resSym: FlowSymbol = FlowSymbol.lds(self.nme.name)
+  var resolvedTargets: Ls[flow.SelectionTarget.CompanionMember] = Nil // * filled during flow analysis
+
 enum Term extends Statement:
   case Error
   case UnitVal()
@@ -248,6 +255,9 @@ enum Term extends Statement:
   case Annotated(annot: Annot, target: Term)
   case Handle(lhs: LocalSymbol, rhs: Term, args: List[Term],
     derivedClsSym: ClassSymbol, defs: Ls[HandlerTermDefinition], body: Term)
+  case LeadingDotSel(nme: Tree.Ident)(
+      val originalCtx: Opt[Elaborator.Ctx]
+    ) (using State) extends Term, ResolvableImpl, LeadingDotSelImpl
   
   def expanded: Term = this match
     case t: Resolvable => t.expansion match
@@ -256,6 +266,19 @@ enum Term extends Statement:
       case N => this
     case _ => this
   
+  /**
+   * This field equals `S(lds)` if the term is a chain of selections
+   * and applications that originates with a leading-dot selection,
+   * namely `lds`. Otherwise this field equals `N`.
+   * It is evaluated during flow analysis to constrain the LDS with
+   * the type of the whole term.
+   */
+  lazy val ldsRoot: Opt[LeadingDotSel] = this match
+    case Sel(prefix, nme) => prefix.ldsRoot
+    case App(lhs, rhs) => lhs.ldsRoot
+    case sel: LeadingDotSel => S(sel)
+    case _ => N
+
   /**
    * The prelinminary symbol for the term that is resolved during
    * elaboration. 
@@ -353,6 +376,7 @@ enum Term extends Statement:
     case Annotated(annot, target) => Annotated(annot, target.mkClone)
     case Handle(lhs, rhs, args, derivedClsSym, defs, body) =>
       Handle(lhs, rhs.mkClone, args.map(_.mkClone), derivedClsSym, defs, body.mkClone)
+    case term @ LeadingDotSel(nme) => LeadingDotSel(Tree.Ident(nme.name))(term.originalCtx)
   
   
 end Term
@@ -422,6 +446,8 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case Annotated(annotation, target) => "annotation"
       case Ret(res) => "return"
       case Try(body, finallyDo) => "try expression"
+      case Missing => "missing"
+      case LeadingDotSel(name) => "leading dot selection"
       case s => TODO(s)
     this match
       case self: Resolvable => self.resolvedTyp match
@@ -491,6 +517,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Handle(lhs, rhs, args, derivedClsSym, defs, bod) => rhs :: args ::: defs.flatMap(_.td.subTerms) ::: bod :: Nil
     case Neg(e) => e :: Nil
     case Annotated(ann, target) => ann.subTerms ::: target :: Nil
+    case LeadingDotSel(nme) => Nil
   
   // private def treeOrSubterms(t: Tree, t: Term): Ls[Located] = t match
   private def treeOrSubterms(t: Tree): Ls[Located] = t match
@@ -539,9 +566,11 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case tup: Tup => bracketed("[", "]", insertBreak = true):
         tup.fields.map(_.show).mkDocument(doc", # ")
       case blk: Blk => braced:
-        doc" # " :: blk.stats.map(_.show).mkDocument(doc", # ") :: blk.res.match
-          case Lit(Tree.UnitLit(false)) => doc""
-          case res => res.show
+        doc" # " :: (blk.stats :::
+            blk.res.match
+            case Lit(Tree.UnitLit(false)) => Nil
+            case res => res :: Nil
+          ).map(_.show).mkDocument(doc", # ")
       case ld: LetDecl =>
         (ld.annotations.map(_.show) ::: doc"let ${ld.sym.showName}" :: Nil).mkDocument()
       case df: DefineVar =>
@@ -565,6 +594,8 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
           :: doc" ${cld.body.blk.show}"
       case imp: Import =>
         doc"import ${"\""}.../${imp.file.lastOpt.getOrElse("")}${"\""} as ${imp.sym.showName}"
+      case LeadingDotSel(name) => doc"${this.showDbg}"
+      case Error => doc"‹error›"
       case _ =>
         doc"TODO[show:${getClass.getSimpleName}]($showDbg)"
     this match
@@ -668,6 +699,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case TypeDef(sym, _, tparams, rhs, _, _) =>
       s"type ${sym}${tparams.mkStringOr(", ", "[", "]")} = ${rhs.fold("")(x => x.showDbg)}"
     case Missing => "missing"
+    case LeadingDotSel(nme) => s"_?_.${nme.name}"
 
 final case class LetDecl(sym: LocalSymbol, annotations: Ls[Annot]) extends Statement
 
@@ -1006,6 +1038,8 @@ extends Declaration, AutoLocated:
   // * it is not meant to be maintained afterwards (so it does not need to be copied around).
   var fldSym: Opt[FieldSymbol] = N
   
+  val flow: FlowSymbol = sym
+
   // * This field is filled in during flow analysis;
   // * it is not meant to be maintained afterwards (so it does not need to be copied around).
   var signType: Opt[Type] = N

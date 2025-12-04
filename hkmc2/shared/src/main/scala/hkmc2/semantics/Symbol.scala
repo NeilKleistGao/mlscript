@@ -155,8 +155,10 @@ object FlowSymbol:
     FlowSymbol("app")
 
   def sel(nme: Str)(using State) =
-    // FlowSymbol(s"⋅$nme")
     FlowSymbol(s"⋅$nme")
+
+  def lds(nme: Str)(using State) =
+    FlowSymbol(s"Ɛ⋅$nme")
   
 end FlowSymbol
 
@@ -202,6 +204,23 @@ class BuiltinSymbol
   override def toString: Str = s"builtin:$nme${State.dbgUid(uid)}"
 
   def subst(using sub: SymbolSubst): BuiltinSymbol = sub.mapBuiltInSym(this)
+
+  lazy val signature : semantics.flow.Producer =
+    import typing.Type
+    import typing.Type.*
+    val binaryType : Type = Fun(args = Ls(Top, Top), ret = Top, eff = N)
+    val unaryType : Type = Fun(args = Ls(Top), ret = Top, eff = N)
+    val nullaryType : Type = Top
+    val typ = (binary, unary, nullary) match
+      case (true, true, true) => Union(binaryType, Union(unaryType, nullaryType))
+      case (true, true, _) => Union(binaryType, unaryType)
+      case (true, _, true) => Union(binaryType, nullaryType)
+      case (_, true, true) => Union(unaryType, nullaryType)
+      case (true, _, _) => binaryType
+      case (_, true, _) => unaryType
+      case (_, _, true) => nullaryType
+      case _ => Bot
+    semantics.flow.Producer.Typ(typ)
 
 
 /** This is the outside-facing symbol associated to a possibly-overloaded

@@ -161,14 +161,11 @@ let x
     .a
 //│ ═══[RUNTIME ERROR] Error: Access to required field 'a' yielded 'undefined'
 
-:pe
+:ge
 2
   |> (a: _)
 .a
-//│ ╔══[PARSE ERROR] Expected an expression; found static selector instead
-//│ ║  l.167: 	.a
-//│ ╙──       	^^
-//│ ╔══[PARSE ERROR] Expected end of input; found static selector instead
+//│ ╔══[COMPILATION ERROR] Unexpected term form in expression position (leading dot selection)
 //│ ║  l.167: 	.a
 //│ ╙──       	^^
 
@@ -314,10 +311,10 @@ let incr = _ + 1
 :w
 2, * 3
 //│ ╔══[PARSE ERROR] Expected end of input; found literal instead
-//│ ║  l.315: 	2, * 3
+//│ ║  l.312: 	2, * 3
 //│ ╙──       	     ^
 //│ ╔══[WARNING] Pure expression in statement position
-//│ ║  l.315: 	2, * 3
+//│ ║  l.312: 	2, * 3
 //│ ╙──       	^
 //│ = fun
 
@@ -370,9 +367,9 @@ xs |> Arr.len
 ,+
 ys |> Arr.len
 //│ ╔══[PARSE ERROR] Expected start of expression in this position; found new line instead
-//│ ║  l.370: 	,+
+//│ ║  l.367: 	,+
 //│ ║         	  ^
-//│ ║  l.371: 	ys |> Arr.len
+//│ ║  l.368: 	ys |> Arr.len
 //│ ╙──       	
 
 xs |> Arr.len
@@ -384,9 +381,9 @@ xs |> Arr.len
 +,
 ys |> Arr.len
 //│ ╔══[PARSE ERROR] Expected start of expression in this position; found new line instead
-//│ ║  l.384: 	+,
+//│ ║  l.381: 	+,
 //│ ║         	  ^
-//│ ║  l.385: 	ys |> Arr.len
+//│ ║  l.382: 	ys |> Arr.len
 //│ ╙──       	
 
 xs |> Arr.len
@@ -416,20 +413,20 @@ new Foo(1) is Foo
 :fixme // ?
 new Foo(1) ,is Foo
 //│ ╔══[PARSE ERROR] Expected start of expression in this position; found 'is' keyword instead
-//│ ║  l.417: 	new Foo(1) ,is Foo
+//│ ║  l.414: 	new Foo(1) ,is Foo
 //│ ╙──       	            ^^
 //│ ╔══[PARSE ERROR] Expected end of input; found identifier instead
-//│ ║  l.417: 	new Foo(1) ,is Foo
+//│ ║  l.414: 	new Foo(1) ,is Foo
 //│ ╙──       	               ^^^
 
 :fixme // ?
 new Foo(1)
 is Foo
 //│ ╔══[PARSE ERROR] Expected start of expression in this position; found 'is' keyword instead
-//│ ║  l.427: 	is Foo
+//│ ║  l.424: 	is Foo
 //│ ╙──       	^^
 //│ ╔══[PARSE ERROR] Expected end of input; found identifier instead
-//│ ║  l.427: 	is Foo
+//│ ║  l.424: 	is Foo
 //│ ╙──       	   ^^^
 
 
