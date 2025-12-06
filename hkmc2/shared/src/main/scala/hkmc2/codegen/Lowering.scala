@@ -294,7 +294,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
               case (sym, params, split) =>
                 val paramLists = params :: Nil
                 val bodyBlock = ucs.Normalization(this)(split)(Ret)
-                FunDefn.withFreshSymbol(N, sym, paramLists, bodyBlock)(isTailRec = false)
+                FunDefn.withFreshSymbol(N, sym, paramLists, bodyBlock)(forceTailRec = false)
             // The return type is intended to be consistent with `gatherMembers`
             (mtds, Nil, Nil, End())
           case _ => gatherMembers(defn.body)
@@ -510,12 +510,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           val isOr = sym is State.orSymbol
           if isAnd || isOr then
             val lamSym = BlockMemberSymbol("lambda", Nil, false)
-            val lamDef = FunDefn.withFreshSymbol(N, lamSym, PlainParamList(Nil) :: Nil, returnedTerm(arg2))(isTailRec = false)
+            val lamDef = FunDefn.withFreshSymbol(N, lamSym, PlainParamList(Nil) :: Nil, returnedTerm(arg2))(forceTailRec = false)
             Define(
               lamDef,
               k(Call(
                 Value.Ref(State.runtimeSymbol).selN(Tree.Ident(if isAnd then "short_and" else "short_or")),
-                Arg(N, ar1) :: Arg(N, Value.Ref(lamSym, N)) :: Nil
+                Arg(N, ar1) :: Arg(N, lamDef.asPath) :: Nil
               )(true, false, false)))
           else
             subTerm_nonTail(arg2): ar2 =>
@@ -647,10 +647,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       then k(Lambda(paramLists.head, bodyBlock))
       else
         val lamSym = new BlockMemberSymbol("lambda", Nil, false)
-        val lamDef = FunDefn.withFreshSymbol(N, lamSym, paramLists, bodyBlock)(isTailRec = false)
+        val lamDef = FunDefn.withFreshSymbol(N, lamSym, paramLists, bodyBlock)(forceTailRec = false)
         Define(
           lamDef,
-          k(Value.Ref(lamSym, N)))
+          k(lamDef.asPath))
     
     
     case iftrm: st.IfLike => ucs.Normalization(this)(iftrm)(k)
@@ -987,8 +987,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       case p: Path => k(p)
       case Lambda(params, body) =>
         val lamSym = BlockMemberSymbol("lambda", Nil, false)
-        val lamDef = FunDefn.withFreshSymbol(N, lamSym, params :: Nil, body)(isTailRec = false)
-        Define(lamDef, k(Value.Ref(lamSym, N)))
+        val lamDef = FunDefn.withFreshSymbol(N, lamSym, params :: Nil, body)(forceTailRec = false)
+        Define(lamDef, k(lamDef.asPath))
       case r =>
         val l = new TempSymbol(N)
         Assign(l, r, k(l |> Value.Ref.apply))
@@ -1021,9 +1021,13 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     val merged = MergeMatchArmTransformer.applyBlock(bufferable)
 
-    val res = 
+    val staged = 
       if config.stageCode then Instrumentation(using summon).applyBlock(merged)
       else merged
+    
+    val res =
+      if config.tailRecOpt then TailRecOpt().transform(staged)
+      else staged
     
     Program(
       imps.map(imp => imp.sym -> imp.str),
@@ -1055,7 +1059,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       case Annot.Untyped => ()
       case a @ Annot.TailRec =>
         target match
-          case TermDefinition(body = S(bod), k = syntax.Fun) => warn(a, S(msg"Tail call optimization is not yet implemented."))
+          case TermDefinition(body = S(bod), k = syntax.Fun) => ()
           case TermDefinition(k = syntax.Fun) => warn(a, S(msg"Only functions with a body may be marked as @tailrec."))
           case _ => warn(a)
         
@@ -1076,9 +1080,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       case Annot.Untyped => ()
       case a @ Annot.TailCall => receiver match
         case st.App(Ref(_: BuiltinSymbol), _) => warn(a, S(msg"The @tailcall annotation has no effect on calls to built-in symbols."))
-        case st.App(_, _) => warn(a, S(msg"Tail call optimization is not yet implemented."))
+        case st.App(_, _) => ()
         case st.Resolved(_, defnSym) => defnSym.defn match
-          case S(td: TermDefinition) if (td.k is syntax.Fun) && td.params.isEmpty => warn(a, S(msg"Tail call optimization is not yet implemented."))
+          case S(td: TermDefinition) if (td.k is syntax.Fun) && td.params.isEmpty => ()
           case _ => warn(a)
         case _ => warn(a)
       case annot => warn(annot)
