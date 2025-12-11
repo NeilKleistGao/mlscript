@@ -11,14 +11,14 @@ fun f(x) = x
 fun f1(x) = f(x) + 1
 //│ JS (unsanitized):
 //│ let f1, f11;
-//│ f1 = function f(x) { return x };
-//│ f11 = function f1(x) { let tmp; tmp = f1(x); return tmp + 1 };
+//│ f1 = function f(x) {
+//│   return x
+//│ };
+//│ const proxy$f = f1; f11 = function f1(x) { let tmp; tmp = proxy$f(x); return tmp + 1 };
 
-:fixme
 :expect 42
 f1(41)
-//│ ═══[RUNTIME ERROR] RangeError: Maximum call stack size exceeded
-//│ ═══[RUNTIME ERROR] Expected: '42', got: 'undefined'
+//│ = 42
 
 
 :sjs
@@ -39,13 +39,15 @@ fun g() =
 //│ ff1 = function ff(x) {
 //│   return x
 //│ };
-//│ g1 = function g() { let ff11; ff11 = function ff1(x) { return ff1(x) }; return ff11 };
+//│ g1 = function g() {
+//│   let ff11;
+//│   const proxy$ff = ff1; ff11 = function ff1(x) { return proxy$ff(x) };
+//│   return ff11
+//│ };
 
-:fixme
 :expect 42
 g()(42)
-//│ ═══[RUNTIME ERROR] RangeError: Maximum call stack size exceeded
-//│ ═══[RUNTIME ERROR] Expected: '42', got: 'undefined'
+//│ = 42
 
 
 :sjs
