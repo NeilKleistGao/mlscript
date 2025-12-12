@@ -94,9 +94,7 @@ class InstrumentationImpl(using State):
   def shapeSetCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(shapeSetMod(name), args, symName = symName)(k)
 
-  // A StagedPath is a path that points to a (ShapeSet, code) tuple
-  case class StagedPath(code: Path):
-    def end: Block = Return(code, false)
+  case class StagedPath(code: Path)
 
   object StagedPath:
     def apply(code: Path, symName: Str = "tmp")(k: StagedPath => Block): Block =
@@ -223,13 +221,13 @@ class InstrumentationImpl(using State):
 
   def ruleLet(x: BlockMemberSymbol, b: Block, symName: String = "_let")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformSymbol(x): xSym =>
-      StagedPath(xSym, "tmp"): y =>
-        (Assign(x, y.code, _)):
-          given Context = ctx.clone() += x.asPath -> y
-          transformBlock(b): (z, ctx) =>
-            blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undefined =>
-              blockCtor("Assign", Ls(xSym, undefined, z)): cde =>
-                StagedPath(cde, symName)(k(_, summon))
+      val y = StagedPath(xSym)
+      (Assign(x, y.code, _)):
+        given Context = ctx.clone() += x.asPath -> y
+        transformBlock(b): (z, ctx) =>
+          blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undefined =>
+            blockCtor("Assign", Ls(xSym, undefined, z)): cde =>
+              StagedPath(cde, symName)(k(_, summon))
 
   def ruleEnd(symName: String = "end")(using Context)(k: (StagedPath, Context) => Block): Block =
     blockCtor("End", Ls()): cde =>
@@ -254,10 +252,7 @@ class InstrumentationImpl(using State):
 
     val a = arms.map(applyRuleBranch).collectApply
     ((f: (Ls[StagedPath], Context) => Block) => a(ys => (ctx, _) => f(ys, ctx))(summon, x)): (arms, ctx) =>
-      tuple(arms): tup =>
-        val res = tup
-        val result = StagedPath(res)
-        val arms = result.code
+      tuple(arms): arms =>
         blockCtor("End", Ls()): e =>
           // TODO: use transformOption here
           def dfltStaged(k: (Path, Context) => Block) = dflt match
@@ -273,23 +268,18 @@ class InstrumentationImpl(using State):
       StagedPath(x.code, "tmp"): x0 =>
         StagedPath(x.code, "tmp"): x1 =>
           ruleEnd(): (e, ctx) =>
-            val res = new TempSymbol(N, "tmp")
             transformBlock(b)(using ctx.clone() += p -> x0): (y, ctx) =>
               // TODO: use Arm type instead of Tup
               tuple(Ls(cse, y)): cde =>
                 StagedPath(cde, symName): ret =>
-                  val dflt = Assign(res, ret.code, _)
-                  dflt:
-                    k(StagedPath(Value.Ref(res)), ctx.clone() -= p, x1)
+                  k(ret, ctx.clone() -= p, x1)
 
   // this partially applies rules to account for difference between Block.Case and Match pattern in the formalization
   // to avoid defining the `_` pattern in Block.Case, we apply filter(s, _) = s and rest(s, _) = bot
   def ruleWildCard(x: StagedPath, p: Path, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
-    val res = new TempSymbol(N, "tmp")
     given Context = ctx.clone() += p -> x
     transformBlock(b): (y, ctx) =>
-      val dflt = Assign(res, y.code, _)
-      dflt(k(StagedPath(Value.Ref(res)), ctx.clone() -= p))
+      k(y, ctx.clone() -= p)
 
   // transformations of Block
 
@@ -351,7 +341,7 @@ class InstrumentationImpl(using State):
         fnPrintCode(p.code)(End())
 
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
-    (f.copy(sym = genSym, body = transformBlock(f.body)(_.end))(false), debug)
+    (f.copy(sym = genSym, body = transformBlock(f.body)(p => Return(p.code, false)))(false), debug)
 
   def transformDefine(d: Define)(using Context)(k: (StagedPath, Context) => Block): Block =
     d.defn match
