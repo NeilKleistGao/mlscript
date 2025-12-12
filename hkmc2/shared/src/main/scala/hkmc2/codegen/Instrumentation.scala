@@ -56,9 +56,6 @@ class InstrumentationImpl(using State):
               k(head :: tail)
       )(f)
 
-  extension [A, B, C](f: A => B => C)
-    def flip: B => A => C = b => f(_)(b)
-
   // helpers for constructing Block
 
   def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Assign =
@@ -80,7 +77,6 @@ class InstrumentationImpl(using State):
 
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
   def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
-  def shapeSetMod(name: Str) = summon[State].shapeSetSymbol.asPath.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     ctor(blockMod(name), args, symName)(k)
@@ -91,8 +87,6 @@ class InstrumentationImpl(using State):
 
   def blockCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, symName = symName)(k)
-  def shapeSetCall(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    call(shapeSetMod(name), args, symName = symName)(k)
 
   case class StagedPath(code: Path)
 
@@ -134,7 +128,6 @@ class InstrumentationImpl(using State):
     val Value.Ref(l, disamb) = r
     transformSymbol(disamb.getOrElse(l)): sym =>
       blockCtor("ValueRef", Ls(sym)): cde =>
-        // variable defined outside of scope, may be a reference to a class
         StagedPath(cde, symName)(k)
 
   def ruleTup(t: Tuple, symName: String = "tup")(using Context)(k: StagedPath => Block): Block =
@@ -204,20 +197,20 @@ class InstrumentationImpl(using State):
           // otherwise, x is defined here
           ctx.get(x.asPath) match
             case S(x1) =>
-              StagedPath(xStaged, "tmp"): x2 =>
-                (Assign(x, x2.code, _)):
-                  given Context = ctx.clone() += x.asPath -> x2
-                  transformBlock(b): (z, ctx) =>
-                    blockCtor("Assign", Ls(xSym, y, z)): cde =>
-                      StagedPath(cde, symName)(k(_, ctx))
+              val x2 = StagedPath(xStaged)
+              (Assign(x, x2.code, _)):
+                given Context = ctx.clone() += x.asPath -> x2
+                transformBlock(b): (z, ctx) =>
+                  blockCtor("Assign", Ls(xSym, y, z)): cde =>
+                    StagedPath(cde, symName)(k(_, ctx))
             case N =>
-              StagedPath(xStaged, "tmp"): x2 =>
-                // propagate shape information for future references to x
-                (Assign(x, y.code, _)):
-                  given Context = ctx.clone() += x.asPath -> x2
-                  transformBlock(b): (z, ctx) =>
-                    blockCtor("Assign", Ls(xSym, y, z)): cde =>
-                      StagedPath(cde, symName)(k(_, ctx))
+              val x2 = StagedPath(xStaged)
+              // propagate shape information for future references to x
+              (Assign(x, y.code, _)):
+                given Context = ctx.clone() += x.asPath -> x2
+                transformBlock(b): (z, ctx) =>
+                  blockCtor("Assign", Ls(xSym, y, z)): cde =>
+                    StagedPath(cde, symName)(k(_, ctx))
 
   def ruleLet(x: BlockMemberSymbol, b: Block, symName: String = "_let")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     transformSymbol(x): xSym =>
@@ -263,19 +256,14 @@ class InstrumentationImpl(using State):
             blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
               StagedPath(m, symName)(k(_, ctx))
 
-  def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block, symName: String = "branch")(using Context)(k: (StagedPath, Context, StagedPath) => Block): Block =
+  def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block, symName: String = "branch")(using ctx: Context)(k: (StagedPath, Context, StagedPath) => Block): Block =
     transformCase(cse): cse =>
-      StagedPath(x.code, "tmp"): x0 =>
-        StagedPath(x.code, "tmp"): x1 =>
-          ruleEnd(): (e, ctx) =>
-            transformBlock(b)(using ctx.clone() += p -> x0): (y, ctx) =>
-              // TODO: use Arm type instead of Tup
-              tuple(Ls(cse, y)): cde =>
-                StagedPath(cde, symName): ret =>
-                  k(ret, ctx.clone() -= p, x1)
+      transformBlock(b)(using ctx.clone() += p -> x): (y, ctx) =>
+        // TODO: use Arm type instead of Tup
+        tuple(Ls(cse, y)): cde =>
+          StagedPath(cde, symName): ret =>
+            k(ret, ctx.clone() -= p, x)
 
-  // this partially applies rules to account for difference between Block.Case and Match pattern in the formalization
-  // to avoid defining the `_` pattern in Block.Case, we apply filter(s, _) = s and rest(s, _) = bot
   def ruleWildCard(x: StagedPath, p: Path, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     given Context = ctx.clone() += p -> x
     transformBlock(b): (y, ctx) =>
@@ -306,8 +294,8 @@ class InstrumentationImpl(using State):
     transformOption(spread, bool => assign(toValue(bool))): spreadStaged =>
       transformPath(value): value =>
         blockCtor("Arg", Ls(spreadStaged, value)): cde =>
-          StagedPath(cde, "tmp"): res =>
-            k(res, spread.isDefined)
+          val res = StagedPath(cde)
+          k(res, spread.isDefined)
 
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[(StagedPath, Bool)] => Block): Block =
     args.map(transformArg).collectApply(k)
