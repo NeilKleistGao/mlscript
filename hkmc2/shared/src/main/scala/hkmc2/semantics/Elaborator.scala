@@ -109,6 +109,24 @@ object Elaborator:
       case _: OuterCtx.LocalScope =>
         parent.fold(ReturnHandler.NotInFunction)(_.getRetHandler)
     
+    /** Computes the outermost context from which the current context can still be accessed.
+      * For instance, from [ctx2] here, [ctx1] is the outermost accessible base:
+      *     [ctx0]
+      *     fun foo =
+      *       [ctx1]
+      *       module Foo with
+      *         module Bar with
+      *           [ctx2]
+      * and the path is Foo :: Bar :: Nil.
+      * [ctx0] cannot access [ctx2] because there is a function (Function outer) on the way.
+      * The same would happen for:
+      *     [ctx0]
+      *     if ... then // LocalScope also blocks access to [ctx1] and [ctx2]
+      *       [ctx1]
+      *       module Foo with
+      *         module Bar with
+      *           [ctx2]
+     */
     lazy val outermostAcessibleBase: (Ctx, Ls[InnerSymbol]) =
       import OuterCtx.*
       outer match

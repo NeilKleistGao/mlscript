@@ -1155,8 +1155,7 @@ extends AutoLocated:
   def allParams = params ++ restParam.toList
   def subTerms: Ls[Term] = params.flatMap(_.subTerms) ++ restParam.toList.flatMap(_.subTerms)
   def show(using Scope, ShowCfg): Document =
-    flags.showDbg // TODO
-    // :: bracketed("(", ")", insertBreak = true):
+    flags.show
     :: doc"(" :: (
       params.map(_.show)
       :::
@@ -1173,6 +1172,7 @@ object PlainParamList:
     case _ => N
 
 final case class ParamListFlags(ctx: Bool):
+  def show: Str = (if ctx then "ctx " else "")
   def showDbg: Str = (if ctx then "ctx " else "")
   override def toString: String = "‹" + showDbg + "›"
 

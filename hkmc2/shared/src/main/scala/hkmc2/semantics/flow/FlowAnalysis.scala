@@ -62,12 +62,11 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
     t match
     
     case Resolved(trm, sym) =>
-      val _ = typeProd(trm)
+      val _ = typeProd(trm) // * Discard the base producer because it's already resolved and `sym` is the real one
       sym match
       case cls: ClassSymbol => P.Ctor(cls, Nil)(t)
       case cls: ModuleOrObjectSymbol => P.Ctor(cls, Nil)(t)
       case ts: TermSymbol => P.Flow(ts.bms.get.flow)
-      // typeProd(trm)
       
     case Ref(sym) =>
       sym match
@@ -153,7 +152,6 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       P.Flow(sym)
     
     case sel @ Sel(pre, nme) =>
-      // selsToExpand += sel
       log(s"Selection ${sel.showDbg} ${sel.typ}")
       checkLDS(pre): pre_t =>
         sel.resolvedSym match

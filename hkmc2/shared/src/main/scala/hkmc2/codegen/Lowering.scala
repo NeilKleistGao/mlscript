@@ -438,13 +438,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         return k(Lambda(paramLists.head, bodyBlock).withLocOf(ref))
     case bs: BlockMemberSymbol =>
       disamb.flatMap(_.defn) match
-      case S(_) if bs.asCls.exists(_ is ctx.builtins.Int31) =>
-        
-        
-        // return term(Sel(State.runtimeSymbol.ref().resolve, ref.tree)(S(bs), N).withLocOf(ref).resolve)(k)
-        
-        
-        return term(Sel(State.runtimeSymbol.ref().resolve, ref.tree)(S(bs), N, N).withLocOf(ref).resolve)(k)
       case S(d) if d.hasDeclareModifier.isDefined =>
         return term(Sel(State.globalThisSymbol.ref().resolve, ref.tree)(S(bs), N, N).withLocOf(ref).resolve)(k)
         // * Note: the alternative below, which might seem more appealing,
@@ -586,8 +579,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       } =>
         val sym = t.resolvedSym.get.asInstanceOf[BlockMemberSymbol]
         conclude(Value.Ref(State.wasmSymbol).selN(Tree.Ident(sym.nme)))
-      case t if t.resolvedSym.exists(_ is ctx.builtins.Int31) =>
-        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("Int31")))
       case t if instantiatedResolvedBms.exists(_ is ctx.builtins.debug.printStack) =>
         if !config.effectHandlers.exists(_.debug) then
           return fail:

@@ -283,8 +283,6 @@ end BlockMemberSymbol
 
 sealed abstract class MemberSymbol(using State) extends Symbol:
   def nme: Str
-  // var defn: Opt[Defn] = N // FIXME still needed?
-  // def bms: Opt[BlockMemberSymbol] = defn.map(_.bsym) // FIXME still needed?
   def subst(using SymbolSubst): MemberSymbol
 
 
@@ -379,7 +377,6 @@ sealed trait InnerSymbol(using State) extends Symbol:
   val privatesScope: Scope = Scope.empty(Scope.Cfg.default) // * Scope for private members of this symbol
   val thisProxy: TempSymbol = TempSymbol(N, s"this$$$nme")
   def subst(using SymbolSubst): InnerSymbol
-  // def bms: Opt[BlockMemberSymbol]
 
 trait IdentifiedSymbol extends Symbol:
   val id: Tree.Ident
