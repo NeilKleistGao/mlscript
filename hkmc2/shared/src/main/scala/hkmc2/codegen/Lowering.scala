@@ -19,7 +19,7 @@ import semantics.{Term => st}
 import semantics.Term.{Throw => _, *}
 import semantics.Elaborator.{State, Ctx, ctx}
 
-import syntax.{Literal, Tree}
+import syntax.{Literal, Tree, SpreadKind}
 import hkmc2.syntax.Fun
 
 
@@ -370,7 +370,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     arg match
     case Tup(fs) =>
       if fs.exists(e => e match
-        case Spd(false, _) => true // is lazy spread
+        case Spd(SpreadKind.Lazy, _) => true // is lazy spread
         case _ => false)
       then
         raise(ErrorReport(
@@ -380,7 +380,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     case _ =>
       // Application arguments that are not tuples represent spreads, as in `f(...arg)`
       subTerm_nonTail(arg): ar =>
-        k(Arg(spread = S(true), ar) :: Nil)
+        k(Arg(spread = S(SpreadKind.Eager), ar) :: Nil)
   
   def ref(ref: st.Ref, annots: List[Annot], disamb: Opt[DefinitionSymbol[?]], inStmtPos: Bool)(k: Result => Block)(using LoweringCtx): Block =
     def warnStmt = if inStmtPos then
@@ -962,7 +962,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       case sem.Fld(sem.FldFlags.benign(), value, N) => R(N -> value)
       case sem.Fld(sem.FldFlags.benign(), idx, S(rhs)) => L(idx -> rhs)
       case arg @ sem.Fld(flags, value, asc) => TODO(s"Other argument forms: $arg")
-      case spd: Spd => R(S(spd.eager) -> spd.term)
+      case spd: Spd => R(S(spd.k) -> spd.term)
     // * The straightforward way to lower arguments creates too much recursion depth
     // * and makes Lowering stack overflow when lowering functions with lots of arguments.
     /* 
@@ -975,7 +975,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     */
     var asr: Ls[Arg] = Nil
     var fsr: Ls[RcdArg] = Nil
-    def rec(as: Ls[(Term -> Term) \/ (Opt[Bool] -> st)]): Block = as match
+    def rec(as: Ls[(Term -> Term) \/ (Opt[SpreadKind] -> st)]): Block = as match
       case Nil => End()
       case R((spd, a)) :: as =>
         subTerm_nonTail(a): ar =>

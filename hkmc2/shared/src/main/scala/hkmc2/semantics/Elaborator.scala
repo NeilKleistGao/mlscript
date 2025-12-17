@@ -860,9 +860,9 @@ extends Importer with ucs.SplitElaborator:
     case InfixApp(lhs, Keywrd(Keyword.`:`), rhs) =>
       Fld(FldFlags.empty, term(lhs), S(arg(rhs)))
     case Spread(Keywrd(Keyword.`..`), S(trm)) =>
-      Spd(false, arg(trm))
+      Spd(SpreadKind.Lazy, arg(trm))
     case Spread(Keywrd(Keyword.`...`), S(trm)) =>
-      Spd(true, arg(trm))
+      Spd(SpreadKind.Eager, arg(trm))
     case _ =>
       val t = arg(tree)
       var flags = FldFlags.empty

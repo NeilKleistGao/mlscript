@@ -1100,9 +1100,9 @@ final case class Fld(flags: FldFlags, term: Term, asc: Opt[Term]) extends Elem, 
 object PlainFld:
   def apply(term: Term) = Fld(FldFlags.empty, term, N)
   def unapply(fld: Fld): Opt[Term] = S(fld.term)
-final case class Spd(eager: Bool, term: Term) extends Elem:
-  def show(using Scope, ShowCfg): Document = (if eager then "..." else "..") :: term.show
-  def showDbg: Str = (if eager then "..." else "..") + term.showDbg
+final case class Spd(k: SpreadKind, term: Term) extends Elem:
+  def show(using Scope, ShowCfg): Document = k.str :: term.show
+  def showDbg: Str = k.str + term.showDbg
 
 final case class TyParam(flags: FldFlags, vce: Opt[Bool], sym: VarSymbol) extends Declaration:
   

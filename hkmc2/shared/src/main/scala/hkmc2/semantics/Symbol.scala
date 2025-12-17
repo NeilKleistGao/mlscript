@@ -220,8 +220,8 @@ class BuiltinSymbol
   lazy val signature : semantics.flow.Producer =
     import typing.Type
     import typing.Type.*
-    val binaryType : Type = Fun(args = Ls(Top, Top), ret = Top, eff = N)
-    val unaryType : Type = Fun(args = Ls(Top), ret = Top, eff = N)
+    val binaryType : Type = Fun(args = Tup.mk(Top, Top), ret = Top, eff = N)
+    val unaryType : Type = Fun(args = Tup.mk(Top), ret = Top, eff = N)
     val nullaryType : Type = Top
     val typ = (binary, unary, nullary) match
       case (true, true, true) => Union(binaryType, Union(unaryType, nullaryType))
