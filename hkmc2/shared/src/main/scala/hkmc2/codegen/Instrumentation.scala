@@ -78,8 +78,8 @@ class InstrumentationImpl(using State):
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
   def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
 
-  def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    ctor(blockMod(name), args, symName)(k)
+  def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: StagedPath => Block): Block =
+    ctor(blockMod(name), args, symName)(p => k(StagedPath(p)))
   def optionSome(arg: ArgWrappable, symName: Str = "tmp")(k: Path => Block): Block =
     ctor(optionMod("Some"), Ls(arg), symName)(k)
   def optionNone(symName: Str = "tmp")(k: Path => Block): Block =
@@ -92,7 +92,7 @@ class InstrumentationImpl(using State):
 
   // linking functions defined in MLscipt
 
-  def fnPrintCode(p: Path)(k: Block): Block =
+  def fnPrintCode(p: StagedPath)(k: Block): Block =
     // discard result, we only care about side effect
     blockCall("printCode", Ls(p))(_ => k)
 
@@ -101,7 +101,7 @@ class InstrumentationImpl(using State):
 
   // transformation helpers
 
-  def transformSymbol[S <: Symbol](sym: S, symName: Str = "sym")(k: Path => Block): Block =
+  def transformSymbol[S <: Symbol](sym: S, symName: Str = "sym")(k: StagedPath => Block): Block =
     sym match
       case clsSym: ClassSymbol =>
         transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
@@ -116,43 +116,37 @@ class InstrumentationImpl(using State):
   // instrumentation rules
 
   def ruleLit(l: Value.Lit, symName: String = "lit")(k: StagedPath => Block): Block =
-    blockCtor("ValueLit", Ls(l), symName): cde =>
-      k(StagedPath(cde))
+    blockCtor("ValueLit", Ls(l), symName)(k)
 
   // not in formalization
   def ruleVar(r: Value.Ref, symName: String = "var")(k: StagedPath => Block): Block =
     val Value.Ref(l, disamb) = r
     transformSymbol(disamb.getOrElse(l)): sym =>
-      blockCtor("ValueRef", Ls(sym), symName): cde =>
-        k(StagedPath(cde))
+      blockCtor("ValueRef", Ls(sym), symName)(k)
 
   def ruleTup(t: Tuple, symName: String = "tup")(using Context)(k: StagedPath => Block): Block =
     assert(!t.mut, "mutable tuple not supported")
     transformArgs(t.elems): xs =>
       tuple(xs.map(_._1)): codes =>
-        blockCtor("Tuple", Ls(codes), symName): cde =>
-          k(StagedPath(cde))
+        blockCtor("Tuple", Ls(codes), symName)(k)
 
   def ruleSel(s: Select, symName: String = "sel")(using Context)(k: StagedPath => Block): Block =
     val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
       blockCtor("Symbol", Ls(toValue(name))): name =>
-        blockCtor("Select", Ls(x, name), symName): cde =>
-          k(StagedPath(cde))
+        blockCtor("Select", Ls(x, name), symName)(k)
 
   def ruleDynSel(d: DynSelect, symName: String = "dynsel")(using Context)(k: StagedPath => Block): Block =
     transformPath(d.qual): x =>
       transformPath(d.fld): y =>
-        blockCtor("DynSelect", Ls(x, y, toValue(d.arrayIdx)), symName): cde =>
-          k(StagedPath(cde))
+        blockCtor("DynSelect", Ls(x, y, toValue(d.arrayIdx)), symName)(k)
 
   // TODO
   def ruleApp(c: Call, symName: String = "app")(using Context)(k: StagedPath => Block): Block =
     transformPath(c.fun): fun =>
       transformArgs(c.args): args =>
         tuple(args.map(_._1)): tup =>
-          blockCtor("Call", Ls(fun, tup), symName): res =>
-            k(StagedPath(res))
+          blockCtor("Call", Ls(fun, tup), symName)(k)
 
   def ruleInst(i: Instantiate, symName: String = "inst")(using Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
@@ -168,13 +162,12 @@ class InstrumentationImpl(using State):
         // possible to skip this? this uses ruleVar, which is not in formalization
         transformPath(cls): cls =>
           tuple(xs.map(_._1)): codes =>
-            blockCtor("Instantiate", Ls(cls, codes), symName): cde =>
-              k(StagedPath(cde))
+            blockCtor("Instantiate", Ls(cls, codes), symName)(k)
 
   def ruleReturn(r: Return, symName: String = "return")(using Context)(k: (StagedPath, Context) => Block): Block =
     transformResult(r.res): x =>
       blockCtor("Return", Ls(x.code, toValue(false)), symName): cde =>
-        k(StagedPath(cde), summon)
+        k(cde, summon)
 
   def ruleMatch(m: Match, symName: String = "match")(using Context)(k: (StagedPath, Context) => Block): Block =
     val Match(p, ks, dflt, rest) = m
@@ -191,21 +184,20 @@ class InstrumentationImpl(using State):
         blockCtor("ValueRef", Ls(xSym)): xStaged =>
           // x should always be defined, either as an argument to the function or in a Scope Block
           assert(ctx.get(x.asPath).isDefined)
-          val x2 = StagedPath(xStaged)
+          val x2 = xStaged
           (Assign(x, x2.code, _)):
             given Context = ctx.clone() += x.asPath -> x2
             transformBlock(b): (z, ctx) =>
               blockCtor("Assign", Ls(xSym, y, z), symName): cde =>
-                k(StagedPath(cde), ctx)
+                k(cde, ctx)
 
   def ruleEnd(symName: String = "end")(k: StagedPath => Block): Block =
-    blockCtor("End", Ls(), symName): cde =>
-      k(StagedPath(cde))
+    blockCtor("End", Ls(), symName)(k)
 
   def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)(k apply _.code)
 
-  def ruleCls(cls: ClsLikeDefn, rest: Block)(using Context)(k: Path => Block): Block =
+  def ruleCls(cls: ClsLikeDefn, rest: Block)(using Context)(k: StagedPath => Block): Block =
     assert(cls.companion.isEmpty, "nested module not supported")
     (Define(cls, _)):
       transformBlock(rest): p =>
@@ -229,8 +221,7 @@ class InstrumentationImpl(using State):
                 optionSome(dflt.code)(k(_, ctx))
             case N => optionNone()(k(_, ctx))
           dfltStaged: (dflt, ctx) =>
-            blockCtor("Match", Ls(x.code, arms, dflt, e), symName): m =>
-              k(StagedPath(m), ctx)
+            blockCtor("Match", Ls(x.code, arms, dflt, e), symName)(k(_, ctx))
 
   def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block, symName: String = "branch")(using ctx: Context)(k: (StagedPath, Context, StagedPath) => Block): Block =
     transformCase(cse): cse =>
@@ -270,8 +261,7 @@ class InstrumentationImpl(using State):
     transformOption(spread, bool => assign(toValue(bool))): spreadStaged =>
       transformPath(value): value =>
         blockCtor("Arg", Ls(spreadStaged, value)): cde =>
-          val res = StagedPath(cde)
-          k(res, spread.isDefined)
+          k(cde, spread.isDefined)
 
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[(StagedPath, Bool)] => Block): Block =
     args.map(transformArg).collectApply(k)
@@ -282,7 +272,7 @@ class InstrumentationImpl(using State):
   def transformParamsOpt(pOpt: Opt[ParamList])(k: Path => Block) =
     transformOption(pOpt, transformParamList)(k)
 
-  def transformCase(cse: Case)(using Context)(k: Path => Block): Block =
+  def transformCase(cse: Case)(using Context)(k: StagedPath => Block): Block =
     cse match
       case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
       case Case.Cls(cls, path) =>
@@ -308,7 +298,7 @@ class InstrumentationImpl(using State):
           argsList.foldRight(k)((args, cont) => res => call(res, args)(cont))(sym)
         makeCalls: ret =>
           val p = StagedPath(ret)
-          fnPrintCode(p.code)(End())
+          fnPrintCode(p)(End())
 
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
     val args = f.params.flatMap(_.params).map(_.sym)
@@ -338,7 +328,7 @@ class InstrumentationImpl(using State):
   def transformScoped(s: Scoped)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Scoped(syms, body) = s
     blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-      val newCtx = ctx.clone() ++ syms.map(_.asPath -> StagedPath(undef))
+      val newCtx = ctx.clone() ++ syms.map(_.asPath -> undef)
       transformBlock(body)(using newCtx): (p, ctx) =>
         k(p, ctx)
 
