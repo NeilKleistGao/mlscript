@@ -58,7 +58,7 @@ class InstrumentationImpl(using State):
 
   // helpers for constructing Block
 
-  def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Assign =
+  def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
     // TODO: skip assignment if res: Path?
     val sym = new TempSymbol(N, symName)
     Assign(sym, res, k(sym.asPath))
@@ -212,16 +212,6 @@ class InstrumentationImpl(using State):
                   blockCtor("Assign", Ls(xSym, y, z)): cde =>
                     StagedPath(cde, symName)(k(_, ctx))
 
-  def ruleLet(x: BlockMemberSymbol, b: Block, symName: String = "_let")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
-    transformSymbol(x): xSym =>
-      val y = StagedPath(xSym)
-      (Assign(x, y.code, _)):
-        given Context = ctx.clone() += x.asPath -> y
-        transformBlock(b): (z, ctx) =>
-          blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undefined =>
-            blockCtor("Assign", Ls(xSym, undefined, z)): cde =>
-              StagedPath(cde, symName)(k(_, summon))
-
   def ruleEnd(symName: String = "end")(using Context)(k: (StagedPath, Context) => Block): Block =
     blockCtor("End", Ls()): cde =>
       StagedPath(cde, symName)(k(_, summon))
@@ -333,14 +323,11 @@ class InstrumentationImpl(using State):
 
   def transformDefine(d: Define)(using Context)(k: (StagedPath, Context) => Block): Block =
     d.defn match
-      case f: FunDefn => ???
-      case v: ValDefn =>
-        val ValDefn(_, x, r) = v
-        ruleLet(x, Assign(x, r, d.rest))(k)
       case c: ClsLikeDefn =>
         ruleCls(c, d.rest): p =>
           ruleEnd(): (b, ctx) =>
             fnPrintCode(p)(k(b, ctx))
+      case _: FunDefn | _: ValDefn => ???
 
   // TODO
   // discards result of sub
@@ -350,12 +337,18 @@ class InstrumentationImpl(using State):
         fnConcat(sub.code, rest.code): block =>
           StagedPath(block, "tmp")(k(_, ctx))
 
+  def transformScoped(s: Scoped)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
+    val Scoped(syms, body) = s
+    blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
+      val newCtx = ctx.clone() ++ syms.map(Value.Ref(_, N) -> StagedPath(undef))
+      transformBlock(body)(using newCtx): (p, ctx) =>
+        k(p, ctx)
+
   // ruleBlk?
   def transformBlock(b: Block)(using Context)(k: StagedPath => Block): Block =
     transformBlock(b)((p, _) => k(p))
 
   def transformBlock(b: Block)(using Context)(k: (StagedPath, Context) => Block): Block =
-    val k2 = k(_, summon)
     b match
       case r: Return => ruleReturn(r)(k)
       case a: Assign => ruleAssign(a)(k)
@@ -366,6 +359,7 @@ class InstrumentationImpl(using State):
       // use BlockTransformer here?
       case b: Begin => transformBegin(b)(k)
       // case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)
+      case s: Scoped => transformScoped(s)(k)
       case _ => ??? // not supported
 
 // TODO: rename as InstrumentationTransformer?
