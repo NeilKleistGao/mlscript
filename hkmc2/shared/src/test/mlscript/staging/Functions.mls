@@ -41,10 +41,12 @@ staged module ClassInstrumentation with
   class NoArg
   fun inst1() = new Outside(1)
   fun inst2() = new NoArg
+  fun app() = Outside(1)
 //│ > Define(ClsLikeDefn(ClassSymbol("NoArg"), TODO), End)
 //│ > Define(ClsLikeDefn(ClassSymbol("Inside":[Symbol("a"), Symbol("b")]), TODO), End)
 //│ > Return(Instantiate(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false)
 //│ > Return(Instantiate(Select(Ref(Symbol("ClassInstrumentation")), Symbol("NoArg")), []), false)
+//│ > Return(Call(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false)
 
 :js
 :staging

@@ -101,11 +101,13 @@ class InstrumentationImpl(using State):
 
   // transformation helpers
 
-  def transformSymbol[S <: Symbol](sym: S, symName: Str = "sym")(k: StagedPath => Block): Block =
+  def transformSymbol(sym: Symbol, symName: Str = "sym")(k: StagedPath => Block): Block =
     sym match
       case clsSym: ClassSymbol =>
         transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
           blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt), symName)(k)
+      case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
+        transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
       case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
@@ -141,7 +143,6 @@ class InstrumentationImpl(using State):
       transformPath(d.fld): y =>
         blockCtor("DynSelect", Ls(x, y, toValue(d.arrayIdx)), symName)(k)
 
-  // TODO
   def ruleApp(c: Call, symName: String = "app")(using Context)(k: StagedPath => Block): Block =
     transformPath(c.fun): fun =>
       transformArgs(c.args): args =>
