@@ -212,9 +212,9 @@ class InstrumentationImpl(using State):
                   blockCtor("Assign", Ls(xSym, y, z)): cde =>
                     StagedPath(cde, symName)(k(_, ctx))
 
-  def ruleEnd(symName: String = "end")(using Context)(k: (StagedPath, Context) => Block): Block =
+  def ruleEnd(symName: String = "end")(k: StagedPath => Block): Block =
     blockCtor("End", Ls()): cde =>
-      StagedPath(cde, symName)(k(_, summon))
+      StagedPath(cde, symName)(k)
 
   def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)(k apply _.code)
@@ -327,8 +327,8 @@ class InstrumentationImpl(using State):
     d.defn match
       case c: ClsLikeDefn =>
         ruleCls(c, d.rest): p =>
-          ruleEnd(): (b, ctx) =>
-            fnPrintCode(p)(k(b, ctx))
+          ruleEnd(): b =>
+            fnPrintCode(p)(k(b, summon))
       case _: FunDefn | _: ValDefn => ???
 
   // TODO
@@ -355,7 +355,7 @@ class InstrumentationImpl(using State):
       case r: Return => ruleReturn(r)(k)
       case a: Assign => ruleAssign(a)(k)
       case d: Define => transformDefine(d)(k)
-      case End(_) => ruleEnd()(k)
+      case End(_) => ruleEnd()(k(_, summon))
       case m: Match => ruleMatch(m)(k)
       // temporary measure to accept returning an array
       // use BlockTransformer here?
