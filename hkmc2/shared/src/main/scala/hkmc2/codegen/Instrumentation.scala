@@ -193,24 +193,14 @@ class InstrumentationImpl(using State):
     transformResult(r): y =>
       transformSymbol(x): xSym =>
         blockCtor("ValueRef", Ls(xSym)): xStaged =>
-          // if ctx contains x, x was defined earlier
-          // otherwise, x is defined here
-          ctx.get(x.asPath) match
-            case S(x1) =>
-              val x2 = StagedPath(xStaged)
-              (Assign(x, x2.code, _)):
-                given Context = ctx.clone() += x.asPath -> x2
-                transformBlock(b): (z, ctx) =>
-                  blockCtor("Assign", Ls(xSym, y, z)): cde =>
-                    StagedPath(cde, symName)(k(_, ctx))
-            case N =>
-              val x2 = StagedPath(xStaged)
-              // propagate shape information for future references to x
-              (Assign(x, y.code, _)):
-                given Context = ctx.clone() += x.asPath -> x2
-                transformBlock(b): (z, ctx) =>
-                  blockCtor("Assign", Ls(xSym, y, z)): cde =>
-                    StagedPath(cde, symName)(k(_, ctx))
+          // x should always be defined, either as an argument to the function or in a Scope Block
+          assert(ctx.get(x.asPath).isDefined)
+          val x2 = StagedPath(xStaged)
+          (Assign(x, x2.code, _)):
+            given Context = ctx.clone() += x.asPath -> x2
+            transformBlock(b): (z, ctx) =>
+              blockCtor("Assign", Ls(xSym, y, z)): cde =>
+                StagedPath(cde, symName)(k(_, ctx))
 
   def ruleEnd(symName: String = "end")(k: StagedPath => Block): Block =
     blockCtor("End", Ls()): cde =>
@@ -236,7 +226,7 @@ class InstrumentationImpl(using State):
     val a = arms.map(applyRuleBranch).collectApply
     ((f: (Ls[StagedPath], Context) => Block) => a(ys => (ctx, _) => f(ys, ctx))(summon, x)): (arms, ctx) =>
       tuple(arms): arms =>
-        blockCtor("End", Ls()): e =>
+        ruleEnd(): e =>
           // TODO: use transformOption here
           def dfltStaged(k: (Path, Context) => Block) = dflt match
             case S(dflt) => ruleWildCard(x, p, dflt): (dflt, ctx) =>
@@ -308,19 +298,29 @@ class InstrumentationImpl(using State):
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
-  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn)(using Context): (FunDefn, Block) =
+  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, Block) =
     val genSym = BlockMemberSymbol(f.sym.nme + "_gen", Nil, true)
-    // TODO: remove it. only for test
-    // TODO: put correct parameters instead of Nil
     val sym = modSym.asPath.selSN(genSym.nme)
-    val debug =
-      call(sym, Nil): ret =>
-        val p = StagedPath(ret)
-        fnPrintCode(p.code)(End())
-
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
+    // TODO: remove it. only for test
+    val debug =
+      blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
+        // TODO: put correct parameters instead of End
+        // TODO: handle curried arguments
+        val argsList = f.params.map(ps => List.fill(ps.params.length)(undef))
+        def makeCalls(k: Path => Block) =
+          argsList.foldRight(k)((args, cont) => res => call(res, args)(cont))(sym)
+        makeCalls: ret =>
+          val p = StagedPath(ret)
+          fnPrintCode(p.code)(End())
+
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
-    val newFun = f.copy(sym = genSym, dSym = dSym, body = transformBlock(f.body)(p => Return(p.code, false)))(false)
+    val args = f.params.flatMap(_.params).map(_.sym)
+    val newBody =
+      ruleEnd(): end =>
+        given Context = HashMap(args.map(s => Value.Ref(s, N) -> StagedPath(Value.Ref(s, N)))*)
+        transformBlock(f.body)(p => Return(p.code, false))
+    val newFun = f.copy(sym = genSym, dSym = dSym, body = newBody)(false)
     (newFun, debug)
 
   def transformDefine(d: Define)(using Context)(k: (StagedPath, Context) => Block): Block =
@@ -335,14 +335,14 @@ class InstrumentationImpl(using State):
   // discards result of sub
   def transformBegin(b: Begin)(using Context)(k: (StagedPath, Context) => Block): Block =
     transformBlock(b.sub): (sub, ctx) =>
-      transformBlock(b.rest): (rest, ctx) =>
+      transformBlock(b.rest)(using ctx): (rest, ctx) =>
         fnConcat(sub.code, rest.code): block =>
           StagedPath(block, "tmp")(k(_, ctx))
 
   def transformScoped(s: Scoped)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Scoped(syms, body) = s
     blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-      val newCtx = ctx.clone() ++ syms.map(Value.Ref(_, N) -> StagedPath(undef))
+      val newCtx = ctx.clone() ++ syms.map(_.asPath -> StagedPath(undef))
       transformBlock(body)(using newCtx): (p, ctx) =>
         k(p, ctx)
 
@@ -376,7 +376,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
           val sym = c.sym.subst
           val companion = c.companion.get
           val (stagedMethods, debugPrintCode) = companion.methods
-            .map(impl.transformFunDefn(sym, _)(using new HashMap())) // fold instead to retain env?
+            .map(impl.transformFunDefn(sym, _))
             .unzip
           val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
           val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
