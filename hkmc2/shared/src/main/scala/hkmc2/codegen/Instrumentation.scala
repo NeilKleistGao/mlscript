@@ -96,7 +96,7 @@ class InstrumentationImpl(using State):
     // discard result, we only care about side effect
     blockCall("printCode", Ls(p))(_ => k)
 
-  def fnConcat(p1: Path, p2: Path, symName: String = "concat")(k: Path => Block): Block =
+  def fnConcat(p1: StagedPath, p2: StagedPath, symName: String = "concat")(k: Path => Block): Block =
     blockCall("concat", Ls(p1, p2), symName)(k)
 
   // transformation helpers
@@ -175,7 +175,7 @@ class InstrumentationImpl(using State):
     transformPath(p): x =>
       ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
         transformBlock(rest)(using ctx1): (z, ctx2) =>
-          fnConcat(stagedMatch.code, z.code, symName): cde =>
+          fnConcat(stagedMatch, z, symName): cde =>
             k(StagedPath(cde), ctx2)
 
   def ruleAssign(a: Assign, symName: String = "assign")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
@@ -189,8 +189,7 @@ class InstrumentationImpl(using State):
           (Assign(x, x2.code, _)):
             given Context = ctx.clone() += x.asPath -> x2
             transformBlock(b): (z, ctx) =>
-              blockCtor("Assign", Ls(xSym, y, z), symName): cde =>
-                k(cde, ctx)
+              blockCtor("Assign", Ls(xSym, y, z), symName)(k(_, ctx))
 
   def ruleEnd(symName: String = "end")(k: StagedPath => Block): Block =
     blockCtor("End", Ls(), symName)(k)
@@ -323,7 +322,7 @@ class InstrumentationImpl(using State):
   def transformBegin(b: Begin)(using Context)(k: (StagedPath, Context) => Block): Block =
     transformBlock(b.sub): (sub, ctx) =>
       transformBlock(b.rest)(using ctx): (rest, ctx) =>
-        fnConcat(sub.code, rest.code): block =>
+        fnConcat(sub, rest): block =>
           k(StagedPath(block), ctx)
 
   def transformScoped(s: Scoped)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
