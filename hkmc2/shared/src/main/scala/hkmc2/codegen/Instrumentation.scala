@@ -319,7 +319,9 @@ class InstrumentationImpl(using State):
         fnPrintCode(p.code)(End())
 
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
-    (f.copy(sym = genSym, body = transformBlock(f.body)(p => Return(p.code, false)))(false), debug)
+    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
+    val newFun = f.copy(sym = genSym, dSym = dSym, body = transformBlock(f.body)(p => Return(p.code, false)))(false)
+    (newFun, debug)
 
   def transformDefine(d: Define)(using Context)(k: (StagedPath, Context) => Block): Block =
     d.defn match
