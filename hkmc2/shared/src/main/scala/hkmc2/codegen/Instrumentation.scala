@@ -90,18 +90,14 @@ class InstrumentationImpl(using State):
 
   case class StagedPath(code: Path)
 
-  object StagedPath:
-    def apply(code: Path, symName: Str = "tmp")(k: StagedPath => Block): Block =
-      k(StagedPath(code))
-
   // linking functions defined in MLscipt
 
   def fnPrintCode(p: Path)(k: Block): Block =
     // discard result, we only care about side effect
     blockCall("printCode", Ls(p))(_ => k)
 
-  def fnConcat(p1: Path, p2: Path)(k: Path => Block): Block =
-    blockCall("concat", Ls(p1, p2))(k)
+  def fnConcat(p1: Path, p2: Path, symName: String = "concat")(k: Path => Block): Block =
+    blockCall("concat", Ls(p1, p2), symName)(k)
 
   // transformation helpers
 
@@ -120,43 +116,43 @@ class InstrumentationImpl(using State):
   // instrumentation rules
 
   def ruleLit(l: Value.Lit, symName: String = "lit")(k: StagedPath => Block): Block =
-    blockCtor("ValueLit", Ls(l)): cde =>
-      StagedPath(cde, symName)(k)
+    blockCtor("ValueLit", Ls(l), symName): cde =>
+      k(StagedPath(cde))
 
   // not in formalization
   def ruleVar(r: Value.Ref, symName: String = "var")(k: StagedPath => Block): Block =
     val Value.Ref(l, disamb) = r
     transformSymbol(disamb.getOrElse(l)): sym =>
-      blockCtor("ValueRef", Ls(sym)): cde =>
-        StagedPath(cde, symName)(k)
+      blockCtor("ValueRef", Ls(sym), symName): cde =>
+        k(StagedPath(cde))
 
   def ruleTup(t: Tuple, symName: String = "tup")(using Context)(k: StagedPath => Block): Block =
     assert(!t.mut, "mutable tuple not supported")
     transformArgs(t.elems): xs =>
       tuple(xs.map(_._1)): codes =>
-        blockCtor("Tuple", Ls(codes)): cde =>
-          StagedPath(cde, symName)(k)
+        blockCtor("Tuple", Ls(codes), symName): cde =>
+          k(StagedPath(cde))
 
   def ruleSel(s: Select, symName: String = "sel")(using Context)(k: StagedPath => Block): Block =
     val Select(p, i @ Tree.Ident(name)) = s
     transformPath(p): x =>
       blockCtor("Symbol", Ls(toValue(name))): name =>
-        blockCtor("Select", Ls(x, name)): cde =>
-          StagedPath(cde, symName)(k)
+        blockCtor("Select", Ls(x, name), symName): cde =>
+          k(StagedPath(cde))
 
   def ruleDynSel(d: DynSelect, symName: String = "dynsel")(using Context)(k: StagedPath => Block): Block =
     transformPath(d.qual): x =>
       transformPath(d.fld): y =>
-        blockCtor("DynSelect", Ls(x, y, toValue(d.arrayIdx))): cde =>
-          StagedPath(cde, symName)(k)
+        blockCtor("DynSelect", Ls(x, y, toValue(d.arrayIdx)), symName): cde =>
+          k(StagedPath(cde))
 
   // TODO
   def ruleApp(c: Call, symName: String = "app")(using Context)(k: StagedPath => Block): Block =
     transformPath(c.fun): fun =>
       transformArgs(c.args): args =>
         tuple(args.map(_._1)): tup =>
-          blockCtor("Call", Ls(fun, tup)): res =>
-            StagedPath(res, symName)(k)
+          blockCtor("Call", Ls(fun, tup), symName): res =>
+            k(StagedPath(res))
 
   def ruleInst(i: Instantiate, symName: String = "inst")(using Context)(k: StagedPath => Block): Block =
     val Instantiate(mut, cls, args) = i
@@ -172,21 +168,21 @@ class InstrumentationImpl(using State):
         // possible to skip this? this uses ruleVar, which is not in formalization
         transformPath(cls): cls =>
           tuple(xs.map(_._1)): codes =>
-            blockCtor("Instantiate", Ls(cls, codes)): cde =>
-              StagedPath(cde, symName)(k)
+            blockCtor("Instantiate", Ls(cls, codes), symName): cde =>
+              k(StagedPath(cde))
 
   def ruleReturn(r: Return, symName: String = "return")(using Context)(k: (StagedPath, Context) => Block): Block =
     transformResult(r.res): x =>
-      blockCtor("Return", Ls(x.code, toValue(false))): cde =>
-        StagedPath(cde, symName)(k(_, summon))
+      blockCtor("Return", Ls(x.code, toValue(false)), symName): cde =>
+        k(StagedPath(cde), summon)
 
   def ruleMatch(m: Match, symName: String = "match")(using Context)(k: (StagedPath, Context) => Block): Block =
     val Match(p, ks, dflt, rest) = m
     transformPath(p): x =>
       ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
         transformBlock(rest)(using ctx1): (z, ctx2) =>
-          fnConcat(stagedMatch.code, z.code): cde =>
-            StagedPath(cde, symName)(k(_, ctx2))
+          fnConcat(stagedMatch.code, z.code, symName): cde =>
+            k(StagedPath(cde), ctx2)
 
   def ruleAssign(a: Assign, symName: String = "assign")(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Assign(x, r, b) = a
@@ -199,12 +195,12 @@ class InstrumentationImpl(using State):
           (Assign(x, x2.code, _)):
             given Context = ctx.clone() += x.asPath -> x2
             transformBlock(b): (z, ctx) =>
-              blockCtor("Assign", Ls(xSym, y, z)): cde =>
-                StagedPath(cde, symName)(k(_, ctx))
+              blockCtor("Assign", Ls(xSym, y, z), symName): cde =>
+                k(StagedPath(cde), ctx)
 
   def ruleEnd(symName: String = "end")(k: StagedPath => Block): Block =
-    blockCtor("End", Ls()): cde =>
-      StagedPath(cde, symName)(k)
+    blockCtor("End", Ls(), symName): cde =>
+      k(StagedPath(cde))
 
   def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)(k apply _.code)
@@ -233,16 +229,16 @@ class InstrumentationImpl(using State):
                 optionSome(dflt.code)(k(_, ctx))
             case N => optionNone()(k(_, ctx))
           dfltStaged: (dflt, ctx) =>
-            blockCtor("Match", Ls(x.code, arms, dflt, e)): m =>
-              StagedPath(m, symName)(k(_, ctx))
+            blockCtor("Match", Ls(x.code, arms, dflt, e), symName): m =>
+              k(StagedPath(m), ctx)
 
   def ruleBranch(x: StagedPath, p: Path, cse: Case, b: Block, symName: String = "branch")(using ctx: Context)(k: (StagedPath, Context, StagedPath) => Block): Block =
     transformCase(cse): cse =>
       transformBlock(b)(using ctx.clone() += p -> x): (y, ctx) =>
         // TODO: use Arm type instead of Tup
-        tuple(Ls(cse, y)): cde =>
-          StagedPath(cde, symName): ret =>
-            k(ret, ctx.clone() -= p, x)
+        tuple(Ls(cse, y), symName): cde =>
+          val ret = StagedPath(cde)
+          k(ret, ctx.clone() -= p, x)
 
   def ruleWildCard(x: StagedPath, p: Path, b: Block)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     given Context = ctx.clone() += p -> x
@@ -337,7 +333,7 @@ class InstrumentationImpl(using State):
     transformBlock(b.sub): (sub, ctx) =>
       transformBlock(b.rest)(using ctx): (rest, ctx) =>
         fnConcat(sub.code, rest.code): block =>
-          StagedPath(block, "tmp")(k(_, ctx))
+          k(StagedPath(block), ctx)
 
   def transformScoped(s: Scoped)(using ctx: Context)(k: (StagedPath, Context) => Block): Block =
     val Scoped(syms, body) = s
