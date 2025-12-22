@@ -24,16 +24,16 @@ class InstrumentationImpl(using State):
 
   def asArg(x: ArgWrappable): Arg =
     x match
-      case p: Path => p.asArg
-      case l: Symbol => l.asPath.asArg
+    case p: Path => p.asArg
+    case l: Symbol => l.asPath.asArg
 
   // null and undefined are missing
   def toValue(lit: Str | Int | BigDecimal | Bool): Value =
     val l = lit match
-      case i: Int => Tree.IntLit(i)
-      case b: Bool => Tree.BoolLit(b)
-      case s: Str => Tree.StrLit(s)
-      case n: BigDecimal => Tree.DecLit(n)
+    case i: Int => Tree.IntLit(i)
+    case b: Bool => Tree.BoolLit(b)
+    case s: Str => Tree.StrLit(s)
+    case n: BigDecimal => Tree.DecLit(n)
     Value.Lit(l)
 
   extension [A, B](ls: Ls[(A => B) => B])
@@ -91,17 +91,17 @@ class InstrumentationImpl(using State):
 
   def transformSymbol(sym: Symbol, symName: Str = "sym")(k: Path => Block): Block =
     sym match
-      case clsSym: ClassSymbol =>
-        transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
-          blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt), symName)(k)
-      case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
-        transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
-      case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    case clsSym: ClassSymbol =>
+      transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
+        blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt), symName)(k)
+    case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
+      transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
+    case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
     xOpt match
-      case S(x) => f(x)(optionSome(_)(k))
-      case N => optionNone()(k)
+    case S(x) => f(x)(optionSome(_)(k))
+    case N => optionNone()(k)
 
   // instrumentation rules
 
@@ -121,7 +121,8 @@ class InstrumentationImpl(using State):
       tuple(arms): arms =>
         ruleEnd(): e =>
           // TODO: use transformOption here
-          def dfltStaged(k: (Path, Context) => Block) = dflt match
+          def dfltStaged(k: (Path, Context) => Block) =
+            dflt match
             case S(dflt) =>
               transformBlock(dflt)(using ctx.clone() += p -> x): (dflt, ctx) =>
                 optionSome(dflt)(k(_, ctx.clone() -= p))
@@ -135,42 +136,42 @@ class InstrumentationImpl(using State):
     // rulePath
     ctx.get(p).map(k).getOrElse:
       p match
-        case Value.Ref(l, disamb) =>
-          // not in formalization
-          transformSymbol(disamb.getOrElse(l)): sym =>
-            blockCtor("ValueRef", Ls(sym), "var")(k)
-        case l: Value.Lit =>
-          blockCtor("ValueLit", Ls(l), "lit")(k)
-        case Select(p, i @ Tree.Ident(name)) =>
-          transformPath(p): x =>
-            blockCtor("Symbol", Ls(toValue(name))): name =>
-              blockCtor("Select", Ls(x, name), "sel")(k)
-        case DynSelect(qual, fld, arrayIdx) =>
-          transformPath(qual): x =>
-            transformPath(fld): y =>
-              blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k)
-        case _ => ??? // not supported
+      case Value.Ref(l, disamb) =>
+        // not in formalization
+        transformSymbol(disamb.getOrElse(l)): sym =>
+          blockCtor("ValueRef", Ls(sym), "var")(k)
+      case l: Value.Lit =>
+        blockCtor("ValueLit", Ls(l), "lit")(k)
+      case Select(p, i @ Tree.Ident(name)) =>
+        transformPath(p): x =>
+          blockCtor("Symbol", Ls(toValue(name))): name =>
+            blockCtor("Select", Ls(x, name), "sel")(k)
+      case DynSelect(qual, fld, arrayIdx) =>
+        transformPath(qual): x =>
+          transformPath(fld): y =>
+            blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k)
+      case _ => ??? // not supported
 
   def transformResult(r: Result)(using Context)(k: Path => Block): Block =
     r match
-      case p: Path => transformPath(p)(k)
-      case Tuple(mut, elems) =>
-        assert(!mut, "mutable tuple not supported")
-        transformArgs(elems): xs =>
+    case p: Path => transformPath(p)(k)
+    case Tuple(mut, elems) =>
+      assert(!mut, "mutable tuple not supported")
+      transformArgs(elems): xs =>
+        tuple(xs.map(_._1)): codes =>
+          blockCtor("Tuple", Ls(codes), "tup")(k)
+    case Instantiate(mut, cls, args) =>
+      assert(!mut, "mutable instantiation not supported")
+      transformArgs(args): xs =>
+        transformPath(cls): cls =>
           tuple(xs.map(_._1)): codes =>
-            blockCtor("Tuple", Ls(codes), "tup")(k)
-      case Instantiate(mut, cls, args) =>
-        assert(!mut, "mutable instantiation not supported")
-        transformArgs(args): xs =>
-          transformPath(cls): cls =>
-            tuple(xs.map(_._1)): codes =>
-              blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
-      case Call(fun, args) =>
-        transformPath(fun): fun =>
-          transformArgs(args): args =>
-            tuple(args.map(_._1)): tup =>
-              blockCtor("Call", Ls(fun, tup), "app")(k)
-      case _ => ??? // not supported
+            blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
+    case Call(fun, args) =>
+      transformPath(fun): fun =>
+        transformArgs(args): args =>
+          tuple(args.map(_._1)): tup =>
+            blockCtor("Call", Ls(fun, tup), "app")(k)
+    case _ => ??? // not supported
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool)) => Block): Block =
     val Arg(spread, value) = a
@@ -190,13 +191,13 @@ class InstrumentationImpl(using State):
 
   def transformCase(cse: Case)(using Context)(k: Path => Block): Block =
     cse match
-      case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
-      case Case.Cls(cls, path) =>
-        transformSymbol(cls): cls =>
-          transformPath(path): path =>
-            blockCtor("Cls", Ls(cls, path))(k)
-      case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
-      case Case.Field(name, safe) => ??? // not supported
+    case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
+    case Case.Cls(cls, path) =>
+      transformSymbol(cls): cls =>
+        transformPath(path): path =>
+          blockCtor("Cls", Ls(cls, path))(k)
+    case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
+    case Case.Field(name, safe) => ??? // not supported
 
   // ruleBlk?
   def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
@@ -204,47 +205,47 @@ class InstrumentationImpl(using State):
 
   def transformBlock(b: Block)(using ctx: Context)(k: (Path, Context) => Block): Block =
     b match
-      case Return(res, implct) =>
-        transformResult(res): x =>
-          blockCtor("Return", Ls(x, toValue(implct)), "return")(k(_, ctx))
-      case Assign(x, r, b) =>
-        transformResult(r): y =>
-          transformSymbol(x): xSym =>
-            blockCtor("ValueRef", Ls(xSym)): xStaged =>
-              // x should always be defined, either as an argument to the function or in a Scope Block
-              assert(ctx.get(x.asPath).isDefined)
-              (Assign(x, xStaged, _)):
-                given Context = ctx.clone() += x.asPath -> xStaged
-                transformBlock(b): (z, ctx) =>
-                  blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
-      case Define(cls: ClsLikeDefn, rest) =>
-        assert(cls.companion.isEmpty, "nested module not supported")
-        (Define(cls, _)):
-          transformBlock(rest): p =>
-            transformParamsOpt(cls.paramsOpt): paramsOpt =>
-              transformSymbol(cls.isym): c =>
-                optionNone(): none => // TODO: handle companion object
-                  blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
-                    blockCtor("Define", Ls(cls, p)): p =>
-                      ruleEnd(): end =>
-                        fnPrintCode(p)(k(end, summon))
-      case End(_) => ruleEnd()(k(_, summon))
-      case Match(p, ks, dflt, rest) =>
-        transformPath(p): x =>
-          ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
-            transformBlock(rest)(using ctx1): (z, ctx2) =>
-              fnConcat(stagedMatch, z, "match"): cde =>
-                k(cde, ctx2)
-      case Begin(sub, rest) =>
-        // TODO: This is untested as there is no test case that generates the Begin block yet
-        transformBlock(sub): (sub, ctx) =>
-          transformBlock(rest)(using ctx): (rest, ctx) =>
-            fnConcat(sub, rest)(k(_, ctx))
-      case Scoped(syms, body) =>
-        blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-          val newCtx = ctx.clone() ++ syms.map(_.asPath -> undef)
-          transformBlock(body)(using newCtx)(k)
-      case _ => ??? // not supported
+    case Return(res, implct) =>
+      transformResult(res): x =>
+        blockCtor("Return", Ls(x, toValue(implct)), "return")(k(_, ctx))
+    case Assign(x, r, b) =>
+      transformResult(r): y =>
+        transformSymbol(x): xSym =>
+          blockCtor("ValueRef", Ls(xSym)): xStaged =>
+            // x should always be defined, either as an argument to the function or in a Scope Block
+            assert(ctx.get(x.asPath).isDefined)
+            (Assign(x, xStaged, _)):
+              given Context = ctx.clone() += x.asPath -> xStaged
+              transformBlock(b): (z, ctx) =>
+                blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+    case Define(cls: ClsLikeDefn, rest) =>
+      assert(cls.companion.isEmpty, "nested module not supported")
+      (Define(cls, _)):
+        transformBlock(rest): p =>
+          transformParamsOpt(cls.paramsOpt): paramsOpt =>
+            transformSymbol(cls.isym): c =>
+              optionNone(): none => // TODO: handle companion object
+                blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
+                  blockCtor("Define", Ls(cls, p)): p =>
+                    ruleEnd(): end =>
+                      fnPrintCode(p)(k(end, summon))
+    case End(_) => ruleEnd()(k(_, summon))
+    case Match(p, ks, dflt, rest) =>
+      transformPath(p): x =>
+        ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
+          transformBlock(rest)(using ctx1): (z, ctx2) =>
+            fnConcat(stagedMatch, z, "match"): cde =>
+              k(cde, ctx2)
+    case Begin(sub, rest) =>
+      // TODO: This is untested as there is no test case that generates the Begin block yet
+      transformBlock(sub): (sub, ctx) =>
+        transformBlock(rest)(using ctx): (rest, ctx) =>
+          fnConcat(sub, rest)(k(_, ctx))
+    case Scoped(syms, body) =>
+      blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
+        val newCtx = ctx.clone() ++ syms.map(_.asPath -> undef)
+        transformBlock(body)(using newCtx)(k)
+    case _ => ??? // not supported
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
@@ -279,7 +280,8 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       case _ => ???
     }
 
-  override def applyBlock(b: Block): Block = super.applyBlock(b) match
+  override def applyBlock(b: Block): Block =
+    super.applyBlock(b) match
     // find modules with staged annotation
     case Define(c: ClsLikeDefn, rest) if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
       val sym = c.sym.subst
