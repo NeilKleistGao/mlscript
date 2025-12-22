@@ -22,6 +22,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val termFile: io.Path = predefFile.up / "Term.mjs" // * Contains MLscript runtime term definitions
   val blockFile: io.Path = predefFile.up / "Block.mjs" // * Contains MLscript runtime block definitions
   val optionFile: io.Path = predefFile.up / "Option.mjs" // * Contains MLscipt runtime option definition
+  val shapeSetFile: io.Path = predefFile.up / "ShapeSet.mjs" // * Contains MLscript runtime shapeset definitions
   
   val wd = file.up
   
@@ -167,7 +168,9 @@ abstract class MLsDiffMaker extends DiffMaker:
     if stageCode.isSet then
       given Config = mkConfig
       processTrees(
-        PrefixApp(Keywrd(`import`), StrLit(blockFile.toString)) :: Nil)
+        PrefixApp(Keywrd(`import`), StrLit(blockFile.toString))
+        :: PrefixApp(Keywrd(`import`), StrLit(shapeSetFile.toString))
+        :: Nil)
     super.init()
   
   

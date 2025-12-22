@@ -1,0 +1,89 @@
+import "./Predef.mls"
+import "./Block.mls"
+import "./Shape.mls"
+
+open Predef
+open Block { ClassSymbol }
+open Shape { show }
+
+type ShapeSet = ShapeSet.ShapeSet
+
+module ShapeSet with...
+
+// FIXME: hash is based on uniqueness of pretty printing
+fun hash(s: Shape) = show(s)
+
+fun printShapeSet(s: ShapeSet) = console.log([... s.keys()].join(", "))
+
+class ShapeSet(val underlying: Map) with
+  fun keys() = [...underlying.keys()].toSorted()
+
+  fun values() = underlying.values().toArray()
+
+  fun isEmpty() = underlying.size == 0
+ 
+  fun contains(s: Shape) = underlying.has(hash(s))
+
+  fun flatMap(f) = liftMany(values().flatMap(f))
+
+fun create() = ShapeSet(new Map)
+
+fun lift(s: Shape) = ShapeSet(new Map([[hash(s), s]]))
+
+fun liftMany(arr: Array[Shape]) = ShapeSet(new Map(arr.map(s => [hash(s), s])))
+
+// combining ShapeSet
+
+fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(new Map([...s1.underlying, ...s2.underlying]))
+
+fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.underlying.entries().toArray()).flat()))
+
+// Cartesian product: https://stackoverflow.com/a/43053803
+fun prod(xs) = 
+  if xs.length ==
+    0 then [[]]
+    1 then xs
+  else xs.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())))
+
+open Shape { Dyn, Lit, Arr, Class }
+
+// lifted constructors
+
+fun mkBot() = create()
+
+fun mkDyn() = lift(Dyn())
+
+fun mkLit(l) = lift(Lit(l))
+
+fun mkArr(shapes: Array[ShapeSet], inf: Bool) = 
+  shapes
+    .map(_.underlying.values().toArray())
+    |> prod
+    .map(x => Arr(x, inf))
+    |> liftMany
+
+fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) = 
+  params.map(_.underlying.values().toArray())
+    |> prod
+    .map(Class(sym, _))
+    |> liftMany
+
+// helper functions
+
+fun filter(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
+
+fun rest(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
+
+fun sel(s1: ShapeSet, s2: ShapeSet) = 
+  prod([s1.values(), s2.values()])
+    .flatMap(pair => Shape.sel(pair.0, pair.1))
+    |> liftMany
+
+fun mrg(s1: ShapeSet, s2: ShapeSet) = 
+  mkDyn() // TODO
+
+open Block { Block }
+
+fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
+  val rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
+  [flat(rem.map(_.0)), rem.map(_.1)]
