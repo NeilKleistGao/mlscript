@@ -168,9 +168,8 @@ class InstrumentationImpl(using State):
         blockCtor("ValueRef", Ls(xSym)): xStaged =>
           // x should always be defined, either as an argument to the function or in a Scope Block
           assert(ctx.get(x.asPath).isDefined)
-          val x2 = xStaged
-          (Assign(x, x2, _)):
-            given Context = ctx.clone() += x.asPath -> x2
+          (Assign(x, xStaged, _)):
+            given Context = ctx.clone() += x.asPath -> xStaged
             transformBlock(b): (z, ctx) =>
               blockCtor("Assign", Ls(xSym, y, z), symName)(k(_, ctx))
 
