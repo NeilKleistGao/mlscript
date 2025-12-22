@@ -14,9 +14,6 @@ import semantics.Elaborator.State
 
 import syntax.{Literal, Tree}
 
-// it seems some logic should be deferred to BlockTransformer to dedup code
-// but it doesn't accept the current context, so applications seem limited
-
 // it should be possible to cache some common constructions (End, Option) into the context
 // this avoids having to rebuild the same shapes everytime they are needed
 
@@ -108,90 +105,16 @@ class InstrumentationImpl(using State):
 
   // instrumentation rules
 
-  def ruleLit(l: Value.Lit, symName: String = "lit")(k: Path => Block): Block =
-    blockCtor("ValueLit", Ls(l), symName)(k)
-
-  // not in formalization
-  def ruleVar(r: Value.Ref, symName: String = "var")(k: Path => Block): Block =
-    val Value.Ref(l, disamb) = r
-    transformSymbol(disamb.getOrElse(l)): sym =>
-      blockCtor("ValueRef", Ls(sym), symName)(k)
-
-  def ruleTup(t: Tuple, symName: String = "tup")(using Context)(k: Path => Block): Block =
-    assert(!t.mut, "mutable tuple not supported")
-    transformArgs(t.elems): xs =>
-      tuple(xs.map(_._1)): codes =>
-        blockCtor("Tuple", Ls(codes), symName)(k)
-
-  def ruleSel(s: Select, symName: String = "sel")(using Context)(k: Path => Block): Block =
-    val Select(p, i @ Tree.Ident(name)) = s
-    transformPath(p): x =>
-      blockCtor("Symbol", Ls(toValue(name))): name =>
-        blockCtor("Select", Ls(x, name), symName)(k)
-
-  def ruleDynSel(d: DynSelect, symName: String = "dynsel")(using Context)(k: Path => Block): Block =
-    transformPath(d.qual): x =>
-      transformPath(d.fld): y =>
-        blockCtor("DynSelect", Ls(x, y, toValue(d.arrayIdx)), symName)(k)
-
-  def ruleApp(c: Call, symName: String = "app")(using Context)(k: Path => Block): Block =
-    transformPath(c.fun): fun =>
-      transformArgs(c.args): args =>
-        tuple(args.map(_._1)): tup =>
-          blockCtor("Call", Ls(fun, tup), symName)(k)
-
-  def ruleInst(i: Instantiate, symName: String = "inst")(using Context)(k: Path => Block): Block =
-    val Instantiate(mut, cls, args) = i
-    assert(!mut, "mutable instantiation not supported")
-    transformArgs(args): xs =>
-      transformPath(cls): cls =>
-        tuple(xs.map(_._1)): codes =>
-          blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
-
-  def ruleReturn(r: Return, symName: String = "return")(using Context)(k: (Path, Context) => Block): Block =
-    transformResult(r.res): x =>
-      blockCtor("Return", Ls(x, toValue(false)), symName): cde =>
-        k(cde, summon)
-
-  def ruleMatch(m: Match, symName: String = "match")(using Context)(k: (Path, Context) => Block): Block =
-    val Match(p, ks, dflt, rest) = m
-    transformPath(p): x =>
-      ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
-        transformBlock(rest)(using ctx1): (z, ctx2) =>
-          fnConcat(stagedMatch, z, symName): cde =>
-            k(cde, ctx2)
-
-  def ruleAssign(a: Assign, symName: String = "assign")(using ctx: Context)(k: (Path, Context) => Block): Block =
-    val Assign(x, r, b) = a
-    transformResult(r): y =>
-      transformSymbol(x): xSym =>
-        blockCtor("ValueRef", Ls(xSym)): xStaged =>
-          // x should always be defined, either as an argument to the function or in a Scope Block
-          assert(ctx.get(x.asPath).isDefined)
-          (Assign(x, xStaged, _)):
-            given Context = ctx.clone() += x.asPath -> xStaged
-            transformBlock(b): (z, ctx) =>
-              blockCtor("Assign", Ls(xSym, y, z), symName)(k(_, ctx))
-
   def ruleEnd(symName: String = "end")(k: Path => Block): Block =
     blockCtor("End", Ls(), symName)(k)
 
-  def ruleBlk(b: Block)(using Context)(k: Path => Block): Block =
-    transformBlock(b)(k)
-
-  def ruleCls(cls: ClsLikeDefn, rest: Block)(using Context)(k: Path => Block): Block =
-    assert(cls.companion.isEmpty, "nested module not supported")
-    (Define(cls, _)):
-      transformBlock(rest): p =>
-        transformParamsOpt(cls.paramsOpt): paramsOpt =>
-          transformSymbol(cls.isym): c =>
-            optionNone(): none => // TODO: handle companion object
-              blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
-                blockCtor("Define", Ls(cls, p))(k)
-
   def ruleBranches(x: Path, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block], symName: String = "branches")(using Context)(k: (Path, Context) => Block): Block =
     def applyRuleBranch(cse: Case, block: Block)(f: Path => (Context, Path) => Block)(ctx: Context, x: Path): Block =
-      ruleBranch(x, p, cse, block)(using ctx)((y, ctx, x) => f(y)(ctx, x))
+      transformCase(cse): cse =>
+        transformBlock(block)(using ctx.clone() += p -> x): (y, ctx) =>
+          // TODO: use Arm type instead of Tup
+          tuple(Ls(cse, y), "branch"): cde =>
+            f(cde)(ctx.clone() -= p, x)
 
     val a = arms.map(applyRuleBranch).collectApply
     ((f: (Ls[Path], Context) => Block) => a(ys => (ctx, _) => f(ys, ctx))(summon, x)): (arms, ctx) =>
@@ -199,22 +122,12 @@ class InstrumentationImpl(using State):
         ruleEnd(): e =>
           // TODO: use transformOption here
           def dfltStaged(k: (Path, Context) => Block) = dflt match
-            case S(dflt) => ruleWildCard(x, p, dflt)((dflt, ctx) => optionSome(dflt)(k(_, ctx)))
+            case S(dflt) =>
+              transformBlock(dflt)(using ctx.clone() += p -> x): (dflt, ctx) =>
+                optionSome(dflt)(k(_, ctx.clone() -= p))
             case N => optionNone()(k(_, ctx))
           dfltStaged: (dflt, ctx) =>
             blockCtor("Match", Ls(x, arms, dflt, e), symName)(k(_, ctx))
-
-  def ruleBranch(x: Path, p: Path, cse: Case, b: Block, symName: String = "branch")(using ctx: Context)(k: (Path, Context, Path) => Block): Block =
-    transformCase(cse): cse =>
-      transformBlock(b)(using ctx.clone() += p -> x): (y, ctx) =>
-        // TODO: use Arm type instead of Tup
-        tuple(Ls(cse, y), symName): cde =>
-          k(cde, ctx.clone() -= p, x)
-
-  def ruleWildCard(x: Path, p: Path, b: Block)(using ctx: Context)(k: (Path, Context) => Block): Block =
-    given Context = ctx.clone() += p -> x
-    transformBlock(b): (y, ctx) =>
-      k(y, ctx.clone() -= p)
 
   // transformations of Block
 
@@ -222,18 +135,41 @@ class InstrumentationImpl(using State):
     // rulePath
     ctx.get(p).map(k).getOrElse:
       p match
-        case r: Value.Ref => ruleVar(r)(k)
-        case l: Value.Lit => ruleLit(l)(k)
-        case s: Select => ruleSel(s)(k)
-        case d: DynSelect => ruleDynSel(d)(k)
+        case Value.Ref(l, disamb) =>
+          // not in formalization
+          transformSymbol(disamb.getOrElse(l)): sym =>
+            blockCtor("ValueRef", Ls(sym), "var")(k)
+        case l: Value.Lit =>
+          blockCtor("ValueLit", Ls(l), "lit")(k)
+        case Select(p, i @ Tree.Ident(name)) =>
+          transformPath(p): x =>
+            blockCtor("Symbol", Ls(toValue(name))): name =>
+              blockCtor("Select", Ls(x, name), "sel")(k)
+        case DynSelect(qual, fld, arrayIdx) =>
+          transformPath(qual): x =>
+            transformPath(fld): y =>
+              blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k)
         case _ => ??? // not supported
 
   def transformResult(r: Result)(using Context)(k: Path => Block): Block =
     r match
       case p: Path => transformPath(p)(k)
-      case t: Tuple => ruleTup(t)(k)
-      case i: Instantiate => ruleInst(i)(k)
-      case c: Call => ruleApp(c)(k)
+      case Tuple(mut, elems) =>
+        assert(!mut, "mutable tuple not supported")
+        transformArgs(elems): xs =>
+          tuple(xs.map(_._1)): codes =>
+            blockCtor("Tuple", Ls(codes), "tup")(k)
+      case Instantiate(mut, cls, args) =>
+        assert(!mut, "mutable instantiation not supported")
+        transformArgs(args): xs =>
+          transformPath(cls): cls =>
+            tuple(xs.map(_._1)): codes =>
+              blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
+      case Call(fun, args) =>
+        transformPath(fun): fun =>
+          transformArgs(args): args =>
+            tuple(args.map(_._1)): tup =>
+              blockCtor("Call", Ls(fun, tup), "app")(k)
       case _ => ??? // not supported
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool)) => Block): Block =
@@ -262,6 +198,54 @@ class InstrumentationImpl(using State):
       case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
       case Case.Field(name, safe) => ??? // not supported
 
+  // ruleBlk?
+  def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
+    transformBlock(b)((p, _) => k(p))
+
+  def transformBlock(b: Block)(using ctx: Context)(k: (Path, Context) => Block): Block =
+    b match
+      case Return(res, implct) =>
+        transformResult(res): x =>
+          blockCtor("Return", Ls(x, toValue(implct)), "return")(k(_, ctx))
+      case Assign(x, r, b) =>
+        transformResult(r): y =>
+          transformSymbol(x): xSym =>
+            blockCtor("ValueRef", Ls(xSym)): xStaged =>
+              // x should always be defined, either as an argument to the function or in a Scope Block
+              assert(ctx.get(x.asPath).isDefined)
+              (Assign(x, xStaged, _)):
+                given Context = ctx.clone() += x.asPath -> xStaged
+                transformBlock(b): (z, ctx) =>
+                  blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+      case Define(cls: ClsLikeDefn, rest) =>
+        assert(cls.companion.isEmpty, "nested module not supported")
+        (Define(cls, _)):
+          transformBlock(rest): p =>
+            transformParamsOpt(cls.paramsOpt): paramsOpt =>
+              transformSymbol(cls.isym): c =>
+                optionNone(): none => // TODO: handle companion object
+                  blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
+                    blockCtor("Define", Ls(cls, p)): p =>
+                      ruleEnd(): end =>
+                        fnPrintCode(p)(k(end, summon))
+      case End(_) => ruleEnd()(k(_, summon))
+      case Match(p, ks, dflt, rest) =>
+        transformPath(p): x =>
+          ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
+            transformBlock(rest)(using ctx1): (z, ctx2) =>
+              fnConcat(stagedMatch, z, "match"): cde =>
+                k(cde, ctx2)
+      case Begin(sub, rest) =>
+        // TODO: This is untested as there is no test case that generates the Begin block yet
+        transformBlock(sub): (sub, ctx) =>
+          transformBlock(rest)(using ctx): (rest, ctx) =>
+            fnConcat(sub, rest)(k(_, ctx))
+      case Scoped(syms, body) =>
+        blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
+          val newCtx = ctx.clone() ++ syms.map(_.asPath -> undef)
+          transformBlock(body)(using newCtx)(k)
+      case _ => ??? // not supported
+
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
   def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, Block) =
@@ -269,16 +253,12 @@ class InstrumentationImpl(using State):
     val sym = modSym.asPath.selSN(genSym.nme)
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
     // TODO: remove it. only for test
-    val debug =
-      blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-        // TODO: put correct parameters instead of End
-        // TODO: handle curried arguments
-        val argsList = f.params.map(ps => List.fill(ps.params.length)(undef))
-        def makeCalls(k: Path => Block) =
-          argsList.foldRight(k)((args, cont) => res => call(res, args)(cont))(sym)
-        makeCalls: ret =>
-          val p = ret
-          fnPrintCode(p)(End())
+    val debug = blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
+      // TODO: put correct parameters instead of End
+      val argsList = f.params.map(ps => List.fill(ps.params.length)(undef))
+      def makeCalls(k: Path => Block) =
+        argsList.foldRight(k)((args, cont) => res => call(res, args)(cont))(sym)
+      makeCalls(fnPrintCode(_)(End()))
 
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
     val args = f.params.flatMap(_.params).map(_.sym)
@@ -288,47 +268,6 @@ class InstrumentationImpl(using State):
         transformBlock(f.body)(p => Return(p, false))
     val newFun = f.copy(sym = genSym, dSym = dSym, body = newBody)(false)
     (newFun, debug)
-
-  def transformDefine(d: Define)(using Context)(k: (Path, Context) => Block): Block =
-    d.defn match
-      case c: ClsLikeDefn =>
-        ruleCls(c, d.rest): p =>
-          ruleEnd(): b =>
-            fnPrintCode(p)(k(b, summon))
-      case _: FunDefn | _: ValDefn => ???
-
-  // TODO
-  // discards result of sub
-  def transformBegin(b: Begin)(using Context)(k: (Path, Context) => Block): Block =
-    transformBlock(b.sub): (sub, ctx) =>
-      transformBlock(b.rest)(using ctx): (rest, ctx) =>
-        fnConcat(sub, rest): block =>
-          k(block, ctx)
-
-  def transformScoped(s: Scoped)(using ctx: Context)(k: (Path, Context) => Block): Block =
-    val Scoped(syms, body) = s
-    blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-      val newCtx = ctx.clone() ++ syms.map(_.asPath -> undef)
-      transformBlock(body)(using newCtx): (p, ctx) =>
-        k(p, ctx)
-
-  // ruleBlk?
-  def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
-    transformBlock(b)((p, _) => k(p))
-
-  def transformBlock(b: Block)(using Context)(k: (Path, Context) => Block): Block =
-    b match
-      case r: Return => ruleReturn(r)(k)
-      case a: Assign => ruleAssign(a)(k)
-      case d: Define => transformDefine(d)(k)
-      case End(_) => ruleEnd()(k(_, summon))
-      case m: Match => ruleMatch(m)(k)
-      // temporary measure to accept returning an array
-      // use BlockTransformer here?
-      case b: Begin => ??? // transformBegin(b)(k)
-      // case Begin(b1, b2) => transformBlock(concat(b1, b2))(k)
-      case s: Scoped => transformScoped(s)(k)
-      case _ => ??? // not supported
 
 // TODO: rename as InstrumentationTransformer?
 class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
@@ -341,20 +280,17 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
     }
 
   override def applyBlock(b: Block): Block = super.applyBlock(b) match
-    case d @ Define(defn, rest) =>
-      defn match
-        // find modules with staged annotation
-        case c: ClsLikeDefn if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
-          val sym = c.sym.subst
-          val companion = c.companion.get
-          val (stagedMethods, debugPrintCode) = companion.methods
-            .map(impl.transformFunDefn(sym, _))
-            .unzip
-          val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
-          val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
-          val newModule = c.copy(sym = sym, companion = S(newCompanion))
-          // debug is printed after definition
-          val debugBlock = debugPrintCode.foldRight(rest)(concat)
-          Define(newModule, debugBlock)
-        case _ => d
+    // find modules with staged annotation
+    case Define(c: ClsLikeDefn, rest) if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
+      val sym = c.sym.subst
+      val companion = c.companion.get
+      val (stagedMethods, debugPrintCode) = companion.methods
+        .map(impl.transformFunDefn(sym, _))
+        .unzip
+      val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
+      val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
+      val newModule = c.copy(sym = sym, companion = S(newCompanion))
+      // debug is printed after definition
+      val debugBlock = debugPrintCode.foldRight(rest)(concat)
+      Define(newModule, debugBlock)
     case b => b
