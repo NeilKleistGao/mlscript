@@ -109,26 +109,26 @@ class InstrumentationImpl(using State):
     blockCtor("End", Ls(), symName)(k)
 
   def ruleBranches(x: Path, p: Path, arms: Ls[Case -> Block], dflt: Opt[Block], symName: String = "branches")(using Context)(k: (Path, Context) => Block): Block =
-    def applyRuleBranch(cse: Case, block: Block)(f: Path => (Context, Path) => Block)(ctx: Context, x: Path): Block =
+    def applyRuleBranch(cse: Case, block: Block)(f: Path => Context => Block)(ctx: Context): Block =
       transformCase(cse): cse =>
         transformBlock(block)(using ctx.clone() += p -> x): (y, ctx) =>
           // TODO: use Arm type instead of Tup
           tuple(Ls(cse, y), "branch"): cde =>
-            f(cde)(ctx.clone() -= p, x)
+            f(cde)(ctx.clone() -= p)
 
-    val a = arms.map(applyRuleBranch).collectApply
-    ((f: (Ls[Path], Context) => Block) => a(ys => (ctx, _) => f(ys, ctx))(summon, x)): (arms, ctx) =>
-      tuple(arms): arms =>
-        ruleEnd(): e =>
-          // TODO: use transformOption here
-          def dfltStaged(k: (Path, Context) => Block) =
-            dflt match
-            case S(dflt) =>
-              transformBlock(dflt)(using ctx.clone() += p -> x): (dflt, ctx) =>
-                optionSome(dflt)(k(_, ctx.clone() -= p))
-            case N => optionNone()(k(_, ctx))
-          dfltStaged: (dflt, ctx) =>
-            blockCtor("Match", Ls(x, arms, dflt, e), symName)(k(_, ctx))
+    (arms.map(applyRuleBranch).collectApply(_: Ls[Path] => Context => Block)(summon)): arms =>
+      ctx =>
+        tuple(arms): arms =>
+          ruleEnd(): e =>
+            // TODO: use transformOption here
+            def dfltStaged(k: (Path, Context) => Block) =
+              dflt match
+              case S(dflt) =>
+                transformBlock(dflt)(using ctx.clone() += p -> x): (dflt, ctx) =>
+                  optionSome(dflt)(k(_, ctx.clone() -= p))
+              case N => optionNone()(k(_, ctx))
+            dfltStaged: (dflt, ctx) =>
+              blockCtor("Match", Ls(x, arms, dflt, e), symName)(k(_, ctx))
 
   // transformations of Block
 
