@@ -141,10 +141,14 @@ class InstrumentationImpl(using State):
           blockCtor("ValueRef", Ls(sym), "var")(k)
       case l: Value.Lit =>
         blockCtor("ValueLit", Ls(l), "lit")(k)
-      case Select(p, i @ Tree.Ident(name)) =>
+      case s @ Select(p, i @ Tree.Ident(name)) =>
         transformPath(p): x =>
-          blockCtor("Symbol", Ls(toValue(name))): name =>
-            blockCtor("Select", Ls(x, name), "sel")(k)
+          val sym =
+            if s.symbol.isDefined
+            then transformSymbol(s.symbol.get)
+            else blockCtor("Symbol", Ls(toValue(name)))
+          sym: sym =>
+            blockCtor("Select", Ls(x, sym), "sel")(k)
       case DynSelect(qual, fld, arrayIdx) =>
         transformPath(qual): x =>
           transformPath(fld): y =>
