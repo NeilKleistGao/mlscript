@@ -137,7 +137,6 @@ class InstrumentationImpl(using State):
     ctx.get(p).map(k).getOrElse:
       p match
       case Value.Ref(l, disamb) =>
-        // not in formalization
         transformSymbol(disamb.getOrElse(l)): sym =>
           blockCtor("ValueRef", Ls(sym), "var")(k)
       case l: Value.Lit =>
@@ -212,8 +211,7 @@ class InstrumentationImpl(using State):
       transformResult(r): y =>
         transformSymbol(x): xSym =>
           blockCtor("ValueRef", Ls(xSym)): xStaged =>
-            // x should always be defined, either as an argument to the function or in a Scope Block
-            assert(ctx.get(x.asPath).isDefined)
+            assert(ctx.get(x.asPath).isDefined, "x should always be defined, either as an argument to the function or in a Scope Block")
             (Assign(x, xStaged, _)):
               given Context = ctx.clone() += x.asPath -> xStaged
               transformBlock(b): (z, ctx) =>
@@ -228,14 +226,13 @@ class InstrumentationImpl(using State):
                 blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
                   blockCtor("Define", Ls(cls, p)): p =>
                     ruleEnd(): end =>
-                      fnPrintCode(p)(k(end, summon))
-    case End(_) => ruleEnd()(k(_, summon))
+                      fnPrintCode(p)(k(end, ctx))
+    case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>
-        ruleBranches(x, p, ks, dflt): (stagedMatch, ctx1) =>
-          transformBlock(rest)(using ctx1): (z, ctx2) =>
-            fnConcat(stagedMatch, z, "match"): cde =>
-              k(cde, ctx2)
+        ruleBranches(x, p, ks, dflt): (stagedMatch, ctx) =>
+          transformBlock(rest)(using ctx): (z, ctx) =>
+            fnConcat(stagedMatch, z, "match")(k(_, ctx))
     case Begin(sub, rest) =>
       // TODO: This is untested as there is no test case that generates the Begin block yet
       transformBlock(sub): (sub, ctx) =>
@@ -255,18 +252,15 @@ class InstrumentationImpl(using State):
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
     // TODO: remove it. only for test
     val debug = blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-      // TODO: put correct parameters instead of End
-      val argsList = f.params.map(ps => List.fill(ps.params.length)(undef))
-      def makeCalls(k: Path => Block) =
-        argsList.foldRight(k)((args, cont) => res => call(res, args)(cont))(sym)
-      makeCalls(fnPrintCode(_)(End()))
+      // TODO: put correct parameters instead of undefined
+      f.params.map(ps => List.fill(ps.params.length)(undef))
+        .foldRight((p: Path) => fnPrintCode(p)(End()))((args, cont) => call(_, args)(cont))(sym)
 
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
     val args = f.params.flatMap(_.params).map(_.sym)
     val newBody =
-      ruleEnd(): end =>
-        given Context = HashMap(args.map(s => Value.Ref(s, N) -> Value.Ref(s, N))*)
-        transformBlock(f.body)(p => Return(p, false))
+      given Context = HashMap(args.map(s => Value.Ref(s, N) -> Value.Ref(s, N))*)
+      transformBlock(f.body)(Return(_, false))
     val newFun = f.copy(sym = genSym, dSym = dSym, body = newBody)(false)
     (newFun, debug)
 
