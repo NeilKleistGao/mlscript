@@ -224,13 +224,12 @@ class InstrumentationImpl(using State):
       assert(cls.companion.isEmpty, "nested module not supported")
       (Define(cls, _)):
         transformBlock(rest): p =>
-          transformParamsOpt(cls.paramsOpt): paramsOpt =>
-            transformSymbol(cls.isym): c =>
-              optionNone(): none => // TODO: handle companion object
-                blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
-                  blockCtor("Define", Ls(cls, p)): p =>
-                    ruleEnd(): end =>
-                      fnPrintCode(p)(k(end, ctx))
+          transformSymbol(cls.isym): c =>
+            optionNone(): none => // TODO: handle companion object
+              blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
+                blockCtor("Define", Ls(cls, p)): p =>
+                  ruleEnd(): end =>
+                    fnPrintCode(p)(k(end, ctx))
     case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>
