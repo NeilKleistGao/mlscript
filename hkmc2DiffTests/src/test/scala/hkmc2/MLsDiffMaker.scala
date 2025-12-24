@@ -164,10 +164,6 @@ abstract class MLsDiffMaker extends DiffMaker:
       given Config = mkConfig
       processTrees(
         PrefixApp(Keywrd(`import`), StrLit(termFile.toString)) :: Nil)
-    if stageCode.isSet then
-      given Config = mkConfig
-      processTrees(
-        PrefixApp(Keywrd(`import`), StrLit(blockFile.toString)) :: Nil)
     super.init()
   
   
