@@ -1,5 +1,6 @@
 import "./Block.mls"
 import "./Option.mls"
+import "./CachedHash.mls"
 
 open Block { Literal, Symbol, ClassSymbol, showSymbol }
 open Option
@@ -24,19 +25,12 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
 
 module Shape with...
 
-class Shape with
+class Shape extends CachedHash with
   constructor
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape], val inf: Bool)
     Class(val sym: ClassSymbol, val params: Array[Shape])
-
-fun show(s: Shape) =
-  if s is
-    Dyn then "Dyn"
-    Lit(lit) then "Lit(" + Block.showLiteral(lit) + ")"
-    Arr(shapes, inf) then "Arr([" + shapes.map(show).join(", ") + "], " + inf + ")"
-    Class(sym, params) then "Class(" + showSymbol(sym) + ", [" + params.map(show).join(", ") + "])"
 
 fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
   a.map((a, i, _) => mrg2(a, b.at(i)))

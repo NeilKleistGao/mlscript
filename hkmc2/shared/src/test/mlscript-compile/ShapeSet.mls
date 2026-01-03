@@ -1,38 +1,35 @@
 import "./Predef.mls"
 import "./Block.mls"
 import "./Shape.mls"
+import "./CachedHash.mls"
 
 open Predef
 open Block { ClassSymbol }
-open Shape { show }
 
 type ShapeSet = ShapeSet.ShapeSet
 
 module ShapeSet with...
 
-// FIXME: hash is based on uniqueness of pretty printing
-fun hash(s: Shape) = show(s)
-
-fun printShapeSet(s: ShapeSet) = console.log([... s.keys()].join(", "))
-
-class ShapeSet(val underlying: Map) with
+class ShapeSet(val underlying: Map) extends CachedHash with
   fun keys() = [...underlying.keys()].toSorted()
 
   fun values() = underlying.values().toArray()
 
   fun isEmpty() = underlying.size == 0
  
-  fun contains(s: Shape) = underlying.has(hash(s))
+  fun contains(s: Shape) = underlying.has(s.hash())
 
   fun flatMap(f) = liftMany(values().flatMap(f))
 
+  fun toString() = underlying.keys().toArray().toSorted().toString()
+
 fun create() = ShapeSet(new Map)
 
-fun lift(s: Shape) = ShapeSet(new Map([[hash(s), s]]))
+fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 
-fun liftMany(arr: Array[Shape]) = ShapeSet(new Map(arr.map(s => [hash(s), s])))
+fun liftMany(arr: Array[Shape]) = ShapeSet(new Map(arr.map(s => [s.hash(), s])))
 
-// combining ShapeSet
+// combining ShapeSets together
 
 fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(new Map([...s1.underlying, ...s2.underlying]))
 
