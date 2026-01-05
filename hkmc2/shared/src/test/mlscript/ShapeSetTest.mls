@@ -1,0 +1,86 @@
+:js
+
+import "../mlscript-compile/ShapeSet.mls"
+import "../mlscript-compile/Block.mls"
+import "../mlscript-compile/Shape.mls"
+import "../mlscript-compile/Option.mls"
+
+open ShapeSet
+open Shape { Lit, Arr, Class, Dyn }
+open Option
+open Block { Tup }
+
+let x = mkBot()
+//│ x = 
+
+if x.isEmpty() then 0
+//│ = 0
+
+// :silent
+let x = liftMany([Lit(1), Lit(2)])
+let y = liftMany([Arr([Lit(1)], false), Arr([Lit(2)], false)])
+//│ x = Lit(1),Lit(2)
+//│ y = Arr([Lit(1)], false),Arr([Lit(2)], false)
+
+union(x, y)
+//│ = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1),Lit(2)
+
+mkArr([x, y], false)
+//│ = Arr([Lit(1), Arr([Lit(1)], false)], false),Arr([Lit(1), Arr([Lit(2)], false)], false),Arr([Lit(2), Arr([Lit(1)], false)], false),Arr([Lit(2), Arr([Lit(2)], false)], false)
+
+
+[x, y]
+  .map((x, _, _) => x.underlying.values().toArray())
+//│ = [[Lit(1), Lit(2)], [Arr([Lit(1)], false), Arr([Lit(2)], false)]]
+
+let x = liftMany([Dyn(), Class(Symbol(""), [Lit(42)]), Arr([Lit(100), Lit(false), Lit(undefined)], false)])
+let y = liftMany([Lit("a"), Lit(1)])
+//│ x = Arr([Lit(100), Lit(false), Lit(undefined)], false),Class(Symbol(""), [Lit(42)]),Dyn()
+//│ y = Lit("a"),Lit(1)
+
+sel(x, y)
+//│ = Dyn(),Lit(false)
+
+let x = Class(Symbol("A"), [[Symbol("b"), Lit(1)], [Symbol("d"), Dyn()]])
+let x = Arr([Dyn(), Lit(1), x], false)
+let x = Shape.sel(x, Lit(2))
+//│ x = [Class(Symbol("A"), [[Symbol("b"), Lit(1)], [Symbol("d"), Dyn()]])]
+
+
+val sym = Symbol("C")
+val params = [
+  mkLit(null),
+  liftMany([Lit(2), Lit(4)]),
+  liftMany([Class(Symbol("A"), [Dyn()]), Class(Symbol("B"), [Dyn()])])
+]
+mkClass(sym, params)
+//│ = Class(Symbol("C"), [Lit(null), Lit(2), Class(Symbol("A"), [Dyn()])]),Class(Symbol("C"), [Lit(null), Lit(2), Class(Symbol("B"), [Dyn()])]),Class(Symbol("C"), [Lit(null), Lit(4), Class(Symbol("A"), [Dyn()])]),Class(Symbol("C"), [Lit(null), Lit(4), Class(Symbol("B"), [Dyn()])])
+//│ params = [
+//│   Lit(null),
+//│   Lit(2),Lit(4),
+//│   Class(Symbol("A"), [Dyn()]),Class(Symbol("B"), [Dyn()])
+//│ ]
+//│ sym = Symbol("C")
+
+[liftMany([Lit(1), Dyn()]), liftMany([Lit(2), Lit("str")])]
+//│ = [Dyn(),Lit(1), Lit("str"),Lit(2)]
+
+filter(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)], false)]), Tup(3, false))
+//│ = Arr([Lit(1), Lit(2), Lit(3)], false)
+
+
+let x = mkLit(1)
+let y = Block.Cls(Block.Symbol("Bool"), 0)
+filter(x, y)
+//│ = 
+//│ x = Lit(1)
+//│ y = Cls(Symbol("Bool"), 0)
+
+Shape.filter(Shape.Lit(1), Block.Lit(1))
+//│ = [Lit(1)]
+
+[Shape.Lit(1), Block.Lit(1)] is [Shape.Lit(l1), Block.Lit(l2)]
+//│ = true
+
+Shape.silh(Block.Lit(1))
+//│ = Lit(1)

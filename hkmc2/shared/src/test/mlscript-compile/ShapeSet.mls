@@ -1,4 +1,5 @@
 import "./Predef.mls"
+import "./Option.mls"
 import "./Block.mls"
 import "./Shape.mls"
 import "./CachedHash.mls"
@@ -75,12 +76,63 @@ fun sel(s1: ShapeSet, s2: ShapeSet) =
   prod([s1.values(), s2.values()])
     .flatMap(pair => Shape.sel(pair.0, pair.1))
     |> liftMany
+  
+fun static(s: ShapeSet) =
+  let v = s.values()
+  if v.length ==
+    0 then ???
+    1 then Shape.static(v.0)
+    else false
 
-fun mrg(s1: ShapeSet, s2: ShapeSet) = 
-  mkDyn() // TODO
-
-open Block { Block }
+open Block
+open Option
 
 fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
   val rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
   [flat(rem.map(_.0)), rem.map(_.1)]
+
+fun sop(g, p: Path): ShapeSet = if p is
+  Select(qual, name) and g.get(p) is None then sel(sop(g, qual), mkLit(name))
+  DynSelect(qual, fld, arrayIdx) and g.get(p) is None then sel(sop(g, qual), sop(g, fld))
+  ValueRef(l) and g.get(p) is Some(s) then s 
+  ValueLit(lit) then mkLit(lit)
+
+fun sor(g, cache, r: Result) = if r is
+  Path then [r, sop(g, r), cache]
+  // cls is a Path, but we want the shape class to be a ClassSymbol, maybe widen it for shape
+  Instantiate(cls, args) then [r, mkClass(???, args.map(sop(g, _))), cache]
+  Tuple(elems) then [r, mkArr(elems.map(sop(g, _)), false), cache]
+  Call(f, args) and
+    let k = [f, args.map(sop(g, _))] 
+    cache.get(k) is
+      Some([FunDefn(f1, _, _, _), s]) then [Call(f1, args), s, cache]
+      None and g.get(f) is
+        Some(FunDefn(_, params, body, stage)) and
+          prop(g.addMany(params.map([_, sop(g, r)])), cache, body) is [s, b, cache1] and
+            stage is
+              // TODO: create new symbols
+              true then [Call(???, args), s, cache.add(k, [FunDefn(???, params, b, true), s])]
+              false and args.forall(static) then [b, s, cache1]
+      else if args.exist(not static(_)) and cache.get(g, args.map(_ => mkDyn())) is Some([FunDefn(f1, params, body, false), s])
+        then [Call(f1, args), s, cache]
+
+fun prop(g, cache, b: Block) = if b is
+  End then [b, mkBot(), cache]
+  Return(res, implct) and sor(g, cache, res) is [r1, s, cache1] then
+    [Return(r1, implct), s, cache1]
+  // TODO: let syntax, presumably for Scoped
+  Assign(x, r, b) and sor(g, cache, r) is [r1, s, cache1] and
+    prop(g.add(x, union(g.get(x), s)), cache1, b) is [b1, s1, cache2] then
+      [Assign(x, r1, b1), s1, cache2]
+  // recurse on arms
+  Match(p, arms, dflt, rest) then
+    ???
+
+fun exec(g, cache, b: Block) = if b is
+  Define(d, rest) and d is
+    ClsLikeDefn then Define(d, exec(g, cache, rest))
+    FunDefn(sym, params, body, stage) and stage is 
+      true then exec(g.add(???), cache, g)
+      false then ???
+  _ and prop(g, cache, b) is [b1, _, cache1] then
+    ???
