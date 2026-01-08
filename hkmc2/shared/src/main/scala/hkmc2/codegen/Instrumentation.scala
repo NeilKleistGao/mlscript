@@ -215,7 +215,6 @@ class InstrumentationImpl(using State):
       transformResult(r): y =>
         transformSymbol(x): xSym =>
           blockCtor("ValueRef", Ls(xSym)): xStaged =>
-            assert(ctx.get(x.asPath).isDefined, "x should always be defined, either as an argument to the function or in a Scope Block")
             (Assign(x, xStaged, _)):
               given Context = ctx.clone() += x.asPath -> xStaged
               transformBlock(b): (z, ctx) =>
@@ -242,9 +241,18 @@ class InstrumentationImpl(using State):
         transformBlock(rest)(using ctx): (rest, ctx) =>
           fnConcat(sub, rest)(k(_, ctx))
     case Scoped(syms, body) =>
-      blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-        val newCtx = ctx.clone() ++ syms.map(_.asPath -> undef)
-        transformBlock(body)(using newCtx)(k)
+      syms.toList.map(transformSymbol(_)).collectApply: symsStaged =>
+        tuple(symsStaged): tup =>
+          transformBlock(body): (body, ctx) =>
+            blockCtor("Scoped", Ls(tup, body))(k(_, ctx))
+    case Label(labelSymbol, loop, body, rest) =>
+      transformSymbol(labelSymbol): labelSymbol =>
+        transformBlock(body): (body, ctx) =>
+          transformBlock(rest)(using ctx): (rest, ctx) =>
+            blockCtor("Label", Ls(labelSymbol, toValue(loop), body, rest))(k(_, ctx))
+    case Break(labelSymbol) =>
+      transformSymbol(labelSymbol): labelSymbol =>
+        blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
     case _ => ??? // not supported
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function

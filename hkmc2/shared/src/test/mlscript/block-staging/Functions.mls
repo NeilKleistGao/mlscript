@@ -21,16 +21,16 @@ staged module Expressions with
   fun match2() =
     if [...x] is
       [] then 1
-      // [1, 2] then 2 // TODO: needs handling for Label, Break
+      [1, 2] then 2
       [a, ...] then 3
       else 0
 //│ > Return(Lit(1), false)
-//│ > Assign(Symbol("x"), Lit(42), Assign(Symbol("y"), Ref(Symbol("x")), Return(Ref(Symbol("y")), false)))
+//│ > Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), Lit(42), Assign(Symbol("y"), Ref(Symbol("x")), Return(Ref(Symbol("y")), false))))
 //│ > Return(Tuple([Lit(1), Lit(2)]), false)
 //│ > Return(Tuple([Lit(1), ..Ref(Symbol("x"))]), false)
-//│ > Assign(Symbol("tmp"), Tuple([Lit(1)]), Return(DynSelect(Ref(Symbol("tmp")), Lit(0), false), false))
-//│ > Assign(Symbol("scrut"), Lit(9), Match(Ref(Symbol("scrut")), [Cls(ClassSymbol("Bool"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(1), false), Lit(8) -> Return(Lit(2), false), Cls(ClassSymbol("Int"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(3), false)], Return(Lit(0), false), End))
-//│ > Assign(Symbol("scrut"), Tuple([...Ref(Symbol("x"))]), Match(Ref(Symbol("scrut")), [Tup(0, false) -> Return(Lit(1), false), Tup(1, true) -> Assign(Symbol("element0$"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("get")), [Ref(Symbol("scrut")), Lit(0)]), Assign(Symbol("middleElements"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")), [Ref(Symbol("scrut")), Lit(1), Lit(0)]), Assign(Symbol("a"), Ref(Symbol("element0$")), Return(Lit(3), false))))], Return(Lit(0), false), End))
+//│ > Scoped([Symbol("tmp")], Assign(Symbol("tmp"), Tuple([Lit(1)]), Return(DynSelect(Ref(Symbol("tmp")), Lit(0), false), false)))
+//│ > Scoped([Symbol("scrut")], Assign(Symbol("scrut"), Lit(9), Match(Ref(Symbol("scrut")), [Cls(ClassSymbol("Bool"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(1), false), Lit(8) -> Return(Lit(2), false), Cls(ClassSymbol("Int"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(3), false)], Return(Lit(0), false), End)))
+//│ > Scoped([Symbol("element0$"), Symbol("element1$"), Symbol("scrut"), Symbol("a"), Symbol("tmp"), Symbol("middleElements")], Label(Symbol("split_root$"), false, Label(Symbol("split_1$"), false, Label(Symbol("split_2$"), false, Assign(Symbol("scrut"), Tuple([...Ref(Symbol("x"))]), Match(Ref(Symbol("scrut")), [Tup(0, false) -> Assign(Symbol("tmp"), Lit(1), Break(Symbol("split_root$"))), Tup(2, false) -> Assign(Symbol("element0$"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("get")), [Ref(Symbol("scrut")), Lit(0)]), Assign(Symbol("element1$"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("get")), [Ref(Symbol("scrut")), Lit(1)]), Match(Ref(Symbol("element0$")), [Lit(1) -> Match(Ref(Symbol("element1$")), [Lit(2) -> Assign(Symbol("tmp"), Lit(2), Break(Symbol("split_root$")))], Match(Ref(Symbol("scrut")), [Tup(1, true) -> Assign(Symbol("middleElements"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")), [Ref(Symbol("scrut")), Lit(1), Lit(0)]), Assign(Symbol("a"), Ref(Symbol("element0$")), Break(Symbol("split_1$"))))], Break(Symbol("split_2$")), End), End)], Match(Ref(Symbol("scrut")), [Tup(1, true) -> Assign(Symbol("middleElements"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")), [Ref(Symbol("scrut")), Lit(1), Lit(0)]), Assign(Symbol("a"), Ref(Symbol("element0$")), Break(Symbol("split_1$"))))], Break(Symbol("split_2$")), End), End))), Tup(1, true) -> Assign(Symbol("element0$"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("get")), [Ref(Symbol("scrut")), Lit(0)]), Assign(Symbol("middleElements"), Call(Select(Select(Ref(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")), [Ref(Symbol("scrut")), Lit(1), Lit(0)]), Assign(Symbol("a"), Ref(Symbol("element0$")), Break(Symbol("split_1$")))))], Break(Symbol("split_2$")), End)), Assign(Symbol("tmp"), Lit(0), Break(Symbol("split_root$")))NaN, Assign(Symbol("tmp"), Lit(3), End)NaN, Return(Ref(Symbol("tmp")), false)NaN)
 //│ x = [1, 2, 3]
 
 class Outside(a)
@@ -56,14 +56,19 @@ staged module Arguments with
 //│ > Assign(Symbol("x"), Lit(1), Return(Ref(Symbol("x")), false))
 //│ > Return(Lit(undefined), false)
 
-:fixme
 staged module OtherBlocks with
+  fun scope() =
+    scope.locally of (
+      let a = 1
+      a
+    )
   fun breakAndLabel() =
     if 1 is
       2 then 0
       3 then 0
       else 0
-//│ /!!!\ Uncaught error: scala.NotImplementedError: an implementation is missing
+//│ > Scoped([Symbol("a")], Assign(Symbol("a"), Lit(1), Return(Call(Select(Select(Ref(Symbol("OtherBlocks")), Symbol("scope")), Symbol("locally")), [Ref(Symbol("a"))]), false)))
+//│ > Scoped([Symbol("scrut"), Symbol("tmp")], Label(Symbol("split_root$"), false, Label(Symbol("split_1$"), false, Assign(Symbol("scrut"), Lit(1), Match(Ref(Symbol("scrut")), [Lit(2) -> Break(Symbol("split_1$")), Lit(3) -> Break(Symbol("split_1$"))], Break(Symbol("split_1$")), End)), Assign(Symbol("tmp"), Lit(0), End)NaN, Return(Ref(Symbol("tmp")), false)NaN)
 
 // debug printing fails, collision with class name?
 :fixme
@@ -79,8 +84,8 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.78: 	  staged module B with
+//│ ║  l.83: 	  staged module B with
 //│ ║        	                ^^^^^^
-//│ ║  l.79: 	    fun f() = 1
+//│ ║  l.84: 	    fun f() = 1
 //│ ╙──      	^^^^^^^^^^^^^^^
 //│ ═══[RUNTIME ERROR] ReferenceError: B is not defined
