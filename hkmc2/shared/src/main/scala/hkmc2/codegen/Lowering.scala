@@ -337,7 +337,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         defn.ext match
         case N =>
           Define(
-            ClsLikeDefn(defn.owner, defn.sym, defn.bsym, defn.kind, defn.paramsOpt, defn.auxParams, N,
+            ClsLikeDefn(defn.owner, defn.sym, defn.bsym, defn.ctorSym, defn.kind, defn.paramsOpt, defn.auxParams, N,
               mtds,
               privateFlds,
               publicFlds,
@@ -353,7 +353,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             val pctor = inScopedBlock(parentConstructor(ext.cls, ext.args))
             Define(
               ClsLikeDefn(
-                defn.owner, defn.sym, defn.bsym, defn.kind, defn.paramsOpt, defn.auxParams, S(clsp),
+                defn.owner, defn.sym, defn.bsym, defn.ctorSym, defn.kind, defn.paramsOpt, defn.auxParams, S(clsp),
                 mtds, privateFlds, publicFlds, pctor, ctor, mod, bufferable,
               ),
               blockImpl(stats, res)(k)
@@ -444,17 +444,18 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         return k(Lambda(paramLists.head, bodyBlock).withLocOf(ref))
     case bs: BlockMemberSymbol =>
       disamb.flatMap(_.defn) match
-      case S(_) if bs.asCls.exists(_ is ctx.builtins.Int31) =>
-        return term(Sel(State.runtimeSymbol.ref().resolve, ref.tree)(S(bs), N).withLocOf(ref).resolve)(k)
       case S(d) if d.hasDeclareModifier.isDefined =>
-        return term(Sel(State.globalThisSymbol.ref().resolve, ref.tree)(S(bs), N).withLocOf(ref).resolve)(k)
+        val sel = Sel(State.globalThisSymbol.ref().resolve, ref.tree)(S(bs), N).withLocOf(ref).resolve
+        return disamb.fold(term(sel)(k))(d => term(st.Resolved(sel, d)(N))(k))
       case S(td: TermDefinition) if td.k is syntax.Fun =>
         // * Local functions with no parameter lists are getters
         // * and are lowered to functions with an empty parameter list
         // * (non-local functions are compiled into getter methods selected on some prefix)
         if td.params.isEmpty then
           val l = loweringCtx.registerTempSymbol(S(ref))
-          return Assign(l, Call(Value.Ref(bs, disamb).withLocOf(ref), Nil)(true, true, annots.contains(Annot.TailCall)), k(Value.Ref(l, disamb)))
+          return Assign(l, Call(
+              Value.Ref(bs, disamb).withLocOf(ref), Nil
+            )(isMlsFun = true, true, annots.contains(Annot.TailCall)), k(Value.Ref(l, disamb)))
       case S(_) => ()
       case N => () // TODO panic here; can only lower refs to elab'd symbols
     case _ => ()
@@ -499,9 +500,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       // * This case is currently triggered for code such as `f(using 42)`
       args(fs)(args => k(Tuple(mut = false, args)))
     case t @ st.Ref(sym) =>
-      ref(t, annots, N, inStmtPos)(k)
+      ref(t, annots, N, inStmtPos = inStmtPos)(k)
     case st.Resolved(t @ st.Ref(bsym), sym) =>
-      ref(t, annots, S(sym), inStmtPos)(k)
+      ref(t, annots, S(sym), inStmtPos = inStmtPos)(k)
     case st.App(ref @ Ref(sym: BuiltinSymbol), arg) =>
       arg match
       case st.Tup(Nil) =>
@@ -556,7 +557,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         case _: sem.BuiltinSymbol => true
         case sym: sem.BlockMemberSymbol =>
           sym.trmImplTree.fold(sym.clsTree.isDefined)(_.k is syntax.Fun)
-        case sym: sem.TermSymbol => sym.k is syntax.Fun
+        case sym: sem.TermSymbol => (sym.k is syntax.Fun) && sym.defn.forall(!_.hasDeclareModifier.isDefined)
         // Do not perform safety check on `MatchSuccess` and `MatchFailure`.
         case sym => (sym is State.matchSuccessClsSymbol) ||
           (sym is State.matchFailureClsSymbol)
@@ -584,8 +585,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       } =>
         val sym = t.resolvedSym.get.asInstanceOf[BlockMemberSymbol]
         conclude(Value.Ref(State.wasmSymbol).selN(Tree.Ident(sym.nme)))
-      case t if t.resolvedSym.exists(_ is ctx.builtins.Int31) =>
-        conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("Int31")))
       case t if instantiatedResolvedBms.exists(_ is ctx.builtins.debug.printStack) =>
         if !config.effectHandlers.exists(_.debug) then
           return fail:
@@ -743,7 +742,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           loweringCtx.collectScopedSym(sym)
           val (mtds, publicFlds, privateFlds, ctor) = gatherMembers(rft)
           val pctor = parentConstructor(cls, as)
-          val clsDef = ClsLikeDefn(N, isym, sym, syntax.Cls, N, Nil, S(sr),
+          val clsDef = ClsLikeDefn(N, isym, sym, N, syntax.Cls, N, Nil, S(sr),
             mtds, privateFlds, publicFlds, pctor, ctor, N, N)
           val inner = new New(sym.ref().resolved(isym), Nil, N)(N)
           Define(clsDef, term_nonTail(if mut then Mut(inner) else inner)(k))
@@ -1144,6 +1143,7 @@ trait LoweringSelSanityChecks(using Config, TL, Raise, State)
   
   override def setupSelection(prefix: st, nme: Tree.Ident, disamb: Opt[DefinitionSymbol[?]])(k: Result => Block)(using LoweringCtx): Block =
     if !instrument
+    // || disamb.exists(_.defn.exists(_.hasDeclareModifier.isEmpty)) // * This checks `declare` members, which is normally unwanted
     || disamb.isDefined
     // * ^ We assume that resolved selections are well-behaved (will not yield undefined or debind a method)
     then super.setupSelection(prefix, nme, disamb)(k)
