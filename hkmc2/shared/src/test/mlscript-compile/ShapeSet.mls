@@ -108,12 +108,12 @@ module Ctx with
   fun empty = Ctx(new Map())
 
 
-class DefCtx(defs: Map) with
+class DefCtx(val defs: Map) with
   fun get(sym) =
-    if defs.has(sym) then Some(defs.get(sym))
+    if defs.has(sym.name) then Some(defs.get(sym.name))
     else None
   fun add(sym, node) =
-    defs.set(sym, node)
+    defs.set(sym.name, node)
     this
 module DefCtx with
   fun empty = DefCtx(new Map())
@@ -154,7 +154,25 @@ fun sor(defs, ctx, cache, r: Result) = if r is
     let def = if f is ValueRef(s) then defs.get(s) else None
     if def is
       Some(FunDefn(sym, params, body, true)) then
-        ???
+        let argShapes = args.map(a => sop(ctx, a.value))
+        let shapeStr = argShapes.map(s => s.toString()).join("_")
+        let implSym = Symbol(sym.name + "_" + shapeStr)
+        if defs.get(implSym) is Some(_) then
+          [Call(ValueRef(implSym), args), mkDyn(), cache] // TODO: defctx need to store the shape as well
+        else
+          let genName = sym.name + "_gen"
+          if defs.get(Symbol(genName)) is Some(FunDefn(genSym, genParams, genBody, _)) then
+            let genCtx = ctx.nest
+            // only deal with non-curried version for now
+            if genParams.length > 0 then
+              genParams.0.forEach((p, i) => 
+                genCtx.add(ValueRef(p), mkLit(argShapes.(i)))
+              )
+            if prop(defs, genCtx, cache, genBody) is [resBlock, resShape] then
+              defs.add(implSym, FunDefn(implSym, params, resBlock, false))
+              [Call(ValueRef(implSym), args), mkDyn(), cache]
+            else [r, mkDyn(), cache]
+          else [r, mkDyn(), cache]
       None then
         if f is ValueRef(s) then
           let name = s.name
@@ -163,14 +181,18 @@ fun sor(defs, ctx, cache, r: Result) = if r is
               let s = sop(ctx, args.0.value)
               if s.values().length == 1 then 
                 if s.values().0 is 
-                  Shape.Lit(l) then Some(l) // why need Shape. here??
+                  Shape.Lit(l) then Some(l)
+                else
+                  None
               else
                 None
             let v2 =
               let s = sop(ctx, args.1.value)
               if s.values().length == 1 then 
                 if s.values().0 is 
-                  Shape.Lit(l) then Some(l) // why need Shape. here??
+                  Shape.Lit(l) then Some(l)
+                else 
+                  None
               else
                 None
             if v1 is Some(l1) and v2 is Some(l2) then
@@ -209,6 +231,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
             else [r, mkDyn(), cache]
           else [r, mkDyn(), cache]
         else [r, mkDyn(), cache]
+      else [r, mkDyn(), cache] // add shape
 
   // Call(f, args) and
   //   let k = [f, args.map(sop(ctx, _))] 
@@ -226,10 +249,10 @@ fun sor(defs, ctx, cache, r: Result) = if r is
 
 fun prop(defs, ctx, cache, b: Block) = if b is
   End then [b, mkBot()]
-  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s] then
+  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s, _] then
     [Return(r1, implct), s]
   // TODO: let syntax, presumably for Scoped
-  Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s] and
+  Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s, _] and
     prop(defs, ctx.add(x, union(ctx.get(x), s)), cache, b) is [b1, s1] then
       [Assign(x, r1, b1), s1]
   Match(p, arms, dflt, rest) then

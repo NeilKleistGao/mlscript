@@ -61,7 +61,7 @@ sor(defCtx, ctx, cache, tup)
 //│ ]
 //│ cache = Cache(Map(0) {})
 //│ ctx = Ctx(_)
-//│ defCtx = DefCtx(_)
+//│ defCtx = DefCtx(Map(0) {})
 //│ tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 
 let c = ClassSymbol("C", Some([Symbol("p")]))
@@ -82,22 +82,33 @@ sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
 //│ )
 
 fun testBinOp(op, v1, v2) =
-  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
+  let args = [Arg(None, v1), Arg(None, v2)]
   let c = Call(ValueRef(Symbol(op)), args)
   sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0 
 
-testBinOp("+", 10, 2)
+testBinOp("+", ValueLit(10), ValueLit(2))
 //│ = ValueLit(12)
 
-testBinOp("==", 10, 10) 
+testBinOp("==", ValueLit(10), ValueLit(10)) 
 //│ = ValueLit(true)
 
-testBinOp("===", 10, "10")
+let c = ClassSymbol("C", Some([Symbol("p")]))
+testBinOp("==", ValueRef(c), ValueRef(c))
+//│ = Call(
+//│   ValueRef(Symbol("==")),
+//│   [
+//│     Arg(None, ValueRef(ClassSymbol("C", Some([Symbol("p")])))),
+//│     Arg(None, ValueRef(ClassSymbol("C", Some([Symbol("p")]))))
+//│   ]
+//│ )
+//│ c = ClassSymbol("C", Some([Symbol("p")]))
+
+testBinOp("===", ValueLit(10), ValueLit("10"))
 //│ = ValueLit(false)
 
-testBinOp("&&", true, false)
+testBinOp("&&", ValueLit(true), ValueLit(false)) 
 //│ = ValueLit(false)
-
+ 
 fun testUnaryOp(op, v) =
   let args = [Arg(None, ValueLit(v))]
   let c = Call(ValueRef(Symbol(op)), args)
@@ -108,17 +119,124 @@ testUnaryOp("-", 10)
 
 testUnaryOp("!", true)
 //│ = Call(ValueRef(Symbol("!")), [Arg(None, ValueLit(true))])
+
+let fooSym = Symbol("foo")
+let fooGenSym = Symbol("foo_gen") 
+let fooImplSym = Symbol("foo_impl")
+let x = Symbol("x")
+let sx = Symbol("sx")
+let defs = DefCtx.empty
+defs.add(fooSym, FunDefn(fooSym, [[x]], End(), true))
+defs.add(fooGenSym, FunDefn(fooGenSym, [[sx]], Return(Call(ValueRef(fooImplSym), [Arg(None, ValueRef(x))]), false), false))
+defs.add(fooImplSym, FunDefn(fooImplSym, [[x]], Return(ValueLit(42), false), false))
+let args = [Arg(None, ValueLit(100))]
+let callFoo = Call(ValueRef(fooSym), args)
+sor(defs, Ctx.empty, Cache.empty, callFoo)
+//│ = [
+//│   Call(ValueRef(Symbol("foo_Lit(100)")), [Arg(None, ValueLit(100))]),
+//│   Dyn(),
+//│   Cache(Map(0) {})
+//│ ]
+//│ args = [Arg(None, ValueLit(100))]
+//│ callFoo = Call(ValueRef(Symbol("foo")), [Arg(None, ValueLit(100))])
+//│ defs = DefCtx(
+//│   Map(4) {
+//│     "foo" => FunDefn(Symbol("foo"), [[Symbol("x")]], End(), true),
+//│     "foo_gen" => FunDefn(
+//│       Symbol("foo_gen"),
+//│       [[Symbol("sx")]],
+//│       Return(
+//│         Call(
+//│           ValueRef(Symbol("foo_impl")),
+//│           [Arg(None, ValueRef(Symbol("x")))]
+//│         ),
+//│         false
+//│       ),
+//│       false
+//│     ),
+//│     "foo_impl" => FunDefn(
+//│       Symbol("foo_impl"),
+//│       [[Symbol("x")]],
+//│       Return(ValueLit(42), false),
+//│       false
+//│     ),
+//│     "foo_Lit(100)" => FunDefn(
+//│       Symbol("foo_Lit(100)"),
+//│       [[Symbol("x")]],
+//│       Return(
+//│         Call(
+//│           ValueRef(Symbol("foo_impl")),
+//│           [Arg(None, ValueRef(Symbol("x")))]
+//│         ),
+//│         false
+//│       ),
+//│       false
+//│     )
+//│   }
+//│ )
+//│ fooGenSym = Symbol("foo_gen")
+//│ fooImplSym = Symbol("foo_impl")
+//│ fooSym = Symbol("foo")
+//│ sx = Symbol("sx")
+//│ x = Symbol("x")
+
  
 let plusSym = Symbol("+")   
 let plus = ValueRef(plusSym)
 let args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
 let callPlus = Call(plus, args)
-sor(DefCtx.empty, Ctx.empty, Cache.empty, callPlus)
-//│ = [ValueLit(3), Lit(3), Cache(Map(0) {})]
-//│ args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+let args = [Arg(None, ValueRef(callPlus)), Arg(None, ValueLit(3))]
+let callPlus2 = Call(plus, args)
+sor(DefCtx.empty, Ctx.empty, Cache.empty, callPlus2)
+//│ = [
+//│   Call(
+//│     ValueRef(Symbol("+")),
+//│     [
+//│       Arg(
+//│         None,
+//│         ValueRef(
+//│           Call(
+//│             ValueRef(Symbol("+")),
+//│             [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│           )
+//│         )
+//│       ),
+//│       Arg(None, ValueLit(3))
+//│     ]
+//│   ),
+//│   Dyn(),
+//│   Cache(Map(0) {})
+//│ ]
+//│ args = [
+//│   Arg(
+//│     None,
+//│     ValueRef(
+//│       Call(
+//│         ValueRef(Symbol("+")),
+//│         [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│       )
+//│     )
+//│   ),
+//│   Arg(None, ValueLit(3))
+//│ ]
 //│ callPlus = Call(
 //│   ValueRef(Symbol("+")),
 //│   [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│ )
+//│ callPlus2 = Call(
+//│   ValueRef(Symbol("+")),
+//│   [
+//│     Arg(
+//│       None,
+//│       ValueRef(
+//│         Call(
+//│           ValueRef(Symbol("+")),
+//│           [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│         )
+//│       )
+//│     ),
+//│     Arg(None, ValueLit(3))
+//│   ]
 //│ )
 //│ plus = ValueRef(Symbol("+"))
 //│ plusSym = Symbol("+")
