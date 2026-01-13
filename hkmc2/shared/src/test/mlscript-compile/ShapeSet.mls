@@ -88,51 +88,105 @@ open Block
 open Option
 
 fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
-  val rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
+  let rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
   [flat(rem.map(_.0)), rem.map(_.1)]
 
-fun sop(g, p: Path): ShapeSet = if p is
-  Select(qual, name) and g.get(p) is None then sel(sop(g, qual), mkLit(name))
-  DynSelect(qual, fld, arrayIdx) and g.get(p) is None then sel(sop(g, qual), sop(g, fld))
-  ValueRef(l) and g.get(p) is Some(s) then s 
+
+// TODO: refactor with hash map?
+class Ctx(maps: Map) with
+  fun get(path) =
+    let ps = showPath(path)
+    if maps.has(ps) then Some(maps.get(ps))
+    else None
+  fun nest = Ctx(new Map(maps))
+  fun add(path, ss) =
+    let ps = showPath(path)
+    maps.set(ps, ss)
+    ss
+module Ctx with
+  fun empty = Ctx(new Map())
+
+
+class DefCtx(defs: Map) with
+  fun get(sym) =
+    if defs.has(sym) then Some(defs.get(sym))
+    else None
+  fun add(sym, node) =
+    defs.set(sym, node)
+    ()
+module DefCtx with
+  fun empty = DefCtx(new Map())
+
+
+// FIXME: [fyp] what if a path is stored inside the ctx?
+fun sop(ctx: Ctx, p: Path): ShapeSet = if p is
+  Select(qual, name) and ctx.get(p) is None then sel(sop(ctx, qual), mkLit(name))
+  DynSelect(qual, fld, arrayIdx) and ctx.get(p) is None then sel(sop(ctx, qual), sop(ctx, fld))
+  ValueRef(l) and ctx.get(p) is Some(s) then s 
   ValueLit(lit) then mkLit(lit)
 
-fun sor(g, cache, r: Result) = if r is
-  Path then [r, sop(g, r), cache]
+fun sor(defs, ctx, cache, r: Result) = if r is
+  Path then [r, sop(ctx, r)]
   // cls is a Path, but we want the shape class to be a ClassSymbol, maybe widen it for shape
-  Instantiate(cls, args) then [r, mkClass(???, args.map(sop(g, _))), cache]
-  Tuple(elems) then [r, mkArr(elems.map(sop(g, _)), false), cache]
+  Instantiate(ValueRef(sym), args) and sym is ClassSymbol then [r, mkClass(sym, args.map(sop(ctx, _)))]
+  Instantiate(_, _) then ??? // TODO: [fyp] error message. we don't consider first class classes here for now
+  Tuple(elems) then [r, mkArr(elems.map(sop(ctx, _)), false)]
   Call(f, args) and
-    let k = [f, args.map(sop(g, _))] 
-    cache.get(k) is
-      Some([FunDefn(f1, _, _, _), s]) then [Call(f1, args), s, cache]
-      None and g.get(f) is
-        Some(FunDefn(_, params, body, stage)) and
-          prop(g.addMany(params.map([_, sop(g, r)])), cache, body) is [s, b, cache1] and
-            stage is
-              // TODO: create new symbols
-              true then [Call(???, args), s, cache.add(k, [FunDefn(???, params, b, true), s])]
-              false and args.forall(static) then [b, s, cache1]
-      else if args.exist(not static(_)) and cache.get(g, args.map(_ => mkDyn())) is Some([FunDefn(f1, params, body, false), s])
-        then [Call(f1, args), s, cache]
+    let def = defs.get(f)
+    def is
+      Some(FunDefn(_, _, _, _)) then ??? // TODO: [fyp] call the generator function
+      None then ??? // TODO: [fyp] if f is a builtin operator && arguments are known, then evaluate it; otherwise, leave it untouched
 
-fun prop(g, cache, b: Block) = if b is
-  End then [b, mkBot(), cache]
-  Return(res, implct) and sor(g, cache, res) is [r1, s, cache1] then
-    [Return(r1, implct), s, cache1]
+  // Call(f, args) and
+  //   let k = [f, args.map(sop(ctx, _))] 
+  //   cache.get(k) is
+  //     Some([FunDefn(f1, _, _, _), s]) then [Call(f1, args), s]
+  //     None and ctx.get(f) is
+  //       Some(FunDefn(_, params, body, stage)) and
+  //         prop(ctx.addMany(params.map([_, sop(ctx, r)])), cache, body) is [s, b] and
+  //           stage is
+  //             // TODO: create new symbols
+  //             true then [Call(???, args), s, cache.add(k, [FunDefn(???, params, b, true), s])]
+  //             false and args.forall(static) then [b, s]
+  //     else if args.exist(not static(_)) and cache.get(ctx, args.map(_ => mkDyn())) is Some([FunDefn(f1, params, body, false), s])
+  //       then [Call(f1, args), s]
+
+fun prop(defs, ctx, cache, b: Block) = if b is
+  End then [b, mkBot()]
+  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s] then
+    [Return(r1, implct), s]
   // TODO: let syntax, presumably for Scoped
-  Assign(x, r, b) and sor(g, cache, r) is [r1, s, cache1] and
-    prop(g.add(x, union(g.get(x), s)), cache1, b) is [b1, s1, cache2] then
-      [Assign(x, r1, b1), s1, cache2]
-  // recurse on arms
+  Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s] and
+    prop(defs, ctx.add(x, union(ctx.get(x), s)), cache, b) is [b1, s1] then
+      [Assign(x, r1, b1), s1]
   Match(p, arms, dflt, rest) then
-    ???
+    let s = sop(ctx, p)
+    let filteredArms = fold((r, arm) =>
+      let fs = filter(r.0, arm.0)
+      if fs.isEmpty() then r
+      else
+        let nestCtx = ctx.nest
+        if not p is ValueLit then do
+          nestCtx.add(p, fs)
+        let res = prop(defs, nestCtx, cache, arm.1)
+        [rest(r.0, arm.0), union(r.1, res.1), r.2.push(res.0)]
+    )([s, mkBot(), []], arms) // rest of shapes, early-returned shapes, filtered arms
+    let newDflt =
+      if filteredArms.0.isEmpty() then dflt
+      else
+        let nestCtx = ctx.nest
+        if not p is ValueLit then do
+          nestCtx.add(p, filteredArms.0)
+        prop(defs, nestCtx, cache, dflt)
+    let newRest = prop(defs, ctx, cache, rest)
+    [Match(p, filteredArms.2, newDflt.0, newRest.0), union(filteredArms.1, union of newDflt.1, newRest.1)]
 
-fun exec(g, cache, b: Block) = if b is
+// TODO: remove it. this can be done in module static blocks
+fun exec(defs, ctx, cache, b: Block) = if b is
   Define(d, rest) and d is
-    ClsLikeDefn then Define(d, exec(g, cache, rest))
+    ClsLikeDefn then Define(d, exec(defs, ctx, cache, rest))
     FunDefn(sym, params, body, stage) and stage is 
-      true then exec(g.add(???), cache, g)
+      true then exec(defs, ctx.add(???), cache, ctx)
       false then ???
-  _ and prop(g, cache, b) is [b1, _, cache1] then
+  _ and prop(defs, ctx, cache, b) is [b1, _] then
     ???
