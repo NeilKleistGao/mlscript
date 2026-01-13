@@ -87,17 +87,19 @@ fun silh(p: Case): Shape = if p is
   Block.Lit(l) then Lit(l)
   Block.Cls(sym, path) then
     val size = if sym.args is Some(i) then i else 0
-    Class(sym, Array(size).fill(Dyn))
-  Block.Tup(n, inf) then Arr(Array(n).fill(Dyn), inf)
+    Class(sym, Array(size).fill(Dyn()))
+  Block.Tup(n, inf) then Arr(Array(n).fill(Dyn()), inf)
 
 // TODO: use Option instead, since all of them return at most one shape
 fun filter(s: Shape, p: Case): Array[Shape] =
   if [s, p] is
     [Lit(l1), Block.Lit(l2)] and l1 == l2 then [s]
     [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s]
-    [Arr(ls, false), Block.Tup(n, false)] and ls.length == n then [s]
-    [Arr(ls, true), _] then [s] // TODO
-    [_, Block.Tup(ls, true)] then [s] // TODO
+    [Arr(ls, inf1), Block.Tup(n, inf2)] and [inf1, inf2] is
+      [false, false] and ls.length != n then []
+      [true, false] and ls.length > n then []
+      [false, true] and ls.length < n then []
+      else [s]
     [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
     [Dyn, _] then [silh(p)]
     else []

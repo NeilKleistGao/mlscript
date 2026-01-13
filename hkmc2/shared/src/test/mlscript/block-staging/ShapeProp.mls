@@ -5,10 +5,10 @@ import "../../mlscript-compile/Shape.mls"
 import "../../mlscript-compile/ShapeSet.mls"
 import "../../mlscript-compile/Option.mls"
 import "../../mlscript-compile/CachedHash.mls"
-open Shape 
-open ShapeSet
-open Block
 open Option
+open Block { Symbol, ClassSymbol, Tup }
+open Shape { Arr, Class, Dyn, Lit }
+open ShapeSet
 
 mkLit(0)
 //│ = Lit(0)
@@ -16,6 +16,9 @@ mkLit(0)
 mkDyn()
 //│ = Dyn()
 
+assert(mkBot().isEmpty())
+
+// sel
 
 let arrSp = mkArr([mkLit(0), mkDyn()], false)
 //│ arrSp = Arr([Lit(0), Dyn()], false)
@@ -29,6 +32,58 @@ sel(arrSp, mkLit(1))
 sel(mkDyn(), mkLit(5))
 //│ = Dyn()
 
+let a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)], false)])
+sel(x, liftMany([Lit("a"), Lit(2)]))
+//│ = Dyn(),Lit(42),Lit(undefined)
+//│ a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+//│ x = Arr([Lit(100), Lit(false), Lit(undefined)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Dyn()
+
+sel(lift(Arr([Dyn(), Lit(1), a], false)), mkLit(1))
+//│ = Lit(1)
+
+// union
+
+let x = liftMany([Lit(1), Lit(2)])
+let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
+union(x, y)
+//│ = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1),Lit(2)
+//│ x = Lit(1),Lit(2)
+//│ y = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1)
+
+// filter
+
+filter(mkDyn(), Block.Lit("a"))
+//│ = Lit("a")
+
+filter(mkDyn(), Block.Tup(2, true))
+//│ = Arr([Dyn(), Dyn()], true)
+
+let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
+//│ filterShapes = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)
+
+// wildcard is represented as dflt in Match
+
+filter(filterShapes, Block.Lit(1))
+//│ = Lit(1)
+
+assert(filter(filterShapes, Block.Lit(2)).isEmpty())
+
+filter(filterShapes, Block.Cls(Symbol("A"), undefined))
+//│ = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+
+filter(filterShapes, Block.Cls(Symbol("Int"), undefined))
+//│ = Lit(1)
+
+filter(filterShapes, Tup(3, false))
+//│ = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false)
+
+filter(filterShapes, Tup(4, true))
+//│ = Arr([Dyn()], true)
+
+assert(filter(filterShapes, Tup(0, false)).isEmpty())
+
+open Block
 
 sop(Ctx.empty, ValueLit(42))
 //│ = Lit(42)
