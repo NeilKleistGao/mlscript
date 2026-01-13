@@ -56,6 +56,10 @@ class Block with
     Return(val res: Result, val implct: Bool)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
+    // TODO: [fyp] handle Scoped, Label, Break nodes
+    Scoped(val symbols: Array[Symbol], val rest: Block)
+    Label(val labelSymbol: Symbol, val loop: Bool, val body: Block, val rest: Block)
+    Break(val labelSymbol: Symbol)
     End()
   
 fun concat(b1: Block, b2: Block) = if b1 is
@@ -63,6 +67,9 @@ fun concat(b1: Block, b2: Block) = if b1 is
   Return(res, implct) then b2 // discard return?
   Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
   Define(defn, rest) then Define(defn, concat(rest, b2))
+  Scoped(symbols, rest) then Scoped(symbols, concat(rest, b2))
+  Label(labelSymbol, loop, body, rest) then Label(labelSymbol, loop, body, concat(rest, b2))
+  Break then ??? // unreachable
   End() then b2
 
 fun showBool(b: Bool) = if b then "true" else "false"
@@ -158,6 +165,12 @@ fun showBlock(b: Block): Str =
       "Assign(" + showSymbol(lhs) + ", " + showResult(rhs) + ", " + showBlock(rest) + ")"
     Define(defn, rest) then 
       "Define(" + showDefn(defn) + ", " + showBlock(rest) + ")"
+    Scoped(symbols, rest) then
+      "Scoped([" + symbols.map(showSymbol).join(", ") + "], " + showBlock(rest) + ")"
+    Label(labelSymbol, loop, body, rest) then
+      "Label(" + showSymbol(labelSymbol) + ", " + showBool(loop) + ", " + showBlock(body) + ", " + showBlock(rest) +  + ")"
+    Break(labelSymbol) then
+      "Break(" + showSymbol(labelSymbol) + ")"
     End() then "End"
 
 fun show(x) =

@@ -294,6 +294,7 @@ class Lifter(handlerPaths: Opt[HandlerPaths])(using State, Raise):
     
     val defn = ClsLikeDefn(
       None, clsSym, BlockMemberSymbol(nme, Nil),
+      S(TermSymbol(syntax.Fun, S(clsSym), clsSym.id)),
       syntax.Cls,
       N,
       PlainParamList(sortedVars.iterator.map(_._2).toList) :: Nil, None, Nil, Nil, 
@@ -471,7 +472,7 @@ class Lifter(handlerPaths: Opt[HandlerPaths])(using State, Raise):
           tsym.owner.foreach(_.traverse)
           sym.traverse
           applyPath(rhs)
-        case ClsLikeDefn(own, isym, sym, k, paramsOpt, auxParams, parentPath, methods,
+        case ClsLikeDefn(own, isym, sym, ctorSym, k, paramsOpt, auxParams, parentPath, methods,
             privateFields, publicFields, preCtor, ctor, mod, bufferable)
         =>
           own.foreach(_.traverse)
@@ -729,7 +730,7 @@ class Lifter(handlerPaths: Opt[HandlerPaths])(using State, Raise):
                   then b else Match(scrut2, arms2, dflt2, rst2)
             
         case Label(lbl, loop, bod, rst) =>
-          val lbl2 = applyLocal(lbl)
+          val lbl2 = lbl.subst
           val bod2 = applySubBlockAndReset(bod)
           val rst2 = applySubBlock(rst)
           if (lbl2 is lbl) && (bod2 is bod) && (rst2 is rst) then b else Label(lbl2, loop, bod2, rst2)
