@@ -1,0 +1,124 @@
+:js
+
+import "../../mlscript-compile/Block.mls"
+import "../../mlscript-compile/Shape.mls"
+import "../../mlscript-compile/ShapeSet.mls"
+import "../../mlscript-compile/Option.mls"
+import "../../mlscript-compile/CachedHash.mls"
+open Shape 
+open ShapeSet
+open Block
+open Option
+
+mkLit(0)
+//│ = Lit(0)
+
+mkDyn()
+//│ = Dyn()
+
+
+let arrSp = mkArr([mkLit(0), mkDyn()], false)
+//│ arrSp = Arr([Lit(0), Dyn()], false)
+
+sel(arrSp, mkLit(0))
+//│ = Lit(0)
+
+sel(arrSp, mkLit(1))
+//│ = Dyn()
+
+sel(mkDyn(), mkLit(5))
+//│ = Dyn()
+
+
+sop(Ctx.empty, ValueLit(42))
+//│ = Lit(42)
+
+sop(Ctx.empty, ValueLit(false))
+//│ = Lit(false)
+
+
+val x = Symbol("x")
+val C = ClassSymbol("C", Some(["a"]))
+val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
+let ctx = Ctx.empty
+ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
+sop(ctx, selPath)
+//│ = 
+//│ C = ClassSymbol("C", Some(["a"]))
+//│ ctx = Ctx(_)
+//│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
+//│ x = Symbol("x")
+
+val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
+let ctx = Ctx.empty
+let cache = Cache.empty
+let defCtx = DefCtx.empty
+sor(defCtx, ctx, cache, tup)
+//│ = [
+//│   Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))]),
+//│   Arr([Lit(1), Lit(true)], false),
+//│   Cache(Map(0) {})
+//│ ]
+//│ cache = Cache(Map(0) {})
+//│ ctx = Ctx(_)
+//│ defCtx = DefCtx(_)
+//│ tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
+
+let c = ClassSymbol("C", Some([Symbol("p")]))
+let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
+sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
+//│ = [
+//│   Instantiate(
+//│     ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
+//│     [Arg(None, ValueLit(123))]
+//│   ),
+//│   Class(ClassSymbol("C", Some([Symbol("p")])), [Lit(123)]),
+//│   Cache(Map(0) {})
+//│ ]
+//│ c = ClassSymbol("C", Some([Symbol("p")]))
+//│ inst = Instantiate(
+//│   ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
+//│   [Arg(None, ValueLit(123))]
+//│ )
+
+fun testBinOp(op, v1, v2) =
+  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
+  let c = Call(ValueRef(Symbol(op)), args)
+  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0 
+
+testBinOp("+", 10, 2)
+//│ = ValueLit(12)
+
+testBinOp("==", 10, 10) 
+//│ = ValueLit(true)
+
+testBinOp("===", 10, "10")
+//│ = ValueLit(false)
+
+testBinOp("&&", true, false)
+//│ = ValueLit(false)
+
+fun testUnaryOp(op, v) =
+  let args = [Arg(None, ValueLit(v))]
+  let c = Call(ValueRef(Symbol(op)), args)
+  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0
+
+testUnaryOp("-", 10)
+//│ = Call(ValueRef(Symbol("-")), [Arg(None, ValueLit(10))])
+
+testUnaryOp("!", true)
+//│ = Call(ValueRef(Symbol("!")), [Arg(None, ValueLit(true))])
+ 
+let plusSym = Symbol("+")   
+let plus = ValueRef(plusSym)
+let args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+let callPlus = Call(plus, args)
+sor(DefCtx.empty, Ctx.empty, Cache.empty, callPlus)
+//│ = [ValueLit(3), Lit(3), Cache(Map(0) {})]
+//│ args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│ callPlus = Call(
+//│   ValueRef(Symbol("+")),
+//│   [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│ )
+//│ plus = ValueRef(Symbol("+"))
+//│ plusSym = Symbol("+")

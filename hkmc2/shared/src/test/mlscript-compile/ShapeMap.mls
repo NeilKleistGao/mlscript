@@ -1,8 +1,10 @@
 import "./Option.mls"
 import "./ShapeSet.mls"
+import "./StrOps.mls"
 
 open Option { Some, None }
 open ShapeSet
+open StrOps
 
 type ShapeMap = ShapeMap.ShapeMap
 
@@ -17,3 +19,21 @@ class ShapeMap(val underlying: Map) with
     if underlying.get(s.hash())
       == () then None
       is value then Some of value
+
+// TODO: improve it
+class Cache(underlying: Map, names: Map) with
+  fun add(fname, argShape, codefrag, resShape) =
+    let key = fname ~ argShape.hash()
+    let newName = freshName(fname) // TODO: hygiene
+    underlying.set(key, [newName, resShape, codefrag])
+  fun get(fname, argShape) =
+    let key = fname ~ argShape.hash()
+    if underlying.has(key) then Some of underlying.get(key)
+    else None
+  fun freshName(name) =
+    if not names.has(name) do
+      names.set(name, 0)
+    let i = names.get(name)
+    names.set(name, i + 1)
+    StrOps.concat of name, "_", i.toString()
+
