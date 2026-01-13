@@ -81,29 +81,15 @@ sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
 //│   [Arg(None, ValueLit(123))]
 //│ )
 
-let plusSym = Symbol("+")  
-let plus = ValueRef(plusSym)
-let args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
-let callPlus = Call(plus, args)
-sor(DefCtx.empty, Ctx.empty, Cache.empty, callPlus)
-//│ = [ValueLit(3), Lit(3), Cache(Map(0) {})]
-//│ args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
-//│ callPlus = Call(
-//│   ValueRef(Symbol("+")),
-//│   [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
-//│ )
-//│ plus = ValueRef(Symbol("+"))
-//│ plusSym = Symbol("+")
-
 fun testBinOp(op, v1, v2) =
   let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
   let c = Call(ValueRef(Symbol(op)), args)
-  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0
+  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0 
 
 testBinOp("+", 10, 2)
 //│ = ValueLit(12)
 
-testBinOp("==", 10, 10)
+testBinOp("==", 10, 10) 
 //│ = ValueLit(true)
 
 testBinOp("===", 10, "10")
@@ -118,8 +104,21 @@ fun testUnaryOp(op, v) =
   sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0
 
 testUnaryOp("-", 10)
-//│ = ValueLit(-10)
+//│ = Call(ValueRef(Symbol("-")), [Arg(None, ValueLit(10))])
 
 testUnaryOp("!", true)
-//│ = ValueLit(false)
+//│ = Call(ValueRef(Symbol("!")), [Arg(None, ValueLit(true))])
  
+let plusSym = Symbol("+")   
+let plus = ValueRef(plusSym)
+let args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+let callPlus = Call(plus, args)
+sor(DefCtx.empty, Ctx.empty, Cache.empty, callPlus)
+//│ = [ValueLit(3), Lit(3), Cache(Map(0) {})]
+//│ args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│ callPlus = Call(
+//│   ValueRef(Symbol("+")),
+//│   [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│ )
+//│ plus = ValueRef(Symbol("+"))
+//│ plusSym = Symbol("+")

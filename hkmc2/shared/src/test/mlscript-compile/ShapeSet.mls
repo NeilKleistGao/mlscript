@@ -159,7 +159,21 @@ fun sor(defs, ctx, cache, r: Result) = if r is
         if f is ValueRef(s) then
           let name = s.name
           if binaryOps.includes(name) and args.length == 2 then
-            if args.0 is Arg(_, ValueLit(l1)) and args.1 is Arg(_, ValueLit(l2)) then
+            let v1 =
+              let s = sop(ctx, args.0.value)
+              if s.values().length == 1 then 
+                if s.values().0 is 
+                  Shape.Lit(l) then Some(l) // why need Shape. here??
+              else
+                None
+            let v2 =
+              let s = sop(ctx, args.1.value)
+              if s.values().length == 1 then 
+                if s.values().0 is 
+                  Shape.Lit(l) then Some(l) // why need Shape. here??
+              else
+                None
+            if v1 is Some(l1) and v2 is Some(l2) then
               let res =
                 if name == "+" then l1 + l2
                 else if name == "-" then l1 - l2
@@ -181,7 +195,10 @@ fun sor(defs, ctx, cache, r: Result) = if r is
               else [ValueLit(res), mkLit(res), cache]
             else [r, mkDyn(), cache]
           else if unaryOps.includes(name) and args.length == 1 then
-            if args.0 is Arg(_, ValueLit(l1)) then
+            let v1 =
+              let s = sop(ctx, args.0.value)
+              if s.values() is [Lit(l)] then Some(l) else None
+            if v1 is Some(l1) then
               let res =
                 if name == "!" then not l1
                 else if name == "-" then -l1
