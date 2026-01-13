@@ -1,0 +1,357 @@
+:js
+
+import "../../mlscript-compile/Block.mls"
+import "../../mlscript-compile/Shape.mls"
+import "../../mlscript-compile/ShapeSet.mls"
+import "../../mlscript-compile/Option.mls"
+import "../../mlscript-compile/CachedHash.mls"
+open Option
+open Block { Symbol, ClassSymbol, Tup }
+open Shape { Arr, Class, Dyn, Lit }
+open ShapeSet
+
+mkLit(0)
+//│ = Lit(0)
+
+mkDyn()
+//│ = Dyn()
+
+assert(mkBot().isEmpty())
+
+// sel
+
+let arrSp = mkArr([mkLit(0), mkDyn()], false)
+//│ arrSp = Arr([Lit(0), Dyn()], false)
+
+sel(arrSp, mkLit(0))
+//│ = Lit(0)
+
+sel(arrSp, mkLit(1))
+//│ = Dyn()
+
+sel(mkDyn(), mkLit(5))
+//│ = Dyn()
+
+let a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)], false)])
+sel(x, liftMany([Lit("a"), Lit(2)]))
+//│ = Dyn(),Lit(42),Lit(undefined)
+//│ a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+//│ x = Arr([Lit(100), Lit(false), Lit(undefined)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Dyn()
+
+sel(lift(Arr([Dyn(), Lit(1), a], false)), mkLit(1))
+//│ = Lit(1)
+
+// union
+
+let x = liftMany([Lit(1), Lit(2)])
+let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
+union(x, y)
+//│ = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1),Lit(2)
+//│ x = Lit(1),Lit(2)
+//│ y = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1)
+
+// filter
+
+filter(mkDyn(), Block.Lit("a"))
+//│ = Lit("a")
+
+filter(mkDyn(), Block.Tup(2, true))
+//│ = Dyn()
+
+let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
+//│ filterShapes = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)
+
+// wildcard is represented as dflt in Match
+
+filter(filterShapes, Block.Lit(1))
+//│ = Arr([Dyn()], true),Lit(1)
+
+assert(filter(filterShapes, Block.Lit(2)).isEmpty())
+//│ // Standard Error:
+//│ Assertion failed
+//│ 
+
+filter(filterShapes, Block.Cls(Symbol("A"), undefined))
+//│ = Arr([Dyn()], true),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+
+filter(filterShapes, Block.Cls(Symbol("Int"), undefined))
+//│ = Arr([Dyn()], true),Lit(1)
+
+filter(filterShapes, Tup(3, false))
+//│ = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false)
+
+filter(filterShapes, Tup(4, true))
+//│ = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)
+
+assert(filter(filterShapes, Tup(0, false)).isEmpty())
+//│ // Standard Error:
+//│ Assertion failed
+//│ 
+
+open Block
+
+sop(Ctx.empty, ValueLit(42))
+//│ = Lit(42)
+
+sop(Ctx.empty, ValueLit(false))
+//│ = Lit(false)
+
+
+val x = Symbol("x")
+val C = ClassSymbol("C", Some(["a"]))
+val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
+let ctx = Ctx.empty
+ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
+sop(ctx, selPath)
+//│ = Lit("pass")
+//│ C = ClassSymbol("C", Some(["a"]))
+//│ ctx = Ctx(_)
+//│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
+//│ x = Symbol("x")
+
+val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
+let ctx = Ctx.empty
+let cache = Cache.empty
+let defCtx = DefCtx.empty
+sor(defCtx, ctx, cache, tup)
+//│ = [
+//│   Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))]),
+//│   Arr([Lit(1), Lit(true)], false),
+//│   Cache(Map(0) {})
+//│ ]
+//│ cache = Cache(Map(0) {})
+//│ ctx = Ctx(_)
+//│ defCtx = DefCtx(Map(0) {})
+//│ tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
+
+let c = ClassSymbol("C", Some([Symbol("p")]))
+let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
+sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
+//│ = [
+//│   Instantiate(
+//│     ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
+//│     [Arg(None, ValueLit(123))]
+//│   ),
+//│   Class(ClassSymbol("C", Some([Symbol("p")])), [Lit(123)]),
+//│   Cache(Map(0) {})
+//│ ]
+//│ c = ClassSymbol("C", Some([Symbol("p")]))
+//│ inst = Instantiate(
+//│   ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
+//│   [Arg(None, ValueLit(123))]
+//│ )
+
+fun testBinOp(op, v1, v2) =
+  let args = [Arg(None, v1), Arg(None, v2)]
+  let c = Call(ValueRef(Symbol(op)), args)
+  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
+
+
+:expect ValueLit(12)
+testBinOp("+", 10, 2)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:163)
+//│ ═══[RUNTIME ERROR] Error: match error
+//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:684:38)
+//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:85:20)
+//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:428:34)
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:659:37)
+//│     at testBinOp (REPL107:1:593)
+//│     at REPL110:1:39
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:212)
+//│ ═══[RUNTIME ERROR] Expected: 'ValueLit(12)', got: 'undefined'
+
+:expect ValueLit(true)
+testBinOp("==", 10, 10) 
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:163)
+//│ ═══[RUNTIME ERROR] Error: match error
+//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:684:38)
+//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:85:20)
+//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:428:34)
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:659:37)
+//│     at testBinOp (REPL107:1:593)
+//│     at REPL113:1:39
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:212)
+//│ ═══[RUNTIME ERROR] Expected: 'ValueLit(true)', got: 'undefined'
+
+:expect ValueLit(false)
+testBinOp("===", 10, "10")
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:163)
+//│ ═══[RUNTIME ERROR] Error: match error
+//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:684:38)
+//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:85:20)
+//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:428:34)
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:659:37)
+//│     at testBinOp (REPL107:1:593)
+//│     at REPL116:1:39
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:212)
+//│ ═══[RUNTIME ERROR] Expected: 'ValueLit(false)', got: 'undefined'
+
+:expect ValueLit(false)
+testBinOp("&&", true, false)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:163)
+//│ ═══[RUNTIME ERROR] Error: match error
+//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:684:38)
+//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:85:20)
+//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:428:34)
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:659:37)
+//│     at testBinOp (REPL107:1:593)
+//│     at REPL119:1:39
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:212)
+//│ ═══[RUNTIME ERROR] Expected: 'ValueLit(false)', got: 'undefined'
+
+fun testUnaryOp(op, v) =
+  let args = [Arg(None, ValueLit(v))]
+  let c = Call(ValueRef(Symbol(op)), args)
+  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0
+
+testUnaryOp("-", 10)
+//│ = Call(ValueRef(Symbol("-")), [Arg(None, ValueLit(10))])
+
+testUnaryOp("!", true)
+//│ = Call(ValueRef(Symbol("!")), [Arg(None, ValueLit(true))])
+
+let fooSym = Symbol("foo")
+let fooGenSym = Symbol("foo_gen") 
+let fooImplSym = Symbol("foo_impl")
+let x = Symbol("x")
+let sx = Symbol("sx")
+let defs = DefCtx.empty
+defs.add(fooSym, FunDefn(fooSym, [[x]], End(), true))
+defs.add(fooGenSym, FunDefn(fooGenSym, [[sx]], Return(Call(ValueRef(fooImplSym), [Arg(None, ValueRef(x))]), false), false))
+defs.add(fooImplSym, FunDefn(fooImplSym, [[x]], Return(ValueLit(42), false), false))
+let args = [Arg(None, ValueLit(100))]
+let callFoo = Call(ValueRef(fooSym), args)
+sor(defs, Ctx.empty, Cache.empty, callFoo)
+//│ = [
+//│   Call(ValueRef(Symbol("foo_Lit(100)")), [Arg(None, ValueLit(100))]),
+//│   Dyn(),
+//│   Cache(Map(0) {})
+//│ ]
+//│ args = [Arg(None, ValueLit(100))]
+//│ callFoo = Call(ValueRef(Symbol("foo")), [Arg(None, ValueLit(100))])
+//│ defs = DefCtx(
+//│   Map(4) {
+//│     "foo" => FunDefn(Symbol("foo"), [[Symbol("x")]], End(), true),
+//│     "foo_gen" => FunDefn(
+//│       Symbol("foo_gen"),
+//│       [[Symbol("sx")]],
+//│       Return(
+//│         Call(
+//│           ValueRef(Symbol("foo_impl")),
+//│           [Arg(None, ValueRef(Symbol("x")))]
+//│         ),
+//│         false
+//│       ),
+//│       false
+//│     ),
+//│     "foo_impl" => FunDefn(
+//│       Symbol("foo_impl"),
+//│       [[Symbol("x")]],
+//│       Return(ValueLit(42), false),
+//│       false
+//│     ),
+//│     "foo_Lit(100)" => FunDefn(
+//│       Symbol("foo_Lit(100)"),
+//│       [[Symbol("x")]],
+//│       Return(
+//│         Call(
+//│           ValueRef(Symbol("foo_impl")),
+//│           [Arg(None, ValueRef(Symbol("x")))]
+//│         ),
+//│         false
+//│       ),
+//│       false
+//│     )
+//│   }
+//│ )
+//│ fooGenSym = Symbol("foo_gen")
+//│ fooImplSym = Symbol("foo_impl")
+//│ fooSym = Symbol("foo")
+//│ sx = Symbol("sx")
+//│ x = Symbol("x")
+
+ 
+let plusSym = Symbol("+")   
+let plus = ValueRef(plusSym)
+let args = [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+let callPlus = Call(plus, args)
+let args = [Arg(None, ValueRef(callPlus)), Arg(None, ValueLit(3))]
+let callPlus2 = Call(plus, args)
+sor(DefCtx.empty, Ctx.empty, Cache.empty, callPlus2)
+//│ = [
+//│   Call(
+//│     ValueRef(Symbol("+")),
+//│     [
+//│       Arg(
+//│         None,
+//│         ValueRef(
+//│           Call(
+//│             ValueRef(Symbol("+")),
+//│             [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│           )
+//│         )
+//│       ),
+//│       Arg(None, ValueLit(3))
+//│     ]
+//│   ),
+//│   Dyn(),
+//│   Cache(Map(0) {})
+//│ ]
+//│ args = [
+//│   Arg(
+//│     None,
+//│     ValueRef(
+//│       Call(
+//│         ValueRef(Symbol("+")),
+//│         [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│       )
+//│     )
+//│   ),
+//│   Arg(None, ValueLit(3))
+//│ ]
+//│ callPlus = Call(
+//│   ValueRef(Symbol("+")),
+//│   [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│ )
+//│ callPlus2 = Call(
+//│   ValueRef(Symbol("+")),
+//│   [
+//│     Arg(
+//│       None,
+//│       ValueRef(
+//│         Call(
+//│           ValueRef(Symbol("+")),
+//│           [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]
+//│         )
+//│       )
+//│     ),
+//│     Arg(None, ValueLit(3))
+//│   ]
+//│ )
+//│ plus = ValueRef(Symbol("+"))
+//│ plusSym = Symbol("+")
