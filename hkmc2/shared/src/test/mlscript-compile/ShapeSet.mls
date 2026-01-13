@@ -22,7 +22,7 @@ class ShapeSet(val underlying: Map) extends CachedHash with
 
   fun flatMap(f) = liftMany(values().flatMap(f))
 
-  // fun toString() = underlying.keys().toArray().toSorted().toString()
+  fun toString() = underlying.keys().toArray().toSorted().toString()
 
 fun create() = ShapeSet(new Map)
 
@@ -154,7 +154,6 @@ fun sor(defs, ctx, cache, r: Result) = if r is
     let def = if f is ValueRef(s) then defs.get(s) else None
     if def is
       Some(FunDefn(sym, params, body, true)) then
-        let newCtx = ctx.nest
         ???
       None then
         if f is ValueRef(s) then
@@ -188,7 +187,6 @@ fun sor(defs, ctx, cache, r: Result) = if r is
                 else if name == "-" then -l1
                 else if name == "+" then +l1
                 else undefined
-              print(res)
               if res === undefined then [r, mkDyn(), cache]
               else [ValueLit(res), mkLit(res), cache]
             else [r, mkDyn(), cache]
