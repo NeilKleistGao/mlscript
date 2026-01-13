@@ -43,7 +43,7 @@ val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
 let ctx = Ctx.empty
 ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
-//│ = 
+//│ = Lit("pass")
 //│ C = ClassSymbol("C", Some(["a"]))
 //│ ctx = Ctx(_)
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
@@ -84,19 +84,23 @@ sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
 fun testBinOp(op, v1, v2) =
   let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
   let c = Call(ValueRef(Symbol(op)), args)
-  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0 
+  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
 
+:expect 12
 testBinOp("+", 10, 2)
-//│ = ValueLit(12)
+//│ = 12
 
+:expect true
 testBinOp("==", 10, 10) 
-//│ = ValueLit(true)
+//│ = true
 
+:expect false
 testBinOp("===", 10, "10")
-//│ = ValueLit(false)
+//│ = false
 
+:expect false
 testBinOp("&&", true, false)
-//│ = ValueLit(false)
+//│ = false
 
 fun testUnaryOp(op, v) =
   let args = [Arg(None, ValueLit(v))]
