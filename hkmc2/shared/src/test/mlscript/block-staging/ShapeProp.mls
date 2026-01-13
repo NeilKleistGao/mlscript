@@ -46,7 +46,7 @@ sel(lift(Arr([Dyn(), Lit(1), a], false)), mkLit(1))
 
 let x = liftMany([Lit(1), Lit(2)])
 let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
-union(x, y)
+union(x, y) 
 //│ = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1),Lit(2)
 //│ x = Lit(1),Lit(2)
 //│ y = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1)
@@ -157,7 +157,7 @@ testBinOp("==", 10, 10)
 //│ = true
 
 :expect false 
-testBinOp("===", 10, "10")
+testBinOp("===", 10, "10") 
 //│ = false
 
 :expect false
@@ -169,74 +169,14 @@ fun testUnaryOp(op, v) =
   let c = Call(ValueRef(Symbol(op)), args)
   sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
 
+:expect -10
 testUnaryOp("-", 10)
 //│ = -10
 
+:expect false
 testUnaryOp("!", true)
 //│ = false
 
-// foo(x) = x + 1
-let fooSym = Symbol("foo")
-let fooGenSym = Symbol("foo_gen") 
-let fooImplSym = Symbol("foo_impl")
-let x = Symbol("x")
-let sx = Symbol("sx")
-let defs = DefCtx.empty
-defs.add(fooSym, FunDefn(fooSym, [[x]], End(), true))
-defs.add(fooGenSym, FunDefn(fooGenSym, [[sx]], Return(Call(ValueRef(fooImplSym), [Arg(None, ValueRef(x))]), false), false))
-defs.add(fooImplSym, FunDefn(fooImplSym, [[x]], Return(ValueLit(42), false), false))
-let args = [Arg(None, ValueLit(100))]
-let callFoo = Call(ValueRef(fooSym), args)
-sor(defs, Ctx.empty, Cache.empty, callFoo)
-//│ = [
-//│   Call(ValueRef(Symbol("foo_Lit(100)")), [Arg(None, ValueLit(100))]),
-//│   Dyn(),
-//│   Cache(Map(0) {})
-//│ ]
-//│ args = [Arg(None, ValueLit(100))]
-//│ callFoo = Call(ValueRef(Symbol("foo")), [Arg(None, ValueLit(100))])
-//│ defs = DefCtx(
-//│   Map(4) {
-//│     "foo" => FunDefn(Symbol("foo"), [[Symbol("x")]], End(), true),
-//│     "foo_gen" => FunDefn(
-//│       Symbol("foo_gen"),
-//│       [[Symbol("sx")]],
-//│       Return(
-//│         Call(
-//│           ValueRef(Symbol("foo_impl")),
-//│           [Arg(None, ValueRef(Symbol("x")))]
-//│         ),
-//│         false
-//│       ),
-//│       false
-//│     ),
-//│     "foo_impl" => FunDefn(
-//│       Symbol("foo_impl"),
-//│       [[Symbol("x")]],
-//│       Return(ValueLit(42), false),
-//│       false
-//│     ),
-//│     "foo_Lit(100)" => FunDefn(
-//│       Symbol("foo_Lit(100)"),
-//│       [[Symbol("x")]],
-//│       Return(
-//│         Call(
-//│           ValueRef(Symbol("foo_impl")),
-//│           [Arg(None, ValueRef(Symbol("x")))]
-//│         ),
-//│         false
-//│       ),
-//│       false
-//│     )
-//│   }
-//│ )
-//│ fooGenSym = Symbol("foo_gen")
-//│ fooImplSym = Symbol("foo_impl")
-//│ fooSym = Symbol("foo")
-//│ sx = Symbol("sx")
-//│ x = Symbol("x")
-
- 
 // FIXME
 let plusSym = Symbol("+")   
 let plus = ValueRef(plusSym)

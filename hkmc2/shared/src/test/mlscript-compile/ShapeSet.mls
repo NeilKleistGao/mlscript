@@ -5,7 +5,8 @@ import "./Shape.mls"
 import "./CachedHash.mls"
 
 open Predef
-open Block { ClassSymbol }
+open Block
+open Option
 
 type ShapeSet = ShapeSet.ShapeSet
 
@@ -85,8 +86,6 @@ fun static(s: ShapeSet) =
     1 then Shape.static(v.0)
     else false
 
-open Block
-open Option
 
 fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
   let rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
@@ -163,7 +162,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
           let genName = sym.name + "_gen"
           if defs.get(Symbol(genName)) is Some(FunDefn(genSym, genParams, genBody, _)) then
             let genCtx = ctx.nest
-            // need to deal with curried version too
+            // TODO: need to deal with curried version too
             if genParams.length > 0 then
               genParams.0.forEach((p, i) => 
                 genCtx.add(ValueRef(p), mkLit(argShapes.(i)))
@@ -181,7 +180,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
               let s = sop(ctx, args.0.value)
               if s.values().length == 1 then 
                 if s.values().0 is 
-                  Shape.Lit(l) then Some(l)
+                  Lit(l) then Some(l)
                 else
                   None
               else
@@ -190,7 +189,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
               let s = sop(ctx, args.1.value)
               if s.values().length == 1 then 
                 if s.values().0 is 
-                  Shape.Lit(l) then Some(l)
+                  Lit(l) then Some(l)
                 else 
                   None
               else
