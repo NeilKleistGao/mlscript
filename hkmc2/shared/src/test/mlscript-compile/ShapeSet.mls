@@ -163,7 +163,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
           let genName = sym.name + "_gen"
           if defs.get(Symbol(genName)) is Some(FunDefn(genSym, genParams, genBody, _)) then
             let genCtx = ctx.nest
-            // only deal with non-curried version for now
+            // need to deal with curried version too
             if genParams.length > 0 then
               genParams.0.forEach((p, i) => 
                 genCtx.add(ValueRef(p), mkLit(argShapes.(i)))
@@ -219,7 +219,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
           else if unaryOps.includes(name) and args.length == 1 then
             let v1 =
               let s = sop(ctx, args.0.value)
-              if s.values() is [Lit(l)] then Some(l) else None
+              if s.values() is [Shape.Lit(l)] then Some(l) else None
             if v1 is Some(l1) then
               let res =
                 if name == "!" then not l1
