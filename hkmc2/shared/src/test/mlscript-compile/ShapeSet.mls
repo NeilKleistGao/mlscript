@@ -158,10 +158,28 @@ fun prop(defs, ctx, cache, b: Block) = if b is
   // TODO: let syntax, presumably for Scoped
   Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s] and
     prop(defs, ctx.add(x, union(ctx.get(x), s)), cache, b) is [b1, s1] then
-      [Assign(x, r1, b1), s1, cache]
-  // recurse on arms
+      [Assign(x, r1, b1), s1]
   Match(p, arms, dflt, rest) then
-    ???
+    let s = sop(ctx, p)
+    let filteredArms = fold((r, arm) =>
+      let fs = filter(r.0, arm.0)
+      if fs.isEmpty() then r
+      else
+        let nestCtx = ctx.nest
+        if not p is ValueLit then do
+          nestCtx.add(p, fs)
+        let res = prop(defs, nestCtx, cache, arm.1)
+        [rest(r.0, arm.0), union(r.1, res.1), r.2.push(res.0)]
+    )([s, mkBot(), []], arms) // rest of shapes, early-returned shapes, filtered arms
+    let newDflt =
+      if filteredArms.0.isEmpty() then dflt
+      else
+        let nestCtx = ctx.nest
+        if not p is ValueLit then do
+          nestCtx.add(p, filteredArms.0)
+        prop(defs, nestCtx, cache, dflt)
+    let newRest = prop(defs, ctx, cache, rest)
+    [Match(p, filteredArms.2, newDflt.0, newRest.0), union(filteredArms.1, union of newDflt.1, newRest.1)]
 
 // TODO: remove it. this can be done in module static blocks
 fun exec(defs, ctx, cache, b: Block) = if b is
