@@ -309,8 +309,6 @@ object Elaborator:
     val orSymbol = builtinOpsMap("||")
     def init(using State): Ctx = Ctx.empty.copy(env = Map(
       "globalThis" -> globalThisSymbol,
-      "Term" -> termSymbol,
-      "Block" -> blockSymbol,
     ))
     def dbg: Bool = false
     def dbgRefNum(num: Int): Str =
