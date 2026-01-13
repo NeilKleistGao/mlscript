@@ -157,7 +157,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
         let argShapes = args.map(a => sop(ctx, a.value))
         let shapeStr = argShapes.map(s => s.toString()).join("_")
         let implSym = Symbol(sym.name + "_" + shapeStr)
-        if defs.get(implSym) is Some(_) then
+        if cache.get(implSym) is Some(_) then
           [Call(ValueRef(implSym), args), mkDyn(), cache] // TODO: defctx need to store the shape as well
         else
           let genName = sym.name + "_gen"
