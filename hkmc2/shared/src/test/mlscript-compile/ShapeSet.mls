@@ -22,7 +22,7 @@ class ShapeSet(val underlying: Map) extends CachedHash with
 
   fun flatMap(f) = liftMany(values().flatMap(f))
 
-  fun toString() = underlying.keys().toArray().toSorted().toString()
+  // fun toString() = underlying.keys().toArray().toSorted().toString()
 
 fun create() = ShapeSet(new Map)
 
@@ -102,7 +102,7 @@ class Ctx(maps: Map) with
   fun add(path, ss) =
     let ps = showPath(path)
     maps.set(ps, ss)
-    ss
+    this
 module Ctx with
   fun empty = Ctx(new Map())
 
@@ -113,29 +113,83 @@ class DefCtx(defs: Map) with
     else None
   fun add(sym, node) =
     defs.set(sym, node)
-    ()
+    this
 module DefCtx with
   fun empty = DefCtx(new Map())
 
+class Cache(val underlying: Map) with
+  fun key(f, args) = 
+    showPath(f) + "(" + args.map(s => s.toString()).join(",") + ")"
+  fun get(f, args) = 
+    let k = key(f, args)
+    if underlying.has(k) then Some(underlying.get(k)) else None
+  fun add(f, args, res) =
+    underlying.set(key(f, args), res)
+    this
 
-// FIXME: [fyp] what if a path is stored inside the ctx?
-fun sop(ctx: Ctx, p: Path): ShapeSet = if p is
-  Select(qual, name) and ctx.get(p) is None then sel(sop(ctx, qual), mkLit(name))
-  DynSelect(qual, fld, arrayIdx) and ctx.get(p) is None then sel(sop(ctx, qual), sop(ctx, fld))
-  ValueRef(l) and ctx.get(p) is Some(s) then s 
-  ValueLit(lit) then mkLit(lit)
+module Cache with 
+  fun empty = Cache(new Map())
+
+
+fun sop(ctx, p: Path): ShapeSet = 
+  if ctx.get(p) is Some(s) then s
+  else if p is 
+    Select(qual, sym) then sel(sop(ctx, qual), mkLit(sym.name))
+    DynSelect(qual, fld, arrayIdx) then sel(sop(ctx, qual), sop(ctx, fld))
+    ValueLit(lit) then mkLit(lit)
+    ValueRef(l) then mkDyn()
+
+val binaryOps = ["+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=", "===", "!==", "&&", "||"]
+val unaryOps = ["-", "+", "!"]
 
 fun sor(defs, ctx, cache, r: Result) = if r is
-  Path then [r, sop(ctx, r)]
+  Path then [r, sop(ctx, r), cache]
   // cls is a Path, but we want the shape class to be a ClassSymbol, maybe widen it for shape
-  Instantiate(ValueRef(sym), args) and sym is ClassSymbol then [r, mkClass(sym, args.map(sop(ctx, _)))]
-  Instantiate(_, _) then ??? // TODO: [fyp] error message. we don't consider first class classes here for now
-  Tuple(elems) then [r, mkArr(elems.map(sop(ctx, _)), false)]
-  Call(f, args) and
-    let def = defs.get(f)
-    def is
-      Some(FunDefn(_, _, _, _)) then ??? // TODO: [fyp] call the generator function
-      None then ??? // TODO: [fyp] if f is a builtin operator && arguments are known, then evaluate it; otherwise, leave it untouched
+  Instantiate(cls, args) then
+    let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("?")
+    [r, mkClass(sym, args.map(a => sop(ctx, a.value))), cache]
+  Tuple(elems) then [r, mkArr(elems.map(a => sop(ctx, a.value)), false), cache]
+  Call(f, args) then
+    let def = if f is ValueRef(s) then defs.get(s) else None
+    if def is
+      Some(FunDefn(sym, params, body, true)) then TODO: [fyp] call the generator function
+      None then
+        if f is ValueRef(s) then
+          let name = s.name
+          if binaryOps.includes(name) and args.length == 2 then
+            if args.0 is Arg(_, ValueLit(l1)) and args.1 is Arg(_, ValueLit(l2)) then
+              let res =
+                if name == "+" then l1 + l2
+                else if name == "-" then l1 - l2
+                else if name == "*" then l1 * l2
+                else if name == "/" then l1 / l2
+                else if name == "%" then l1 % l2
+                else if name == "==" then l1 == l2
+                else if name == "!=" then l1 != l2
+                else if name == "<" then l1 < l2
+                else if name == "<=" then l1 <= l2
+                else if name == ">" then l1 > l2
+                else if name == ">=" then l1 >= l2
+                else if name == "===" then l1 === l2
+                else if name == "!==" then l1 !== l2
+                else if name == "&&" then l1 && l2
+                else if name == "||" then l1 || l2
+                else undefined
+              if res === undefined then [r, mkDyn(), cache]
+              else [ValueLit(res), mkLit(res), cache]
+            else [r, mkDyn(), cache]
+          else if unaryOps.includes(name) and args.length == 1 then
+            if args.0 is Arg(_, ValueLit(l1)) then
+              let res =
+                if name == "!" then not l1
+                else if name == "-" then -l1
+                else if name == "+" then +l1
+                else undefined
+              if res === undefined then [r, mkDyn(), cache]
+              else [ValueLit(res), mkLit(res), cache]
+            else [r, mkDyn(), cache]
+          else [r, mkDyn(), cache]
+        else [r, mkDyn(), cache]
 
   // Call(f, args) and
   //   let k = [f, args.map(sop(ctx, _))] 
