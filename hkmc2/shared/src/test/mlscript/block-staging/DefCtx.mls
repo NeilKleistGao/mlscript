@@ -1,0 +1,96 @@
+:js
+:staging
+
+staged module A with
+  fun f() = 1
+  fun g(x) = x
+//│ > Return(Lit(1), false)
+//│ > Return(Ref(Symbol("x")), false)
+
+module C with
+  fun h() = 0
+
+fun i() = 2
+
+// :lot
+:sjs
+staged module B with
+  fun a() = A.f()
+  fun b() = C.h()
+  fun c() = i()
+//│ JS (unsanitized):
+//│ let B1;
+//│ let tmp6, tmp7, tmp8, tmp9, tmp10, tmp11;
+//│ (class B {
+//│   static {
+//│     B1 = this
+//│   }
+//│   constructor() {
+//│     runtime.Unit;
+//│   }
+//│   static {
+//│     let end, tmp12, sym, var1, sym1, sel, tmp13;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("A"));
+//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
+//│     sym1 = globalThis.Object.freeze(new Block.Symbol("f"));
+//│     sel = globalThis.Object.freeze(new Block.Select(var1, sym1));
+//│     tmp13 = globalThis.Object.freeze([
+//│       sel
+//│     ]);
+//│     this.defCtx = tmp13;
+//│     tmp12 = globalThis.Object.freeze(new globalThis.Map());
+//│     this.cache = tmp12;
+//│     end = globalThis.Object.freeze(new Block.End());
+//│   }
+//│   static a() {
+//│     return A1.f()
+//│   } 
+//│   static b() {
+//│     return C1.h()
+//│   } 
+//│   static c() {
+//│     return i()
+//│   } 
+//│   static a_gen() {
+//│     let sym, var1, sym1, sel, tmp12, app, return1;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("A"));
+//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
+//│     sym1 = globalThis.Object.freeze(new Block.Symbol("f"));
+//│     sel = globalThis.Object.freeze(new Block.Select(var1, sym1));
+//│     tmp12 = globalThis.Object.freeze([]);
+//│     app = globalThis.Object.freeze(new Block.Call(sel, tmp12));
+//│     return1 = globalThis.Object.freeze(new Block.Return(app, false));
+//│     return return1
+//│   } 
+//│   static b_gen() {
+//│     let sym, var1, sym1, sel, tmp12, app, return1;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("C"));
+//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
+//│     sym1 = globalThis.Object.freeze(new Block.Symbol("h"));
+//│     sel = globalThis.Object.freeze(new Block.Select(var1, sym1));
+//│     tmp12 = globalThis.Object.freeze([]);
+//│     app = globalThis.Object.freeze(new Block.Call(sel, tmp12));
+//│     return1 = globalThis.Object.freeze(new Block.Return(app, false));
+//│     return return1
+//│   } 
+//│   static c_gen() {
+//│     let sym, var1, tmp12, app, return1;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("i"));
+//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
+//│     tmp12 = globalThis.Object.freeze([]);
+//│     app = globalThis.Object.freeze(new Block.Call(var1, tmp12));
+//│     return1 = globalThis.Object.freeze(new Block.Return(app, false));
+//│     return return1
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "B"]; 
+//│ });
+//│ tmp6 = B1.a_gen();
+//│ tmp7 = Block.printCode(tmp6);
+//│ tmp8 = B1.b_gen();
+//│ tmp9 = Block.printCode(tmp8);
+//│ tmp10 = B1.c_gen();
+//│ tmp11 = Block.printCode(tmp10);
+//│ > Return(Call(Select(Ref(Symbol("A")), Symbol("f")), []), false)
+//│ > Return(Call(Select(Ref(Symbol("C")), Symbol("h")), []), false)
+//│ > Return(Call(Ref(Symbol("i")), []), false)
