@@ -294,8 +294,23 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       val (stagedMethods, debugPrintCode) = companion.methods
         .map(impl.transformFunDefn(sym, _))
         .unzip
+
+      // add cache for specialized functions in each staged module
+      val cacheSym = BlockMemberSymbol("cache", Nil, true)
+      val cacheTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("cache"))
+      // initialize cache for the module
+      def cacheDecl(rest: Block) =
+        val tmp = TempSymbol(N, "tmp")
+        val mapInit = Instantiate(mut = false, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Map"))(N), Nil)
+        Assign(tmp, mapInit, Define(ValDefn(cacheTsym, cacheSym, Value.Ref(tmp)), rest))
+
+
       val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
-      val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
+      val newCompanion = companion.copy(
+        methods = companion.methods ++ stagedMethods,
+        ctor = cacheDecl(newCtor),
+        publicFields = cacheSym -> cacheTsym :: companion.publicFields
+      )
       val newModule = c.copy(sym = sym, companion = S(newCompanion))
       // debug is printed after definition
       val debugBlock = debugPrintCode.foldRight(rest)(concat)
