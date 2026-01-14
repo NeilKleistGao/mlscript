@@ -262,10 +262,20 @@ class InstrumentationImpl(using State):
     val sym = modSym.asPath.selSN(genSym.nme)
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
     // TODO: remove it. only for test
-    val debug = blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-      // TODO: put correct parameters instead of undefined
-      f.params.map(ps => List.fill(ps.params.length)(undef))
-        .foldRight((p: Path) => fnPrintCode(p)(End()))((args, cont) => call(_, args)(cont))(sym)
+    // maintain parameter names for debugging
+    val debug =
+      f.params.map(ps =>
+        ps.params.map(p =>
+          (k: Path => Block) =>
+            blockCtor("Symbol", Ls(toValue(p.sym.nme))): sym =>
+              blockCtor("ValueRef", Ls(sym))(k)
+        ).collectApply
+      )
+        .foldRight((p: Path) => fnPrintCode(p)(End()))((argsCont, cont) =>
+          path =>
+            argsCont: args =>
+              call(path, args)(cont)
+        )(sym)
 
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
     val args = f.params.flatMap(_.params).map(_.sym)
