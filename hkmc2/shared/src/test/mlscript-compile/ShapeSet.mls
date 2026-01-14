@@ -5,14 +5,14 @@ import "./Shape.mls"
 import "./CachedHash.mls"
 
 open Predef
-open Block
+open Block {ClassSymbol}
 open Option
 
 type ShapeSet = ShapeSet.ShapeSet
 
 module ShapeSet with...
 
-class ShapeSet(val underlying: Map) extends CachedHash with
+class ShapeSet(val underlying: Map[String, Shape]) extends CachedHash with
   fun keys() = [...underlying.keys()].toSorted()
 
   fun values() = underlying.values().toArray()
@@ -87,13 +87,13 @@ fun static(s: ShapeSet) =
     else false
 
 
-fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
-  let rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
-  [flat(rem.map(_.0)), rem.map(_.1)]
+// fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
+//   let rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
+//   [flat(rem.map(_.0)), rem.map(_.1)]
 
-
+open Block
 // TODO: refactor with hash map?
-class Ctx(maps: Map) with
+class Ctx(maps: Map[String, ShapeSet]) with
   fun get(path) =
     let ps = showPath(path)
     if maps.has(ps) then Some(maps.get(ps))
@@ -107,7 +107,7 @@ module Ctx with
   fun empty = Ctx(new Map())
 
 
-class DefCtx(val defs: Map) with
+class DefCtx(val defs: Map[String, Block]) with
   fun get(sym) =
     if defs.has(sym.name) then Some(defs.get(sym.name))
     else None
@@ -117,7 +117,7 @@ class DefCtx(val defs: Map) with
 module DefCtx with
   fun empty = DefCtx(new Map())
 
-class Cache(val underlying: Map) with
+class Cache(val underlying: Map[String, [Block, Shape]]) with
   fun key(f, args) = 
     showPath(f) + "(" + args.map(s => s.toString()).join(",") + ")"
   fun get(f, args) = 
@@ -166,7 +166,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
                 genCtx.add(ValueRef(p), mkLit(argShapes.(i)))
               )
             if prop(defs, genCtx, cache, genBody) is [resBlock, resShape] then
-              defs.add(implSym, FunDefn(implSym, params, resBlock, false))
+              cache.add(implSym, [FunDefn(implSym, params, resBlock, false), resShape])
               [Call(ValueRef(implSym), args), mkDyn(), cache]
             else [r, mkDyn(), cache]
           else [r, mkDyn(), cache]
