@@ -144,25 +144,23 @@ val unaryOps = ["-", "+", "!"]
 
 fun sor(defs, ctx, cache, r: Result) = if r is
   Path then [r, sop(ctx, r), cache]
-  // cls is a Path, but we want the shape class to be a ClassSymbol, maybe widen it for shape
   Instantiate(cls, args) then
-    let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("?")
+    let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("Instantiate with non-ClassSymbol")
     [r, mkClass(sym, args.map(a => sop(ctx, a.value))), cache]
   Tuple(elems) then [r, mkArr(elems.map(a => sop(ctx, a.value)), false), cache]
   Call(f, args) then
+    let argShapes = args.map(a => sop(ctx, a.value))
     let def = if f is ValueRef(s) then defs.get(s) else None
     if def is
       Some(FunDefn(sym, params, body, true)) then
-        let argShapes = args.map(a => sop(ctx, a.value))
         let shapeStr = argShapes.map(s => s.toString()).join("_")
         let implSym = Symbol(sym.name + "_" + shapeStr)
         if cache.get(implSym) is Some(_) then
-          [Call(ValueRef(implSym), args), mkDyn(), cache] // TODO: defctx need to store the shape as well
+          [Call(ValueRef(implSym), args), mkDyn(), cache]
         else
           let genName = sym.name + "_gen"
           if defs.get(Symbol(genName)) is Some(FunDefn(genSym, genParams, genBody, _)) then
             let genCtx = ctx.nest
-            // TODO: need to deal with curried version too
             if genParams.length > 0 then
               genParams.0.forEach((p, i) => 
                 genCtx.add(ValueRef(p), mkLit(argShapes.(i)))
@@ -172,65 +170,74 @@ fun sor(defs, ctx, cache, r: Result) = if r is
               [Call(ValueRef(implSym), args), mkDyn(), cache]
             else [r, mkDyn(), cache]
           else [r, mkDyn(), cache]
+      // Some(FunDefn(sym, params, body, false)) then
+      //   if argShapes.forall(static) then
+      //     let staticCtx = ctx.nest
+      //     if params.length > 0 then
+      //       params.0.forEach((p, i) =>
+      //         staticCtx.add(ValueRef(p), argShapes.(i))
+      //       )
+      //     if prop(defs, staticCtx, cache, body) is [Return(res, _), resShape] then
+      //       [res, resShape, cache]
+      //     else [r, mkDyn(), cache]
+      //   else [r, mkDyn(), cache]
       None then
         if f is ValueRef(s) then
-          let name = s.name
-          if binaryOps.includes(name) and args.length == 2 then
-            let v1 =
-              let s = sop(ctx, args.0.value)
-              if s.values().length == 1 then 
-                if s.values().0 is 
-                  Lit(l) then Some(l)
-                else
-                  None
-              else
-                None
-            let v2 =
-              let s = sop(ctx, args.1.value)
-              if s.values().length == 1 then 
-                if s.values().0 is 
-                  Lit(l) then Some(l)
-                else 
-                  None
-              else
-                None
-            if v1 is Some(l1) and v2 is Some(l2) then
+          if unaryOps.includes(s.name) and args.length == 1 then
+            let v1 = 
+              if argShapes.length > 0 then
+                let s = argShapes.(0)
+                let vs = s.values()
+                if vs.length == 1 and vs.(0) is Shape.Lit(v) then Some(v) else None
+              else None
+            
+            if v1 is Some(l1) then
               let res =
-                if name == "+" then l1 + l2
-                else if name == "-" then l1 - l2
-                else if name == "*" then l1 * l2
-                else if name == "/" then l1 / l2
-                else if name == "%" then l1 % l2
-                else if name == "==" then l1 == l2
-                else if name == "!=" then l1 != l2
-                else if name == "<" then l1 < l2
-                else if name == "<=" then l1 <= l2
-                else if name == ">" then l1 > l2
-                else if name == ">=" then l1 >= l2
-                else if name == "===" then l1 === l2
-                else if name == "!==" then l1 !== l2
-                else if name == "&&" then l1 && l2
-                else if name == "||" then l1 || l2
+                if s.name == "!" then not l1
+                else if s.name == "-" then -l1
+                else if s.name == "+" then +l1
                 else undefined
               if res === undefined then [r, mkDyn(), cache]
               else [ValueLit(res), mkLit(res), cache]
             else [r, mkDyn(), cache]
-          else if unaryOps.includes(name) and args.length == 1 then
-            let v1 =
-              let s = sop(ctx, args.0.value)
-              if s.values() is [Shape.Lit(l)] then Some(l) else None
-            if v1 is Some(l1) then
+          else if binaryOps.includes(s.name) and args.length == 2 then
+            let v1 = 
+              if argShapes.length > 0 then
+                let s = argShapes.(0)
+                let vs = s.values()
+                if vs.length == 1 and vs.(0) is Shape.Lit(v) then Some(v) else None
+              else None
+            let v2 = 
+              if argShapes.length > 1 then
+                let s = argShapes.(1)
+                let vs = s.values()
+                if vs.length == 1 and vs.(0) is Shape.Lit(v) then Some(v) else None
+              else None
+
+            if v1 is Some(l1) and v2 is Some(l2) then
               let res =
-                if name == "!" then not l1
-                else if name == "-" then -l1
-                else if name == "+" then +l1
+                if s.name == "+" then l1 + l2
+                else if s.name == "-" then l1 - l2
+                else if s.name == "*" then l1 * l2
+                else if s.name == "/" then l1 / l2
+                else if s.name == "%" then l1 % l2
+                else if s.name == "==" then l1 == l2
+                else if s.name == "!=" then l1 != l2
+                else if s.name == "<" then l1 < l2
+                else if s.name == "<=" then l1 <= l2
+                else if s.name == ">" then l1 > l2
+                else if s.name == ">=" then l1 >= l2
+                else if s.name == "===" then l1 === l2
+                else if s.name == "!==" then l1 !== l2
+                else if s.name == "&&" then l1 && l2
+                else if s.name == "||" then l1 || l2
                 else undefined
               if res === undefined then [r, mkDyn(), cache]
               else [ValueLit(res), mkLit(res), cache]
             else [r, mkDyn(), cache]
           else [r, mkDyn(), cache]
         else [r, mkDyn(), cache]
-      else [r, mkDyn(), cache] // add shape
+      else [r, mkDyn(), cache]
 
   // Call(f, args) and
   //   let k = [f, args.map(sop(ctx, _))] 
