@@ -139,9 +139,6 @@ fun sop(ctx, p: Path): ShapeSet =
     ValueLit(lit) then mkLit(lit)
     ValueRef(l) then mkDyn()
 
-val binaryOps = ["+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=", "===", "!==", "&&", "||"]
-val unaryOps = ["-", "+", "!"]
-
 fun sor(defs, ctx, cache, r: Result) = if r is
   Path then [r, sop(ctx, r), cache]
   Instantiate(cls, args) then
@@ -151,6 +148,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
   Call(f, args) then
     let argShapes = args.map(a => sop(ctx, a.value))
     let def = if f is ValueRef(s) then defs.get(s) else None
+    fun lit(l) = [ValueLit(l), mkLit(l), cache]
     if def is
       Some(FunDefn(sym, params, body, true)) then
         let shapeStr = argShapes.map(s => s.toString()).join("_")
@@ -181,62 +179,29 @@ fun sor(defs, ctx, cache, r: Result) = if r is
       //       [res, resShape, cache]
       //     else [r, mkDyn(), cache]
       //   else [r, mkDyn(), cache]
-      None then
-        if f is ValueRef(s) then
-          if unaryOps.includes(s.name) and args.length == 1 then
-            let v1 = 
-              if argShapes.length > 0 then
-                let s = argShapes.(0)
-                let vs = s.values()
-                if vs.length == 1 and vs.(0) is Shape.Lit(v) then Some(v) else None
-              else None
-            
-            if v1 is Some(l1) then
-              let res =
-                if s.name == "!" then not l1
-                else if s.name == "-" then -l1
-                else if s.name == "+" then +l1
-                else undefined
-              if res === undefined then [r, mkDyn(), cache]
-              else [ValueLit(res), mkLit(res), cache]
-            else [r, mkDyn(), cache]
-          else if binaryOps.includes(s.name) and args.length == 2 then
-            let v1 = 
-              if argShapes.length > 0 then
-                let s = argShapes.(0)
-                let vs = s.values()
-                if vs.length == 1 and vs.(0) is Shape.Lit(v) then Some(v) else None
-              else None
-            let v2 = 
-              if argShapes.length > 1 then
-                let s = argShapes.(1)
-                let vs = s.values()
-                if vs.length == 1 and vs.(0) is Shape.Lit(v) then Some(v) else None
-              else None
-
-            if v1 is Some(l1) and v2 is Some(l2) then
-              let res =
-                if s.name == "+" then l1 + l2
-                else if s.name == "-" then l1 - l2
-                else if s.name == "*" then l1 * l2
-                else if s.name == "/" then l1 / l2
-                else if s.name == "%" then l1 % l2
-                else if s.name == "==" then l1 == l2
-                else if s.name == "!=" then l1 != l2
-                else if s.name == "<" then l1 < l2
-                else if s.name == "<=" then l1 <= l2
-                else if s.name == ">" then l1 > l2
-                else if s.name == ">=" then l1 >= l2
-                else if s.name == "===" then l1 === l2
-                else if s.name == "!==" then l1 !== l2
-                else if s.name == "&&" then l1 && l2
-                else if s.name == "||" then l1 || l2
-                else undefined
-              if res === undefined then [r, mkDyn(), cache]
-              else [ValueLit(res), mkLit(res), cache]
-            else [r, mkDyn(), cache]
-          else [r, mkDyn(), cache]
-        else [r, mkDyn(), cache]
+      None and f is ValueRef(s) and
+        args is
+          let name = s.name
+          [x] and sop(ctx, x.value).values() is [Shape.Lit(l)] and name is
+            "!" then lit(not l)
+            "-" then lit(-l)
+            "+" then lit(+l)
+          [x, y] and sop(ctx, x.value).values() is [Shape.Lit(l1)] and sop(ctx, y.value).values() is [Shape.Lit(l2)] and name is
+            "+" then lit(l1 + l2)
+            "-" then lit(l1 - l2)
+            "*" then lit(l1 * l2)
+            "/" then lit(l1 / l2)
+            "%" then lit(l1 % l2)
+            "==" then lit(l1 == l2)
+            "!=" then lit(l1 != l2)
+            "<" then lit(l1 < l2)
+            "<=" then lit(l1 <= l2)
+            ">" then lit(l1 > l2)
+            ">=" then lit(l1 >= l2)
+            "===" then lit(l1 === l2)
+            "!==" then lit(l1 !== l2)
+            "&&" then lit(l1 && l2)
+            "||" then lit(l1 || l2)
       else [r, mkDyn(), cache]
 
   // Call(f, args) and

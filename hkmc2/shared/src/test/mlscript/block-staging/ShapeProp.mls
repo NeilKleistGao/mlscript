@@ -57,7 +57,7 @@ filter(mkDyn(), Block.Lit("a"))
 //│ = Lit("a")
 
 filter(mkDyn(), Block.Tup(2, true))
-//│ = Dyn()
+//│ = Arr([Dyn(), Dyn()], true)
 
 let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
 //│ filterShapes = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)
@@ -65,29 +65,23 @@ let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1),
 // wildcard is represented as dflt in Match
 
 filter(filterShapes, Block.Lit(1))
-//│ = Arr([Dyn()], true),Lit(1)
+//│ = Lit(1)
 
 assert(filter(filterShapes, Block.Lit(2)).isEmpty())
-//│ // Standard Error:
-//│ Assertion failed
-//│ 
 
 filter(filterShapes, Block.Cls(Symbol("A"), undefined))
-//│ = Arr([Dyn()], true),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+//│ = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
 
 filter(filterShapes, Block.Cls(Symbol("Int"), undefined))
-//│ = Arr([Dyn()], true),Lit(1)
+//│ = Lit(1)
 
 filter(filterShapes, Tup(3, false))
 //│ = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false)
 
 filter(filterShapes, Tup(4, true))
-//│ = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)
+//│ = Arr([Dyn()], true)
 
 assert(filter(filterShapes, Tup(0, false)).isEmpty())
-//│ // Standard Error:
-//│ Assertion failed
-//│ 
 
 open Block
 
