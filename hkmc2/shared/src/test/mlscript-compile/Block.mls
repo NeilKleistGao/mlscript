@@ -92,14 +92,12 @@ fun concat(b1: Block, b2: Block) = if b1 is
 
 fun indent(s: Str) = s.replaceAll("\n", "\n  ")
 
-fun showBool(b: Bool) = if b then "true" else "false"
-
 fun showLiteral(l: Literal) =
   if l is 
     undefined then "undefined"
     null then "null"
-    String then "\"" + l.toString() + "\""
-    else l.toString()
+    Str then "\"" + l.toString() + "\""
+    else l
 
 fun showSymbol(s: Symbol) = if s.name is
   "runtime" then "Runtime"
@@ -147,7 +145,7 @@ fun showArm(a) =
   showCase(a.cse) + " then" + indent("\n" + showBlock(a.body))
 
 fun showParams(p: ParamList) =
-  "(" + p.map(showSymbol).join(", ") + ")"  
+  p.map("(" + _.map(showSymbol).join(",") + ")").join("")
 
 fun showParamsOpt(p) = 
   if p is
@@ -159,8 +157,8 @@ fun showParamList(ps: ParamList) =
 
 fun showDefn(d: Defn): Str =
   if d is
-    FunDefn(sym, p, body, _) then
-      "fun " + showSymbol(sym) + showParams(p) + " =" +
+    FunDefn(sym, ps, body, _) then
+      "fun " + showSymbol(sym) + showParams(ps) + " =" +
       (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
     ClsLikeDefn(sym, _) then "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
     _ then "<unknown defn>"
@@ -168,7 +166,7 @@ fun showDefn(d: Defn): Str =
 fun showBlock(b) =
   if b is
     Assign(lhs, rhs, rest) then
-      showSymbol(lhs) + " = " + showResult(rhs) + "\n" + showBlock(rest)
+      showSymbol(lhs) + " = " + showResult(rhs) + showRestBlock(rest)
     Define(d, rest) then
       showDefn(d) + showRestBlock(rest)
     Return(res, _) then
@@ -180,9 +178,9 @@ fun showBlock(b) =
       + showRestBlock(rest)
     Scoped(symbols, rest) then
       // initialize symbols
-      symbols.map(showSymbol).map("let " + _).join("\n") + "\n" + showBlock(rest)
+      symbols.map(showSymbol).map("let " + _).join("\n") + showRestBlock(rest)
     Label(labelSymbol, loop, body, rest) then
-      "Label(" + showSymbol(labelSymbol) + ", " + showBool(loop) + ", " + showBlock(body) + ", " + showBlock(rest) + ")"
+      "Label(" + showSymbol(labelSymbol) + ", " + loop + ", " + showRestBlock(body) + ", " + showRestBlock(rest) + ")"
     Break(labelSymbol) then
       "Break(" + showSymbol(labelSymbol) + ")"
     End() then ""
