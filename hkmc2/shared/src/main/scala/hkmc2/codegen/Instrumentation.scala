@@ -51,7 +51,7 @@ class InstrumentationImpl(using State):
   def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
     // TODO: skip assignment if res: Path?
     val sym = new TempSymbol(N, symName)
-    Assign(sym, res, k(sym.asPath))
+    Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
 
   def tuple(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Tuple(false, elems.map(asArg)), symName)(k)
@@ -244,7 +244,7 @@ class InstrumentationImpl(using State):
       syms.toList.map(transformSymbol(_)).collectApply: symsStaged =>
         tuple(symsStaged): tup =>
           transformBlock(body): (body, ctx) =>
-            blockCtor("Scoped", Ls(tup, body))(k(_, ctx))
+            blockCtor("Scoped", Ls(tup, body))(b => Scoped(syms, k(b, ctx)))
     case Label(labelSymbol, loop, body, rest) =>
       transformSymbol(labelSymbol): labelSymbol =>
         transformBlock(body): (body, ctx) =>
