@@ -12,31 +12,32 @@ class Shape with
   constructor
     Dyn()
     Lit(val l: Literal)
-    Arr(val shapes: Array[Shape])
+    Arr(val shapes: Array[Shape], val inf: Bool)
     Class(val sym: ClassSymbol, val params: Array[Shape])
 
 fun show(s: Shape) =
   if s is
     Dyn then "Dyn"
     Lit(lit) then "Lit(" + Block.showLiteral(lit) + ")"
-    Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
+    Arr(shapes, inf) then "Arr([" + shapes.map(show).join(", ") + "], " + inf + ")"
     Class(sym, params) then "Class(" + showSymbol(sym) + ", [" + params.map(show).join(", ") + "])"
 
 fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
   a.map((a, i, _) => mrg2(a, b.at(i)))
 
-fun mrg2(s1: Shape, s2: Shape) = if s1
-  == s2 then s1
-  is
-    Lit(l) and s2 is Class(sym, params)
+// TODO: remove, this is no longer in use
+fun mrg2(s1: Shape, s2: Shape) =
+  if s1 == s2 then s1
+  else if [s1, s2] is 
+    [Lit(l), Class(sym, params)]
       and isPrimitiveTypeOf(sym, l)
       then Class(sym, params)
-    Class(sym1, ps) and s2 is Class(sym2, s2)
+    [Class(sym1, ps), Class(sym2, s2)]
       and sym1.name == sym2.name
       then Class(sym1, ps.map(p => [p.0, zipMrg(p.1, s2)]))
-    Arr(s1) and s2 is Arr(s2)
+    [Arr(s1, false), Arr(s2, false)]
       and s1.length == s2.length
-      then Arr(zipMrg(s1, s2))
+      then Arr(zipMrg(s1, s2), false)
     else Dyn()
 
 fun mrg(s1: Array[Shape]) = 
@@ -51,10 +52,11 @@ fun sel(s1: Shape, s2: Shape): Array[Shape] =
         is i then [params.(i)]
     [Dyn, Lit(n)] and n is Str
       then [Dyn()]
-    [Arr(shapes), Lit(n)] and n is Int
+    [Arr(shapes, false), Lit(n)] and n is Int
       then [shapes.(n)]
-    [Arr(shapes), Dyn] then
+    [Arr(shapes, false), Dyn] then
       shapes
+    [Arr(shapes, true), _] then [Dyn()] // TODO
     [Dyn, Lit(n)] and n is Int
       then [Dyn()]
     [Dyn, Dyn]
@@ -65,8 +67,9 @@ fun static(s: Shape) =
   if s is
     Dyn then false
     Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
-    Class(_, params) then params.every(static(_.1))
-    Arr(shapes) then shapes.every(static)
+    Class(_, params) then params.every(static)
+    Arr(shapes, false) then shapes.every(static)
+    Arr(shapes, true) then false // TODO
 
 open Block { Case }
 
@@ -75,13 +78,27 @@ fun silh(p: Case): Shape = if p is
   Block.Cls(sym, path) then
     val size = if sym.args is Some(i) then i else 0
     Class(sym, Array(size).fill(Dyn))
-  Block.Tup(n) then Arr(Array(n).fill(Dyn))
+  Block.Tup(n, inf) then Arr(Array(n).fill(Dyn), inf)
 
+// TODO: use Option instead, since all of them return at most one shape
 fun filter(s: Shape, p: Case): Array[Shape] =
   if [s, p] is
     [Lit(l1), Block.Lit(l2)] and l1 == l2 then [s]
     [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s]
-    [Arr(ls), Block.Tup(n)] and ls.length == n then [s]
+    [Arr(ls, false), Block.Tup(n, false)] and ls.length == n then [s]
+    [Arr(ls, true), _] then [s] // TODO
+    [_, Block.Tup(ls, true)] then [s] // TODO
     [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
     [Dyn, _] then [silh(p)]
     else []
+
+fun rest(s: Shape, p: Case): Array[Shape] =
+  if [s, p] is
+    [Lit(l1), Block.Lit(l2)] and l1 == l2 then []
+    [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then []
+    [Arr(ls, false), Block.Tup(n, false)] and ls.length == n then []
+    [Arr(ls, true), _] then [s] // TODO
+    [_, Block.Tup(ls, true)] then [s] // TODO
+    [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then []
+    [Dyn, _] then [s]
+    else [s]
