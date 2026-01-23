@@ -323,10 +323,13 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       val (stagedMethods, debugPrintCode) = companion.methods
         .map(impl.transformFunDefn(sym, _))
         .unzip
-      val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
+
+      val unit = Select(Value.Ref(State.runtimeSymbol), Tree.Ident("Unit"))(N)
+      val debugBlock = debugPrintCode.foldRight(Return(unit, true))(concat)
+      def debugCont(rest: Block) =
+        Begin(debugBlock, rest)
+      val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => debugCont(End()))
       val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
       val newModule = c.copy(sym = sym, companion = S(newCompanion))
-      // debug is printed after definition
-      val debugBlock = debugPrintCode.foldRight(rest)(concat)
-      Define(newModule, debugBlock)
+      Define(newModule, rest)
     case b => b
