@@ -112,7 +112,7 @@ class InstrumentationImpl(using State):
     def applyRuleBranch(cse: Case, block: Block)(f: Path => Context => Block)(ctx: Context): Block =
       transformCase(cse): cse =>
         transformBlock(block)(using ctx.clone() += p -> x): (y, ctx) =>
-          blockCtor("Arm", Ls(cse, y)) : cde =>
+          blockCtor("Arm", Ls(cse, y)): cde =>
             f(cde)(ctx.clone() -= p)
 
     (arms.map(applyRuleBranch).collectApply(_: Ls[Path] => Context => Block)(summon)): arms =>
