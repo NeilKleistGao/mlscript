@@ -48,6 +48,16 @@ staged module ClassInstrumentation with
 //│ > Return(Call(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false)
 //│ > Return(Call(Select(Ref(Symbol("ClassInstrumentation")), ClassSymbol("Inside":[Symbol("a"), Symbol("b")])), [Lit(1), Lit(2)]), false)
 
+module Nonstaged with
+  fun f() = 1
+staged module Staged with
+  fun f() = 1
+staged module CallSubst with
+  fun call() = 
+    Nonstaged.f()
+    Staged.f()
+//│ > Scoped([Symbol("tmp")], Assign(Symbol("tmp"), Call(Select(Ref(Symbol("Nonstaged")), Symbol("f")), []), Return(Call(Select(Ref(Symbol("Staged")), Symbol("f_gen")), []), false)))
+
 staged module Arguments with
   fun f(x) =
     x = 1
@@ -68,7 +78,7 @@ staged module OtherBlocks with
       3 then 0
       else 0
 //│ > Scoped([Symbol("a")], Assign(Symbol("a"), Lit(1), Return(Call(Select(Select(Ref(Symbol("OtherBlocks")), Symbol("scope")), Symbol("locally")), [Ref(Symbol("a"))]), false)))
-//│ > Scoped([Symbol("tmp"), Symbol("scrut")], Label(Symbol("split_root$"), false, Label(Symbol("split_1$"), false, Assign(Symbol("scrut"), Lit(1), Match(Ref(Symbol("scrut")), [Lit(2) -> Break(Symbol("split_1$")), Lit(3) -> Break(Symbol("split_1$"))], Break(Symbol("split_1$")), End)), Assign(Symbol("tmp"), Lit(0), End)NaN, Return(Ref(Symbol("tmp")), false)NaN)
+//│ > Scoped([Symbol("scrut"), Symbol("tmp")], Label(Symbol("split_root$"), false, Label(Symbol("split_1$"), false, Assign(Symbol("scrut"), Lit(1), Match(Ref(Symbol("scrut")), [Lit(2) -> Break(Symbol("split_1$")), Lit(3) -> Break(Symbol("split_1$"))], Break(Symbol("split_1$")), End)), Assign(Symbol("tmp"), Lit(0), End)NaN, Return(Ref(Symbol("tmp")), false)NaN)
 
 // debug printing fails, collision with class name?
 :fixme
@@ -84,8 +94,8 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.83: 	  staged module B with
+//│ ║  l.93: 	  staged module B with
 //│ ║        	                ^^^^^^
-//│ ║  l.84: 	    fun f() = 1
+//│ ║  l.94: 	    fun f() = 1
 //│ ╙──      	^^^^^^^^^^^^^^^
 //│ ═══[RUNTIME ERROR] ReferenceError: B is not defined

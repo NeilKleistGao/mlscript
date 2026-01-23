@@ -170,7 +170,21 @@ class InstrumentationImpl(using State):
           tuple(xs.map(_._1)): codes =>
             blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
     case Call(fun, args) =>
-      transformPath(fun): fun =>
+      val stagedFunPath =
+        fun match
+        case s @ Select(qual, Tree.Ident(name)) => s.symbol.flatMap({
+            case t: TermSymbol => t.owner.flatMap({
+                case sym: DefinitionSymbol[?] =>
+                  sym.defn.get.hasStagedModifier.map(_ =>
+                    Select(qual, Tree.Ident(name + "_gen"))(N)
+                  )
+              })
+            case _ => N
+          })
+        case _ => N
+
+      val newFun = stagedFunPath.getOrElse(fun)
+      transformPath(newFun): fun =>
         transformArgs(args): args =>
           tuple(args.map(_._1)): tup =>
             blockCtor("Call", Ls(fun, tup), "app")(k)
