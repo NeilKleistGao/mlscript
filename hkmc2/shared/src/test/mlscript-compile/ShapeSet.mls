@@ -25,7 +25,8 @@ class ShapeSet(val underlying: Map[String, Shape]) extends CachedHash with
 
   fun toString() = underlying.keys().toArray().toSorted().toString()
 
-fun create() = ShapeSet(new Map)
+module ShapeSet with
+  fun empty = ShapeSet(new Map)
 
 fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 
@@ -49,7 +50,7 @@ open Shape { Dyn, Lit, Arr, Class }
 
 // lifted constructors
 
-fun mkBot() = create()
+fun mkBot() = ShapeSet.empty
 
 fun mkDyn() = lift(Dyn())
 
@@ -82,7 +83,7 @@ fun sel(s1: ShapeSet, s2: ShapeSet) =
 fun static(s: ShapeSet) =
   let v = s.values()
   if v.length ==
-    0 then ???
+    0 then throw Error("Some variables has bottom shape.")
     1 then Shape.static(v.0)
     else false
 
@@ -219,13 +220,17 @@ fun sor(defs, ctx, cache, r: Result) = if r is
   //       then [Call(f1, args), s]
 
 fun prop(defs, ctx, cache, b: Block) = if b is
-  End then [b, mkBot()]
-  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s, _] then
-    [Return(r1, implct), s]
+  End then [b, mkBot(), cache]
+  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s1, cache1] then
+    [Return(r1, implct), s1, cache1]
   // TODO: let syntax, presumably for Scoped
-  Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s, _] and
-    prop(defs, ctx.add(x, union(ctx.get(x), s)), cache, b) is [b1, s1] then
-      [Assign(x, r1, b1), s1]
+  Scoped(symbols, rest) then // just set all shape to bottom?
+    let newCtx = fold((c, s) => c.add(s, mkBot))(ctx, symbols)
+    prop(defs, newCtx, cache, b)
+  // TODO: Label & Break?
+  Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s1, cache1] and
+    prop(defs, ctx.add(x, union(ctx.get(x), s1)), cache, b) is [b2, s2, cache2] then
+      [Assign(x, r1, b2), s2, cache2]
   Match(p, arms, dflt, rest) then
     let s = sop(ctx, p)
     let filteredArms = fold((r, arm) =>
