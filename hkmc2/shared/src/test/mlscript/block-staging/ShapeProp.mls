@@ -10,6 +10,9 @@ open Block { Symbol, ClassSymbol, Tup }
 open Shape { Arr, Class, Dyn, Lit }
 open ShapeSet
 
+mkBot()
+//│ = 
+
 mkLit(0)
 //│ = Lit(0)
 
@@ -82,6 +85,8 @@ filter(filterShapes, Tup(4, true))
 //│ = Arr([Dyn()], true)
 
 assert(filter(filterShapes, Tup(0, false)).isEmpty())
+
+// TODO: Add test for ctx.add
 
 open Block
 
@@ -171,4 +176,8 @@ testUnaryOp("-", 10)
 testUnaryOp("!", true)
 //│ = false
 
+:re
+testUnaryOp("~", 10)  
+//│ ═══[RUNTIME ERROR] Error: Access to required field 'lit' yielded 'undefined'
 
+// TODO: Add test for scope
