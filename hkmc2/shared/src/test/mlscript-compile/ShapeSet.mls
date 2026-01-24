@@ -93,18 +93,24 @@ fun static(s: ShapeSet) =
 
 open Block
 // TODO: refactor with hash map?
-class Ctx(maps: Map[String, ShapeSet]) with
+class Ctx(maps: Map[String, ShapeSet], parent: Option[Ctx]) with
   fun get(path) =
     let ps = showPath(path)
     if maps.has(ps) then Some(maps.get(ps))
+    else if parent is Some(ctx) then ctx.get(path)
     else None
-  fun nest = Ctx(new Map(maps))
+  fun nest = Ctx(new Map(), Some of this)
   fun add(path, ss) =
     let ps = showPath(path)
     maps.set(ps, ss)
     this
+  fun update(path, ss) =
+    let ps = showPath(path)
+    if maps.has(ps) then do maps.set(ps, ss)
+    else if parent is Some(ctx) then do ctx.update(path, ss)
+    this
 module Ctx with
-  fun empty = Ctx(new Map())
+  fun empty = Ctx(new Map(), None)
 
 
 class DefCtx(val defs: Map[String, Block]) with
@@ -224,7 +230,7 @@ fun prop(defs, ctx, cache, b: Block) = if b is
     [Return(r1, implct), s]
   // TODO: let syntax, presumably for Scoped
   Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s, _] and
-    prop(defs, ctx.add(x, union(ctx.get(x), s)), cache, b) is [b1, s1] then
+    prop(defs, ctx.update(x, union(ctx.get(x), s)), cache, b) is [b1, s1] then
       [Assign(x, r1, b1), s1]
   Match(p, arms, dflt, rest) then
     let s = sop(ctx, p)
