@@ -272,36 +272,30 @@ class InstrumentationImpl(using State):
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
   def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, Block) =
-    val genSymName = f.sym.nme + "_gen"
+    val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
     val sym = modSym.asPath.selSN(genSymName)
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
-    // maintain parameter names for debugging
-    val debug =
-      f.params.map(
-        _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
-      ).collectApply: paramListSyms =>
-        def callCont(k: Path => Block) =
-          paramListSyms.foldRight(k)((syms, cont) =>
-            path =>
-              syms.map(sym => blockCtor("ValueRef", Ls(sym))).collectApply: args =>
-                call(path, args)(cont)
-          )(sym)
-        callCont: body =>
+
+    // turn into fundefn
+    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_instr"))
+    val argSyms = f.params.flatMap(_.params).map(_.sym)
+    val newBody =
+      val rest = transformBlock(f.body)(using new HashMap): body =>
+        // maintain parameter names in instrumented code
+        f.params.map(
+          _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
+        ).collectApply: paramListSyms =>
           blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
             paramListSyms.map(tuple(_)).collectApply: tups =>
               tuple(tups): tup =>
                 blockCtor("FunDefn", Ls(sym, tup, body, toValue(true))): block =>
-                  // TODO: remove it. only for test
-                  fnPrintCode(block)(End())
+                  Return(block, false)
+      Scoped(Set(argSyms*), rest)
 
-    // turn intro fundefn
-    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
-    val args = f.params.flatMap(_.params).map(_.sym)
-    val newBody =
-      given Context = HashMap(args.map(s => Value.Ref(s, N) -> Value.Ref(s, N))*)
-      transformBlock(f.body)(Return(_, false))
-    val newFun = f.copy(sym = genSym, dSym = dSym, body = newBody)(false)
+    // TODO: remove it. only for test
+    val debug = call(sym, Nil)(fnPrintCode(_)(End()))
+    val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, debug)
 
 // TODO: rename as InstrumentationTransformer?
