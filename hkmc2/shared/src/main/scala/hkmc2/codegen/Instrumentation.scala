@@ -274,9 +274,79 @@ class InstrumentationImpl(using State):
     val newFun = f.copy(sym = genSym, dSym = dSym, body = newBody)(false)
     (newFun, debug)
 
+class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSubst()):
+  private def inlineLabelRestInDef(d: Defn)(using conts: Map[Symbol, Symbol | Block]): Defn = d match
+  case fd @ FunDefn(owner, sym, dSym, params, body) =>
+    val newBody = inlineLabelRest(body)
+    if newBody is body then fd else FunDefn(owner, sym, dSym, params, newBody)(fd.forceTailRec)
+  case ClsLikeDefn(owner, isym, sym, ctorSym, k, paramsOpt, auxParams, parentPath, methods, privateFields, publicFields, preCtor, ctor, companion, bufferable) =>
+    val newMethods = methods.map(inlineLabelRestInDef).map {
+      case fd: FunDefn => fd
+    } // TODO: remove it
+    val newPreCtor = inlineLabelRest(preCtor)
+    val newCtor = inlineLabelRest(ctor)
+    val newCompanion = companion.map {
+      case ClsLikeBody(isym, methods, privateFields, publicFields, ctor) =>
+        val newMethods = methods.map(inlineLabelRestInDef).map {
+          case fd: FunDefn => fd
+        } // TODO: remove it
+        val newCtor = inlineLabelRest(ctor)
+        ClsLikeBody(isym, newMethods, privateFields, publicFields, newCtor)
+    }
+    ClsLikeDefn(owner, isym, sym, ctorSym, k, paramsOpt, auxParams, parentPath, newMethods, privateFields, publicFields, newPreCtor, newCtor, newCompanion, bufferable)
+  case _ => ??? // not supported yet
+
+  private def inlineLabelRest(b: Block)(using conts: Map[Symbol, Symbol | Block]): Block = b match
+  case Begin(body, rest) =>
+    val newBody = inlineLabelRest(body)
+    val newRest = inlineLabelRest(rest)
+    if (newBody is body) && (newRest is rest) then b
+    else Begin(newBody, newRest)
+  case _: Return | _: End | _: Throw => b
+  case Break(label) if label.nme.startsWith("split_root") => End()
+  case Break(label) => conts.get(label) match
+    case Some(sym: Symbol) => Return(Call(Value.Ref(sym, N), Nil)(true, false, false), true)
+    case Some(rb: Block) => rb
+    case _ => ??? // error
+  case Assign(lhs, rhs, rest) =>
+    val newRest = inlineLabelRest(rest)
+    if newRest is rest then b
+    else Assign(lhs, rhs, newRest)
+  case Match(scrut, arms, dflt, rest) =>
+    val newArms = arms.map(p => (p._1, inlineLabelRest(p._2)))
+    val newDflt = dflt.map(inlineLabelRest)
+    val newRest = inlineLabelRest(rest)
+    Match(scrut, newArms, newDflt, newRest)
+  case Label(label, false, body, rest) if label.nme.startsWith("split_root") =>
+    Begin(inlineLabelRest(body), inlineLabelRest(rest))
+  case Label(label, false, body, rest) =>
+    val newRest = inlineLabelRest(rest)
+    inlineLabelRest(body)(using conts + (label -> newRest))
+  // TODO: create helper functions to remove duplications
+  // if rest.size < 3 then
+  //   val newRest = inlineLabelRest(rest)
+  //   inlineLabelRest(body)(using conts + (label -> newRest))
+  // else
+  //   val contSym = new TempSymbol(N, "cont")
+  //   Scoped(Set(contSym), Assign(contSym, Lambda(PlainParamList(Nil), rest), inlineLabelRest(body)(using conts + (label -> contSym))))
+  case Scoped(syms, body) =>
+    val newBody = inlineLabelRest(body)
+    if newBody is body then b else Scoped(syms, newBody)
+  case Define(defn, rest) =>
+    val newDefn = inlineLabelRestInDef(defn)
+    val newRest = inlineLabelRest(rest)
+    if (newDefn is defn) && (newRest is rest) then b
+    else Define(newDefn, newRest)
+  case _ =>
+    println(s"yydz: $b")
+    ??? // not supported yet.
+
+  override def applyBlock(b: Block): Block = inlineLabelRest(b)(using Map.empty)
+
 // TODO: rename as InstrumentationTransformer?
-class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
+class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSubst()):
   val impl = new InstrumentationImpl
+  val inline = new LabelTransformer
 
   def concat(b1: Block, b2: Block): Block =
     b1.mapTail {
@@ -285,7 +355,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
     }
 
   override def applyBlock(b: Block): Block =
-    super.applyBlock(b) match
+    super.applyBlock(inline.applyBlock(b)) match
     // find modules with staged annotation
     case Define(c: ClsLikeDefn, rest) if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
       val sym = c.sym.subst
