@@ -288,7 +288,7 @@ class InstrumentationImpl(using State):
                 call(path, args)(cont)
           )(sym)
         callCont: body =>
-          blockCtor("Symbol", Ls(toValue(genSymName))): sym =>
+          blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
             paramListSyms.map(tuple(_)).collectApply: tups =>
               tuple(tups): tup =>
                 blockCtor("FunDefn", Ls(sym, tup, body, toValue(true))): block =>
