@@ -19,6 +19,9 @@ mkLit(0)
 mkDyn()
 //│ = Dyn()
 
+mkDyn() == mkDyn()
+//│ = false
+
 assert(mkBot().isEmpty())
 
 // sel
@@ -96,6 +99,9 @@ sop(Ctx.empty, ValueLit(42))
 sop(Ctx.empty, ValueLit(false))
 //│ = Lit(false)
 
+sop(Ctx.empty.add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
+//│ = 
+
 
 val x = Symbol("x")
 val C = ClassSymbol("C", Some(["a"]))
@@ -105,7 +111,12 @@ ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
 //│ = Lit("pass")
 //│ C = ClassSymbol("C", Some(["a"]))
-//│ ctx = Ctx(_, _)
+//│ ctx = Ctx(
+//│   Map(1) {
+//│     "Ref(Symbol(\"x\"))" => Class(ClassSymbol("C", Some(["a"])), [Lit("pass")])
+//│   },
+//│   _
+//│ )
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
 //│ x = Symbol("x")
 
@@ -120,7 +131,7 @@ sor(defCtx, ctx, cache, tup)
 //│   Cache(Map(0) {})
 //│ ]
 //│ cache = Cache(Map(0) {})
-//│ ctx = Ctx(_, _)
+//│ ctx = Ctx(Map(0) {}, _)
 //│ defCtx = DefCtx(Map(0) {})
 //│ tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 
@@ -180,4 +191,28 @@ testUnaryOp("!", true)
 testUnaryOp("~", 10)  
 //│ ═══[RUNTIME ERROR] Error: Access to required field 'lit' yielded 'undefined'
 
-// TODO: Add test for scope
+
+let c = Scoped([Symbol("tmp")], Assign(Symbol("tmp"), Call(ValueRef(Symbol("+")), [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(ValueRef(Symbol("+")), [Arg(None, ValueRef(Symbol("tmp"))), Arg(None, ValueLit(1))]), false)))
+prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
+//│ = [
+//│   Assign(Symbol("tmp"), ValueLit(2), Return(ValueLit(3), false)),
+//│   Lit(3),
+//│   Cache(Map(0) {})
+//│ ]
+//│ c = Scoped(
+//│   [Symbol("tmp")],
+//│   Assign(
+//│     Symbol("tmp"),
+//│     Call(
+//│       ValueRef(Symbol("+")),
+//│       [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]
+//│     ),
+//│     Return(
+//│       Call(
+//│         ValueRef(Symbol("+")),
+//│         [Arg(None, ValueRef(Symbol("tmp"))), Arg(None, ValueLit(1))]
+//│       ),
+//│       false
+//│     )
+//│   )
+//│ )

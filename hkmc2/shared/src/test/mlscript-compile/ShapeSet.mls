@@ -30,7 +30,6 @@ module ShapeSet with
 
 fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 
-
 fun liftMany(arr: Array[Shape]) = ShapeSet(new Map(arr.map(s => [s.hash(), s])))
 
 // combining ShapeSets together
@@ -94,7 +93,7 @@ fun static(s: ShapeSet) =
 
 open Block
 // TODO: refactor with hash map?
-class Ctx(maps: Map[String, ShapeSet], parent: Option[Ctx]) with
+class Ctx(val maps: Map[String, ShapeSet], parent: Option[Ctx]) with
   fun get(path) =
     let ps = showPath(path)
     if maps.has(ps) then Some(maps.get(ps))
@@ -142,9 +141,10 @@ fun sop(ctx, p: Path): ShapeSet =
   if ctx.get(p) is Some(s) then s
   else if p is 
     Select(qual, sym) then sel(sop(ctx, qual), mkLit(sym.name))
-    DynSelect(qual, fld, arrayIdx) then sel(sop(ctx, qual), sop(ctx, fld))
+    DynSelect(qual, fld, _) then sel(sop(ctx, qual), sop(ctx, fld))
     ValueLit(lit) then mkLit(lit)
     ValueRef(l) then mkDyn()
+
 
 fun sor(defs, ctx, cache, r: Result) = if r is
   Path then [r, sop(ctx, r), cache]
@@ -152,16 +152,16 @@ fun sor(defs, ctx, cache, r: Result) = if r is
     let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("Instantiate with non-ClassSymbol")
     [r, mkClass(sym, args.map(a => sop(ctx, a.value))), cache]
   Tuple(elems) then [r, mkArr(elems.map(a => sop(ctx, a.value)), false), cache]
-  Call(f, args) then
-    let argShapes = args.map(a => sop(ctx, a.value))
-    let def = if f is ValueRef(s) then defs.get(s) else None
+  Call(f, args) then 
     fun lit(l) = [ValueLit(l), mkLit(l), cache]
+    let argShapes = args.map(a => sop(ctx, a.value))
+    let shapeStr = argShapes.map(s => s.toString()).join("_")
+    let def = if f is ValueRef(s) then defs.get(s) else None
     if def is
-      Some(FunDefn(sym, params, body, true)) then
-        let shapeStr = argShapes.map(s => s.toString()).join("_")
-        let implSym = Symbol(sym.name + "_" + shapeStr)
-        if cache.get(implSym) is Some(_) then
-          [Call(ValueRef(implSym), args), mkDyn(), cache]
+      Some(FunDefn(sym, params, body, true)) then // staged
+        let implSym = Symbol(sym.name + "_" + shapeStr) 
+        if cache.get(f, argShape) is Some([_, s]) then // specialized function cached
+          [Call(ValueRef(implSym), args), s, cache]
         else
           let genName = sym.name + "_gen"
           if defs.get(Symbol(genName)) is Some(FunDefn(genSym, genParams, genBody, _)) then
@@ -170,7 +170,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
               genParams.0.forEach((p, i) => 
                 genCtx.add(ValueRef(p), mkLit(argShapes.(i)))
               )
-            if prop(defs, genCtx, cache, genBody) is [resBlock, resShape] then
+            if prop(defs, genCtx, cache, genBody) is [resBlock, resShape, _] then
               cache.add(implSym, [FunDefn(implSym, params, resBlock, false), resShape])
               [Call(ValueRef(implSym), args), mkDyn(), cache]
             else [r, mkDyn(), cache]
@@ -231,11 +231,14 @@ fun prop(defs, ctx, cache, b: Block) = if b is
     [Return(r1, implct), s1, cache1]
   // TODO: let syntax, presumably for Scoped
   Scoped(symbols, rest) then // just set all shape to bottom?
-    let newCtx = fold((c, s) => c.add(s, mkBot))(ctx, symbols)
-    prop(defs, newCtx, cache, b)
+    symbols.forEach((x, i, arr) => ctx.add(ValueRef(x), mkBot()))
+    prop(defs, ctx, cache, rest)
   // TODO: Label & Break?
-  Assign(x, r, b) and sor(defs, ctx, cache, r) is [r1, s1, cache1] and
-    prop(defs, ctx.update(x, union(ctx.get(x), s1)), cache, b) is [b2, s2, cache2] then
+  Label(labelSymbol, loop, body, rest) then ???
+  Break(labelSymbol) then ???
+  Assign(x, r, b) and 
+    sor(defs, ctx, cache, r) is [r1, s1, cache1] then 
+    if prop(defs, ctx.update(ValueRef(x), union(ctx.get(ValueRef(x)).value, s1)), cache, b) is [b2, s2, cache2] then
       [Assign(x, r1, b2), s2, cache2]
   Match(p, arms, dflt, rest) then
     let s = sop(ctx, p)
@@ -244,7 +247,7 @@ fun prop(defs, ctx, cache, b: Block) = if b is
       if fs.isEmpty() then r
       else
         let nestCtx = ctx.nest
-        if not p is ValueLit then do
+        if not p is ValueLit then do // Why is this needed?
           nestCtx.add(p, fs)
         let res = prop(defs, nestCtx, cache, arm.1)
         [rest(r.0, arm.0), union(r.1, res.1), r.2.push(res.0)]
@@ -257,7 +260,7 @@ fun prop(defs, ctx, cache, b: Block) = if b is
           nestCtx.add(p, filteredArms.0)
         prop(defs, nestCtx, cache, dflt)
     let newRest = prop(defs, ctx, cache, rest)
-    [Match(p, filteredArms.2, newDflt.0, newRest.0), union(filteredArms.1, union of newDflt.1, newRest.1)]
+    [Match(p, filteredArms.2, newDflt.0, newRest.0), union(filteredArms.1, union of newDflt.1, newRest.1), newRest.2]
 
 // TODO: remove it. this can be done in module static blocks
 fun exec(defs, ctx, cache, b: Block) = if b is
