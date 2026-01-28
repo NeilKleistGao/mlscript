@@ -87,8 +87,8 @@ fun showSymbol(s: Symbol) =
     ClassSymbol(name, args) then 
       "ClassSymbol(" + "\"" + name + "\"" +
       if args
-          is Some(args) then ":[" + args.map(showSymbol).join(", ") + "]"
-          is None then ""
+          is Some(args) then ", Some([" + args.map(showSymbol).join(", ") + "])"
+          is None then ", None"
       + ")"
     _ then "Symbol(" + "\"" + s.name + "\"" + ")"
 
@@ -101,16 +101,16 @@ fun showPath(p: Path): Str =
     DynSelect(qual, fld, arrayIdx) then
       "DynSelect(" + showPath(qual) + ", " + showPath(fld) + ", " + showBool(arrayIdx) + ")"
     ValueRef(l) then
-      "Ref(" + showSymbol(l) + ")"
+      "ValueRef(" + showSymbol(l) + ")"
     ValueLit(lit) then
-      "Lit(" + showLiteral(lit) + ")"
+      "ValueLit(" + showLiteral(lit) + ")"
+
+fun showOpt(opt: Option) =
+  if opt is Some(s) then "Some(" + s.toString() + ")"
+  else "None"
 
 fun showArg(arg: Arg) =
-  if arg.spread is
-    Some(true) then "..."
-    Some(false) then ".."
-    else ""
-  + showPath(arg.value)
+  "Arg(" + showOpt(arg.spread) + ", " + showPath(arg.value) + ")"
 
 fun showArgs(args: Array[Arg]) =
   "[" + args.map(showArg).join(", ") + "]"
@@ -148,8 +148,8 @@ fun showDefn(d: Defn): Str =
 fun showOptBlock(ob: Opt[Block]) =
   if ob is Some(b) then showBlock(b) else "None"
 
-fun showArm(pair: Case -> Block) =
-  if pair is [cse, body] then showCase(cse) + " -> " + showBlock(body) else "<bad-arm>"
+fun showArm(pair: [Case, Block]) =
+  if pair is [cse, body] then "[" + showCase(cse) + ", " + showBlock(body) + "]" else "<bad-arm>"
 
 fun showBlock(b: Block): Str =
   if b is
@@ -171,7 +171,7 @@ fun showBlock(b: Block): Str =
       "Label(" + showSymbol(labelSymbol) + ", " + showBool(loop) + ", " + showBlock(body) + ", " + showBlock(rest) +  + ")"
     Break(labelSymbol) then
       "Break(" + showSymbol(labelSymbol) + ")"
-    End() then "End"
+    End() then "End()"
 
 fun show(x) =
   if x is
