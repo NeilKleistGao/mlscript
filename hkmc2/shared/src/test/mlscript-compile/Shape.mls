@@ -76,8 +76,9 @@ fun sel(s1: Shape, s2: Shape): Array[Shape] =
 fun static(s: Shape) = 
   if s is
     Dyn then false
-    Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
-    Class(_, params) then params.every(static)
+    Lit(l) then true
+    Class(sym, []) then isPrimitiveType(sym)
+    Class(sym, params) then params.every(static)
     Arr(shapes, false) then shapes.every(static)
     Arr(shapes, true) then false // TODO
 
