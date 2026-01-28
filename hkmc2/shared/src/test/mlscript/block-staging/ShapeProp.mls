@@ -22,7 +22,13 @@ mkDyn()
 mkDyn() == mkDyn()
 //│ = false
 
+mkArr([mkLit(0)], false)
+//│ = Arr([Lit(0)], false)
+
 assert(mkBot().isEmpty())
+
+Shape.static(Shape.Lit("Hi"))
+//│ = true
 
 // sel
 
@@ -89,8 +95,6 @@ filter(filterShapes, Tup(4, true))
 
 assert(filter(filterShapes, Tup(0, false)).isEmpty())
 
-// TODO: Add test for ctx.add
-
 open Block
 
 sop(Ctx.empty, ValueLit(42))
@@ -113,7 +117,7 @@ sop(ctx, selPath)
 //│ C = ClassSymbol("C", Some(["a"]))
 //│ ctx = Ctx(
 //│   Map(1) {
-//│     "Ref(Symbol(\"x\"))" => Class(ClassSymbol("C", Some(["a"])), [Lit("pass")])
+//│     "ValueRef(Symbol(\"x\"))" => Class(ClassSymbol("C", Some(["a"])), [Lit("pass")])
 //│   },
 //│   _
 //│ )
@@ -121,18 +125,11 @@ sop(ctx, selPath)
 //│ x = Symbol("x")
 
 val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
-let ctx = Ctx.empty
-let cache = Cache.empty
-let defCtx = DefCtx.empty
-sor(defCtx, ctx, cache, tup)
+sor(DefCtx.empty, Ctx.empty, Cache.empty, tup)
 //│ = [
 //│   Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))]),
-//│   Arr([Lit(1), Lit(true)], false),
-//│   Cache(Map(0) {})
+//│   Arr([Lit(1), Lit(true)], false)
 //│ ]
-//│ cache = Cache(Map(0) {})
-//│ ctx = Ctx(Map(0) {}, _)
-//│ defCtx = DefCtx(Map(0) {})
 //│ tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 
 let c = ClassSymbol("C", Some([Symbol("p")]))
@@ -143,8 +140,7 @@ sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
 //│     ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
 //│     [Arg(None, ValueLit(123))]
 //│   ),
-//│   Class(ClassSymbol("C", Some([Symbol("p")])), [Lit(123)]),
-//│   Cache(Map(0) {})
+//│   Class(ClassSymbol("C", Some([Symbol("p")])), [Lit(123)])
 //│ ]
 //│ c = ClassSymbol("C", Some([Symbol("p")]))
 //│ inst = Instantiate(
@@ -191,14 +187,9 @@ testUnaryOp("!", true)
 testUnaryOp("~", 10)  
 //│ ═══[RUNTIME ERROR] Error: Access to required field 'lit' yielded 'undefined'
 
-
 let c = Scoped([Symbol("tmp")], Assign(Symbol("tmp"), Call(ValueRef(Symbol("+")), [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(ValueRef(Symbol("+")), [Arg(None, ValueRef(Symbol("tmp"))), Arg(None, ValueLit(1))]), false)))
 prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ = [
-//│   Assign(Symbol("tmp"), ValueLit(2), Return(ValueLit(3), false)),
-//│   Lit(3),
-//│   Cache(Map(0) {})
-//│ ]
+//│ = [Assign(Symbol("tmp"), ValueLit(2), Return(ValueLit(3), false)), Lit(3)]
 //│ c = Scoped(
 //│   [Symbol("tmp")],
 //│   Assign(
@@ -216,3 +207,50 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│     )
 //│   )
 //│ )
+
+let c = Scoped([Symbol("scrut")], Assign(Symbol("scrut"), ValueLit(9), Match(ValueRef(Symbol("scrut")), [[Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)], [Lit(8), Return(ValueLit(2), false)], [Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false)]], Return(ValueLit(0), false), End())))
+prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
+//│ = [
+//│   Assign(
+//│     Symbol("scrut"),
+//│     ValueLit(9),
+//│     Match(ValueRef(Symbol("scrut")), [], Return(ValueLit(0), false), End())
+//│   ),
+//│   Lit(0)
+//│ ]
+//│ c = Scoped(
+//│   [Symbol("scrut")],
+//│   Assign(
+//│     Symbol("scrut"),
+//│     ValueLit(9),
+//│     Match(
+//│       ValueRef(Symbol("scrut")),
+//│       [
+//│         [
+//│           Cls(
+//│             ClassSymbol("Bool", None),
+//│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
+//│           ),
+//│           Return(ValueLit(1), false)
+//│         ],
+//│         [Lit(8), Return(ValueLit(2), false)],
+//│         [
+//│           Cls(
+//│             ClassSymbol("Int", None),
+//│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
+//│           ),
+//│           Return(ValueLit(3), false)
+//│         ]
+//│       ],
+//│       Return(ValueLit(0), false),
+//│       End()
+//│     )
+//│   )
+//│ )
+
+
+filter(mkLit(9), Cls(
+           ClassSymbol("Bool", None),
+           Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
+      ))
+//│ = 

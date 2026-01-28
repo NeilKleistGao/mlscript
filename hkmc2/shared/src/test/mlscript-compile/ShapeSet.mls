@@ -63,7 +63,8 @@ fun mkArr(shapes: Array[ShapeSet], inf: Bool) =
     |> liftMany
 
 fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) = 
-  params.map(_.underlying.values().toArray())
+  params
+    .map(_.underlying.values().toArray())
     |> prod
     .map(Class(sym, _))
     |> liftMany
@@ -86,6 +87,7 @@ fun static(s: ShapeSet) =
     1 then Shape.static(v.0)
     else false
 
+fun valOf(s : ShapeSet) = ???
 
 // fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
 //   let rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
@@ -123,7 +125,8 @@ class DefCtx(val defs: Map[String, Block]) with
 module DefCtx with
   fun empty = DefCtx(new Map())
 
-class Cache(val underlying: Map[String, [Block, Shape]]) with
+
+class Cache(val underlying: Map[String, [Shape, Symbol, FunDefn]]) with
   fun key(f, args) = 
     showPath(f) + "(" + args.map(s => s.toString()).join(",") + ")"
   fun get(f, args) = 
@@ -147,34 +150,20 @@ fun sop(ctx, p: Path): ShapeSet =
 
 
 fun sor(defs, ctx, cache, r: Result) = if r is
-  Path then [r, sop(ctx, r), cache]
+  Path then [r, sop(ctx, r)]
   Instantiate(cls, args) then
     let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("Instantiate with non-ClassSymbol")
-    [r, mkClass(sym, args.map(a => sop(ctx, a.value))), cache]
-  Tuple(elems) then [r, mkArr(elems.map(a => sop(ctx, a.value)), false), cache]
+    [r, mkClass(sym, args.map(a => sop(ctx, a.value)))]
+  Tuple(elems) then [r, mkArr(elems.map(a => sop(ctx, a.value)), false)]
   Call(f, args) then 
-    fun lit(l) = [ValueLit(l), mkLit(l), cache]
+    fun lit(l) = [ValueLit(l), mkLit(l)]
     let argShapes = args.map(a => sop(ctx, a.value))
-    let shapeStr = argShapes.map(s => s.toString()).join("_")
-    let def = if f is ValueRef(s) then defs.get(s) else None
+    let def = if f is ValueRef(symb) then defs.get(symb) else None
     if def is
-      Some(FunDefn(sym, params, body, true)) then // staged
-        let implSym = Symbol(sym.name + "_" + shapeStr) 
-        if cache.get(f, argShape) is Some([_, s]) then // specialized function cached
-          [Call(ValueRef(implSym), args), s, cache]
-        else
-          let genName = sym.name + "_gen"
-          if defs.get(Symbol(genName)) is Some(FunDefn(genSym, genParams, genBody, _)) then
-            let genCtx = ctx.nest
-            if genParams.length > 0 then
-              genParams.0.forEach((p, i) => 
-                genCtx.add(ValueRef(p), mkLit(argShapes.(i)))
-              )
-            if prop(defs, genCtx, cache, genBody) is [resBlock, resShape, _] then
-              cache.add(implSym, [FunDefn(implSym, params, resBlock, false), resShape])
-              [Call(ValueRef(implSym), args), mkDyn(), cache]
-            else [r, mkDyn(), cache]
-          else [r, mkDyn(), cache]
+      Some(FunDefn(sym, _, _, true)) then 
+        let genSym = Symbol(sym.name + "_gen")
+        if Call(ValueRef(genSymb), argShapes) is [shape, implSymb] then
+          [Call(ValueRef(implSymb), args), shape]
       // Some(FunDefn(sym, params, body, false)) then
       //   if argShapes.forall(static) then
       //     let staticCtx = ctx.nest
@@ -186,9 +175,9 @@ fun sor(defs, ctx, cache, r: Result) = if r is
       //       [res, resShape, cache]
       //     else [r, mkDyn(), cache]
       //   else [r, mkDyn(), cache]
-      None and f is ValueRef(s) and
+      None and 
+        let name = if f is ValueRef(symb) then symb.name
         args is
-          let name = s.name
           [x] and sop(ctx, x.value).values() is [Shape.Lit(l)] and name is
             "!" then lit(not l)
             "-" then lit(-l)
@@ -209,7 +198,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
             "!==" then lit(l1 !== l2)
             "&&" then lit(l1 && l2)
             "||" then lit(l1 || l2)
-      else [r, mkDyn(), cache]
+      else [r, mkDyn()]
 
   // Call(f, args) and
   //   let k = [f, args.map(sop(ctx, _))] 
@@ -226,9 +215,9 @@ fun sor(defs, ctx, cache, r: Result) = if r is
   //       then [Call(f1, args), s]
 
 fun prop(defs, ctx, cache, b: Block) = if b is
-  End then [b, mkBot(), cache]
-  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s1, cache1] then
-    [Return(r1, implct), s1, cache1]
+  End then [b, mkBot()]
+  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s1] then
+    [Return(r1, implct), s1]
   // TODO: let syntax, presumably for Scoped
   Scoped(symbols, rest) then // just set all shape to bottom?
     symbols.forEach((x, i, arr) => ctx.add(ValueRef(x), mkBot()))
@@ -237,9 +226,9 @@ fun prop(defs, ctx, cache, b: Block) = if b is
   Label(labelSymbol, loop, body, rest) then ???
   Break(labelSymbol) then ???
   Assign(x, r, b) and 
-    sor(defs, ctx, cache, r) is [r1, s1, cache1] then 
-    if prop(defs, ctx.update(ValueRef(x), union(ctx.get(ValueRef(x)).value, s1)), cache, b) is [b2, s2, cache2] then
-      [Assign(x, r1, b2), s2, cache2]
+    sor(defs, ctx, cache, r) is [r1, s1] then 
+      if prop(defs, ctx.update(ValueRef(x), union(ctx.get(ValueRef(x)).value, s1)), cache, b) is [b2, s2] then
+        [Assign(x, r1, b2), s2]
   Match(p, arms, dflt, rest) then
     let s = sop(ctx, p)
     let filteredArms = fold((r, arm) =>
@@ -260,7 +249,8 @@ fun prop(defs, ctx, cache, b: Block) = if b is
           nestCtx.add(p, filteredArms.0)
         prop(defs, nestCtx, cache, dflt)
     let newRest = prop(defs, ctx, cache, rest)
-    [Match(p, filteredArms.2, newDflt.0, newRest.0), union(filteredArms.1, union of newDflt.1, newRest.1), newRest.2]
+    [Match(p, filteredArms.2, newDflt.0, newRest.0), union(filteredArms.1, union of newDflt.1, newRest.1)]
+  else print("Hi")
 
 // TODO: remove it. this can be done in module static blocks
 fun exec(defs, ctx, cache, b: Block) = if b is
