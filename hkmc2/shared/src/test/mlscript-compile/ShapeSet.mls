@@ -229,9 +229,9 @@ fun prop(defs, ctx, cache, b: Block) = if b is
     sor(defs, ctx, cache, r) is [r1, s1] then 
       if prop(defs, ctx.update(ValueRef(x), union(ctx.get(ValueRef(x)).value, s1)), cache, b) is [b2, s2] then
         [Assign(x, r1, b2), s2]
-  Match(p, arms, dflt, rest) then
+  Match(p, arms, dflt, restBlock) then
     let s = sop(ctx, p)
-    let filteredArms = fold((r, arm) =>
+    let filteredArms = foldl((r, arm) =>
       let fs = filter(r.0, arm.0)
       if fs.isEmpty() then r
       else
@@ -239,18 +239,17 @@ fun prop(defs, ctx, cache, b: Block) = if b is
         if not p is ValueLit then do // Why is this needed?
           nestCtx.add(p, fs)
         let res = prop(defs, nestCtx, cache, arm.1)
-        [rest(r.0, arm.0), union(r.1, res.1), r.2.push(res.0)]
-    )([s, mkBot(), []], arms) // rest of shapes, early-returned shapes, filtered arms
+        [rest(r.0, arm.0), union(r.1, res.1), [...r.2, res.0]]
+    )([s, mkBot(), []], ...arms) // rest of shapes, early-returned shapes, filtered arms
     let newDflt =
-      if filteredArms.0.isEmpty() then dflt
+      if filteredArms.0.isEmpty() then [dflt, mkBot()]
       else
         let nestCtx = ctx.nest
         if not p is ValueLit then do
           nestCtx.add(p, filteredArms.0)
         prop(defs, nestCtx, cache, dflt)
-    let newRest = prop(defs, ctx, cache, rest)
+    let newRest = prop(defs, ctx, cache, restBlock)
     [Match(p, filteredArms.2, newDflt.0, newRest.0), union(filteredArms.1, union of newDflt.1, newRest.1)]
-  else print("Hi")
 
 // TODO: remove it. this can be done in module static blocks
 fun exec(defs, ctx, cache, b: Block) = if b is

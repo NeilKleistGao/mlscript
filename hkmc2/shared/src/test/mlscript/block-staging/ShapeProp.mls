@@ -210,12 +210,16 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 
 let c = Scoped([Symbol("scrut")], Assign(Symbol("scrut"), ValueLit(9), Match(ValueRef(Symbol("scrut")), [[Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)], [Lit(8), Return(ValueLit(2), false)], [Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false)]], Return(ValueLit(0), false), End())))
 prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ > 
 //│ = [
 //│   Assign(
 //│     Symbol("scrut"),
 //│     ValueLit(9),
-//│     Match(ValueRef(Symbol("scrut")), 1, Return(ValueLit(0), false), End())
+//│     Match(
+//│       ValueRef(Symbol("scrut")),
+//│       [Return(ValueLit(3), false)],
+//│       Return(ValueLit(0), false),
+//│       End()
+//│     )
 //│   ),
 //│   Lit(3)
 //│ ]
@@ -248,3 +252,4 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│     )
 //│   )
 //│ )
+
