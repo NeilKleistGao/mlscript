@@ -345,7 +345,14 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       val unit = Select(Value.Ref(State.runtimeSymbol), Tree.Ident("Unit"))(N)
       val debugBlock = debugPrintCode.foldRight(Return(unit, true))(concat)
       def debugCont(rest: Block) =
-        Begin(debugBlock, rest)
+        val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
+        val tmp = TempSymbol(N, "tmp")
+        val cacheCall = Call(printFun, Ls(Arg(N, sym.asPath.selSN("cache"))))(false, false, false)
+        val debug = impl.assign(cacheCall): _ =>
+          impl.assign(Call(sym.asPath.selSN("defCtx").selSN("toString"), Nil)(false, false, false)): str =>
+            impl.assign(Call(printFun, Ls(Arg(N, str)))(false, false, false))(_ => rest)
+
+        Begin(debugBlock, Scoped(Set(tmp), debug))
 
       val (newCtor, defs) = impl.transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
       val allDefs = defsList.fold(defs)((l, r) => l ++ r)

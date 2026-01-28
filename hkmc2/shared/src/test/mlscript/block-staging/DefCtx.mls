@@ -6,109 +6,23 @@ staged module A with
   fun g(x) = x
 //│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
 //│ > FunDefn(Symbol("g"), ([Symbol("x")]), Return(Ref(Symbol("x")), false), true)
+//│ > Map(0) {}
+//│ > 
 
 module C with
   fun h() = 0
 
 fun i() = 2
 
-// :lot
-:sjs
 staged module B with
   fun a() = A.f()
   fun b() = C.h()
   fun c() = i()
-//│ JS (unsanitized):
-//│ let B1;
-//│ (class B {
-//│   static {
-//│     B1 = this
-//│   }
-//│   constructor() {
-//│     runtime.Unit;
-//│   }
-//│   static {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, end, tmp6, sym, var1, sym1, sel, tmp7;
-//│     sym = globalThis.Object.freeze(new Block.Symbol("A"));
-//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
-//│     sym1 = globalThis.Object.freeze(new Block.Symbol("f"));
-//│     sel = globalThis.Object.freeze(new Block.Select(var1, sym1));
-//│     tmp7 = globalThis.Object.freeze([
-//│       sel
-//│     ]);
-//│     this.defCtx = tmp7;
-//│     tmp6 = globalThis.Object.freeze(new globalThis.Map());
-//│     this.cache = tmp6;
-//│     end = globalThis.Object.freeze(new Block.End());
-//│     tmp = B1.a_instr();
-//│     tmp1 = Block.printCode(tmp);
-//│     tmp2 = B1.b_instr();
-//│     tmp3 = Block.printCode(tmp2);
-//│     tmp4 = B1.c_instr();
-//│     tmp5 = Block.printCode(tmp4);
-//│     runtime.Unit;
-//│   }
-//│   static a() {
-//│     return A1.f()
-//│   } 
-//│   static b() {
-//│     return C1.h()
-//│   } 
-//│   static c() {
-//│     return i()
-//│   } 
-//│   static a_instr() {
-//│     let sym, var1, tmp, sel, tmp1, app, return1, tmp2, tmp3, tmp4, tmp5;
-//│     sym = globalThis.Object.freeze(new Block.Symbol("A"));
-//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
-//│     tmp = globalThis.Object.freeze(new Block.Symbol("f_gen"));
-//│     sel = globalThis.Object.freeze(new Block.Select(var1, tmp));
-//│     tmp1 = globalThis.Object.freeze([]);
-//│     app = globalThis.Object.freeze(new Block.Call(sel, tmp1));
-//│     return1 = globalThis.Object.freeze(new Block.Return(app, false));
-//│     tmp2 = globalThis.Object.freeze(new Block.Symbol("a"));
-//│     tmp3 = globalThis.Object.freeze([]);
-//│     tmp4 = globalThis.Object.freeze([
-//│       tmp3
-//│     ]);
-//│     tmp5 = globalThis.Object.freeze(new Block.FunDefn(tmp2, tmp4, return1, true));
-//│     return tmp5
-//│   } 
-//│   static b_instr() {
-//│     let sym, var1, sym1, sel, tmp, app, return1, tmp1, tmp2, tmp3, tmp4;
-//│     sym = globalThis.Object.freeze(new Block.Symbol("C"));
-//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
-//│     sym1 = globalThis.Object.freeze(new Block.Symbol("h"));
-//│     sel = globalThis.Object.freeze(new Block.Select(var1, sym1));
-//│     tmp = globalThis.Object.freeze([]);
-//│     app = globalThis.Object.freeze(new Block.Call(sel, tmp));
-//│     return1 = globalThis.Object.freeze(new Block.Return(app, false));
-//│     tmp1 = globalThis.Object.freeze(new Block.Symbol("b"));
-//│     tmp2 = globalThis.Object.freeze([]);
-//│     tmp3 = globalThis.Object.freeze([
-//│       tmp2
-//│     ]);
-//│     tmp4 = globalThis.Object.freeze(new Block.FunDefn(tmp1, tmp3, return1, true));
-//│     return tmp4
-//│   } 
-//│   static c_instr() {
-//│     let sym, var1, tmp, app, return1, tmp1, tmp2, tmp3, tmp4;
-//│     sym = globalThis.Object.freeze(new Block.Symbol("i"));
-//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
-//│     tmp = globalThis.Object.freeze([]);
-//│     app = globalThis.Object.freeze(new Block.Call(var1, tmp));
-//│     return1 = globalThis.Object.freeze(new Block.Return(app, false));
-//│     tmp1 = globalThis.Object.freeze(new Block.Symbol("c"));
-//│     tmp2 = globalThis.Object.freeze([]);
-//│     tmp3 = globalThis.Object.freeze([
-//│       tmp2
-//│     ]);
-//│     tmp4 = globalThis.Object.freeze(new Block.FunDefn(tmp1, tmp3, return1, true));
-//│     return tmp4
-//│   }
-//│   toString() { return runtime.render(this); }
-//│   static [definitionMetadata] = ["class", "B"]; 
-//│ });
+  fun d() = A.g(1)
 //│ > FunDefn(Symbol("a"), ([]), Return(Call(Select(Ref(Symbol("A")), Symbol("f_gen")), []), false), true)
 //│ > FunDefn(Symbol("b"), ([]), Return(Call(Select(Ref(Symbol("C")), Symbol("h")), []), false), true)
 //│ > FunDefn(Symbol("c"), ([]), Return(Call(Ref(Symbol("i")), []), false), true)
+//│ > FunDefn(Symbol("d"), ([]), Return(Call(Select(Ref(Symbol("A")), Symbol("g_gen")), [Lit(1)]), false), true)
+//│ > Map(0) {}
+//│ > Select(ValueRef(Symbol("A")), Symbol("g")),Select(ValueRef(Symbol("A")), Symbol("f"))
+
