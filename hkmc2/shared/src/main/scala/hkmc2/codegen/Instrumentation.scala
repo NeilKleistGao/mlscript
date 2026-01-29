@@ -20,7 +20,7 @@ case class Context(cache: HashMap[Path, Path], defs: HashMap[Path, (Path => Bloc
   def getCache(p: Path): Option[Path] = cache.get(p)
   def addCache(p: Path, v: Path): Context = Context(cache.clone() += (p -> v), defs)
   def delCache(p: Path): Context = Context(cache.clone() -= p, defs)
-  // TODO: the paths for the definitions will be defined at the constructor of the module, is it possible to reference the value at the ctor?
+  // TODO: the paths for the definitions will be defined at the constructor of the module, is it possible to reference the value at the ctor, instead of rebuilding them in the function body?
   def addDef(p: Path, d: (Path => Block) => Block): Context = Context(cache, defs.clone() += (p -> d))
 
 extension [A, B](ls: Iterable[(A => B) => B])
@@ -33,24 +33,24 @@ extension [A, B](ls: Iterable[(A => B) => B])
             k(head :: tail)
     )(f)
 
+type ArgWrappable = Path | Symbol
+
+def asArg(x: ArgWrappable): Arg =
+  x match
+  case p: Path => p.asArg
+  case l: Symbol => l.asPath.asArg
+
+// null and undefined are missing
+def toValue(lit: Str | Int | BigDecimal | Bool): Value =
+  val l = lit match
+  case i: Int => Tree.IntLit(i)
+  case b: Bool => Tree.BoolLit(b)
+  case s: Str => Tree.StrLit(s)
+  case n: BigDecimal => Tree.DecLit(n)
+  Value.Lit(l)
+
 // transform Block to Block IR so that it can be instrumented in mlscript
 class InstrumentationImpl(using State):
-  type ArgWrappable = Path | Symbol
-
-  def asArg(x: ArgWrappable): Arg =
-    x match
-    case p: Path => p.asArg
-    case l: Symbol => l.asPath.asArg
-
-  // null and undefined are missing
-  def toValue(lit: Str | Int | BigDecimal | Bool): Value =
-    val l = lit match
-    case i: Int => Tree.IntLit(i)
-    case b: Bool => Tree.BoolLit(b)
-    case s: Str => Tree.StrLit(s)
-    case n: BigDecimal => Tree.DecLit(n)
-    Value.Lit(l)
-
   // helpers for constructing Block
 
   def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
@@ -283,14 +283,12 @@ class InstrumentationImpl(using State):
 
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
-  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, HashMap[Path, (Path => Block) => Block], Block) =
+  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, HashMap[Path, (Path => Block) => Block], (Path => Block) => Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
-    val sym = modSym.asPath.selSN(genSymName)
-    // NOTE: this debug printing only works for top-level modules, nested modules don't work
 
     // turn into fundefn
-    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_instr"))
+    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
     val argSyms = f.params.flatMap(_.params).map(_.sym)
     val (newBody, defs) =
       val (rest, defs) = transformBlockWithDefs(f.body)(using Context(new HashMap(), new HashMap())): body =>
@@ -298,17 +296,16 @@ class InstrumentationImpl(using State):
         f.params.map(
           _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
         ).collectApply: paramListSyms =>
-          blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
-            paramListSyms.map(tuple(_)).collectApply: tups =>
-              tuple(tups): tup =>
+          paramListSyms.map(tuple(_)).collectApply: tups =>
+            tuple(tups): tup =>
+              blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
                 blockCtor("FunDefn", Ls(sym, tup, body, toValue(true))): block =>
                   Return(block, false)
       (Scoped(Set(argSyms*), rest), defs)
 
-    // TODO: remove it. only for test
-    val debug = call(sym, Nil)(fnPrintCode(_)(End()))
+    def pathCont(k: Path => Block) = call(modSym.asPath.selSN(genSymName), Ls())(instr => tuple(Ls(toValue(f.sym.nme), instr))(k))
     val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
-    (newFun, defs, debug)
+    (newFun, defs, pathCont)
 
 // TODO: rename as InstrumentationTransformer?
 class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
@@ -320,36 +317,57 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       case _ => ???
     }
 
+  def helperMod(name: Str) = summon[State].specializeHelpersSymbol.asPath.selSN(name)
+
   override def applyBlock(b: Block): Block =
     super.applyBlock(b) match
     // find modules with staged annotation
     case Define(c: ClsLikeDefn, rest) if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
       val sym = c.sym.subst
       val companion = c.companion.get
-      val (stagedMethods, defsList, debugPrintCode) = companion.methods
+      val (stagedMethods, defsList, cacheTups) = companion.methods
         .map(impl.transformFunDefn(sym, _))
         .unzip3
 
       // add cache for specialized functions in each staged module
       val cacheSym = BlockMemberSymbol("cache", Nil, true)
       val cacheTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("cache"))
+      val cachePath = sym.asPath.selSN("cache")
       // initialize cache for the module
       def cacheDecl(rest: Block) =
-        val tmp = TempSymbol(N, "tmp")
-        val mapInit = Instantiate(mut = false, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Map"))(N), Nil)
-        Scoped(Set(tmp), Assign(tmp, mapInit, Define(ValDefn(cacheTsym, cacheSym, Value.Ref(tmp)), rest)))
+        cacheTups.collectApply: cacheTups =>
+          impl.tuple(cacheTups): tup =>
+            impl.assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
+              impl.assign(Instantiate(mut = false, State.specializeHelpersSymbol.asPath.selSN("FunCache"), Ls(Arg(N, map)))): mapInit =>
+                Define(ValDefn(cacheTsym, cacheSym, mapInit), rest)
+
+      def genMethod(f: FunDefn): FunDefn =
+        val genSymName = f.sym.nme + "_gen"
+        val sym = BlockMemberSymbol(genSymName, Nil, false)
+        val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
+
+        val body = impl.call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
+          // TODO: enforce that the definition will only have one parameter list
+          f.params.map(ps => impl.tuple(ps.params.map(_.sym))).collectApply: tups =>
+            impl.tuple(tups): tups =>
+              impl.call(State.specializeHelpersSymbol.asPath.selSN("specialize"), Ls(cachePath, instr, tups)): res =>
+                Return(res, false)
+        f.copy(sym = sym, dSym = dSym, body = body)(false)
+      val genMethods = companion.methods.map(genMethod)
 
       val unit = Select(Value.Ref(State.runtimeSymbol), Tree.Ident("Unit"))(N)
-      val debugBlock = debugPrintCode.foldRight(Return(unit, true))(concat)
+      // NOTE: this debug printing only works for top-level modules, nested modules don't work
+      // TODO: remove this. only for testing
       def debugCont(rest: Block) =
         val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
         val tmp = TempSymbol(N, "tmp")
-        val cacheCall = Call(printFun, Ls(Arg(N, sym.asPath.selSN("cache"))))(false, false, false)
-        val debug = impl.assign(cacheCall): _ =>
-          impl.assign(Call(sym.asPath.selSN("defCtx").selSN("toString"), Nil)(false, false, false)): str =>
-            impl.assign(Call(printFun, Ls(Arg(N, str)))(false, false, false))(_ => rest)
+        val debug =
+          impl.assign(Call(cachePath.selSN("toString"), Nil)(false, false, false)): str =>
+            impl.assign(Call(printFun, Ls(Arg(N, str)))(false, false, false)): _ =>
+              impl.assign(Call(sym.asPath.selSN("defCtx").selSN("toString"), Nil)(false, false, false)): str =>
+                impl.assign(Call(printFun, Ls(Arg(N, str)))(false, false, false))(_ => rest)
 
-        Begin(debugBlock, Scoped(Set(tmp), debug))
+        Scoped(Set(tmp), debug)
 
       val (newCtor, defs) = impl.transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
       val allDefs = defsList.fold(defs)((l, r) => l ++ r)
@@ -362,7 +380,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = companion.methods ++ stagedMethods,
+        methods = companion.methods ++ stagedMethods ++ genMethods,
         ctor = defCtxDecl(cacheDecl(newCtor)),
         publicFields = cacheSym -> cacheTsym :: companion.publicFields
       )

@@ -4,9 +4,7 @@
 staged module A with
   fun f() = 1
   fun g(x) = x
-//│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
-//│ > FunDefn(Symbol("g"), ([Symbol("x")]), Return(Ref(Symbol("x")), false), true)
-//│ > Map(0) {}
+//│ > FunCache(Map(2) {"f" => FunDefn(Symbol("f"), [[]], Return(ValueLit(1), false), true), "g" => FunDefn(Symbol("g"), [[Symbol("x")]], Return(ValueRef(Symbol("x")), false), true)})
 //│ > 
 
 module C with
@@ -19,10 +17,5 @@ staged module B with
   fun b() = C.h()
   fun c() = i()
   fun d() = A.g(1)
-//│ > FunDefn(Symbol("a"), ([]), Return(Call(Select(Ref(Symbol("A")), Symbol("f")), []), false), true)
-//│ > FunDefn(Symbol("b"), ([]), Return(Call(Select(Ref(Symbol("C")), Symbol("h")), []), false), true)
-//│ > FunDefn(Symbol("c"), ([]), Return(Call(Ref(Symbol("i")), []), false), true)
-//│ > FunDefn(Symbol("d"), ([]), Return(Call(Select(Ref(Symbol("A")), Symbol("g")), [Lit(1)]), false), true)
-//│ > Map(0) {}
+//│ > FunCache(Map(4) {"a" => FunDefn(Symbol("a"), [[]], Return(Call(Select(ValueRef(Symbol("A")), Symbol("f")), []), false), true), "b" => FunDefn(Symbol("b"), [[]], Return(Call(Select(ValueRef(Symbol("C")), Symbol("h")), []), false), true), "c" => FunDefn(Symbol("c"), [[]], Return(Call(ValueRef(Symbol("i")), []), false), true), "d" => FunDefn(Symbol("d"), [[]], Return(Call(Select(ValueRef(Symbol("A")), Symbol("g")), [Arg(None, ValueLit(1))]), false), true)})
 //│ > Select(ValueRef(Symbol("A")), Symbol("f")),Select(ValueRef(Symbol("A")), Symbol("g"))
-
