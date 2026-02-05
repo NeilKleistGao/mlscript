@@ -83,7 +83,7 @@ fun sel(s1: ShapeSet, s2: ShapeSet) =
 fun static(s: ShapeSet) =
   let v = s.values()
   if v.length ==
-    0 then throw Error("Some variables has bottom shape.")
+    0 then throw Error("Some variables have bottom shape.")
     1 then Shape.static(v.0)
     else false
 
@@ -115,7 +115,7 @@ module Ctx with
   fun empty = Ctx(new Map(), None)
 
 
-class DefCtx(val defs: Map[String, Block]) with
+class DefCtx(val defs) with
   fun get(sym) =
     if defs.has(sym.name) then Some(defs.get(sym.name))
     else None
@@ -139,6 +139,9 @@ class Cache(val underlying: Map[String, [Shape, Symbol, FunDefn]]) with
 module Cache with 
   fun empty = Cache(new Map())
 
+fun concat(b1, b2) = 
+  if b1 is 
+    Match(s, scrut, _, rest) then 
 
 fun sop(ctx, p: Path): ShapeSet = 
   if ctx.get(p) is Some(s) then s
@@ -160,10 +163,10 @@ fun sor(defs, ctx, cache, r: Result) = if r is
     let argShapes = args.map(a => sop(ctx, a.value))
     let def = if f is ValueRef(symb) then defs.get(symb) else None
     if def is
-      Some(FunDefn(sym, _, _, true)) then 
-        let genSym = Symbol(sym.name + "_gen")
-        if Call(ValueRef(genSymb), argShapes) is [shape, implSymb] then
+      Some(gen) then 
+        if gen(argShapes) is [shape, implSymb] then
           [Call(ValueRef(implSymb), args), shape]
+        else [r, mkDyn()]
       // Some(FunDefn(sym, params, body, false)) then
       //   if argShapes.forall(static) then
       //     let staticCtx = ctx.nest

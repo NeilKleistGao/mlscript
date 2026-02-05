@@ -253,3 +253,15 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│   )
 //│ )
 
+fun f_gen(args) = 
+  [mkLit(24), Symbol("f_int")]
+
+val fSym = Symbol("f")
+val defs = DefCtx.empty.add(fSym, f_gen)
+//│ defs = DefCtx(Map(1) {"f" => fun f_gen})
+//│ fSym = Symbol("f")
+
+val callF = Call(ValueRef(fSym), [Arg(None, ValueLit(12))])
+sor(defs, Ctx.empty, Cache.empty, callF)
+//│ = [Call(ValueRef(Symbol("f_int")), [Arg(None, ValueLit(12))]), Lit(24)]
+//│ callF = Call(ValueRef(Symbol("f")), [Arg(None, ValueLit(12))])
