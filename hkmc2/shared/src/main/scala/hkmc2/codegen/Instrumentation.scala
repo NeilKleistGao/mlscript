@@ -49,28 +49,35 @@ def toValue(lit: Str | Int | BigDecimal | Bool): Value =
   case n: BigDecimal => Tree.DecLit(n)
   Value.Lit(l)
 
-// helpers for constructing Block
-
-def assign(using State)(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
-  // TODO: skip assignment if res: Path?
-  val sym = new TempSymbol(N, symName)
-  Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
-
-def tuple(using State)(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-  assign(Tuple(false, elems.map(asArg)), symName)(k)
-
-def ctor(using State)(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-  assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
-
-def call(using State)(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
-  assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
-
 // transform Block to Block IR so that it can be instrumented in mlscript
-class InstrumentationImpl(using State):
+class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
+  // helpers for constructing Block
+
+  def assign(using State)(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
+    // TODO: skip assignment if res: Path?
+    val sym = new TempSymbol(N, symName)
+    Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
+
+  def tuple(using State)(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
+    assign(Tuple(false, elems.map(asArg)), symName)(k)
+
+  def ctor(using State)(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
+    assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
+
+  def call(using State)(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
+    assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
+
+  def concat(b1: Block, b2: Block): Block =
+    b1.mapTail {
+      case _: End => b2
+      case _ => ???
+    }
+
   // helpers for constructing Block IR
 
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
   def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
+  def helperMod(name: Str) = summon[State].specializeHelpersSymbol.asPath.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     ctor(blockMod(name), args, symName)(k)
@@ -306,18 +313,6 @@ class InstrumentationImpl(using State):
     val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, defs, pathCont)
 
-// TODO: rename as InstrumentationTransformer?
-class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
-  val impl = new InstrumentationImpl
-
-  def concat(b1: Block, b2: Block): Block =
-    b1.mapTail {
-      case _: End => b2
-      case _ => ???
-    }
-
-  def helperMod(name: Str) = summon[State].specializeHelpersSymbol.asPath.selSN(name)
-
   override def applyBlock(b: Block): Block =
     super.applyBlock(b) match
     // find modules with staged annotation
@@ -325,7 +320,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       val sym = c.sym.subst
       val companion = c.companion.get
       val (stagedMethods, defsList, cacheTups) = companion.methods
-        .map(impl.transformFunDefn(sym, _))
+        .map(transformFunDefn(sym, _))
         .unzip3
 
       // add cache for specialized functions in each staged module
@@ -361,14 +356,15 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
         val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
         val tmp = TempSymbol(N, "tmp")
         val debug =
-          assign(Call(cachePath.selSN("toString"), Nil)(false, false, false)): str =>
-            assign(Call(printFun, Ls(Arg(N, str)))(false, false, false)): _ =>
-              assign(Call(sym.asPath.selSN("defCtx").selSN("toString"), Nil)(false, false, false)): str =>
-                assign(Call(printFun, Ls(Arg(N, str)))(false, false, false))(_ => rest)
+          call(cachePath.selSN("toString"), Nil, false): str =>
+            call(printFun, Ls(str), false): _ =>
+              call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
+                call(printFun, Ls(str), false): _ =>
+                  rest
 
         Scoped(Set(tmp), debug)
 
-      val (newCtor, defs) = impl.transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
+      val (newCtor, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
       val allDefs = defsList.fold(defs)((l, r) => l ++ r)
       val defCtxSym = BlockMemberSymbol("defCtx", Nil, true)
       val defCtxTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("defCtx"))
