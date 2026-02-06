@@ -216,7 +216,6 @@ class InstrumentationImpl(using State):
     case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
     case Case.Field(name, safe) => ??? // not supported
 
-  // ruleBlk?
   def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)((p, _) => k(p))
 
@@ -318,7 +317,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
         .map(impl.transformFunDefn(sym, _))
         .unzip
 
-      val unit = Select(Value.Ref(State.runtimeSymbol), Tree.Ident("Unit"))(N)
+      val unit = State.runtimeSymbol.asPath.selSN("Unit")
       val debugBlock = debugPrintCode.foldRight(Return(unit, true))(concat)
       def debugCont(rest: Block) =
         Begin(debugBlock, rest)
