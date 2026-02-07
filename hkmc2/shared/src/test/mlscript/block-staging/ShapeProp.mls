@@ -282,14 +282,20 @@ fun f_gen(args) =
   [mkLit(24), Symbol("f_int")] // A stub for the actual blockIR
 
 val fSym = Symbol("f")
-val defs = DefCtx.empty.add(fSym, f_gen)
-//│ defs = DefCtx(Map(1) {"f" => fun f_gen})
+val M = ValueRef(Symbol("M"))
+val fPath = Select(M, fSym)
+val defs = DefCtx.empty.add(fPath, f_gen)
+//│ M = ValueRef(Symbol("M"))
+//│ defs = DefCtx(
+//│   Map(1) {"Select(ValueRef(Symbol(\"M\")), Symbol(\"f\"))" => fun f_gen}
+//│ )
+//│ fPath = Select(ValueRef(Symbol("M")), Symbol("f"))
 //│ fSym = Symbol("f")
 
-val callF = Call(ValueRef(fSym), [Arg(None, ValueLit(12))])
+val callF = Call(fPath, [Arg(None, ValueLit(12))])
 sor(defs, Ctx.empty, Cache.empty, callF)
 //│ = [Call(ValueRef(Symbol("f_int")), [Arg(None, ValueLit(12))]), Lit(24)]
-//│ callF = Call(ValueRef(Symbol("f")), [Arg(None, ValueLit(12))])
+//│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(None, ValueLit(12))])
 
 val ctxXY = Ctx.empty
   .add(ValueRef(x), mkLit(10))
@@ -445,7 +451,7 @@ prop(defs, ctxXY, Cache.empty, nestedBlock)
 //│       )
 //│     )
 //│   ),
-//│   Lit(2)
+//│   Lit(2),Lit(4)
 //│ ]
 //│ nestedBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],

@@ -136,11 +136,13 @@ module Ctx with
 
 
 class DefCtx(val defs) with
-  fun get(sym) =
-    if defs.has(sym.name) then Some(defs.get(sym.name))
+  fun get(path) =
+    let p = showPath(path)
+    if defs.has(p) then Some(defs.get(p))
     else None
-  fun add(sym, node) =
-    defs.set(sym.name, node)
+  fun add(path, node) =
+    let p = showPath(path)
+    defs.set(p, node)
     this
 module DefCtx with
   fun empty = DefCtx(new Map())
@@ -177,7 +179,9 @@ fun sor(defs, ctx, cache, r: Result) = if r is
   Call(f, args) then 
     fun lit(l) = [ValueLit(l), mkLit(l)]
     let argShapes = args.map(a => sop(ctx, a.value))
-    let def = if f is ValueRef(symb) then defs.get(symb) else None
+    let def = if f is 
+      Select(_, _) then defs.get(f)
+      else None
     if def is
       Some(gen) then 
         if gen(...argShapes) is [shape, implSymb] then
