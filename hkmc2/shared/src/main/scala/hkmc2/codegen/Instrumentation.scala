@@ -18,7 +18,7 @@ import syntax.{Literal, Tree}
 // this avoids having to rebuild the same shapes everytime they are needed
 
 // transform Block to Block IR so that it can be instrumented in mlscript
-class InstrumentationImpl(using State):
+class InstrumentationImpl(using State, Raise):
   type ArgWrappable = Path | Symbol
   type Context = HashMap[Path, Path]
   var scope = Scope.empty
@@ -289,6 +289,8 @@ class InstrumentationImpl(using State):
     val argSyms = f.params.flatMap(_.params).map(_.sym)
     val newBody =
       val rest = transformBlock(f.body)(using new HashMap): body =>
+        if f.params.length != 1 then
+          raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
         // maintain parameter names in instrumented code
         f.params.map(
           _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
@@ -306,7 +308,7 @@ class InstrumentationImpl(using State):
     (newFun, debug)
 
 // TODO: rename as InstrumentationTransformer?
-class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
+class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSubst()):
   val impl = new InstrumentationImpl
 
   def concat(b1: Block, b2: Block): Block =
