@@ -21,6 +21,7 @@ import syntax.{Literal, Tree}
 class InstrumentationImpl(using State):
   type ArgWrappable = Path | Symbol
   type Context = HashMap[Path, Path]
+  var scope = Scope.empty
 
   def asArg(x: ArgWrappable): Arg =
     x match
@@ -92,11 +93,18 @@ class InstrumentationImpl(using State):
   def transformSymbol(sym: Symbol, symName: Str = "sym")(k: Path => Block): Block =
     sym match
     case clsSym: ClassSymbol =>
+      val name = scope.allocateOrGetName(sym)
       transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
-        blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt), symName)(k)
+        blockCtor("ClassSymbol", Ls(toValue(name), paramsOpt), symName)(k)
     case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
+      val name = scope.allocateOrGetName(sym)
       transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
-    case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    case t: BuiltinSymbol =>
+      // retain names to built-in functions
+      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    case _ =>
+      val name = scope.allocateOrGetName(sym)
+      blockCtor("Symbol", Ls(toValue(name)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
     xOpt match
