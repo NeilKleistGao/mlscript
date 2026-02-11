@@ -24,6 +24,7 @@ staged module Expressions with
       [1, 2] then 2
       [a, ...] then 3
       else 0
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("lit"), ([]), Return(Lit(1), false), true)
 //│ > FunDefn(Symbol("assign"), ([]), Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), Lit(42), Assign(Symbol("y"), Ref(Symbol("x")), Return(Ref(Symbol("y")), false)))), true)
 //│ > FunDefn(Symbol("tup1"), ([]), Return(Tuple([Lit(1), Lit(2)]), false), true)
@@ -43,6 +44,7 @@ staged module ClassInstrumentation with
   fun app2() = Inside(1, 2)
 //│ > Define(ClsLikeDefn(ClassSymbol("NoArg"), TODO), End)
 //│ > Define(ClsLikeDefn(ClassSymbol("Inside1":[Symbol("a1"), Symbol("b")]), TODO), End)
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("inst1"), ([]), Return(Instantiate(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false), true)
 //│ > FunDefn(Symbol("inst2"), ([]), Return(Instantiate(Select(Ref(Symbol("ClassInstrumentation")), ClassSymbol("NoArg")), []), false), true)
 //│ > FunDefn(Symbol("app1"), ([]), Return(Call(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false), true)
@@ -52,12 +54,14 @@ module Nonstaged with
   fun f() = 1
 staged module Staged with
   fun f() = 1
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
 staged module CallSubst with
   fun call() = 
     1 + 1
     Nonstaged.f()
     Staged.f()
-//│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("call"), ([]), Scoped([Symbol("tmp"), Symbol("tmp1")], Assign(Symbol("tmp"), Call(Ref(Symbol("+")), [Lit(1), Lit(1)]), Assign(Symbol("tmp1"), Call(Select(Ref(Symbol("Nonstaged")), Symbol("f")), []), Return(Call(Select(Ref(Symbol("Staged")), Symbol("f_gen")), []), false)))), true)
 
 :w
@@ -67,8 +71,9 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.68: 	  fun g(x)(y, z)() = z
+//│ ║  l.72: 	  fun g(x)(y, z)() = z
 //│ ╙──      	  ^^^^^^^^^^^^^^^^^^^^
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("f"), ([Symbol("x")]), Assign(Symbol("x"), Lit(1), Return(Ref(Symbol("x")), false)), true)
 //│ > FunDefn(Symbol("g"), ([Symbol("x")],[Symbol("y"), Symbol("z")],[]), Return(Ref(Symbol("z")), false), true)
 
@@ -83,15 +88,21 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("scope"), ([]), Scoped([Symbol("a")], Assign(Symbol("a"), Lit(1), Return(Call(Select(Select(Ref(Symbol("OtherBlocks")), Symbol("scope")), Symbol("locally")), [Ref(Symbol("a"))]), false))), true)
-//│ > FunDefn(Symbol("breakAndLabel"), ([]), Scoped([Symbol("scrut"), Symbol("tmp")], Label(Symbol("split_root$"), false, Label(Symbol("split_1$"), false, Assign(Symbol("scrut"), Lit(1), Match(Ref(Symbol("scrut")), [Lit(2) -> Break(Symbol("split_1$")), Lit(3) -> Break(Symbol("split_1$"))], Break(Symbol("split_1$")), End)), Assign(Symbol("tmp"), Lit(0), End)NaN, Return(Ref(Symbol("tmp")), false)NaN), true)
+//│ > FunDefn(Symbol("breakAndLabel"), ([]), Scoped([Symbol("tmp"), Symbol("scrut")], Label(Symbol("split_root$"), false, Label(Symbol("split_1$"), false, Assign(Symbol("scrut"), Lit(1), Match(Ref(Symbol("scrut")), [Lit(2) -> Break(Symbol("split_1$")), Lit(3) -> Break(Symbol("split_1$"))], Break(Symbol("split_1$")), End)), Assign(Symbol("tmp"), Lit(0), End)NaN, Return(Ref(Symbol("tmp")), false)NaN), true)
+
+staged module ClassDefs with
+  class A
+//│ > Define(ClsLikeDefn(ClassSymbol("A"), TODO), End)
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 
 // debug printing fails, collision with class name?
 :fixme
 class A()
 staged module A with
   fun f() = 1
-//│ ═══[RUNTIME ERROR] TypeError: A1.f_instr is not a function
+//│ ═══[RUNTIME ERROR] TypeError: A2.ctor$_instr is not a function
 
 // debug printing fails, unable to reference the class when calling the instrumented function
 :fixme
@@ -100,8 +111,15 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.99: 	  staged module B with
-//│ ║        	                ^^^^^^
-//│ ║  l.100: 	    fun f() = 1
+//│ ║  l.110: 	  staged module B with
+//│ ║         	                ^^^^^^
+//│ ║  l.111: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
+//│ ╟── which references the symbol introduced here
+//│ ║  l.110: 	  staged module B with
+//│ ║         	                ^^^^^^
+//│ ║  l.111: 	    fun f() = 1
+//│ ╙──       	^^^^^^^^^^^^^^^
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
