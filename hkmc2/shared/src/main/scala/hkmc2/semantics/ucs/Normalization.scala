@@ -226,9 +226,9 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
     rec(split)
     val consequents =
       counts.iterator.filter(_._2.count > 1).toSeq.sortBy(_._2.order).zipWithIndex.map:
-        case ((term, _), i) => (term, TempSymbol(S(term), s"split_${i + 1}$$"))
+        case ((term, _), i) => (term, LabelSymbol(S(term), s"split_${i + 1}$$"))
       .toList
-    val default = if throwCount > 1 then S(TempSymbol(N, s"split_default$$")) else N
+    val default = if throwCount > 1 then S(LabelSymbol(N, s"split_default$$")) else N
     Labels(consequents, default)
   
   private def lowerSplit(
@@ -244,7 +244,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
       subTerm_nonTail(scrut): sr =>
         tl.log(s"Binding scrut $scrut to $sr (${summon[LoweringCtx].map})") 
         def mkMatch(cse: Case -> Block) = Match(sr, cse :: Nil,
-            S(lowerSplit(restSplit, cont, topLevel = true)),
+            S(lowerSplit(restSplit, cont, topLevel)),
             End()
           )
         pat match
@@ -319,7 +319,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
     this(split, `if`, N, k)
   
   private def apply(inputSplit: Split, kw: `if`.type | `while`.type, t: Opt[Term], k: Result => Block)(using cfg: Config, outerCtx: LoweringCtx) =
-    // if it's `while`, we always make sure that loop bodies are properly scoped nestedly
+    // if it's `while`, we always make sure that loop bodies are proper nested scoped
     // see https://github.com/hkust-taco/mlscript/pull/356#discussion_r2588412258
     val useNestedScoped = kw === `while`
     (if useNestedScoped then LoweringCtx.nestScoped else outerCtx).givenIn:
@@ -335,7 +335,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
         outerCtx.collectScopedSym(res)
         res
       // The symbol for the loop label if the term is a `while`.
-      lazy val loopLabel = new TempSymbol(t)
+      lazy val loopLabel = new LabelSymbol(t)
       lazy val f =
         val res = new BlockMemberSymbol("while", Nil, false)
         outerCtx.collectScopedSym(res)
@@ -347,7 +347,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
         tl.log(s"Normalized:\n${normalized.prettyPrint}")
       // Collect consequents that are shared in more than one branch.
       given labels: Labels = createLabelsForDuplicatedBranches(normalized)
-      lazy val rootBreakLabel = new TempSymbol(N, "split_root$")
+      lazy val rootBreakLabel = new LabelSymbol(N, "split_root$")
       lazy val breakRoot = (r: Result) => Assign(l, r, Break(rootBreakLabel))
       lazy val assignResult = (r: Result) => Assign(l, r, End())
       // NOTE: `shouldRewriteWhile` is not the same as `config.rewriteWhileLoops`
@@ -387,7 +387,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
         val innerBlock: Block = labels.consequents match
           case Nil => innermostBlock
           case all @ (head :: tail) =>
-            def wrap(consequents: Ls[(Term, TempSymbol)]): Block =
+            def wrap(consequents: Ls[(Term, LabelSymbol)]): Block =
               consequents.foldRight(innermostBlock):
                 case ((term, label), innerBlock) =>
                   Label(label, false, innerBlock, term_nonTail(term)(breakRoot))
@@ -396,8 +396,8 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
               Label(head._2, false, wrap(tail), term_nonTail(head._1)(assignResult))
             else wrap(all)
         labels.default match
-          case S(label) => Label(label, false, innerBlock, throwMatchErrorBlock)
-          case N => innerBlock
+        case S(label) => Label(label, false, innerBlock, throwMatchErrorBlock)
+        case N => innerBlock
       // If there are shared consequents, we need a wrap the entire block in a
       // `Label` so that `Break`s in the shared consequents can jump to the end.
       val body =
@@ -446,12 +446,12 @@ end Normalization
 object Normalization:
   /** This contains the labels for duplicated consequents and the default
    *  branch which throws match errors. */
-  private class Labels(val consequents: Ls[(Term, TempSymbol)], val default: Opt[TempSymbol]):
+  private class Labels(val consequents: Ls[(Term, LabelSymbol)], val default: Opt[LabelSymbol]):
     private val map = consequents.toMap
     
     inline def isEmpty: Bool = consequents.isEmpty && default.isEmpty
     
-    inline def get(term: Term): Opt[TempSymbol] = map.get(term)
+    inline def get(term: Term): Opt[LabelSymbol] = map.get(term)
   
   /**
     * Hard-coded subtyping relations used in normalization and coverage checking.

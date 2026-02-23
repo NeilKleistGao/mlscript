@@ -917,6 +917,7 @@ sealed abstract class ClassLikeDef extends TypeLikeDef:
   val kind: ClsLikeKind
   val sym: DefinitionSymbol[? <: ClassLikeDef] & InnerSymbol
   val bsym: BlockMemberSymbol
+  val ctorSym: Opt[TermSymbol]
   val tparams: Ls[TyParam]
   val paramsOpt: Opt[ParamList]
   val auxParams: Ls[ParamList]
@@ -953,7 +954,8 @@ case class ModuleOrObjectDef(
   annotations: Ls[Annot],
 )(
   val path: Elaborator.Ctx // TODO: use more lightweight repr.
-) extends ClassLikeDef, CompanionValue
+) extends ClassLikeDef, CompanionValue:
+  val ctorSym: Option[TermSymbol] = N
 
 case class PatternDef(
     owner: Opt[InnerSymbol],
@@ -985,12 +987,14 @@ case class PatternDef(
   val paramsOpt: Opt[ParamList] = N
   val auxParams: Ls[ParamList] = Nil
   val companion: Opt[CompanionSymbol] = N // TODO support
+  val ctorSym: Option[TermSymbol] = N
 
 
 sealed abstract class ClassDef extends ClassLikeDef:
   val kind: ClsLikeKind
   val sym: ClassSymbol
   val bsym: BlockMemberSymbol
+  val ctorSym: Opt[TermSymbol]
   val tparams: Ls[TyParam]
   val paramsOpt: Opt[ParamList]
   val auxParams: Ls[ParamList]
@@ -1009,6 +1013,7 @@ object ClassDef:
       kind: ClsLikeKind,
       sym: InnerSymbol,
       bsym: BlockMemberSymbol,
+      ctorSym: Opt[TermSymbol],
       tparams: Ls[TyParam],
       params: Ls[ParamList],
       ext: Opt[New],
@@ -1018,7 +1023,7 @@ object ClassDef:
   ): ClassDef =
     params match
       case ps :: pss => Parameterized(owner, kind, sym.asInstanceOf// TODO: improve
-        , bsym
+        , bsym, S(ctorSym.getOrElse(lastWords("Parameterized classes should have a ctor symbol.")))
         , tparams, ps, pss, ext, body, comp, annotations)
       case Nil => Plain(owner, kind, sym.asInstanceOf// TODO: improve
         , bsym
@@ -1032,6 +1037,7 @@ object ClassDef:
       kind: ClsLikeKind,
       sym: ClassSymbol,
       bsym: BlockMemberSymbol,
+      ctorSym: S[TermSymbol],
       tparams: Ls[TyParam],
       params: ParamList,
       auxParams: Ls[ParamList],
@@ -1055,6 +1061,7 @@ object ClassDef:
   ) extends ClassDef:
     val paramsOpt: Opt[ParamList] = N
     val auxParams: List[ParamList] = Nil
+    val ctorSym: Opt[TermSymbol] = N
   
 end ClassDef
 

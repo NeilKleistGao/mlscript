@@ -130,9 +130,10 @@ fun f3() = (() => M)()
 :todo
 :e
 :effectHandlers
+:lift
 fun f3() = (() => return M)()
 //│ ╔══[ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.133: 	fun f3() = (() => return M)()
+//│ ║  l.134: 	fun f3() = (() => return M)()
 //│ ╙──       	                         ^
 
 
@@ -142,7 +143,7 @@ fun f3() = (() => return M)()
 :e
 fun f(module m: M) = m
 //│ ╔══[ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.143: 	fun f(module m: M) = m
+//│ ║  l.144: 	fun f(module m: M) = m
 //│ ║         	                     ^
 //│ ╙── Function must be marked as returning a 'module' in order to return a module.
 
@@ -155,7 +156,7 @@ fun f(module m: M): module M = m
 :e
 val v = M
 //│ ╔══[ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.156: 	val v = M
+//│ ║  l.157: 	val v = M
 //│ ║         	        ^
 //│ ╙── Value must be marked as returning a 'module' in order to return a module.
 
@@ -178,8 +179,8 @@ class C with
   fun foo: module M = M
   val bar: module M = M
 //│ ╔══[ERROR] Function returning modules should not be a class member.
-//│ ║  l.178: 	  fun foo: module M = M
+//│ ║  l.179: 	  fun foo: module M = M
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^^
 //│ ╔══[ERROR] Value returning modules should not be a class member.
-//│ ║  l.179: 	  val bar: module M = M
+//│ ║  l.180: 	  val bar: module M = M
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^^

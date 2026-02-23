@@ -4,6 +4,7 @@ import runtime from "./Runtime.mjs";
 import RuntimeJS from "./RuntimeJS.mjs";
 import Runtime from "./Runtime.mjs";
 import Rendering from "./Rendering.mjs";
+import Term from "./Term.mjs";
 let Predef1;
 (class Predef {
   static {
@@ -37,8 +38,24 @@ let Predef1;
     this.fold = Rendering.fold;
     this.interleave = Rendering.interleave;
     this.render = Rendering.render;
-    this.assert = globalThis.console.assert;
+    this.js_assert = globalThis.console["assert"];
     this.foldl = Predef.fold;
+    (class meta {
+      static {
+        Predef.meta = this
+      }
+      constructor() {
+        runtime.Unit;
+      }
+      static codegen(t, file) {
+        return Term.codegen(t, file)
+      } 
+      static print(t) {
+        return runtime.safeCall(Term.print(t))
+      }
+      toString() { return runtime.render(this); }
+      static [definitionMetadata] = ["class", "meta"]; 
+    });
   }
   static id(x) {
     return x
@@ -247,13 +264,16 @@ let Predef1;
       return runtime.safeCall(Predef.render(arg))
     }
   } 
+  static check(...args) {
+    return runtime.safeCall(Predef.js_assert(...args))
+  } 
   static notImplemented(msg) {
     let tmp;
     tmp = "Not implemented: " + msg;
-    throw globalThis.Error(tmp)
+    throw runtime.safeCall(globalThis.Error(tmp))
   } 
   static get notImplementedError() {
-    throw globalThis.Error("Not implemented");
+    throw runtime.safeCall(globalThis.Error("Not implemented"));
   } 
   static tuple(...xs) {
     return xs
@@ -268,17 +288,17 @@ let Predef1;
       } else {
         i = len - 1;
         init = runtime.safeCall(rest.at(i));
-        tmp1: while (true) {
-          let scrut1, tmp2, tmp3, tmp4;
+        lbl: while (true) {
+          let scrut1, tmp1, tmp2, tmp3;
           scrut1 = i > 0;
           if (scrut1 === true) {
-            tmp2 = i - 1;
-            i = tmp2;
-            tmp3 = runtime.safeCall(rest.at(i));
-            tmp4 = runtime.safeCall(f(tmp3, init));
-            init = tmp4;
+            tmp1 = i - 1;
+            i = tmp1;
+            tmp2 = runtime.safeCall(rest.at(i));
+            tmp3 = runtime.safeCall(f(tmp2, init));
+            init = tmp3;
             tmp = runtime.Unit;
-            continue tmp1
+            continue lbl
           } else {
             tmp = runtime.Unit;
           }
@@ -297,7 +317,7 @@ let Predef1;
       } else {
         tmp1 = false;
       }
-      tmp2 = runtime.safeCall(Predef.assert(tmp1));
+      tmp2 = Predef.check(tmp1);
       tmp3 = acc + x;
       return (tmp2 , tmp3)
     });

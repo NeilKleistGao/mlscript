@@ -88,7 +88,11 @@ abstract class MLsDiffMaker extends DiffMaker:
       output(s"$errMarker Option ':stackSafe' requires ':effectHandlers' to be set")
     if !effectHandlers.get.forall(effectHandlersOptions.contains(_)) then
       output(s"$errMarker Option ':effectHandlers' only supports 'debug' as option")
+    if effectHandlers.isSet then
+      if liftDefns.isUnset then
+        output(s"$errMarker Option ':effectHandlers' requires ':lift'")
     Config(
+      baseDir = wd,
       sanityChecks = Opt.when(noSanityCheck.isUnset)(SanityChecks(light = true)),
       effectHandlers = Opt.when(effectHandlers.isSet)(EffectHandlers(
         debug = effectHandlers.get.contains("debug"),
@@ -110,6 +114,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       target = if wasm.isSet then CompilationTarget.Wasm else CompilationTarget.JS,
       rewriteWhileLoops = rewriteWhile.isSet,
       tailRecOpt = !noTailRecOpt.isSet,
+      qqEnabled = importQQ.isSet,
     )
   
   
@@ -172,10 +177,6 @@ abstract class MLsDiffMaker extends DiffMaker:
         PrefixApp(Keywrd(`import`), StrLit(predefFile.toString))
         :: Open(Ident("Predef"))
         :: Nil)
-    if importQQ.isSet then
-      given Config = mkConfig
-      processTrees(
-        PrefixApp(Keywrd(`import`), StrLit(termFile.toString)) :: Nil)
     if stageCode.isSet then
       given Config = mkConfig
       processTrees(

@@ -69,7 +69,12 @@ object Elaborator:
   // TODO later: use TempSymbol instead of VarSymbol? (currently, trying that creates lot of problems)
   class UnderCtx(val unders: Opt[mutable.ArrayBuffer[VarSymbol]])
   
-  case class Ctx(outer: OuterCtx, parent: Opt[Ctx], env: Map[Str, Ctx.Elem], mode: Mode):
+  case class Ctx(
+      outer: OuterCtx,
+      parent: Opt[Ctx],
+      env: Map[Str, Ctx.Elem],
+      mode: Mode,
+  ):
     
     override def toString: Str = s"${parent.fold("")(_.toString+"/")}${outer.showDbg}"
     
@@ -226,7 +231,6 @@ object Elaborator:
         val not_impl = assumeObject("not_impl")
       object debug extends VirtualModule(assumeBuiltinMod("debug")):
         val printStack = assumeObject("printStack")
-        val getLocals = assumeObject("getLocals")
       object annotations extends VirtualModule(assumeBuiltinMod("annotations")):
         val compile = assumeObject("compile")
         val buffered = assumeObject("buffered")
@@ -289,9 +293,9 @@ object Elaborator:
       val id = new Ident("NonLocalReturn")
       val sym = ClassSymbol(DummyTypeDef(syntax.Cls), id)
       val bsym = BlockMemberSymbol("ret", Nil, true)
-      val defn = ClassDef(N, syntax.Cls, sym, bsym, Nil, Nil, N, ObjBody(Blk(Nil, Term.Lit(UnitLit(false)))), Nil, N)
+      val defn = ClassDef(N, syntax.Cls, sym, bsym, N, Nil, Nil, N, ObjBody(Blk(Nil, Term.Lit(UnitLit(false)))), Nil, N)
       sym.defn = S(defn)
-      Term.Sel(runtimeSymbol.ref(), id)(S(sym), N, N)
+      Term.SynthSel(runtimeSymbol.ref(), id)(S(sym), N)
     val nonLocalRet =
       val id = new Ident("ret")
       BlockMemberSymbol(id.name, Nil, true)
@@ -305,7 +309,8 @@ object Elaborator:
         Param(flag, VarSymbol(Ident("output")), N, Modulefulness(N)(false)) ::
         Param(flag, VarSymbol(Ident("bindings")), N, Modulefulness(N)(false)) ::
         Nil)
-      cs.defn = S(ClassDef.Parameterized(N, syntax.Cls, cs, BlockMemberSymbol(cs.name, Nil),
+      val ctsym = TermSymbol(Fun, S(cs), cs.id)
+      cs.defn = S(ClassDef.Parameterized(N, syntax.Cls, cs, BlockMemberSymbol(cs.name, Nil), S(ctsym),
         Nil, ps, Nil, N, ObjBody(Blk(Nil, Term.Lit(UnitLit(false)))), N, Nil))
       cs -> ts
     val (matchFailureClsSymbol, matchFailureTrmSymbol) =
@@ -315,7 +320,8 @@ object Elaborator:
       val ts = TermSymbol(syntax.Fun, N, id)
       val flag = FldFlags.empty.copy(isVal = true)
       val ps = PlainParamList(Param(flag, VarSymbol(Ident("errors")), N, Modulefulness(N)(false)) :: Nil)
-      cs.defn = S(ClassDef.Parameterized(N, syntax.Cls, cs, BlockMemberSymbol(cs.name, td :: Nil),
+      val ctsym = TermSymbol(Fun, S(cs), cs.id)
+      cs.defn = S(ClassDef.Parameterized(N, syntax.Cls, cs, BlockMemberSymbol(cs.name, td :: Nil), S(ctsym),
         Nil, ps, Nil, N, ObjBody(Blk(Nil, Term.Lit(UnitLit(false)))), N, Nil))
       cs -> ts
     val builtinOpsMap =
@@ -455,7 +461,7 @@ extends Importer with ucs.SplitElaborator:
       val derivedClsSym = ClassSymbol(Tree.DummyTypeDef(syntax.Cls), Tree.Ident(s"Handler$$${id.name}$$"))
       derivedClsSym.defn = S(ClassDef(
         N, syntax.Cls, derivedClsSym,
-        BlockMemberSymbol(derivedClsSym.name, Nil),
+        BlockMemberSymbol(derivedClsSym.name, Nil), N,
         Nil, Nil, N, ObjBody(Blk(Nil, Term.Lit(Tree.UnitLit(false)))), Nil, N))
       
       val elabed = ctx.nestInner(derivedClsSym).givenIn:
@@ -469,6 +475,8 @@ extends Importer with ucs.SplitElaborator:
           case td @ TermDefinition(Fun, sym, tsym, params, tparams, sign, body, flags, mf, annotations, comp) =>
             params.reverse match
               case ParamList(_, value :: Nil, _) :: newParams =>
+                if newParams.isEmpty then
+                  raise(ErrorReport(msg"Handler function cannot be a getter" -> td.toLoc :: Nil))
                 val newTd = TermDefinition(Fun, sym, tsym, newParams.reverse, tparams, sign, body, flags, mf, annotations, comp)
                 S(HandlerTermDefinition(value.sym, newTd))
               case _ => 
@@ -710,6 +718,22 @@ extends Importer with ucs.SplitElaborator:
       //   raise(ErrorReport(msg"Illegal new expression." -> tree.toLoc :: Nil))
       
     case tree: IfLike => Term.IfLike(tree.kw.kw, split(tree))
+    
+    case Assert(kw, rhs, thno, els) =>
+      val (fl, ln) = kw.toLoc match
+        case S(loc) =>
+          val org = loc.origin
+          (org.fileName.relativeTo(config.baseDir).getOrElse(org.fileName).toString,
+            (org.startLineNum + org.fph.getLineColAt(loc.spanStart)._1).toString)
+        case N => ("‹unknown›", "‹unknown›")
+      val elsPart = els.fold(PrefixApp(Keywrd(Keyword.`else`), Tree.Trm(
+        State.runtimeSymbol.ref().selNoSym("assertFail")
+          .app(Term.Lit(StrLit(fl)), Term.Lit(StrLit(ln)))
+      )))(PrefixApp.apply.tupled)
+      subterm:
+        IfLike(new Keywrd(Keyword.`if`).withLocOf(kw), Block(
+          InfixApp(rhs, new Keywrd(Keyword.`then`), thno.getOrElse(Unt())) :: elsPart :: Nil))
+      
     case Quoted(body) => Term.Quoted(subterm(body))
     case Unquoted(body) => Term.Unquoted(subterm(body))
     case tree @ Case(kw, _) =>
@@ -822,6 +846,7 @@ extends Importer with ucs.SplitElaborator:
     case DynAccess(obj, rhs) =>
       rhs match
       case Bra(bk @ (Round | Square), fld) => Term.DynSel(subterm(obj), subterm(fld), bk is Square)
+      case fld: Literal => Term.DynSel(subterm(obj), subterm(fld), false)
       case id: Ident =>
         Term.DynSel(subterm(obj), Term.Lit(StrLit(id.name)).withLocOf(id), false)
       case _ =>
@@ -1406,11 +1431,7 @@ extends Importer with ucs.SplitElaborator:
             trace(s"Processing class definition $nme"):
               val comp = sym.asMod
               log(s"Companion: ${comp}")
-              val cd =
-                val (bod, c) = mkBody
-                ClassDef(owner, Cls, clsSym, sym, tps, pss, newOf(td), ObjBody(bod), annotations, comp)
-              clsSym.defn = S(cd)
-              if pss.nonEmpty then
+              val tsym = if pss.nonEmpty then
                 val ctsym = TermSymbol(Fun, S(clsSym), clsSym.id)
                 val ctdef =
                   TermDefinition(
@@ -1430,6 +1451,12 @@ extends Importer with ucs.SplitElaborator:
                   )
                 ctsym.defn = S(ctdef)
                 sym.tsym = S(ctsym)
+                S(ctsym)
+              else N
+              val cd =
+                val (bod, c) = mkBody
+                ClassDef(owner, Cls, clsSym, sym, tsym, tps, pss, newOf(td), ObjBody(bod), annotations, comp)
+              clsSym.defn = S(cd)
               cd
         go(sts, Nil, defn :: acc)
       case Annotated(annotation, target) :: sts =>
