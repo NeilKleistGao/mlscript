@@ -13,6 +13,7 @@ import typing.*
 import semantics.*
 import hkmc2.syntax.SpreadKind
 import hkmc2.syntax.Tree.{UnitLit, Ident}
+import hkmc2.semantics.AnySelTerm
 
 
 case class Constraint(lhs: Producer, rhs: Consumer):
@@ -85,7 +86,7 @@ enum Consumer:
   case Fun(lhs: Producer, rhs: Consumer)
   case Tup(init: Ls[Consumer], rest: Opt[(SpreadKind, Consumer, Ls[Consumer])])
   case Ctor(sym: CtorSymbol, args: List[Consumer])
-  case Sel(nme: Ident, res: Consumer)(val trm: Term.Sel)
+  case Sel(nme: Ident, res: Consumer)(val trm: AnySelTerm)
   case Typ(typ: Type)
   
   

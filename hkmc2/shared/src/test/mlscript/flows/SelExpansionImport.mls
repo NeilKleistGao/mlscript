@@ -1,0 +1,100 @@
+:js
+:flow
+// :df
+
+:global
+:sf
+
+
+import "../../mlscript-compile/Example.mls"
+//│ Flowed:
+//│   import ".../Example.mjs" as Example⁰
+//│ where
+//│     
+
+
+let e = new Example.Test(123)
+//│ Flowed:
+//│   let e⁰,
+//│   e⁰ = new Example⁰.Test⁰(123)
+//│ where
+//│     e⁰  <~  Test(123)
+//│ e = Test(123)
+
+e.field
+//│ Flowed:
+//│   e⁰.field⁰
+//│ where
+//│     
+//│ = 123
+
+// TODO: support
+:e
+:re
+e.next
+//│ ╔══[ERROR] Cannot access companion Test from the context of this selection
+//│ ║  l.34: 	e.next
+//│ ╙──      	^^^^^^
+//│ Flowed:
+//│   e⁰.next‹?›
+//│ where
+//│     e⁰  <~  Test(123)
+//│     e⁰  ~>  {field: ⋅field⁰}  {next: ⋅next⁰}
+//│ ═══[RUNTIME ERROR] Error: Access to required field 'next' yielded 'undefined'
+
+
+open Example
+//│ Flowed:
+//│   
+//│ where
+//│     
+
+let e = new Test(123)
+//│ Flowed:
+//│   let e¹,
+//│   e¹ = new ⟨Example⁰.⟩Test⁰(123)
+//│ where
+//│     e¹  <~  Test(123)
+//│ e = Test(123)
+
+// TODO: support
+:e
+:re
+e.next
+//│ ╔══[ERROR] Cannot access companion Test from the context of this selection
+//│ ║  l.63: 	e.next
+//│ ╙──      	^^^^^^
+//│ Flowed:
+//│   e¹.next‹?›
+//│ where
+//│     e¹  <~  Test(123)
+//│     e¹  ~>  {next: ⋅next¹}
+//│ ═══[RUNTIME ERROR] Error: Access to required field 'next' yielded 'undefined'
+
+
+
+// * TODO: better error!
+:e
+let e = Example.Test(123)
+//│ ╔══[ERROR] Cannot use non-term member Example in term position
+//│ ║  l.78: 	let e = Example.Test(123)
+//│ ╙──      	        ^^^^^^^
+//│ Flowed:
+//│   let e²,
+//│   e² = Example⁰.Test⁰(123)‹app⁰›
+//│ where
+//│     
+//│ e = Test(123)
+
+// * TODO: better error! (with location)
+:e
+let e = Test(123)
+//│ ═══[ERROR] Cannot use non-term member Example in term position
+//│ Flowed:
+//│   let e³,
+//│   e³ = ⟨Example⁰.⟩Test⁰(123)‹app¹›
+//│ where
+//│     
+//│ e = Test(123)
+
+

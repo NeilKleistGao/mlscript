@@ -168,6 +168,10 @@ object FlowSymbol:
 
   def sel(nme: Str)(using State) =
     FlowSymbol(s"⋅$nme")
+  def synthSel(nme: Str)(using State) =
+    FlowSymbol(s"(⋅)$nme")
+  def selProj(nme: Str)(using State) =
+    FlowSymbol(s"#⋅$nme")
 
   def lds(nme: Str)(using State) =
     FlowSymbol(s"Ɛ⋅$nme")

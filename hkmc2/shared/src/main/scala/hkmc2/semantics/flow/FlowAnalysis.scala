@@ -7,7 +7,7 @@ import scala.collection.mutable
 import mlscript.utils.*, shorthands.*
 import utils.TraceLogger
 import Message.MessageContext
-import semantics.*, semantics.Term.*
+import semantics.*, semantics.Term.*, semantics.AnySelTerm
 import typing.*
 
 import syntax.SpreadKind
@@ -151,7 +151,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       constrain(P.LeadingDotSel(sel), C.Flow(sym))
       P.Flow(sym)
     
-    case sel @ Sel(pre, nme) =>
+    case sel @ AnySel(pre, nme, cls) =>
       log(s"Selection ${sel.showDbg} ${sel.typ}")
       checkLDS(pre): pre_t =>
         sel.resolvedSym match
@@ -248,7 +248,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
   
   val collectedConstraints: mutable.Stack[(src: Term, c: Constraint)] = mutable.Stack.empty
   
-  val selsToExpand: mutable.Buffer[Sel] = mutable.Buffer.empty
+  val selsToExpand: mutable.Buffer[AnySelTerm] = mutable.Buffer.empty
   val leadingDotSelsToExpand: mutable.Buffer[LeadingDotSel] = mutable.Buffer.empty
   
   def expandTerms() =
@@ -259,9 +259,9 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       sel.resolvedTargets match
         case ObjectMember(sym) :: Nil =>
           assert(sel.sym.isEmpty)
-          sel.expansion = S(S(sel.copy()(sym = S(sym), sel.typ, sel.originalCtx)))
+          sel.expansion = S(S(sel.withSym(sym)))
         case CompanionMember(comp, sym) :: Nil =>
-          val base = Sel(comp, Tree.Ident(sym.nme))(S(sym), N, N)
+          val base = Sel(comp, Tree.Ident(sym.nme))(S(sym), FlowSymbol.sel(sym.nme), N, N)
           val app = App(base, Tup(sel.prefix :: Nil)(Tree.DummyTup))(Tree.DummyApp, N, FlowSymbol.app())
           log(s"Expansion: ${app.showDbg}")
           sel.expansion = S(S(app))
@@ -282,7 +282,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       assert(sel.expansion.isEmpty)
       sel.resolvedTargets match
       case CompanionMember(comp, sym) :: Nil =>
-        val base = Sel(comp, Tree.Ident(sym.nme))(S(sym), N, N)
+        val base = Sel(comp, Tree.Ident(sym.nme))(S(sym), FlowSymbol.sel(sym.nme), N, N)
         log(s"Leading dot expansion: ${base.showDbg}")
         sel.expansion = S(S(base))
       case Nil =>
@@ -478,7 +478,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       syms.foldLeft(sym.asInstanceOf[DefinitionSymbol[?]]//FIXME
         .bms.getOrElse(die).ref(): Term): (a, b) =>
         Sel(a, Tree.Ident(b.nme))(S(b.asInstanceOf[DefinitionSymbol[?]]//FIXME
-          .bms.getOrElse(die)), N, N)
+          .bms.getOrElse(die)), FlowSymbol.sel(b.nme), N, N)
   
   
   import hkmc2.document.*

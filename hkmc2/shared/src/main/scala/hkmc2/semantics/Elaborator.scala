@@ -245,22 +245,22 @@ object Elaborator:
   object Ctx:
     abstract class Elem:
       def nme: Str
-      def ref(id: Ident)(using Elaborator.State): Resolvable
+      def ref(id: Ident)(using Elaborator.State, Ctx): Resolvable
       def symbol: Opt[Symbol]
       def isImport: Bool
     final case class RefElem(sym: Symbol) extends Elem:
       val nme = sym.nme
-      def ref(id: Ident)(using Elaborator.State): Resolvable =
+      def ref(id: Ident)(using Elaborator.State, Ctx): Resolvable =
         // * Note: due to symbolic ops, we may have `id.name =/= nme`;
         // * e.g., we can have `id.name = "|>"` and `nme = "pipe"`.
         Term.Ref(sym)(id, 666, N) // FIXME: 666 is a temporary placeholder
       def symbol = S(sym)
       def isImport: Bool = false
     final case class SelElem(base: Elem, nme: Str, symOpt: Opt[MemberSymbol], isImport: Bool) extends Elem:
-      def ref(id: Ident)(using Elaborator.State): Resolvable =
+      def ref(id: Ident)(using Elaborator.State, Ctx): Resolvable =
         // * Same remark as in RefElem#ref
         Term.SynthSel(base.ref(Ident(base.nme)),
-          new Ident(nme).withLocOf(id))(symOpt, N)
+          new Ident(nme).withLocOf(id))(symOpt, FlowSymbol.synthSel(nme), N, S(summon))
       def symbol = symOpt
     given Conversion[Symbol, Elem] = RefElem(_)
     val empty: Ctx = Ctx(OuterCtx.LocalScope("top-level"), N, Map.empty, Mode.Full)
@@ -295,7 +295,7 @@ object Elaborator:
       val bsym = BlockMemberSymbol("ret", Nil, true)
       val defn = ClassDef(N, syntax.Cls, sym, bsym, N, Nil, Nil, N, ObjBody(Blk(Nil, Term.Lit(UnitLit(false)))), Nil, N)
       sym.defn = S(defn)
-      Term.SynthSel(runtimeSymbol.ref(), id)(S(sym), N)
+      Term.SynthSel(runtimeSymbol.ref(), id)(S(sym), FlowSymbol.synthSel(id.name), N, N)
     val nonLocalRet =
       val id = new Ident("ret")
       BlockMemberSymbol(id.name, Nil, true)
@@ -589,7 +589,7 @@ extends Importer with ucs.SplitElaborator:
         case _ =>
           raise(ErrorReport(msg"Identifier `${idn.name}` does not name a known class symbol." -> idn.toLoc :: Nil))
           N
-      Term.SelProj(subterm(pre), c, idp)(f, N)
+      Term.SelProj(subterm(pre), c, idp)(f, FlowSymbol.selProj(idp.name), N, S(summon))
     case App(Ident("#"), Tup(Sel(pre, Ident(name)) :: App(Ident(proj), args) :: Nil)) =>
       subterm(App(App(Ident("#"), Tup(Sel(pre, Ident(name)) :: Ident(proj) :: Nil)), args))
     case App(Ident("!"), Tup(rhs :: Nil)) =>
@@ -616,7 +616,7 @@ extends Importer with ucs.SplitElaborator:
     case SynthSel(pre, nme) =>
       val preTrm = subterm(pre)
       val sym = resolveField(nme, preTrm.symbol, nme)
-      Term.SynthSel(preTrm, nme)(sym, N)
+      Term.SynthSel(preTrm, nme)(sym, FlowSymbol.synthSel(nme.name), N, S(summon)).withLocOf(tree)
     case Sel(Empty(), nme) =>
       Term.LeadingDotSel(nme)(S(summon)).withLocOf(tree)
     case Sel(pre, nme) =>
@@ -645,7 +645,7 @@ extends Importer with ucs.SplitElaborator:
         val loc = tree.toLoc.getOrElse(???)
         Term.Lit(StrLit(loc.origin.fileName.toString))
       else
-        Term.Sel(preTrm, nme)(sym, N, S(summon))
+        Term.Sel(preTrm, nme)(sym, FlowSymbol.sel(nme.name), N, S(summon))
     case MemberProj(ct, nme) =>
       val c = subterm(ct)
       val f = c.symbol.flatMap(_.asCls) match
@@ -672,7 +672,7 @@ extends Importer with ucs.SplitElaborator:
       )
       val rs = FlowSymbol.app()
       Term.Lam(ps,
-        Term.App(Term.SelProj(self.ref(), c, nme)(f, N), args.ref())(
+        Term.App(Term.SelProj(self.ref(), c, nme)(f, FlowSymbol.selProj(nme.name), N, S(summon)), args.ref())(
           App(nme, Tup(Nil)) // FIXME
           , N, rs)
       )
@@ -755,7 +755,7 @@ extends Importer with ucs.SplitElaborator:
           val argTree = new Tup(body :: Nil)
           val dummyIdent = new Ident("return").withLocOf(kw)
           Term.App(
-            Term.Sel(sym.ref(dummyIdent), retMtdTree)(S(state.nonLocalRet), N, S(summon)),
+            Term.Sel(sym.ref(dummyIdent), retMtdTree)(S(state.nonLocalRet), FlowSymbol.sel(dummyIdent.name), N, S(summon)),
             Term.Tup(PlainFld(subterm(body)) :: Nil)(argTree)
           )(App(Sel(dummyIdent, retMtdTree), argTree), N, rs)
       case ReturnHandler.NotInFunction =>

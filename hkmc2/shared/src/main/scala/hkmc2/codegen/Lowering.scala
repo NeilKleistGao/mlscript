@@ -439,7 +439,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     case bs: BlockMemberSymbol =>
       disamb.flatMap(_.defn) match
       case S(d) if d.hasDeclareModifier.isDefined =>
-        val sel = Sel(State.globalThisSymbol.ref().resolve, ref.tree)(S(bs), N, N).withLocOf(ref).resolve
+        val sel = SynthSel(State.globalThisSymbol.ref().resolve, ref.tree)(S(bs), FlowSymbol.synthSel(ref.tree.name), N, N).withLocOf(ref).resolve
         return disamb.fold(term(sel)(k))(d => term(st.Resolved(sel, d)(N))(k))
         // * Note: the alternative below, which might seem more appealing,
         // * works but does not instrument the selection to check for `undefined`!

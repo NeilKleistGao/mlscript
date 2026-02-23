@@ -1170,11 +1170,6 @@ class Resolver(tl: TraceLogger)
 
 end Resolver
 
-object AnySel:
-  def unapply(t: (Term.Sel | Term.SynthSel | Term.SelProj)): S[(Term, Tree.Ident, Opt[Term])] = t match
-    case Term.Sel(lhs, id) => S((lhs, id, N))
-    case Term.SynthSel(lhs, id) => S((lhs, id, N))
-    case Term.SelProj(lhs, cls, proj) => S((lhs, proj, S(cls)))
 
 object ModuleChecker:
   
@@ -1226,3 +1221,6 @@ object ModuleChecker:
       case _ => false
   
   def isStaticClass(t: Term): Bool = t.resolvedSym.exists(_.asCls.isDefined)
+
+end ModuleChecker
+

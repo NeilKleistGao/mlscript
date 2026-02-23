@@ -50,13 +50,30 @@ enum Annot extends AutoLocated:
     case TailRec => TailRec
     case TailCall => TailCall
 
-type Resolvable = Term & ResolvableImpl
+type AnySelTerm = AnySel & Resolvable
 
-sealed trait SelImpl(using val state: State) extends ResolvableImpl:
-  self: Term.Sel =>
-  val resSym: FlowSymbol = FlowSymbol.sel(self.nme.name)
+sealed trait AnySel extends ResolvableImpl:
+  self: Term.Sel | Term.SynthSel | Term.SelProj =>
+    
+  val sym: Opt[MemberSymbol]
+  val typ: Opt[Type]
+  val nme: Tree.Ident
+  val resSym: FlowSymbol
+  val prefix: Term
+  val originalCtx: Opt[Elaborator.Ctx]
+  
   var resolvedTargets: Ls[flow.SelectionTarget] = Nil // * filled during flow analysis
   var isErroneous: Bool = false // * to avoid reporting follow-on errors after a flow/resolution error
+end AnySel
+
+object AnySel:
+  def unapply(t: AnySelTerm): S[(Term, Tree.Ident, Opt[Term])] = t match
+    case Term.Sel(lhs, id) => S((lhs, id, N))
+    case Term.SynthSel(lhs, id) => S((lhs, id, N))
+    case Term.SelProj(lhs, cls, proj) => S((lhs, proj, S(cls)))
+end AnySel
+
+type Resolvable = Term & ResolvableImpl
 
 sealed trait ResolvableImpl:
   this: Term =>
@@ -79,19 +96,19 @@ sealed trait ResolvableImpl:
       case t: Term.Ref => t.copy()(t.tree, t.refNum, t.typ)
       case t: Term.App => t.copy()(t.tree, t.typ, t.resSym)
       case t: Term.TyApp => t.copy()(t.typ)
-      case t: Term.Sel => t.copy()(t.sym, t.typ, t.originalCtx)
-      case t: Term.SynthSel => t.copy()(t.sym, t.typ)
+      case t: Term.Sel => t.copy()(t.sym, t.resSym, t.typ, t.originalCtx)
+      case t: Term.SynthSel => t.copy()(t.sym, t.resSym, t.typ, t.originalCtx)
       case t: Term.LeadingDotSel => t.copy()(t.originalCtx)
-      case t: Term.SelProj => t.copy()(t.sym, t.typ)
+      case t: Term.SelProj => t.copy()(t.sym, t.resSym, t.typ, t.originalCtx)
       case t: Term.New => t.copy()(t.typ)
     .withLocOf(this)
     .asInstanceOf
   
   def withSym(sym: MemberSymbol): this.type = 
     this.match
-      case t: Term.Sel => t.copy()(S(sym), t.typ, t.originalCtx)(using t.state)
-      case t: Term.SynthSel => t.copy()(S(sym), t.typ)
-      case t: Term.SelProj => t.copy()(S(sym), t.typ)
+      case t: Term.Sel => t.copy()(S(sym), t.resSym, t.typ, t.originalCtx)
+      case t: Term.SynthSel => t.copy()(S(sym), t.resSym, t.typ, t.originalCtx)
+      case t: Term.SelProj => t.copy()(S(sym), t.resSym, t.typ, t.originalCtx)
     .withLocOf(this)
     .asInstanceOf
   
@@ -101,10 +118,10 @@ sealed trait ResolvableImpl:
       case t: Term.Ref => t.copy()(t.tree, t.refNum, S(typ))
       case t: Term.App => t.copy()(t.tree, S(typ), t.resSym)
       case t: Term.TyApp => t.copy()(S(typ))
-      case t: Term.Sel => t.copy()(t.sym, S(typ), t.originalCtx)(using t.state)
-      case t: Term.SynthSel => t.copy()(t.sym, S(typ))
+      case t: Term.Sel => t.copy()(t.sym, t.resSym, S(typ), t.originalCtx)
+      case t: Term.SynthSel => t.copy()(t.sym, t.resSym, S(typ), t.originalCtx)
       case _: Term.LeadingDotSel => lastWords(s"Cannot attach a type to leading dot selection: ${this.showDbg}")
-      case t: Term.SelProj => t.copy()(t.sym, S(typ))
+      case t: Term.SelProj => t.copy()(t.sym, t.resSym, S(typ), t.originalCtx)
       case t: Term.New => t.copy()(S(typ))
     .withLocOf(this)
     .asInstanceOf
@@ -237,17 +254,17 @@ enum Term extends Statement:
   case TyApp(lhs: Term, targs: Ls[Term])
     (val typ: Opt[Type]) extends Term, ResolvableImpl
   case Sel(prefix: Term, nme: Tree.Ident)
-    (val sym: Opt[MemberSymbol], val typ: Opt[Type],
+    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type],
       // TODO: improve:
       //  * this currently retains many maps, which puts pressure on the GC;
       //  * instead, we should store a lightweight representation of the context
       val originalCtx: Opt[Elaborator.Ctx]
     )
-    (using State) extends Term, SelImpl
+    extends Term, AnySel
   case SynthSel(prefix: Term, nme: Tree.Ident)
-    (val sym: Opt[MemberSymbol], val typ: Opt[Type]) extends Term, ResolvableImpl
-  case SelProj(prefix: Term, cls: Term, proj: Tree.Ident)
-    (val sym: Opt[MemberSymbol], val typ: Opt[Type]) extends Term, ResolvableImpl
+    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type], val originalCtx: Opt[Elaborator.Ctx]) extends Term, AnySel
+  case SelProj(prefix: Term, cls: Term, nme: Tree.Ident)
+    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type], val originalCtx: Opt[Elaborator.Ctx]) extends Term, AnySel
   case DynSel(prefix: Term, fld: Term, arrayIdx: Bool)
   case Tup(fields: Ls[Elem])(val tree: Tree.Tup)
   case Mut(underlying: Tup | Rcd | New | DynNew)
@@ -345,11 +362,11 @@ enum Term extends Statement:
     case _ => N
   
   def sel(id: Tree.Ident, sym: Opt[MemberSymbol])(using State, Elaborator.Ctx): Sel =
-    Sel(this, id)(sym, N, S(summon))
+    Sel(this, id)(sym, FlowSymbol.sel(id.name), N, S(summon))
   def selNoSym(nme: Str, synth: Bool = false)(using State, Elaborator.Ctx): Sel | SynthSel =
     val id = new Tree.Ident(nme)
     if synth
-    then SynthSel(this, id)(N, N)
+    then SynthSel(this, id)(N, FlowSymbol.synthSel(nme), N, S(summon))
     else sel(id, N)
   
   def app(args: Term*)(using State) =
@@ -370,8 +387,8 @@ enum Term extends Statement:
       case term @ Ref(sym) => Ref(sym)(Tree.Ident(term.tree.name), term.refNum, term.typ)
       case term @ App(lhs, rhs) => App(lhs.mkClone, rhs.mkClone)(term.tree, term.typ, term.resSym)
       case term @ TyApp(lhs, targs) => TyApp(lhs.mkClone, targs.map(_.mkClone))(term.typ)
-      case term @ Sel(prefix, nme) => Sel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.typ, term.originalCtx)
-      case term @ SynthSel(prefix, nme) => SynthSel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.typ)
+      case term @ Sel(prefix, nme) => Sel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.resSym, term.typ, term.originalCtx)
+      case term @ SynthSel(prefix, nme) => SynthSel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.resSym, term.typ, term.originalCtx)
       case DynSel(prefix, fld, arrayIdx) => DynSel(prefix.mkClone, fld.mkClone, arrayIdx)
       case term @ Tup(fields) => Tup(fields.map {
         case f: Fld => f.copy(term = f.term.mkClone, asc = f.asc.map(_.mkClone))
@@ -396,7 +413,7 @@ enum Term extends Statement:
         New(cls.mkClone, args.map(_.mkClone), rft.map { case (cs, ob) => cs -> ObjBody(ob.blk.mkBlkClone) })(term.typ)
       case DynNew(cls, args) => DynNew(cls.mkClone, args.map(_.mkClone))
       case term @ SelProj(prefix, cls, proj) =>
-        SelProj(prefix.mkClone, cls.mkClone, Tree.Ident(proj.name))(term.sym, term.typ)
+        SelProj(prefix.mkClone, cls.mkClone, Tree.Ident(proj.name))(term.sym, term.resSym, term.typ, term.originalCtx)
       case Asc(term, ty) => Asc(term.mkClone, ty.mkClone)
       case CompType(lhs, rhs, pol) => CompType(lhs.mkClone, rhs.mkClone, pol)
       case Neg(rhs) => Neg(rhs.mkClone)
