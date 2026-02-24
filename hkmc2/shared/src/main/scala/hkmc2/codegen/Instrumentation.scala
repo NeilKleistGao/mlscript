@@ -21,7 +21,7 @@ case class Context(cache: HashMap[Path, Path], defs: HashMap[Path, (Path => Bloc
   def addCache(p: Path, v: Path): Context = Context(cache.clone() += (p -> v), defs)
   def delCache(p: Path): Context = Context(cache.clone() -= p, defs)
   // TODO: the paths for the definitions will be defined at the constructor of the module, is it possible to reference the value at the ctor, instead of rebuilding them in the function body?
-  def addDef(p: Path, d: (Path => Block) => Block): Context = Context(cache, defs.clone() += (p -> d))
+  def addDef(p: Path, cont: (Path => Block) => Block): Context = Context(cache, defs.clone() += (p -> cont))
 
 extension [A, B](ls: Iterable[(A => B) => B])
   def collectApply(f: Ls[A] => B): B =
@@ -191,9 +191,24 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
             case _ => false
           })
         case _ => false
-
-      val newCtx = if isStagedFun then ctx.addDef(fun, transformPath(fun)) else ctx
+      // if staged, point to generator function instead of original function
+      val transformer = new BlockTransformer(SymbolSubst()):
+        override def applyPath(p: Path)(k: Path => Block) = p match
+        case Select(qual, Tree.Ident(name)) => k(Select(qual, Tree.Ident(name + "_gen"))(N))
+        case p => k(p)
       transformPath(fun): stagedFun =>
+        val funPath = if isStagedFun then
+          fun match
+          case Select(qual, Tree.Ident(name)) => Select(qual, Tree.Ident(name + "_gen"))(N)
+          case Value.Ref(l, _) => Value.Ref(TempSymbol(N, l.nme + "_gen"), N)
+          case _ => fun
+        else fun
+        val cont = (k: Path => Block) =>
+          transformPath(fun): stagedFun =>
+            tuple(Ls(funPath, toValue(isStagedFun))): value =>
+              call(stagedFun.selSN("hash"), Ls()): str =>
+                tuple(Ls(str, value))(k)
+        val newCtx = ctx.addDef(fun, cont)
         transformArgs(args): args =>
           tuple(args.map(_._1)): tup =>
             blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, newCtx))
@@ -323,7 +338,7 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
         .map(transformFunDefn(sym, _))
         .unzip3
 
-      // add cache for specialized functions in each staged module
+      // for storing specialized functions in each staged module
       val cacheSym = BlockMemberSymbol("cache", Nil, true)
       val cacheTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("cache"))
       val cachePath = sym.asPath.selSN("cache")
@@ -349,7 +364,6 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
         f.copy(sym = sym, dSym = dSym, body = body)(false)
       val genMethods = companion.methods.map(genMethod)
 
-      val unit = Select(Value.Ref(State.runtimeSymbol), Tree.Ident("Unit"))(N)
       // NOTE: this debug printing only works for top-level modules, nested modules don't work
       // TODO: remove this. only for testing
       def debugCont(rest: Block) =
@@ -358,9 +372,9 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
         val debug =
           call(cachePath.selSN("toString"), Nil, false): str =>
             call(printFun, Ls(str), false): _ =>
-              call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
-                call(printFun, Ls(str), false): _ =>
-                  rest
+              // call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
+              call(printFun, Ls(sym.asPath.selSN("defCtx")), false): _ =>
+                rest
 
         Scoped(Set(tmp), debug)
 
@@ -370,8 +384,9 @@ class Instrumentation(using State) extends BlockTransformer(new SymbolSubst()):
       val defCtxTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("defCtx"))
       def defCtxDecl(rest: Block) =
         allDefs.values.collectApply: defs =>
-          tuple(defs): defCtxInit =>
-            Define(ValDefn(defCtxTsym, defCtxSym, defCtxInit), rest)
+          tuple(defs): tup =>
+            assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
+              Define(ValDefn(defCtxTsym, defCtxSym, map), rest)
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(

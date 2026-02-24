@@ -5,7 +5,7 @@ staged module A with
   fun f() = 1
   fun g(x) = x
 //│ > FunCache(Map(2) {"f" => FunDefn(Symbol("f"), [[]], Return(ValueLit(1), false), true), "g" => FunDefn(Symbol("g"), [[Symbol("x")]], Return(ValueRef(Symbol("x")), false), true)})
-//│ > 
+//│ > Map(0) {}
 
 module C with
   fun h() = 0
@@ -18,4 +18,9 @@ staged module B with
   fun c() = i()
   fun d() = A.g(1)
 //│ > FunCache(Map(4) {"a" => FunDefn(Symbol("a"), [[]], Return(Call(Select(ValueRef(Symbol("A")), Symbol("f")), []), false), true), "b" => FunDefn(Symbol("b"), [[]], Return(Call(Select(ValueRef(Symbol("C")), Symbol("h")), []), false), true), "c" => FunDefn(Symbol("c"), [[]], Return(Call(ValueRef(Symbol("i")), []), false), true), "d" => FunDefn(Symbol("d"), [[]], Return(Call(Select(ValueRef(Symbol("A")), Symbol("g")), [Arg(None, ValueLit(1))]), false), true)})
-//│ > Select(ValueRef(Symbol("A")), Symbol("f")),Select(ValueRef(Symbol("A")), Symbol("g"))
+//│ > Map(4) {
+//│ >   'ValueRef(Symbol("i"))' => [ [Function: i], false ],
+//│ >   'Select(ValueRef(Symbol("A")), Symbol("f"))' => [ [Function: f_gen], true ],
+//│ >   'Select(ValueRef(Symbol("C")), Symbol("h"))' => [ [Function: h], false ],
+//│ >   'Select(ValueRef(Symbol("A")), Symbol("g"))' => [ [Function: g_gen], true ]
+//│ > }
