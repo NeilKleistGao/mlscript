@@ -54,13 +54,13 @@ type AnySelTerm = AnySel & Resolvable
 
 sealed trait AnySel extends ResolvableImpl:
   self: Term.Sel | Term.SynthSel | Term.SelProj =>
-    
+  
   val sym: Opt[MemberSymbol]
   val typ: Opt[Type]
   val nme: Tree.Ident
   val resSym: FlowSymbol
   val prefix: Term
-  val originalCtx: Opt[Elaborator.Ctx]
+  val originalCtx: Opt[SrcScope]
   
   var resolvedTargets: Ls[flow.SelectionTarget] = Nil // * filled during flow analysis
   var isErroneous: Bool = false // * to avoid reporting follow-on errors after a flow/resolution error
@@ -238,6 +238,41 @@ trait LeadingDotSelImpl(using State):
   val resSym: FlowSymbol = FlowSymbol.lds(self.nme.name)
   var resolvedTargets: Ls[flow.SelectionTarget.CompanionMember] = Nil // * filled during flow analysis
 
+case class SrcScope(outer: Elaborator.OuterCtx, parent: Opt[SrcScope]):
+  
+  /** Computes the outermost scope from which the current scope can still be accessed.
+    * For instance, from [scp2] here, [scp1] is the outermost accessible base:
+    *     [scp0]
+    *     fun foo =
+    *       [scp1]
+    *       module Foo with
+    *         module Bar with
+    *           [scp2]
+    * and the path is Foo :: Bar :: Nil.
+    * [scp0] cannot access [scp2] because there is a function (Function outer) on the way.
+    * The same would happen for:
+    *     [scp0]
+    *     if ... then // LocalScope also blocks access to [scp1] and [scp2]
+    *       [scp1]
+    *       module Foo with
+    *         module Bar with
+    *           [scp2]
+    */
+  lazy val outermostAcessibleBase: (SrcScope, Ls[InnerSymbol]) =
+      import Elaborator.OuterCtx.*
+      outer match
+      case InnerScope(inner) =>
+        parent match
+        case N => (this, inner :: Nil)
+        case S(par) =>
+          val (base, path) = par.outermostAcessibleBase
+          (base, inner :: path)
+      case _: (Function | LocalScope) | LambdaOrHandlerBlock | NonReturnContext =>
+        (this, Nil)
+
+object SrcScope:
+  given s: Ctx => SrcScope = summon[Ctx].scope
+
 enum Term extends Statement:
   case Error
   case UnitVal()
@@ -254,17 +289,14 @@ enum Term extends Statement:
   case TyApp(lhs: Term, targs: Ls[Term])
     (val typ: Opt[Type]) extends Term, ResolvableImpl
   case Sel(prefix: Term, nme: Tree.Ident)
-    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type],
-      // TODO: improve:
-      //  * this currently retains many maps, which puts pressure on the GC;
-      //  * instead, we should store a lightweight representation of the context
-      val originalCtx: Opt[Elaborator.Ctx]
-    )
+    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type], val originalCtx: Opt[SrcScope])
     extends Term, AnySel
   case SynthSel(prefix: Term, nme: Tree.Ident)
-    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type], val originalCtx: Opt[Elaborator.Ctx]) extends Term, AnySel
+    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type], val originalCtx: Opt[SrcScope])
+    extends Term, AnySel
   case SelProj(prefix: Term, cls: Term, nme: Tree.Ident)
-    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type], val originalCtx: Opt[Elaborator.Ctx]) extends Term, AnySel
+    (val sym: Opt[MemberSymbol], val resSym: FlowSymbol, val typ: Opt[Type], val originalCtx: Opt[SrcScope])
+    extends Term, AnySel
   case DynSel(prefix: Term, fld: Term, arrayIdx: Bool)
   case Tup(fields: Ls[Elem])(val tree: Tree.Tup)
   case Mut(underlying: Tup | Rcd | New | DynNew)
@@ -302,7 +334,7 @@ enum Term extends Statement:
   case Handle(lhs: LocalSymbol, rhs: Term, args: List[Term],
     derivedClsSym: ClassSymbol, defs: Ls[HandlerTermDefinition], body: Term)
   case LeadingDotSel(nme: Tree.Ident)(
-      val originalCtx: Opt[Elaborator.Ctx]
+      val originalCtx: Opt[SrcScope]
     ) (using State) extends Term, ResolvableImpl, LeadingDotSelImpl
   
   def expanded: Term = this match
@@ -970,7 +1002,7 @@ case class ModuleOrObjectDef(
   companion: Opt[ModuleCompanionSymbol],
   annotations: Ls[Annot],
 )(
-  val path: Elaborator.Ctx // TODO: use more lightweight repr.
+  val path: SrcScope
 ) extends ClassLikeDef, CompanionValue:
   val ctorSym: Option[TermSymbol] = N
 

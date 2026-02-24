@@ -297,7 +297,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
           :: targets.map:
             case CompanionMember(_, sym) => msg"companion member ${sym.nme}" -> sym.toLoc
 
-  def getCompanionMember(name: Str, oc: Opt[Ctx], sym: Symbol): Opt[(Term, BlockMemberSymbol)] = sym match
+  def getCompanionMember(name: Str, oc: Opt[SrcScope], sym: Symbol): Opt[(Term, BlockMemberSymbol)] = sym match
     case ms: ModuleOrObjectSymbol => ms.defn.flatMap: d =>
       d.body.members.get(name) match
       case S(memb: BlockMemberSymbol) =>
@@ -461,7 +461,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
           raise(ErrorReport(
             msg"Could not solve all constraints within $MAX_FUEL iterations." -> N :: Nil))
   
-  def findAccessPath(src: Ctx, dst: Ctx, moduleSym: ModuleOrObjectSymbol): Opt[Term] =
+  def findAccessPath(src: SrcScope, dst: SrcScope, moduleSym: ModuleOrObjectSymbol): Opt[Term] =
     log(s"outermostAcessibleBase ${dst.outermostAcessibleBase}")
     val (outermostBase, outermostPath) = dst.outermostAcessibleBase
     var cur = src

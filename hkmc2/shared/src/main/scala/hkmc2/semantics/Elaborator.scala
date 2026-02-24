@@ -78,6 +78,8 @@ object Elaborator:
     
     override def toString: Str = s"${parent.fold("")(_.toString+"/")}${outer.showDbg}"
     
+    lazy val scope: SrcScope = SrcScope(outer, parent.map(_.scope))
+    
     def +(local: Str -> Symbol): Ctx = copy(outer, env = env + local.mapSecond(Ctx.RefElem(_)))
     def ++(locals: IterableOnce[Str -> Symbol]): Ctx =
       copy(outer, env = env ++ locals.mapValues(Ctx.RefElem(_)))
@@ -113,36 +115,6 @@ object Elaborator:
       case OuterCtx.NonReturnContext => ReturnHandler.Forbidden
       case _: OuterCtx.LocalScope =>
         parent.fold(ReturnHandler.NotInFunction)(_.getRetHandler)
-    
-    /** Computes the outermost context from which the current context can still be accessed.
-      * For instance, from [ctx2] here, [ctx1] is the outermost accessible base:
-      *     [ctx0]
-      *     fun foo =
-      *       [ctx1]
-      *       module Foo with
-      *         module Bar with
-      *           [ctx2]
-      * and the path is Foo :: Bar :: Nil.
-      * [ctx0] cannot access [ctx2] because there is a function (Function outer) on the way.
-      * The same would happen for:
-      *     [ctx0]
-      *     if ... then // LocalScope also blocks access to [ctx1] and [ctx2]
-      *       [ctx1]
-      *       module Foo with
-      *         module Bar with
-      *           [ctx2]
-     */
-    lazy val outermostAcessibleBase: (Ctx, Ls[InnerSymbol]) =
-      import OuterCtx.*
-      outer match
-      case InnerScope(inner) =>
-        parent match
-        case N => (this, inner :: Nil)
-        case S(par) =>
-          val (base, path) = par.outermostAcessibleBase
-          (base, inner :: path)
-      case _: (Function | LocalScope) | LambdaOrHandlerBlock | NonReturnContext =>
-        (this, Nil)
     
     // * Invariant: We expect that the top-level context only contain hard-coded symbols like `globalThis`
     // * and that built-in symbols like Int and Str be imported into another nested context on top of it.
@@ -1422,7 +1394,7 @@ extends Importer with ucs.SplitElaborator:
               val md =
                 val (bod, c) = mkBody
                 ModuleOrObjectDef(owner, modSym, sym,
-                  tps, pss.headOption, pss.tailOr(Nil), newOf(td), k, ObjBody(bod), comp, annotations)(outerCtx)
+                  tps, pss.headOption, pss.tailOr(Nil), newOf(td), k, ObjBody(bod), comp, annotations)(outerCtx.scope)
               modSym.defn = S(md)
               md
         case Cls =>
