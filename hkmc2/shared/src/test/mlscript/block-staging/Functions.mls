@@ -24,18 +24,23 @@ staged module Expressions with
       [1, 2] then 2
       [a, ...] then 3
       else 0
-//│ > return:1
-//│ > let x
+//│ > fun ctor_() =
+//│ >   
+//│ > fun lit() = return:1
+//│ > fun assign() =
+//│ >   let x
 //│ > let y
 //│ > x = 42
 //│ > y = x
 //│ > return:y
-//│ > return:[1, 2]
-//│ > return:[1, ..x]
-//│ > let tmp
+//│ > fun tup1() = return:[1, 2]
+//│ > fun tup2() = return:[1, ..x1]
+//│ > fun dynsel() =
+//│ >   let tmp
 //│ > tmp = [1]
 //│ > return:tmp.(0)
-//│ > let scrut
+//│ > fun match1() =
+//│ >   let scrut
 //│ > scrut = 9
 //│ > if scrut is
 //│ >   Bool then
@@ -45,43 +50,44 @@ staged module Expressions with
 //│ >   Int then
 //│ >     return:3
 //│ >   else return:0
-//│ > let scrut
-//│ > let a
-//│ > let tmp
+//│ > fun match2() =
+//│ >   let a
+//│ > let tmp1
 //│ > let middleElements
 //│ > let element0_
 //│ > let element1_
-//│ > scrut = [...x]
-//│ > if scrut is
+//│ > let scrut1
+//│ > scrut1 = [...x1]
+//│ > if scrut1 is
 //│ >   [] then
-//│ >     tmp = 1
+//│ >     tmp1 = 1
 //│ >   [_, _] then
-//│ >     element0_ = Runtime.Tuple.get(scrut, 0)
-//│ >     element1_ = Runtime.Tuple.get(scrut, 1)
+//│ >     element0_ = Runtime.Tuple.get(scrut1, 0)
+//│ >     element1_ = Runtime.Tuple.get(scrut1, 1)
 //│ >     if element0_ is
 //│ >       1 then
 //│ >         if element1_ is
 //│ >           2 then
-//│ >             tmp = 2
-//│ >           else if scrut is
+//│ >             tmp1 = 2
+//│ >           else if scrut1 is
 //│ >             [_, ...] then
-//│ >               middleElements = Runtime.Tuple.slice(scrut, 1, 0)
+//│ >               middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
 //│ >               a = element0_
-//│ >               tmp = 3
-//│ >             else tmp = 0
-//│ >       else if scrut is
+//│ >               tmp1 = 3
+//│ >             else tmp1 = 0
+//│ >       else if scrut1 is
 //│ >         [_, ...] then
-//│ >           middleElements = Runtime.Tuple.slice(scrut, 1, 0)
+//│ >           middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
 //│ >           a = element0_
-//│ >           tmp = 3
-//│ >         else tmp = 0
+//│ >           tmp1 = 3
+//│ >         else tmp1 = 0
 //│ >   [_, ...] then
-//│ >     element0_ = Runtime.Tuple.get(scrut, 0)
-//│ >     middleElements = Runtime.Tuple.slice(scrut, 1, 0)
+//│ >     element0_ = Runtime.Tuple.get(scrut1, 0)
+//│ >     middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
 //│ >     a = element0_
-//│ >     tmp = 3
-//│ >   else tmp = 0
-//│ > return:tmp
+//│ >     tmp1 = 3
+//│ >   else tmp1 = 0
+//│ > return:tmp1
 //│ x = [1, 2, 3]
 
 class Outside(a)
@@ -93,21 +99,30 @@ staged module ClassInstrumentation with
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
 //│ > class NoArg
-//│ > class Inside(a, b)
-//│ > return:new Outside(1)
-//│ > return:new ClassInstrumentation.NoArg()
-//│ > return:Outside(1)
-//│ > return:ClassInstrumentation.Inside(1, 2)
+//│ > class Inside1(a1, b)
+//│ > fun ctor_() =
+//│ >   
+//│ > fun inst1() = return:new Outside(1)
+//│ > fun inst2() = return:new ClassInstrumentation.NoArg()
+//│ > fun app1() = return:Outside(1)
+//│ > fun app2() = return:ClassInstrumentation.Inside1(1, 2)
 
-// :sjs
 staged module Arguments with
   fun f(x) =
     x = 1
     x
   fun g(x)(y, z)() = z
-//│ > x = 1
+//│ FAILURE: Unexpected warning
+//│ FAILURE LOCATION: rest (Instrumentation.scala:292)
+//│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
+//│ ║  l.114: 	  fun g(x)(y, z)() = z
+//│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
+//│ > fun ctor_() =
+//│ >   
+//│ > fun f(x) =
+//│ >   x = 1
 //│ > return:x
-//│ > return:undefined
+//│ > fun g(x),(y, z),() = return:z
 
 staged module OtherBlocks with
   fun scope() =
@@ -120,11 +135,15 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > let a
+//│ > fun ctor_() =
+//│ >   
+//│ > fun scope() =
+//│ >   let a
 //│ > a = 1
 //│ > return:OtherBlocks.scope.locally(a)
+//│ > fun breakAndLabel() =
+//│ >   let tmp
 //│ > let scrut
-//│ > let tmp
 //│ > scrut = 1
 //│ > if scrut is
 //│ >   2 then
@@ -139,7 +158,7 @@ staged module OtherBlocks with
 class A()
 staged module A with
   fun f() = 1
-//│ ═══[RUNTIME ERROR] TypeError: A1.f_gen is not a function
+//│ ═══[RUNTIME ERROR] TypeError: A1.ctor$_instr is not a function
 
 // debug printing fails, unable to reference the class when calling the instrumented function
 :fixme
@@ -148,8 +167,16 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.147: 	  staged module B with
+//│ ║  l.166: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.148: 	    fun f() = 1
+//│ ║  l.167: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
-//│ ═══[RUNTIME ERROR] ReferenceError: B is not defined
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
+//│ ╟── which references the symbol introduced here
+//│ ║  l.166: 	  staged module B with
+//│ ║         	                ^^^^^^
+//│ ║  l.167: 	    fun f() = 1
+//│ ╙──       	^^^^^^^^^^^^^^^
+//│ > fun ctor_() =
+//│ >   
+//│ > fun f() = return:1

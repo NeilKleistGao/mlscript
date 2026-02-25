@@ -18,9 +18,11 @@ import syntax.{Literal, Tree}
 // this avoids having to rebuild the same shapes everytime they are needed
 
 // transform Block to Block IR so that it can be instrumented in mlscript
-class InstrumentationImpl(using State):
+class InstrumentationImpl(using State, Raise):
   type ArgWrappable = Path | Symbol
   type Context = HashMap[Path, Path]
+  // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
+  var scope = Scope.empty
 
   def asArg(x: ArgWrappable): Arg =
     x match
@@ -51,7 +53,7 @@ class InstrumentationImpl(using State):
   def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
     // TODO: skip assignment if res: Path?
     val sym = new TempSymbol(N, symName)
-    Assign(sym, res, k(sym.asPath))
+    Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
 
   def tuple(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Tuple(false, elems.map(asArg)), symName)(k)
@@ -92,11 +94,18 @@ class InstrumentationImpl(using State):
   def transformSymbol(sym: Symbol, symName: Str = "sym")(k: Path => Block): Block =
     sym match
     case clsSym: ClassSymbol =>
+      val name = scope.allocateOrGetName(sym)
       transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
-        blockCtor("ClassSymbol", Ls(toValue(sym.nme), paramsOpt), symName)(k)
+        blockCtor("ClassSymbol", Ls(toValue(name), paramsOpt), symName)(k)
     case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
+      val name = scope.allocateOrGetName(sym)
       transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
-    case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    case _: BuiltinSymbol =>
+      // retain names to built-in functions
+      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    case _ =>
+      val name = scope.allocateOrGetName(sym)
+      blockCtor("Symbol", Ls(toValue(name)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
     xOpt match
@@ -169,7 +178,21 @@ class InstrumentationImpl(using State):
           tuple(xs.map(_._1)): codes =>
             blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
     case Call(fun, args) =>
-      transformPath(fun): fun =>
+      val stagedFunPath =
+        fun match
+        case s @ Select(qual, Tree.Ident(name)) => s.symbol.flatMap({
+            case t: TermSymbol => t.owner.flatMap({
+                case sym: DefinitionSymbol[?] =>
+                  sym.defn.get.hasStagedModifier.map(_ =>
+                    Select(qual, Tree.Ident(name + "_gen"))(N)
+                  )
+              })
+            case _ => N
+          })
+        case _ => N
+
+      val newFun = stagedFunPath.getOrElse(fun)
+      transformPath(newFun): fun =>
         transformArgs(args): args =>
           tuple(args.map(_._1)): tup =>
             blockCtor("Call", Ls(fun, tup), "app")(k)
@@ -201,7 +224,6 @@ class InstrumentationImpl(using State):
     case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
     case Case.Field(name, safe) => ??? // not supported
 
-  // ruleBlk?
   def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)((p, _) => k(p))
 
@@ -220,14 +242,13 @@ class InstrumentationImpl(using State):
                 blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
     case Define(cls: ClsLikeDefn, rest) =>
       assert(cls.companion.isEmpty, "nested module not supported")
-      (Define(cls, _)):
-        transformBlock(rest): p =>
-          transformSymbol(cls.isym): c =>
-            optionNone(): none => // TODO: handle companion object
-              blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
-                blockCtor("Define", Ls(cls, p)): p =>
-                  ruleEnd(): end =>
-                    fnPrintCode(p)(k(end, ctx))
+      transformBlock(rest): p =>
+        transformSymbol(cls.isym): c =>
+          optionNone(): none => // TODO: handle companion object
+            blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
+              blockCtor("Define", Ls(cls, p)): p =>
+                ruleEnd(): end =>
+                  fnPrintCode(p)(k(end, ctx))
     case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>
@@ -243,7 +264,7 @@ class InstrumentationImpl(using State):
       syms.toList.map(transformSymbol(_)).collectApply: symsStaged =>
         tuple(symsStaged): tup =>
           transformBlock(body): (body, ctx) =>
-            blockCtor("Scoped", Ls(tup, body))(k(_, ctx))
+            blockCtor("Scoped", Ls(tup, body))(b => Scoped(syms, k(b, ctx)))
     case Label(labelSymbol, loop, body, rest) =>
       transformSymbol(labelSymbol): labelSymbol =>
         transformBlock(body): (body, ctx) =>
@@ -257,21 +278,32 @@ class InstrumentationImpl(using State):
   // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
   // so we pass modSym instead
   def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, Block) =
-    val genSym = BlockMemberSymbol(f.sym.nme + "_gen", Nil, true)
-    val sym = modSym.asPath.selSN(genSym.nme)
+    val genSymName = f.sym.nme + "_instr"
+    val genSym = BlockMemberSymbol(genSymName, Nil, false)
+    val sym = modSym.asPath.selSN(genSymName)
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
-    // TODO: remove it. only for test
-    val debug = blockCtor("ValueLit", Ls(Value.Lit(Tree.UnitLit(false)))): undef =>
-      // TODO: put correct parameters instead of undefined
-      f.params.map(ps => List.fill(ps.params.length)(undef))
-        .foldRight((p: Path) => fnPrintCode(p)(End()))((args, cont) => call(_, args)(cont))(sym)
 
-    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_gen"))
-    val args = f.params.flatMap(_.params).map(_.sym)
+    // turn into fundefn
+    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_instr"))
+    val argSyms = f.params.flatMap(_.params).map(_.sym)
     val newBody =
-      given Context = HashMap(args.map(s => Value.Ref(s, N) -> Value.Ref(s, N))*)
-      transformBlock(f.body)(Return(_, false))
-    val newFun = f.copy(sym = genSym, dSym = dSym, body = newBody)(false)
+      val rest = transformBlock(f.body)(using new HashMap): body =>
+        if f.params.length != 1 then
+          raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
+        // maintain parameter names in instrumented code
+        f.params.map(
+          _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
+        ).collectApply: paramListSyms =>
+          blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
+            paramListSyms.map(tuple(_)).collectApply: tups =>
+              tuple(tups): tup =>
+                blockCtor("FunDefn", Ls(sym, tup, body, toValue(true))): block =>
+                  Return(block, false)
+      Scoped(Set(argSyms*), rest)
+
+    // TODO: remove it. only for test
+    val debug = call(sym, Nil)(fnPrintCode(_)(End()))
+    val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, debug)
 
 class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSubst()):
@@ -363,10 +395,15 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val (stagedMethods, debugPrintCode) = companion.methods
         .map(impl.transformFunDefn(sym, _))
         .unzip
-      val newCtor = impl.transformBlock(companion.ctor)(using new HashMap())(_ => End())
-      val newCompanion = companion.copy(methods = companion.methods ++ stagedMethods, ctor = newCtor)
+      val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
+      val (stagedCtor, ctorPrint) = impl.transformFunDefn(sym, ctor)
+
+      val unit = State.runtimeSymbol.asPath.selSN("Unit")
+      val debugBlock = (ctorPrint :: debugPrintCode).foldRight(Return(unit, true))(concat)
+      def debugCont(rest: Block) =
+        Begin(debugBlock, rest)
+      // stage the constructor
+      val newCompanion = companion.copy(methods = stagedCtor :: companion.methods ++ stagedMethods, ctor = companion.ctor.mapTail(debugCont))
       val newModule = c.copy(sym = sym, companion = S(newCompanion))
-      // debug is printed after definition
-      val debugBlock = debugPrintCode.foldRight(rest)(concat)
-      Define(newModule, debugBlock)
+      Define(newModule, rest)
     case b => b
