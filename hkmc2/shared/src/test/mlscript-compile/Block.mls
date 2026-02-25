@@ -74,10 +74,8 @@ class Block with
     Return(val res: Result, val implct: Bool)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
-    // TODO: [fyp] handle Scoped, Label, Break nodes
+    // TODO: [fyp] handle Scoped nodes
     Scoped(val symbols: Array[Symbol], val rest: Block)
-    Label(val labelSymbol: Symbol, val loop: Bool, val body: Block, val rest: Block)
-    Break(val labelSymbol: Symbol)
     End()
   
 fun concat(b1: Block, b2: Block) = if b1 is
@@ -86,8 +84,6 @@ fun concat(b1: Block, b2: Block) = if b1 is
   Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
   Define(defn, rest) then Define(defn, concat(rest, b2))
   Scoped(symbols, rest) then Scoped(symbols, concat(rest, b2))
-  Label(labelSymbol, loop, body, rest) then Label(labelSymbol, loop, body, concat(rest, b2))
-  Break then ??? // unreachable
   End() then b2
 
 fun indent(s: Str) = s.replaceAll("\n", "\n  ")
@@ -179,10 +175,6 @@ fun showBlock(b) =
     Scoped(symbols, rest) then
       // initialize symbols
       symbols.map(showSymbol).map("let " + _).join("\n") + showRestBlock(rest)
-    Label(labelSymbol, loop, body, rest) then
-      "Label(" + showSymbol(labelSymbol) + ", " + loop + ", " + showRestBlock(body) + ", " + showRestBlock(rest) + ")"
-    Break(labelSymbol) then
-      "Break(" + showSymbol(labelSymbol) + ")"
     End() then ""
     _ then "<unknown block>" + b
 
