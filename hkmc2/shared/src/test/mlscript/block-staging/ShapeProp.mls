@@ -123,6 +123,9 @@ sop(ctx, selPath)
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
 //│ x = Symbol("x")
 
+print(showPath(ValueRef(Symbol("x"))))
+//│ > ValueRef(Symbol("x"))
+
 val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 sor(DefCtx.empty, Ctx.empty, Cache.empty, tup)
 //│ = [
@@ -200,7 +203,12 @@ let plus = ValueRef(Symbol("+"))
 // x + 1
 let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
 prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ = [Assign(Symbol("x"), ValueLit(2), Return(ValueLit(3), false)), Lit(3)]
+//│ = [
+//│   Scoped(
+//│     [Symbol("x")],
+//│     Assign(Symbol("x"), ValueLit(2), Return(ValueLit(3), false))
+//│   )
+//│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
 //│   Assign(
@@ -228,25 +236,27 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [[Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)], [Lit(8), Return(ValueLit(2), false)], [Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false)]], Return(ValueLit(0), false), End())))
 prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│ = [
-//│   Assign(
-//│     Symbol("x"),
-//│     ValueLit(9),
-//│     Match(
-//│       ValueRef(Symbol("x")),
-//│       [
+//│   Scoped(
+//│     [Symbol("x")],
+//│     Assign(
+//│       Symbol("x"),
+//│       ValueLit(9),
+//│       Match(
+//│         ValueRef(Symbol("x")),
 //│         [
-//│           Cls(
-//│             ClassSymbol("Int", None),
-//│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
-//│           ),
-//│           Return(ValueLit(3), false)
-//│         ]
-//│       ],
-//│       End(),
-//│       End()
+//│           [
+//│             Cls(
+//│               ClassSymbol("Int", None),
+//│               Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
+//│             ),
+//│             Return(ValueLit(3), false)
+//│           ]
+//│         ],
+//│         End(),
+//│         End()
+//│       )
 //│     )
-//│   ),
-//│   Lit(3)
+//│   )
 //│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
@@ -332,22 +342,24 @@ val ctxZ = Ctx.empty
 val blockBranch = Scoped([z], Match(ValueLit(1), [[Lit(1), Assign(z, ValueLit(1), End())], [Lit(2), Assign(z, ValueLit(2), End())]], Assign(z, ValueLit(3), End()), Return(ValueRef(z), false)))
 prop(defs, ctxZ, Cache.empty, blockBranch)
 //│ = [
-//│   Match(
-//│     ValueLit(1),
-//│     [
+//│   Scoped(
+//│     [Symbol("z")],
+//│     Match(
+//│       ValueLit(1),
 //│       [
-//│         Lit(1),
-//│         Assign(
-//│           Symbol("z"),
-//│           ValueLit(1),
-//│           Return(ValueRef(Symbol("z")), false)
-//│         )
-//│       ]
-//│     ],
-//│     Return(ValueRef(Symbol("z")), false),
-//│     End()
-//│   ),
-//│   Lit(1)
+//│         [
+//│           Lit(1),
+//│           Assign(
+//│             Symbol("z"),
+//│             ValueLit(1),
+//│             Return(ValueRef(Symbol("z")), false)
+//│           )
+//│         ]
+//│       ],
+//│       Return(ValueRef(Symbol("z")), false),
+//│       End()
+//│     )
+//│   )
 //│ ]
 //│ blockBranch = Scoped(
 //│   [Symbol("z")],
@@ -374,26 +386,28 @@ val ctxXY = Ctx.empty
 val earlyRetBlock = Scoped([x, y], Assign(x, ValueLit(false), Match(ValueRef(x), [[Lit(true), Return(ValueLit(10), false)], [Lit(false), Assign(y, ValueLit(20), End())]], End(), Return(ValueRef(y), false))))
 prop(defs, ctxXY, Cache.empty, earlyRetBlock)
 //│ = [
-//│   Assign(
-//│     Symbol("x"),
-//│     ValueLit(false),
-//│     Match(
-//│       ValueRef(Symbol("x")),
-//│       [
+//│   Scoped(
+//│     [Symbol("x"), Symbol("y")],
+//│     Assign(
+//│       Symbol("x"),
+//│       ValueLit(false),
+//│       Match(
+//│         ValueRef(Symbol("x")),
 //│         [
-//│           Lit(false),
-//│           Assign(
-//│             Symbol("y"),
-//│             ValueLit(20),
-//│             Return(ValueRef(Symbol("y")), false)
-//│           )
-//│         ]
-//│       ],
-//│       Return(ValueRef(Symbol("y")), false),
-//│       End()
+//│           [
+//│             Lit(false),
+//│             Assign(
+//│               Symbol("y"),
+//│               ValueLit(20),
+//│               Return(ValueRef(Symbol("y")), false)
+//│             )
+//│           ]
+//│         ],
+//│         Return(ValueRef(Symbol("y")), false),
+//│         End()
+//│       )
 //│     )
-//│   ),
-//│   Lit(20)
+//│   )
 //│ ]
 //│ ctxXY = Ctx(
 //│   Map(2) {"ValueRef(Symbol(\"x\"))" => Lit(false), "ValueRef(Symbol(\"y\"))" => }
@@ -427,31 +441,33 @@ prop(defs, ctxXY, Cache.empty, earlyRetBlock)
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [[Lit(true), Match(ValueRef(y), [[Lit(true), Return(ValueLit(1), false)]], Return(ValueLit(2), false), End())]], Return(ValueLit(3), false), Return(ValueLit(4), false)))))
 prop(defs, ctxXY, Cache.empty, nestedBlock)
 //│ = [
-//│   Assign(
-//│     Symbol("x"),
-//│     ValueLit(true),
+//│   Scoped(
+//│     [Symbol("x"), Symbol("y")],
 //│     Assign(
-//│       Symbol("y"),
-//│       ValueLit(false),
-//│       Match(
-//│         ValueRef(Symbol("x")),
-//│         [
+//│       Symbol("x"),
+//│       ValueLit(true),
+//│       Assign(
+//│         Symbol("y"),
+//│         ValueLit(false),
+//│         Match(
+//│           ValueRef(Symbol("x")),
 //│           [
-//│             Lit(true),
-//│             Match(
-//│               ValueRef(Symbol("y")),
-//│               [],
-//│               Return(ValueLit(2), false),
-//│               End()
-//│             )
-//│           ]
-//│         ],
-//│         Return(ValueLit(4), false),
-//│         End()
+//│             [
+//│               Lit(true),
+//│               Match(
+//│                 ValueRef(Symbol("y")),
+//│                 [],
+//│                 Return(ValueLit(2), false),
+//│                 End()
+//│               )
+//│             ]
+//│           ],
+//│           Return(ValueLit(4), false),
+//│           End()
+//│         )
 //│       )
 //│     )
-//│   ),
-//│   Lit(2),Lit(4)
+//│   )
 //│ ]
 //│ nestedBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
@@ -480,3 +496,9 @@ prop(defs, ctxXY, Cache.empty, nestedBlock)
 //│     )
 //│   )
 //│ )
+
+class A(val x)
+
+let a = A(new Map([["haha", 1], ["hehe", 2]]))
+  
+//│ a = A(Map(2) {"haha" => 1, "hehe" => 2})

@@ -245,7 +245,7 @@ fun prop(defs, ctx, cache, b: Block) = if b is
   // TODO: let syntax, presumably for Scoped
   Scoped(symbols, rest) then // just set all shape to bottom?
     symbols.forEach((x, i, arr) => ctx.add(ValueRef(x), mkBot()))
-    prop(defs, ctx, cache, rest)
+    [Scoped(symbols, prop(defs, ctx, cache, rest).0)]
   Assign(x, r, b) and 
     sor(defs, ctx, cache, r) is [r1, s1] then 
       if prop(defs, ctx.update(ValueRef(x), union(ctx.get(ValueRef(x)).value, s1)), cache, b) is [b2, s2] then
