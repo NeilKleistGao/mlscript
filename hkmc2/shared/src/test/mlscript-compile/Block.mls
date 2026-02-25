@@ -93,7 +93,7 @@ fun showLiteral(l: Literal) =
     undefined then "undefined"
     null then "null"
     Str then "\"" + l.toString() + "\""
-    else l
+    else l.toString()
 
 fun showSymbol(s: Symbol) = if s.name is
   "runtime" then "Runtime"
@@ -138,7 +138,7 @@ fun showCase(c) =
     _ then "<unknown case>"
 
 fun showArm(a) =
-  showCase(a.cse) + " then" + indent("\n" + showBlock(a.body))
+  showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
 
 fun showParams(p: ParamList) =
   "(" + p.map(showSymbol(_)).join(", ") + ")"
@@ -149,13 +149,13 @@ fun showParamsOpt(p) =
     None then ""
 
 fun showParamList(ps: Array[ParamList]) =
-  ps.map(showParams)
+  ps.map(showParams).join("")
 
 fun showDefn(d: Defn): Str =
   if d is
     FunDefn(sym, ps, body, _) then
       "fun " + showSymbol(sym) + showParamList(ps) + " =" +
-      (if body is Return(_, _) then " " else "\n  ") + showBlock(body)
+      (if body is Return then " " else "\n  ") + indent(showBlock(body))
     ClsLikeDefn(sym, _) then "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
     _ then "<unknown defn>"
 
@@ -166,7 +166,7 @@ fun showBlock(b) =
     Define(d, rest) then
       showDefn(d) + showRestBlock(rest)
     Return(res, _) then
-      "return:" + showResult(res) // debug, to make diff tests clearer for now
+      showResult(res)
     Match(scrut, arms, dflt, rest) then
       "if " + showPath(scrut) + " is"
       + indent("\n" + arms.map(showArm).join("\n"))
@@ -175,7 +175,7 @@ fun showBlock(b) =
     Scoped(symbols, rest) then
       // initialize symbols
       symbols.map(showSymbol).map("let " + _).join("\n") + showRestBlock(rest)
-    End() then ""
+    End() then "()"
     _ then "<unknown block>" + b
 
 // removes trailing newline
