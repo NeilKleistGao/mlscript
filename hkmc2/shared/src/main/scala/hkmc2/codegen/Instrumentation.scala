@@ -404,6 +404,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
                   Return(block, false)
       (Scoped(Set(argSyms*), rest), defs)
 
+    // TODO: replace modSym with f.owner.get?
     def pathCont(k: Path => Block) = call(modSym.asPath.selSN(genSymName), Ls())(instr => tuple(Ls(toValue(f.sym.nme), instr))(k))
     val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, defs, pathCont)
@@ -451,13 +452,17 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       // TODO: remove this. only for testing
       def debugCont(rest: Block) =
         val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
+        val renderFun = State.runtimeSymbol.asPath.selSN("render")
+        val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
         val tmp = TempSymbol(N, "tmp")
         val debug =
-          call(cachePath.selSN("toString"), Nil, false): str =>
-            call(printFun, Ls(str), false): _ =>
-              // call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
-              call(printFun, Ls(sym.asPath.selSN("defCtx")), false): _ =>
-                rest
+          assign(options): options =>
+            // call(cachePath.selSN("toString"), Nil, false): str =>
+            call(renderFun, Ls(cachePath, options), false): str =>
+              call(printFun, Ls(str), false): _ =>
+                // call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
+                call(printFun, Ls(sym.asPath.selSN("defCtx")), false): _ =>
+                  rest
 
         Scoped(Set(tmp), debug)
 
