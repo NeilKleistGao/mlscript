@@ -1,12 +1,15 @@
-import "./Predef.mls"
-import "./Option.mls"
 import "./Block.mls"
-import "./Shape.mls"
 import "./CachedHash.mls"
+import "./Option.mls"
+import "./Predef.mls"
+import "./Shape.mls"
+import "./StrOps.mls"
 
-open Predef
 open Block {ClassSymbol}
+open Shape {Dyn, Lit, Arr, Class}
+open Predef
 open Option
+open StrOps
 
 type ShapeSet = ShapeSet.ShapeSet
 
@@ -23,7 +26,11 @@ class ShapeSet(val underlying: Map[String, Shape]) extends CachedHash with
 
   fun flatMap(f) = liftMany(values().flatMap(f))
 
-  fun toString() = underlying.keys().toArray().toSorted().toString()
+  fun toString() = "{" ~ underlying.keys().toArray().toSorted().toString() ~ "}"
+
+  fun isDynArr() =
+    if underlying.size == 1 and values().0 is Arr(shapes, _) then shapes.every(s => s is Dyn) else false
+
 
 module ShapeSet with
   fun empty = ShapeSet(new Map)
@@ -44,8 +51,6 @@ fun prod(xs) =
     0 then [[]]
     1 then xs
   else xs.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())))
-
-open Shape { Dyn, Lit, Arr, Class }
 
 // lifted constructors
 
@@ -71,16 +76,16 @@ fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) =
 
 // helper functions
 
-fun filter(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
+fun filterSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
 
-fun rest(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
+fun restSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
 
-fun sel(s1: ShapeSet, s2: ShapeSet) = 
+fun selSet(s1: ShapeSet, s2: ShapeSet) = 
   prod([s1.values(), s2.values()])
     .flatMap(pair => Shape.sel(pair.0, pair.1))
     |> liftMany
   
-fun static(s: ShapeSet) =
+fun staticSet(s: ShapeSet) =
   let v = s.values()
   if v.length ==
     0 then throw Error("Some variables have bottom shape.")
@@ -88,25 +93,6 @@ fun static(s: ShapeSet) =
     else false
 
 open Block
-
-fun concat(b1, b2) = if b1 is
-  Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, concat(rest, b2))
-  Return(res, implct) then b1
-  Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
-  Define(defn, rest) then Define(defn, concat(rest, b2))
-  Scoped(symbols, rest) then Scoped(symbols, concat(rest, b2))
-  Label(labelSymbol, loop, body, rest) then Label(labelSymbol, loop, body, concat(rest, b2))
-  End then b2
-
-// fun concat(b1, b2) = 
-//   if b1 is 
-//     End() then b2
-//     Return(res, implct) then b2
-//     Match(p, arms, dflt, rest) then Match(p, arms, dflt, concat(rest, b2))
-//     Scoped(syms, rest) then Scoped(syms, concat(rest, b2))
-//     Assign(x, r, rest) then Assign(x, r, concat(rest, b2))
-//     Define(d, rest) then Define(d, concat(rest, b2))
-//     _ then throw Error("Unknown block type")
 
 fun valOf(s : ShapeSet) = ???
 
@@ -120,52 +106,74 @@ class Ctx(val maps: Map[String, ShapeSet]) with
     let ps = showPath(path)
     if maps.has(ps) then Some(maps.get(ps))
     else None
-  // fun nest = Ctx(new Map(), Some of this)
   fun clone = Ctx(new Map(maps))
   fun add(path, ss) =
     let ps = showPath(path)
-    maps.set(ps, ss)
-    this
-  fun update(path, ss) =
-    let ps = showPath(path)
-    if maps.has(ps) then do maps.set(ps, ss)
-    // else if parent is Some(ctx) then do ctx.update(path, ss)
+    if maps.has(ps) then
+      maps.set(ps, union(maps.get(ps), ss))
+    else
+      maps.set(ps, ss)
     this
 module Ctx with
   fun empty = Ctx(new Map())
 
-
-class DefCtx(val defs) with
-  fun get(path) =
-    let p = showPath(path)
-    if defs.has(p) then Some(defs.get(p))
+class DefCtx(val defs: Map[String, Function]) with
+  fun get(sym) =
+    if defs.has(sym.name) then Some(defs.get(sym.name))
     else None
-  fun add(path, node) =
-    let p = showPath(path)
-    defs.set(p, node)
+  fun add(sym, genFunc) =
+    defs.set(sym.name, genFunc)
     this
 module DefCtx with
   fun empty = DefCtx(new Map())
 
 
-class Cache(val underlying: Map[String, [Shape, Symbol, FunDefn]]) with
-  fun key(f, args) = 
-    showPath(f) + "(" + args.map(s => s.toString()).join(",") + ")"
-  fun get(f, args) = 
-    let k = key(f, args)
-    if underlying.has(k) then Some(underlying.get(k)) else None
-  fun add(f, args, res) =
-    underlying.set(key(f, args), res)
-    this
+// TODO: improve it
+class Cache(underlying: Map[String, [String, ShapeSet, Block.Block]], names: Map[String, Int]) with
+  fun add(fname, argShape, codefrag, resShape) =
+    let key = fname ~ argShape.hash()
+    let newName =
+      if argShape.isDynArr() then fname
+      else if underlying.has(key) then underlying.get(key).0
+      else freshName(fname) // TODO: hygiene
+    let s = if underlying.has(key) then union(underlying.get(key).1, resShape) else resShape // Why
+    let newDef = if codefrag is
+      FunDefn(sym, params, body, stage) then FunDefn(Symbol(newName), params, body, stage)
+      else codefrag
+    underlying.set(key, [newName, s, newDef])
+    Symbol(newName)
+  fun has(fname, argShape) =
+    let key = fname ~ argShape.hash()
+    underlying.has(key)
+  fun get(fname, argShape) =
+    let key = fname ~ argShape.hash()
+    if underlying.has(key) then underlying.get(key)
+    else ???
+  fun getSimp(fname, argShape) =
+    let key = fname ~ argShape.hash()
+    if underlying.has(key) then
+      let res = underlying.get(key)
+      [res.1, Symbol(res.0)]
+    else ???
+  fun freshName(name) =
+    if not names.has(name) do
+      names.set(name, 0)
+    let i = names.get(name)
+    names.set(name, i + 1)
+    StrOps.concat of name, "_", i.toString()
+  fun getImps() =
+    underlying.values().toArray().map(_.2) // TODO: remove impls with all-dyn params 
+
+// fun emptyCache() = Cache(new Map(), new Map())
 
 module Cache with 
-  fun empty = Cache(new Map())
+  fun empty = Cache(new Map(), new Map())
 
 fun sop(ctx, p: Path): ShapeSet = 
   if ctx.get(p) is Some(s) then s
   else if p is 
-    Select(qual, sym) then sel(sop(ctx, qual), mkLit(sym.name))
-    DynSelect(qual, fld, _) then sel(sop(ctx, qual), sop(ctx, fld))
+    Select(qual, sym) then selSet(sop(ctx, qual), mkLit(sym.name))
+    DynSelect(qual, fld, _) then selSet(sop(ctx, qual), sop(ctx, fld))
     ValueLit(lit) then mkLit(lit)
     ValueRef(l) then mkDyn()
 
@@ -179,9 +187,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
   Call(f, args) then 
     fun lit(l) = [ValueLit(l), mkLit(l)]
     let argShapes = args.map(a => sop(ctx, a.value))
-    let def = if f is 
-      Select(_, _) then defs.get(f)
-      else None
+    let def = if f is Select(_, symb) then defs.get(f) else None
     if def is
       Some(gen) then 
         if gen(...argShapes) is [shape, implSymb] then
@@ -242,34 +248,52 @@ fun prop(defs, ctx, cache, b: Block) = if b is
   End then [b, mkBot()]
   Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s1] then
     [Return(r1, implct), s1]
-  // TODO: let syntax, presumably for Scoped
-  Scoped(symbols, rest) then // just set all shape to bottom?
+  Scoped(symbols, rest) then
     symbols.forEach((x, i, arr) => ctx.add(ValueRef(x), mkBot()))
-    [Scoped(symbols, prop(defs, ctx, cache, rest).0)]
+    let res = prop(defs, ctx, cache, rest)
+    [Scoped(symbols, res.0), res.1]
   Assign(x, r, b) and 
     sor(defs, ctx, cache, r) is [r1, s1] then 
-      if prop(defs, ctx.update(ValueRef(x), union(ctx.get(ValueRef(x)).value, s1)), cache, b) is [b2, s2] then
+      if prop(defs, ctx.add(ValueRef(x), s1), cache, b) is [b2, s2] then
         [Assign(x, r1, b2), s2]
+      else
+        print(prop(defs, ctx.add(ValueRef(x), s1), cache, b))
   Match(p, arms, dflt, restBlock) then
     let s = sop(ctx, p)
     let filteredArms = foldl((r, arm) =>
-      let fs = filter(r.0, arm.0)
+      let fs = filterSet(r.0, arm.0)
       if fs.isEmpty() then r
       else
         let branchCtx = ctx.clone
         if not p is ValueLit do branchCtx.add(p, fs)
         let res = prop(defs, branchCtx, cache, concat(arm.1, restBlock))
-        [rest(r.0, arm.0), union(r.1, res.1), [...r.2, [arm.0, res.0]]]
+        [restSet(r.0, arm.0), union(r.1, res.1), [...r.2, [arm.0, res.0]]]
     )([s, mkBot(), []], ...arms)
-    let newDflt =
-      let branchCtx = ctx.clone
-      if 
-        filteredArms.0.isEmpty() do prop(defs, branchCtx, cache, restBlock)
-        not p is ValueLit do 
-          branchCtx.add(p, filteredArms.0)
-          prop(defs, branchCtx, cache, concat(dflt, restBlock))
-    [Match(p, filteredArms.2, newDflt.0, End()), union(filteredArms.1, newDflt.1)]
-
+    if filteredArms.2.length is
+      0 and 
+        filteredArms.0.isEmpty() then prop(defs, ctx, cache, restBlock)
+        else prop(defs, ctx, cache, concat(if dflt is Some(d) then d else End(), restBlock))
+      1 and
+        filteredArms.0.isEmpty() then 
+          let newRest = prop(defs, ctx, cache, restBlock)
+          [concat(filteredArms.2.0.1, newRest.0), union(filteredArms.1, newRest.1)]
+        dflt is 
+          Some(d) then
+            let branchCtx = ctx.clone
+            if not p is ValueLit then do branchCtx.add(p, filteredArms.0)
+            let newDflt = prop(defs, branchCtx, cache, concat(d, restBlock))
+            [Match(p, filteredArms.2, Some(newDflt.0), End()), union(filteredArms.1, newDflt.1)]
+          else
+            [Match(p, filteredArms.2, None, End()), filteredArms.1]
+      else
+        dflt is 
+          Some(d) then
+            let branchCtx = ctx.clone
+            if not p is ValueLit then do branchCtx.add(p, filteredArms.0)
+            let newDflt = prop(defs, branchCtx, cache, concat(d, restBlock))
+            [Match(p, filteredArms.2, Some(newDflt.0), End()), union(filteredArms.1, newDflt.1)]
+          else
+            [Match(p, filteredArms.2, None, End()), filteredArms.1]
 // TODO: remove it. this can be done in module static blocks
 fun exec(defs, ctx, cache, b: Block) = if b is
   Define(d, rest) and d is

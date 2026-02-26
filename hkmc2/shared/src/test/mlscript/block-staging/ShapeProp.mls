@@ -11,19 +11,19 @@ open Shape { Arr, Class, Dyn, Lit }
 open ShapeSet
 
 mkBot()
-//│ = 
+//│ = {}
 
 mkLit(0)
-//│ = Lit(0)
+//│ = {Lit(0)}
 
 mkDyn()
-//│ = Dyn()
+//│ = {Dyn()}
 
 mkDyn() == mkDyn()
 //│ = false
 
 mkArr([mkLit(0)], false)
-//│ = Arr([Lit(0)], false)
+//│ = {Arr([Lit(0)], false)}
 
 assert(mkBot().isEmpty())
 
@@ -33,78 +33,122 @@ Shape.static(Shape.Lit("Hi"))
 // sel
 
 let arrSp = mkArr([mkLit(0), mkDyn()], false)
-//│ arrSp = Arr([Lit(0), Dyn()], false)
+//│ arrSp = {Arr([Lit(0), Dyn()], false)}
 
-sel(arrSp, mkLit(0))
-//│ = Lit(0)
+selSet(arrSp, mkLit(0))
+//│ = {Lit(0)}
 
-sel(arrSp, mkLit(1))
-//│ = Dyn()
+selSet(arrSp, mkLit(1))
+//│ = {Dyn()}
 
-sel(mkDyn(), mkLit(5))
-//│ = Dyn()
+selSet(mkDyn(), mkLit(5))
+//│ = {Dyn()}
 
 let a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
 let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)], false)])
-sel(x, liftMany([Lit("a"), Lit(2)]))
-//│ = Dyn(),Lit(42),Lit(undefined)
+selSet(x, liftMany([Lit("a"), Lit(2)]))
+//│ = {Dyn(),Lit(42),Lit(undefined)}
 //│ a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
-//│ x = Arr([Lit(100), Lit(false), Lit(undefined)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Dyn()
+//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Dyn()}
 
-sel(lift(Arr([Dyn(), Lit(1), a], false)), mkLit(1))
-//│ = Lit(1)
+selSet(lift(Arr([Dyn(), Lit(1), a], false)), mkLit(1))
+//│ = {Lit(1)}
 
 // union
 
 let x = liftMany([Lit(1), Lit(2)])
 let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
 union(x, y) 
-//│ = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1),Lit(2)
-//│ x = Lit(1),Lit(2)
-//│ y = Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1)
+//│ = {Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1),Lit(2)}
+//│ x = {Lit(1),Lit(2)}
+//│ y = {Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1)}
 
-// filter
+// filterSet
 
-filter(mkDyn(), Block.Lit("a"))
-//│ = Lit("a")
+filterSet(mkDyn(), Block.Lit("a"))
+//│ = {Lit("a")}
 
-filter(mkDyn(), Block.Tup(2, true))
-//│ = Arr([Dyn(), Dyn()], true)
+filterSet(mkDyn(), Block.Tup(2, true))
+//│ = {Arr([Dyn(), Dyn()], true)}
 
 let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
-//│ filterShapes = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)
+//│ filterShapes = {Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false),Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
-filter(filterShapes, Block.Lit(1))
-//│ = Lit(1)
+filterSet(filterShapes, Block.Lit(1))
+//│ = {Lit(1)}
 
-assert(filter(filterShapes, Block.Lit(2)).isEmpty())
+assert(filterSet(filterShapes, Block.Lit(2)).isEmpty())
 
-filter(filterShapes, Block.Cls(Symbol("A"), undefined))
-//│ = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
+filterSet(filterShapes, Block.Cls(Symbol("A"), undefined))
+//│ = {Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])}
 
-filter(filterShapes, Block.Cls(Symbol("Int"), undefined))
-//│ = Lit(1)
+filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
+//│ = {Lit(1)}
 
-filter(filterShapes, Tup(3, false))
-//│ = Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false)
+filterSet(filterShapes, Tup(3, false))
+//│ = {Arr([Dyn()], true),Arr([Lit(1), Lit(2), Lit(3)], false)}
 
-filter(filterShapes, Tup(4, true))
-//│ = Arr([Dyn()], true)
+filterSet(filterShapes, Tup(4, true))
+//│ = {Arr([Dyn()], true)}
 
-assert(filter(filterShapes, Tup(0, false)).isEmpty())
+assert(filterSet(filterShapes, Tup(0, false)).isEmpty())
 
 open Block
 
+// Ctx
+
+let ctx = Ctx.empty
+let x = ValueRef(Symbol("x"))
+//│ ctx = Ctx(Map(0) {})
+//│ x = ValueRef(Symbol("x"))
+
+ctx.add(x, mkLit(1))
+ctx.get(x)
+//│ = Some({Lit(1)})
+
+ctx.add(x, mkLit(2))
+ctx.get(x)
+//│ = Some({Lit(1),Lit(2)})
+
+let y = ValueRef(Symbol("y"))
+ctx.add(y, mkLit("a"))
+ctx.get(y)
+//│ = Some({Lit("a")})
+//│ y = ValueRef(Symbol("y"))
+
+let ctx2 = ctx.clone
+ctx2.add(y, mkLit("b"))
+ctx2.get(y)
+//│ = Some({Lit("a"),Lit("b")})
+//│ ctx2 = Ctx(
+//│   Map(2) {
+//│     "ValueRef(Symbol(\"x\"))" => {Lit(1),Lit(2)},
+//│     "ValueRef(Symbol(\"y\"))" => {Lit("a"),Lit("b")}
+//│   }
+//│ )
+
+ctx.get(y)
+//│ = Some({Lit("a")})
+
+
+// DefCtx
+
+
+// Cache
+
+
+// sop
+
 sop(Ctx.empty, ValueLit(42))
-//│ = Lit(42)
+//│ = {Lit(42)}
 
 sop(Ctx.empty, ValueLit(false))
-//│ = Lit(false)
+//│ = {Lit(false)}
 
 sop(Ctx.empty.add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
-//│ = 
+//│ = {}
 
 
 val x = Symbol("x")
@@ -113,24 +157,23 @@ val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
 let ctx = Ctx.empty
 ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
-//│ = Lit("pass")
+//│ = {Lit("pass")}
 //│ C = ClassSymbol("C", Some(["a"]))
 //│ ctx = Ctx(
 //│   Map(1) {
-//│     "ValueRef(Symbol(\"x\"))" => Class(ClassSymbol("C", Some(["a"])), [Lit("pass")])
+//│     "ValueRef(Symbol(\"x\"))" => {Class(ClassSymbol("C", Some(["a"])), [Lit("pass")])}
 //│   }
 //│ )
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
 //│ x = Symbol("x")
 
-print(showPath(ValueRef(Symbol("x"))))
-//│ > ValueRef(Symbol("x"))
+// sor 
 
 val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 sor(DefCtx.empty, Ctx.empty, Cache.empty, tup)
 //│ = [
 //│   Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))]),
-//│   Arr([Lit(1), Lit(true)], false)
+//│   {Arr([Lit(1), Lit(true)], false)}
 //│ ]
 //│ tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 
@@ -142,7 +185,7 @@ sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
 //│     ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
 //│     [Arg(None, ValueLit(123))]
 //│   ),
-//│   Class(ClassSymbol("C", Some([Symbol("p")])), [Lit(123)])
+//│   {Class(ClassSymbol("C", Some([Symbol("p")])), [Lit(123)])}
 //│ ]
 //│ c = ClassSymbol("C", Some([Symbol("p")]))
 //│ inst = Instantiate(
@@ -154,7 +197,6 @@ fun testBinOp(op, v1, v2) =
   let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
   let c = Call(ValueRef(Symbol(op)), args)
   sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
-
 
 :expect 12
 testBinOp("+", 10, 2)
@@ -189,6 +231,9 @@ testUnaryOp("!", true)
 testUnaryOp("~", 10)  
 //│ ═══[RUNTIME ERROR] Error: Access to required field 'lit' yielded 'undefined'
 
+
+// prop
+
 let x = Symbol("x")
 let y = Symbol("y")
 let z = Symbol("z")
@@ -207,7 +252,8 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│   Scoped(
 //│     [Symbol("x")],
 //│     Assign(Symbol("x"), ValueLit(2), Return(ValueLit(3), false))
-//│   )
+//│   ),
+//│   {Lit(3)}
 //│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
@@ -238,25 +284,9 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│ = [
 //│   Scoped(
 //│     [Symbol("x")],
-//│     Assign(
-//│       Symbol("x"),
-//│       ValueLit(9),
-//│       Match(
-//│         ValueRef(Symbol("x")),
-//│         [
-//│           [
-//│             Cls(
-//│               ClassSymbol("Int", None),
-//│               Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
-//│             ),
-//│             Return(ValueLit(3), false)
-//│           ]
-//│         ],
-//│         End(),
-//│         End()
-//│       )
-//│     )
-//│   )
+//│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3), false))
+//│   ),
+//│   {Lit(3)}
 //│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
@@ -296,15 +326,13 @@ val M = ValueRef(Symbol("M"))
 val fPath = Select(M, fSym)
 val defs = DefCtx.empty.add(fPath, f_gen)
 //│ M = ValueRef(Symbol("M"))
-//│ defs = DefCtx(
-//│   Map(1) {"Select(ValueRef(Symbol(\"M\")), Symbol(\"f\"))" => fun f_gen}
-//│ )
+//│ defs = DefCtx(Map(1) {Symbol("f") => fun f_gen})
 //│ fPath = Select(ValueRef(Symbol("M")), Symbol("f"))
 //│ fSym = Symbol("f")
 
 val callF = Call(fPath, [Arg(None, ValueLit(12))])
 sor(defs, Ctx.empty, Cache.empty, callF)
-//│ = [Call(ValueRef(Symbol("f_int")), [Arg(None, ValueLit(12))]), Lit(24)]
+//│ = [Call(ValueRef(Symbol("f_int")), [Arg(None, ValueLit(12))]), {Lit(24)}]
 //│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(None, ValueLit(12))])
 
 val ctxXY = Ctx.empty
@@ -312,15 +340,15 @@ val ctxXY = Ctx.empty
   .add(ValueRef(y), mkLit(32))
 //│ ctxXY = Ctx(
 //│   Map(2) {
-//│     "ValueRef(Symbol(\"x\"))" => Lit(10),
-//│     "ValueRef(Symbol(\"y\"))" => Lit(32)
+//│     "ValueRef(Symbol(\"x\"))" => {Lit(10)},
+//│     "ValueRef(Symbol(\"y\"))" => {Lit(32)}
 //│   }
 //│ )
 
 // x + y
 val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
 prop(defs, ctxXY, Cache.empty, blockAdd)
-//│ = [Return(ValueLit(42), false), Lit(42)]
+//│ = [Return(ValueLit(42), false), {Lit(42)}]
 //│ blockAdd = Return(
 //│   Call(
 //│     ValueRef(Symbol("+")),
@@ -329,10 +357,6 @@ prop(defs, ctxXY, Cache.empty, blockAdd)
 //│   false
 //│ )
 
-val ctxZ = Ctx.empty
-  .add(ValueRef(z), mkDyn())
-//│ ctxZ = Ctx(Map(1) {"ValueRef(Symbol(\"z\"))" => Dyn()})
-
 // let z; 
 // if 1 is
 //   1 then z = 1
@@ -340,26 +364,13 @@ val ctxZ = Ctx.empty
 //   _ then z = 3 
 // z
 val blockBranch = Scoped([z], Match(ValueLit(1), [[Lit(1), Assign(z, ValueLit(1), End())], [Lit(2), Assign(z, ValueLit(2), End())]], Assign(z, ValueLit(3), End()), Return(ValueRef(z), false)))
-prop(defs, ctxZ, Cache.empty, blockBranch)
+prop(defs, Ctx.empty, Cache.empty, blockBranch)
 //│ = [
 //│   Scoped(
 //│     [Symbol("z")],
-//│     Match(
-//│       ValueLit(1),
-//│       [
-//│         [
-//│           Lit(1),
-//│           Assign(
-//│             Symbol("z"),
-//│             ValueLit(1),
-//│             Return(ValueRef(Symbol("z")), false)
-//│           )
-//│         ]
-//│       ],
-//│       Return(ValueRef(Symbol("z")), false),
-//│       End()
-//│     )
-//│   )
+//│     Assign(Symbol("z"), ValueLit(1), Return(ValueRef(Symbol("z")), false))
+//│   ),
+//│   {Lit(1)}
 //│ ]
 //│ blockBranch = Scoped(
 //│   [Symbol("z")],
@@ -374,44 +385,30 @@ prop(defs, ctxZ, Cache.empty, blockBranch)
 //│   )
 //│ )
 
-val ctxXY = Ctx.empty
-  .add(ValueRef(x), mkDyn())
-  .add(ValueRef(y), mkDyn())
 // let x = true
 // if x 
 //   is true then return 10
 //   is false then
 //     y = 20
 // return y
+
 val earlyRetBlock = Scoped([x, y], Assign(x, ValueLit(false), Match(ValueRef(x), [[Lit(true), Return(ValueLit(10), false)], [Lit(false), Assign(y, ValueLit(20), End())]], End(), Return(ValueRef(y), false))))
-prop(defs, ctxXY, Cache.empty, earlyRetBlock)
+prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
 //│ = [
 //│   Scoped(
 //│     [Symbol("x"), Symbol("y")],
 //│     Assign(
 //│       Symbol("x"),
 //│       ValueLit(false),
-//│       Match(
-//│         ValueRef(Symbol("x")),
-//│         [
-//│           [
-//│             Lit(false),
-//│             Assign(
-//│               Symbol("y"),
-//│               ValueLit(20),
-//│               Return(ValueRef(Symbol("y")), false)
-//│             )
-//│           ]
-//│         ],
-//│         Return(ValueRef(Symbol("y")), false),
-//│         End()
+//│       Assign(
+//│         Symbol("y"),
+//│         ValueLit(20),
+//│         Return(ValueRef(Symbol("y")), false)
 //│       )
 //│     )
-//│   )
+//│   ),
+//│   {Lit(20)}
 //│ ]
-//│ ctxXY = Ctx(
-//│   Map(2) {"ValueRef(Symbol(\"x\"))" => Lit(false), "ValueRef(Symbol(\"y\"))" => }
-//│ )
 //│ earlyRetBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
 //│   Assign(
@@ -439,35 +436,17 @@ prop(defs, ctxXY, Cache.empty, earlyRetBlock)
 //   else return 3
 // return 4
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [[Lit(true), Match(ValueRef(y), [[Lit(true), Return(ValueLit(1), false)]], Return(ValueLit(2), false), End())]], Return(ValueLit(3), false), Return(ValueLit(4), false)))))
-prop(defs, ctxXY, Cache.empty, nestedBlock)
+prop(defs, Ctx.empty, Cache.empty, nestedBlock)
 //│ = [
 //│   Scoped(
 //│     [Symbol("x"), Symbol("y")],
 //│     Assign(
 //│       Symbol("x"),
 //│       ValueLit(true),
-//│       Assign(
-//│         Symbol("y"),
-//│         ValueLit(false),
-//│         Match(
-//│           ValueRef(Symbol("x")),
-//│           [
-//│             [
-//│               Lit(true),
-//│               Match(
-//│                 ValueRef(Symbol("y")),
-//│                 [],
-//│                 Return(ValueLit(2), false),
-//│                 End()
-//│               )
-//│             ]
-//│           ],
-//│           Return(ValueLit(4), false),
-//│           End()
-//│         )
-//│       )
+//│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(4), false))
 //│     )
-//│   )
+//│   ),
+//│   {Lit(4)}
 //│ ]
 //│ nestedBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
@@ -497,8 +476,3 @@ prop(defs, ctxXY, Cache.empty, nestedBlock)
 //│   )
 //│ )
 
-class A(val x)
-
-let a = A(new Map([["haha", 1], ["hehe", 2]]))
-  
-//│ a = A(Map(2) {"haha" => 1, "hehe" => 2})
