@@ -199,6 +199,8 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
     t match
     case _: HandleBlock =>
       errStmt(msg"This code requires effect handler instrumentation but was compiled without it.")
+    case Assign(l, r, rst) if l is State.noSymbol =>
+      doc" # ${result(r)};${returningTerm(rst, endSemi)}"
     case Assign(l, r, rst) =>
       doc" # ${getVar(l, l.toLoc // TODO: improve location
         )} = ${result(r)};${returningTerm(rst, endSemi)}"
