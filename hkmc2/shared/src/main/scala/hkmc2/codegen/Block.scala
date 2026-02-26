@@ -37,10 +37,13 @@ sealed abstract class Block extends Product:
     case Assign(_, _, rst) => rst.isAbortive
     case AssignField(_, _, _, rst) => rst.isAbortive
     case AssignDynField(_, _, _, _, rst) => rst.isAbortive
-    case Match(_, arms, dflt, rst) => rst.isAbortive
+    case Match(_, arms, dflt, rst) => rst.isAbortive || arms.forall(_._2.isAbortive) && dflt.exists(_.isAbortive)
     case Define(_, rst) => rst.isAbortive
     case TryBlock(sub, fin, rst) => rst.isAbortive || sub.isAbortive || fin.isAbortive
-    case Label(_, _, bod, rst) => rst.isAbortive
+    case Label(sym, loop, bod, rst) =>
+      // * Note: the body may be abortive for the reason of breaking to the rest!
+      // * So we can't really use the result of bod.isAbortive even when `loop` is false.
+      rst.isAbortive
     case HandleBlock(_, _, _, _, _, handlers, body, rst) => rst.isAbortive
     case Scoped(_, body) => body.isAbortive
   
