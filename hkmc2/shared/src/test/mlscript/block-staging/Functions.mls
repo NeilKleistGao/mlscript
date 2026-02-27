@@ -42,9 +42,7 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
-//│ > Define(ClsLikeDefn(ClassSymbol("NoArg"), TODO), End)
-//│ > Define(ClsLikeDefn(ClassSymbol("Inside1":[Symbol("a1"), Symbol("b")]), TODO), End)
-//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("Inside1":[Symbol("a1"), Symbol("b")]), TODO), Define(ClsLikeDefn(ClassSymbol("NoArg"), TODO), End)), true)
 //│ > FunDefn(Symbol("inst1"), ([]), Return(Instantiate(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false), true)
 //│ > FunDefn(Symbol("inst2"), ([]), Return(Instantiate(Select(Ref(Symbol("ClassInstrumentation")), ClassSymbol("NoArg")), []), false), true)
 //│ > FunDefn(Symbol("app1"), ([]), Return(Call(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false), true)
@@ -71,7 +69,7 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.72: 	  fun g(x)(y, z)() = z
+//│ ║  l.70: 	  fun g(x)(y, z)() = z
 //│ ╙──      	  ^^^^^^^^^^^^^^^^^^^^
 //│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("f"), ([Symbol("x")]), Assign(Symbol("x"), Lit(1), Return(Ref(Symbol("x")), false)), true)
@@ -94,38 +92,24 @@ staged module OtherBlocks with
 
 staged module ClassDefs with
   class A
-//│ > Define(ClsLikeDefn(ClassSymbol("A"), TODO), End)
-//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("A"), TODO), End), true)
 
 staged module ClassFunctions with
   class A with
     fun f() = 1
-//│ > Define(ClsLikeDefn(ClassSymbol("A"), TODO), End)
-//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("A"), TODO), End), true)
 
-// debug printing fails, collision with class name?
-:fixme
+
+// name collision
 class A()
 staged module A with
   fun f() = 1
-//│ ═══[RUNTIME ERROR] TypeError: A3.ctor$_instr is not a function
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
 
-// debug printing fails, unable to reference the class when calling the instrumented function
-:fixme
+// nested module
 module A with
   staged module B with
     fun f() = 1
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.116: 	  staged module B with
-//│ ║         	                ^^^^^^
-//│ ║  l.117: 	    fun f() = 1
-//│ ╙──       	^^^^^^^^^^^^^^^
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.116: 	  staged module B with
-//│ ║         	                ^^^^^^
-//│ ║  l.117: 	    fun f() = 1
-//│ ╙──       	^^^^^^^^^^^^^^^
 //│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)

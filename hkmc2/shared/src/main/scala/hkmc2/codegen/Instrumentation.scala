@@ -276,12 +276,10 @@ class InstrumentationImpl(using State, Raise):
         blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
     case _ => ??? // not supported
 
-  // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
-  // so we pass modSym instead
-  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, Block) =
+  def transformFunDefn(f: FunDefn): (FunDefn, Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
-    val sym = modSym.asPath.selSN(genSymName)
+    val sym = f.owner.get.asPath.selSN(genSymName)
     // NOTE: this debug printing only works for top-level modules, nested modules don't work
 
     // turn into fundefn
@@ -324,10 +322,10 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val sym = c.sym.subst
       val companion = c.companion.get
       val (stagedMethods, debugPrintCode) = companion.methods
-        .map(impl.transformFunDefn(sym, _))
+        .map(impl.transformFunDefn)
         .unzip
       val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-      val (stagedCtor, ctorPrint) = impl.transformFunDefn(sym, ctor)
+      val (stagedCtor, ctorPrint) = impl.transformFunDefn(ctor)
 
       val unit = State.runtimeSymbol.asPath.selSN("Unit")
       val debugBlock = (ctorPrint :: debugPrintCode).foldRight(Return(unit, true))(concat)
