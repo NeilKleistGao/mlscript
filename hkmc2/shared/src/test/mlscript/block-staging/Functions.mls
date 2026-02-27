@@ -42,7 +42,7 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
-//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("Inside1":[Symbol("a1"), Symbol("b")]), TODO), Define(ClsLikeDefn(ClassSymbol("NoArg"), TODO), End)), true)
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("Inside1":[Symbol("a1"), Symbol("b")]), [], TODO), Define(ClsLikeDefn(ClassSymbol("NoArg"), [], TODO), End)), true)
 //│ > FunDefn(Symbol("inst1"), ([]), Return(Instantiate(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false), true)
 //│ > FunDefn(Symbol("inst2"), ([]), Return(Instantiate(Select(Ref(Symbol("ClassInstrumentation")), ClassSymbol("NoArg")), []), false), true)
 //│ > FunDefn(Symbol("app1"), ([]), Return(Call(Ref(ClassSymbol("Outside":[Symbol("a")])), [Lit(1)]), false), true)
@@ -71,6 +71,31 @@ staged module Arguments with
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
 //│ ║  l.70: 	  fun g(x)(y, z)() = z
 //│ ╙──      	  ^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: lookup_! (Scope.scala:114)
+//│ FAILURE INFO: Tuple2:
+//│   _1 = Tuple2:
+//│     _1 = x
+//│     _2 = class hkmc2.semantics.VarSymbol
+//│   _2 = Scope:
+//│     parent = S of Scope:
+//│       parent = S of Scope:
+//│         parent = S of Scope:
+//│           parent = N
+//│           curThis = S of S of globalThis:globalThis
+//│           bindings = HashMap($block$res -> block$res3, class:Nonstaged -> Nonstaged, class:Staged -> Staged, $runtime -> runtime, $definitionMetadata -> definitionMetadata, $block$res -> block$res2, $prettyPrint -> prettyPrint, class:ClassInstrumentation -> ClassInstrumentation, $Term -> Term, $Block -> Block, $option -> option, member:Predef -> Predef, $block$res -> block$res1, $tmp -> tmp, class:Expressions -> Expressions, member:CallSubst -> CallSubst1, module:CallSubst -> CallSubst, member:Arguments -> Arguments1, module:Arguments -> Arguments, member:ClassInstrumentation -> ClassInstrumentation1, member:Outside -> Outside1, class:Outside -> Outside, $block$res -> block$res4, class:CallSubst -> CallSubst, $block$res -> block$res, module:ClassInstrumentation -> ClassInstrumentation, class:Inside -> Inside, $block$res -> block$res5, class:Arguments -> Arguments, member:x -> x, member:Expressions -> Expressions1, member:Staged -> Staged1, class:NoArg -> NoArg, member:Nonstaged -> Nonstaged1, module:Nonstaged -> Nonstaged, module:Expressions -> Expressions, module:Staged -> Staged)
+//│         curThis = S of S of module:Arguments
+//│         bindings = HashMap()
+//│       curThis = N
+//│       bindings = HashMap($args -> args)
+//│     curThis = N
+//│     bindings = HashMap($lit -> lit, $sym -> sym, $tmp -> tmp1, $return -> return1, $assign -> assign, $tmp -> tmp2, $tmp -> tmp3, $tmp -> tmp4, $tmp -> tmp5, $tmp -> tmp6)
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
+//│ ║  l.67: 	  fun f(x) =
+//│ ║        	        ^
+//│ ╟── which references the symbol introduced here
+//│ ║  l.67: 	  fun f(x) =
+//│ ╙──      	        ^
 //│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("f"), ([Symbol("x")]), Assign(Symbol("x"), Lit(1), Return(Ref(Symbol("x")), false)), true)
 //│ > FunDefn(Symbol("g"), ([Symbol("x")],[Symbol("y"), Symbol("z")],[]), Return(Ref(Symbol("z")), false), true)
@@ -92,13 +117,12 @@ staged module OtherBlocks with
 
 staged module ClassDefs with
   class A
-//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("A"), TODO), End), true)
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("A"), [], TODO), End), true)
 
 staged module ClassFunctions with
   class A with
     fun f() = 1
-//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("A"), TODO), End), true)
-
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("A"), [FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)], TODO), End), true)
 
 // name collision
 class A()

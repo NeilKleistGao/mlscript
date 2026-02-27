@@ -245,11 +245,12 @@ class InstrumentationImpl(using State, Raise):
       assert(cls.companion.isEmpty, "nested module not supported")
       transformBlock(rest): p =>
         transformSymbol(cls.isym): c =>
-          optionNone(): none => // TODO: handle companion object
-            blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
-              blockCtor("Define", Ls(cls, p)): p =>
-                ruleEnd(): end =>
-                  fnPrintCode(p)(k(end, ctx))
+          // staging the methods within the module
+          cls.methods.map(transformFunDefn2).collectApply: methods =>
+            tuple(methods): methods =>
+              optionNone(): none => // TODO: handle companion object
+                blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
+                  blockCtor("Define", Ls(cls, p))(k(_, ctx))
     case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>
@@ -276,6 +277,19 @@ class InstrumentationImpl(using State, Raise):
         blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
     case _ => ??? // not supported
 
+  def transformFunDefn2(f: FunDefn)(using Context)(k: Path => Block): Block =
+    transformBlock(f.body): body =>
+      if f.params.length != 1 then
+        raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
+      // maintain parameter names in instrumented code
+      f.params.map(
+        _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
+      ).collectApply: paramListSyms =>
+        blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
+          paramListSyms.map(tuple(_)).collectApply: tups =>
+            tuple(tups): tup =>
+              blockCtor("FunDefn", Ls(sym, tup, body, toValue(true)))(k)
+
   def transformFunDefn(f: FunDefn): (FunDefn, Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
@@ -285,20 +299,7 @@ class InstrumentationImpl(using State, Raise):
     // turn into fundefn
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_instr"))
     val argSyms = f.params.flatMap(_.params).map(_.sym)
-    val newBody =
-      val rest = transformBlock(f.body)(using new HashMap): body =>
-        if f.params.length != 1 then
-          raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
-        // maintain parameter names in instrumented code
-        f.params.map(
-          _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
-        ).collectApply: paramListSyms =>
-          blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
-            paramListSyms.map(tuple(_)).collectApply: tups =>
-              tuple(tups): tup =>
-                blockCtor("FunDefn", Ls(sym, tup, body, toValue(true))): block =>
-                  Return(block, false)
-      Scoped(Set(argSyms*), rest)
+    val newBody = Scoped(Set(argSyms*), transformFunDefn2(f)(using new HashMap)(Return(_, false)))
 
     // TODO: remove it. only for test
     val debug = call(sym, Nil)(fnPrintCode(_)(End()))
@@ -331,8 +332,18 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val debugBlock = (ctorPrint :: debugPrintCode).foldRight(Return(unit, true))(concat)
       def debugCont(rest: Block) =
         Begin(debugBlock, rest)
-      // stage the constructor
-      val newCompanion = companion.copy(methods = stagedCtor :: companion.methods ++ stagedMethods, ctor = companion.ctor.mapTail(debugCont))
+      // add generator functions for classes within the constructor
+      val genCls = new BlockTransformer(new SymbolSubst()):
+        override def applyBlock(b: Block): Block = super.applyBlock(b) match
+        case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
+          val (stagedMethods, debugPrintCode) = c.methods
+            .map(impl.transformFunDefn)
+            .unzip
+          val newModule = c.copy(methods = c.methods ++ stagedMethods)
+          Define(newModule, rest)
+        case b => b
+      val newCtor = genCls.applyBlock(companion.ctor)
+      val newCompanion = companion.copy(methods = stagedCtor :: companion.methods ++ stagedMethods, ctor = newCtor.mapTail(debugCont))
       val newModule = c.copy(sym = sym, companion = S(newCompanion))
       Define(newModule, rest)
     case b => b

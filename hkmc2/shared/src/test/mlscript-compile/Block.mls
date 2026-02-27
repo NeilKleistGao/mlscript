@@ -45,7 +45,7 @@ class Path extends Result with
 class Defn with 
   constructor 
     ValDefn(val sym: Symbol, val rhs: Path)
-    ClsLikeDefn(val sym: ClassSymbol, val companion: Opt[ClsLikeBody]) // companion unused
+    ClsLikeDefn(val sym: ClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
     FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block, val stage: Bool)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
@@ -141,9 +141,9 @@ fun showDefn(d: Defn): Str =
       "(" + params.map(showParamList) + "), " +
       showBlock(body) + ", "
       + stage + ")"
-    ClsLikeDefn(sym, companion) then
+    ClsLikeDefn(sym, methods, companion) then
       // TODO: print rest of the arguments
-      "ClsLikeDefn(" + showSymbol(sym) + ", " + "TODO" + ")"
+      "ClsLikeDefn(" + showSymbol(sym) + ", [" + methods.map(showDefn) + "], TODO" + ")"
 
 fun showOptBlock(ob: Opt[Block]) =
   if ob is Some(b) then showBlock(b) else "None"
