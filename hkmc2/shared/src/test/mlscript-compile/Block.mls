@@ -156,7 +156,9 @@ fun showDefn(d: Defn): Str =
     FunDefn(sym, ps, body, _) then
       "fun " + showSymbol(sym) + showParamList(ps) + " =" +
       (if body is Return then " " else "\n  ") + indent(showBlock(body))
-    ClsLikeDefn(sym, _) then "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
+    ClsLikeDefn(sym, methods, _) then
+      "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
+        + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
     _ then "<unknown defn>"
 
 fun showBlock(b) =

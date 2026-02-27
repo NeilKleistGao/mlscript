@@ -95,10 +95,9 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
-//│ > class NoArg
-//│ > class Inside1(a1, b)
 //│ > fun ctor_() =
-//│ >   ()
+//│ >   class Inside1(a1, b)
+//│ >   class NoArg
 //│ > fun inst1() = new Outside(1)
 //│ > fun inst2() = new ClassInstrumentation.NoArg()
 //│ > fun app1() = Outside(1)
@@ -132,7 +131,7 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.133: 	  fun g(x)(y, z)() = z
+//│ ║  l.132: 	  fun g(x)(y, z)() = z
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -172,17 +171,15 @@ staged module OtherBlocks with
 
 staged module ClassDefs with
   class A
-//│ > class A
 //│ > fun ctor_() =
-//│ >   ()
+//│ >   class A
 
 staged module ClassFunctions with
   class A with
     fun f() = 1
     fun g() = 1
-//│ > class A
 //│ > fun ctor_() =
-//│ >   ()
+//│ >   class A
 
 :todo
 staged module ValClass with
@@ -193,80 +190,14 @@ staged module ValClass with
 class A()
 staged module A with
   fun f() = 1
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:161)
-//│ ═══[RUNTIME ERROR] TypeError: A3.ctor$_instr is not a function
-//│     at <static_initializer> (REPL37:1:265)
-//│     at REPL37:1:1555
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:600:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:935:10)
-//│     at REPLServer.emit (node:events:508:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:465:12)
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = 1
 
 // nested module
 module A with
   staged module B with
     fun f() = 1
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:114)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = member:B
-//│     _2 = class hkmc2.semantics.BlockMemberSymbol
-//│   _2 = Scope:
-//│     parent = S of Scope:
-//│       parent = S of Scope:
-//│         parent = S of Scope:
-//│           parent = S of Scope:
-//│             parent = N
-//│             curThis = S of S of globalThis:globalThis
-//│             bindings = HashMap($block$res -> block$res3, $block$res -> block$res10, class:Nonstaged -> Nonstaged, class:A -> A4, $block$res -> block$res2, class:Staged -> Staged, class:B -> B, class:ClassInstrumentation -> ClassInstrumentation, member:ClassDefs -> ClassDefs1, module:ClassDefs -> ClassDefs, $runtime -> runtime, $definitionMetadata -> definitionMetadata, class:A -> A, $prettyPrint -> prettyPrint, $Term -> Term, $Block -> Block, $block$res -> block$res7, $option -> option, member:Predef -> Predef, class:ClassDefs -> ClassDefs, member:CallSubst -> CallSubst1, module:CallSubst -> CallSubst, member:OtherBlocks -> OtherBlocks1, module:OtherBlocks -> OtherBlocks, member:ClassFunctions -> ClassFunctions1, module:ClassFunctions -> ClassFunctions, $block$res -> block$res4, class:A -> A1, class:CallSubst -> CallSubst, $block$res -> block$res6, class:OtherBlocks -> OtherBlocks, $block$res -> block$res, $block$res -> block$res8, class:ClassFunctions -> ClassFunctions, member:Expressions -> Expressions1, x -> x, module:Expressions -> Expressions, $block$res -> block$res1, class:Expressions -> Expressions, member:A -> A3, class:A -> A2, module:A -> A2, $block$res -> block$res9, member:ClassInstrumentation -> ClassInstrumentation1, member:Arguments -> Arguments1, member:Outside -> Outside1, module:Arguments -> Arguments, class:Outside -> Outside, module:ClassInstrumentation -> ClassInstrumentation, class:Inside -> Inside, $block$res -> block$res5, class:Arguments -> Arguments, class:NoArg -> NoArg, member:Staged -> Staged1, member:Nonstaged -> Nonstaged1, module:Nonstaged -> Nonstaged, member:A -> A5, module:A -> A4, module:Staged -> Staged, module:B -> B)
-//│           curThis = S of S of module:A
-//│           bindings = HashMap()
-//│         curThis = N
-//│         bindings = HashMap()
-//│       curThis = S of S of module:B
-//│       bindings = HashMap()
-//│     curThis = N
-//│     bindings = HashMap($tmp -> tmp2, $tmp -> tmp3, $tmp -> tmp, $tmp -> tmp1)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.212: 	  staged module B with
-//│ ║         	                ^^^^^^
-//│ ║  l.213: 	    fun f() = 1
-//│ ╙──       	^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:114)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = member:B
-//│     _2 = class hkmc2.semantics.BlockMemberSymbol
-//│   _2 = Scope:
-//│     parent = S of Scope:
-//│       parent = S of Scope:
-//│         parent = S of Scope:
-//│           parent = S of Scope:
-//│             parent = N
-//│             curThis = S of S of globalThis:globalThis
-//│             bindings = HashMap($block$res -> block$res3, $block$res -> block$res10, class:Nonstaged -> Nonstaged, class:A -> A4, $block$res -> block$res2, class:Staged -> Staged, class:B -> B, class:ClassInstrumentation -> ClassInstrumentation, member:ClassDefs -> ClassDefs1, module:ClassDefs -> ClassDefs, $runtime -> runtime, $definitionMetadata -> definitionMetadata, class:A -> A, $prettyPrint -> prettyPrint, $Term -> Term, $Block -> Block, $block$res -> block$res7, $option -> option, member:Predef -> Predef, class:ClassDefs -> ClassDefs, member:CallSubst -> CallSubst1, module:CallSubst -> CallSubst, member:OtherBlocks -> OtherBlocks1, module:OtherBlocks -> OtherBlocks, member:ClassFunctions -> ClassFunctions1, module:ClassFunctions -> ClassFunctions, $block$res -> block$res4, class:A -> A1, class:CallSubst -> CallSubst, $block$res -> block$res6, class:OtherBlocks -> OtherBlocks, $block$res -> block$res, $block$res -> block$res8, class:ClassFunctions -> ClassFunctions, member:Expressions -> Expressions1, x -> x, module:Expressions -> Expressions, $block$res -> block$res1, class:Expressions -> Expressions, member:A -> A3, class:A -> A2, module:A -> A2, $block$res -> block$res9, member:ClassInstrumentation -> ClassInstrumentation1, member:Arguments -> Arguments1, member:Outside -> Outside1, module:Arguments -> Arguments, class:Outside -> Outside, module:ClassInstrumentation -> ClassInstrumentation, class:Inside -> Inside, $block$res -> block$res5, class:Arguments -> Arguments, class:NoArg -> NoArg, member:Staged -> Staged1, member:Nonstaged -> Nonstaged1, module:Nonstaged -> Nonstaged, member:A -> A5, module:A -> A4, module:Staged -> Staged, module:B -> B)
-//│           curThis = S of S of module:A
-//│           bindings = HashMap()
-//│         curThis = N
-//│         bindings = HashMap()
-//│       curThis = S of S of module:B
-//│       bindings = HashMap()
-//│     curThis = N
-//│     bindings = HashMap($tmp -> tmp2, $tmp -> tmp3, $tmp -> tmp, $tmp -> tmp1)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.212: 	  staged module B with
-//│ ║         	                ^^^^^^
-//│ ║  l.213: 	    fun f() = 1
-//│ ╙──       	^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
