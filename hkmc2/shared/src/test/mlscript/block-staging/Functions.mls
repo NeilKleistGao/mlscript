@@ -24,7 +24,67 @@ staged module Expressions with
       [1, 2] then 2
       [a, ...] then 3
       else 0
-//│ > FunCache(Map(8) {"ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true), "lit" => FunDefn(Symbol("lit"), [[]], Return(ValueLit(1), false), true), "assign" => FunDefn(Symbol("assign"), [[]], Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(42), Assign(Symbol("y"), ValueRef(Symbol("x")), Return(ValueRef(Symbol("y")), false)))), true), "tup1" => FunDefn(Symbol("tup1"), [[]], Return(Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]), false), true), "tup2" => FunDefn(Symbol("tup2"), [[]], Return(Tuple([Arg(None, ValueLit(1)), Arg(Some(false), ValueRef(Symbol("x1")))]), false), true), "dynsel" => FunDefn(Symbol("dynsel"), [[]], Scoped([Symbol("tmp")], Assign(Symbol("tmp"), Tuple([Arg(None, ValueLit(1))]), Return(DynSelect(ValueRef(Symbol("tmp")), ValueLit(0), false), false))), true), "match1" => FunDefn(Symbol("match1"), [[]], Scoped([Symbol("scrut")], Assign(Symbol("scrut"), ValueLit(9), Match(ValueRef(Symbol("scrut")), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End()))), true), "match2" => FunDefn(Symbol("match2"), [[]], Scoped([Symbol("middleElements"), Symbol("element0$"), Symbol("element1$"), Symbol("scrut1"), Symbol("a"), Symbol("tmp1")], Assign(Symbol("scrut1"), Tuple([Arg(Some(true), ValueRef(Symbol("x1")))]), Match(ValueRef(Symbol("scrut1")), [Arm(Tup(0, false), Assign(Symbol("tmp1"), ValueLit(1), End())), Arm(Tup(2, false), Assign(Symbol("element0$"), Call(Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")), [Arg(None, ValueRef(Symbol("scrut1"))), Arg(None, ValueLit(0))]), Assign(Symbol("element1$"), Call(Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")), [Arg(None, ValueRef(Symbol("scrut1"))), Arg(None, ValueLit(1))]), Match(ValueRef(Symbol("element0$")), [Arm(Lit(1), Match(ValueRef(Symbol("element1$")), [Arm(Lit(2), Assign(Symbol("tmp1"), ValueLit(2), End()))], Some(Match(ValueRef(Symbol("scrut1")), [Arm(Tup(1, true), Assign(Symbol("middleElements"), Call(Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")), [Arg(None, ValueRef(Symbol("scrut1"))), Arg(None, ValueLit(1)), Arg(None, ValueLit(0))]), Assign(Symbol("a"), ValueRef(Symbol("element0$")), Assign(Symbol("tmp1"), ValueLit(3), End()))))], Some(Assign(Symbol("tmp1"), ValueLit(0), End())), End())), End()))], Some(Match(ValueRef(Symbol("scrut1")), [Arm(Tup(1, true), Assign(Symbol("middleElements"), Call(Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")), [Arg(None, ValueRef(Symbol("scrut1"))), Arg(None, ValueLit(1)), Arg(None, ValueLit(0))]), Assign(Symbol("a"), ValueRef(Symbol("element0$")), Assign(Symbol("tmp1"), ValueLit(3), End()))))], Some(Assign(Symbol("tmp1"), ValueLit(0), End())), End())), End())))), Arm(Tup(1, true), Assign(Symbol("element0$"), Call(Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")), [Arg(None, ValueRef(Symbol("scrut1"))), Arg(None, ValueLit(0))]), Assign(Symbol("middleElements"), Call(Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")), [Arg(None, ValueRef(Symbol("scrut1"))), Arg(None, ValueLit(1)), Arg(None, ValueLit(0))]), Assign(Symbol("a"), ValueRef(Symbol("element0$")), Assign(Symbol("tmp1"), ValueLit(3), End())))))], Some(Assign(Symbol("tmp1"), ValueLit(0), End())), Return(ValueRef(Symbol("tmp1")), false)))), true)})
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun lit() = 1 \
+//│ >   fun assign() = \
+//│ >     let x \
+//│ >     let y \
+//│ >     x = 42 \
+//│ >     y = x \
+//│ >     y \
+//│ >   fun tup1() = [1, 2] \
+//│ >   fun tup2() = [1, ..x1] \
+//│ >   fun dynsel() = \
+//│ >     let tmp \
+//│ >     tmp = [1] \
+//│ >     tmp.(0) \
+//│ >   fun match1() = \
+//│ >     let scrut \
+//│ >     scrut = 9 \
+//│ >     if scrut is \
+//│ >       Bool then 1 \
+//│ >       8 then 2 \
+//│ >       Int then 3 \
+//│ >       else 0 \
+//│ >   fun match2() = \
+//│ >     let middleElements \
+//│ >     let element0_ \
+//│ >     let element1_ \
+//│ >     let scrut1 \
+//│ >     let a \
+//│ >     let tmp1 \
+//│ >     scrut1 = [...x1] \
+//│ >     if scrut1 is \
+//│ >       [] then \
+//│ >         tmp1 = 1 \
+//│ >       [_, _] then \
+//│ >         element0_ = Runtime.Tuple.get(scrut1, 0) \
+//│ >         element1_ = Runtime.Tuple.get(scrut1, 1) \
+//│ >         if element0_ is \
+//│ >           1 then \
+//│ >             if element1_ is \
+//│ >               2 then \
+//│ >                 tmp1 = 2 \
+//│ >               else if scrut1 is \
+//│ >                 [_, ...] then \
+//│ >                   middleElements = Runtime.Tuple.slice(scrut1, 1, 0) \
+//│ >                   a = element0_ \
+//│ >                   tmp1 = 3 \
+//│ >                 else tmp1 = 0 \
+//│ >           else if scrut1 is \
+//│ >             [_, ...] then \
+//│ >               middleElements = Runtime.Tuple.slice(scrut1, 1, 0) \
+//│ >               a = element0_ \
+//│ >               tmp1 = 3 \
+//│ >             else tmp1 = 0 \
+//│ >       [_, ...] then \
+//│ >         element0_ = Runtime.Tuple.get(scrut1, 0) \
+//│ >         middleElements = Runtime.Tuple.slice(scrut1, 1, 0) \
+//│ >         a = element0_ \
+//│ >         tmp1 = 3 \
+//│ >       else tmp1 = 0 \
+//│ >     tmp1
 //│ > Map(2) {
 //│ >   'Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get"))' => [ [Function: get], false ],
 //│ >   'Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice"))' => [ [Function: slice], false ]
@@ -43,7 +103,12 @@ staged module ClassInstrumentation with
 //│ > class Inside1(a1, b)
 //│ > class NoArg
 //│ > class Inside1(a1, b)
-//│ > FunCache(Map(5) {"ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true), "inst1" => FunDefn(Symbol("inst1"), [[]], Return(Instantiate(ValueRef(ClassSymbol("Outside", Some([Symbol("a")]))), [Arg(None, ValueLit(1))]), false), true), "inst2" => FunDefn(Symbol("inst2"), [[]], Return(Instantiate(Select(ValueRef(Symbol("ClassInstrumentation")), ClassSymbol("NoArg", None)), []), false), true), "app1" => FunDefn(Symbol("app1"), [[]], Return(Call(ValueRef(ClassSymbol("Outside", Some([Symbol("a")]))), [Arg(None, ValueLit(1))]), false), true), "app2" => FunDefn(Symbol("app2"), [[]], Return(Call(Select(ValueRef(Symbol("ClassInstrumentation")), ClassSymbol("Inside1", Some([Symbol("a1"), Symbol("b")]))), [Arg(None, ValueLit(1)), Arg(None, ValueLit(2))]), false), true)})
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun inst1() = new Outside(1) \
+//│ >   fun inst2() = new ClassInstrumentation.NoArg() \
+//│ >   fun app1() = Outside(1) \
+//│ >   fun app2() = ClassInstrumentation.Inside1(1, 2)
 //│ > Map(2) {
 //│ >   'Select(ValueRef(Symbol("ClassInstrumentation")), ClassSymbol("Inside1", Some([Symbol("a1"), Symbol("b")])))' => [ undefined, false ],
 //│ >   'ValueRef(ClassSymbol("Outside", Some([Symbol("a")])))' => [ [Function: Outside] { class: [Function] }, false ]
@@ -57,9 +122,16 @@ staged module CallSubst with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ > FunCache(Map(2) {"ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true), "f" => FunDefn(Symbol("f"), [[]], Return(ValueLit(1), false), true)})
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun f() = 1
 //│ > Map(0) {}
-//│ > FunCache(Map(2) {"ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true), "call" => FunDefn(Symbol("call"), [[]], Scoped([Symbol("tmp")], Assign(Symbol("tmp"), Call(Select(ValueRef(Symbol("Nonstaged")), Symbol("f")), []), Return(Call(Select(ValueRef(Symbol("Staged")), Symbol("f1")), []), false))), true)})
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun call() = \
+//│ >     let tmp \
+//│ >     tmp = Nonstaged.f() \
+//│ >     Staged.f1()
 //│ > Map(2) {
 //│ >   'Select(ValueRef(Symbol("Staged")), Symbol("f1"))' => [ [Function: f_gen], true ],
 //│ >   'Select(ValueRef(Symbol("Nonstaged")), Symbol("f"))' => [ [Function: f], false ]
@@ -73,9 +145,14 @@ staged module Arguments with
 //│ FAILURE: Unexpected warning
 //│ FAILURE LOCATION: transformFunDefn (Instrumentation.scala:395)
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.72: 	  fun g(x)(y, z)() = z
-//│ ╙──      	  ^^^^^^^^^^^^^^^^^^^^
-//│ > FunCache(Map(3) {"ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true), "f" => FunDefn(Symbol("f"), [[Symbol("x")]], Assign(Symbol("x"), ValueLit(1), Return(ValueRef(Symbol("x")), false)), true), "g" => FunDefn(Symbol("g"), [[Symbol("x")], [Symbol("y"), Symbol("z")], []], Return(ValueRef(Symbol("z")), false), true)})
+//│ ║  l.144: 	  fun g(x)(y, z)() = z
+//│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun f(x) = \
+//│ >     x = 1 \
+//│ >     x \
+//│ >   fun g(x)(y, z)() = z
 //│ > Map(0) {}
 
 staged module OtherBlocks with
@@ -89,7 +166,23 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > FunCache(Map(3) {"ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true), "scope" => FunDefn(Symbol("scope"), [[]], Scoped([Symbol("a")], Assign(Symbol("a"), ValueLit(1), Return(Call(Select(Select(ValueRef(Symbol("OtherBlocks")), Symbol("scope")), Symbol("locally")), [Arg(None, ValueRef(Symbol("a")))]), false))), true), "breakAndLabel" => FunDefn(Symbol("breakAndLabel"), [[]], Scoped([Symbol("tmp"), Symbol("scrut")], Assign(Symbol("scrut"), ValueLit(1), Match(ValueRef(Symbol("scrut")), [Arm(Lit(2), Assign(Symbol("tmp"), ValueLit(0), End())), Arm(Lit(3), Assign(Symbol("tmp"), ValueLit(0), End()))], Some(Assign(Symbol("tmp"), ValueLit(0), End())), Return(ValueRef(Symbol("tmp")), false)))), true)})
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun scope() = \
+//│ >     let a \
+//│ >     a = 1 \
+//│ >     OtherBlocks.scope.locally(a) \
+//│ >   fun breakAndLabel() = \
+//│ >     let tmp \
+//│ >     let scrut \
+//│ >     scrut = 1 \
+//│ >     if scrut is \
+//│ >       2 then \
+//│ >         tmp = 0 \
+//│ >       3 then \
+//│ >         tmp = 0 \
+//│ >       else tmp = 0 \
+//│ >     tmp
 //│ > Map(1) {
 //│ >   'Select(Select(ValueRef(Symbol("OtherBlocks")), Symbol("scope")), Symbol("locally"))' => [ undefined, false ]
 //│ > }
@@ -108,39 +201,41 @@ module A with
     fun f() = 1
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.107: 	  staged module B with
+//│ ║  l.200: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.108: 	    fun f() = 1
+//│ ║  l.201: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.107: 	  staged module B with
+//│ ║  l.200: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.108: 	    fun f() = 1
+//│ ║  l.201: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.107: 	  staged module B with
+//│ ║  l.200: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.108: 	    fun f() = 1
+//│ ║  l.201: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.107: 	  staged module B with
+//│ ║  l.200: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.108: 	    fun f() = 1
+//│ ║  l.201: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.107: 	  staged module B with
+//│ ║  l.200: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.108: 	    fun f() = 1
+//│ ║  l.201: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'B'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.107: 	  staged module B with
+//│ ║  l.200: 	  staged module B with
 //│ ║         	                ^^^^^^
-//│ ║  l.108: 	    fun f() = 1
+//│ ║  l.201: 	    fun f() = 1
 //│ ╙──       	^^^^^^^^^^^^^^^
-//│ > FunCache(Map(2) {"ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true), "f" => FunDefn(Symbol("f"), [[]], Return(ValueLit(1), false), true)})
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun f() = 1
 //│ > Map(0) {}

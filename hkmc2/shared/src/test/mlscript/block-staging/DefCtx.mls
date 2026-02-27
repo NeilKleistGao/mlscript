@@ -4,18 +4,10 @@
 staged module A with
   fun f() = 1
   fun g(x) = x
-//│ > FunCache(
-//│ >   Map(3) {
-//│ >     "ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true),
-//│ >     "f" => FunDefn(Symbol("f"), [[]], Return(ValueLit(1), false), true),
-//│ >     "g" => FunDefn(
-//│ >       Symbol("g"),
-//│ >       [[Symbol("x")]],
-//│ >       Return(ValueRef(Symbol("x")), false),
-//│ >       true
-//│ >     )
-//│ >   }
-//│ > )
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun f() = 1 \
+//│ >   fun g(x) = x
 //│ > Map(0) {}
 
 module C with
@@ -28,44 +20,15 @@ staged module B with
   fun b() = C.h()
   fun c() = i()
   fun d() = A.g(1)
-//│ > FunCache(
-//│ >   Map(5) {
-//│ >     "ctor$" => FunDefn(Symbol("ctor$"), [[]], End(), true),
-//│ >     "a" => FunDefn(
-//│ >       Symbol("a"),
-//│ >       [[]],
-//│ >       Return(Call(Select(ValueRef(Symbol("A")), Symbol("f")), []), false),
-//│ >       true
-//│ >     ),
-//│ >     "b" => FunDefn(
-//│ >       Symbol("b"),
-//│ >       [[]],
-//│ >       Return(Call(Select(ValueRef(Symbol("C")), Symbol("h")), []), false),
-//│ >       true
-//│ >     ),
-//│ >     "c" => FunDefn(
-//│ >       Symbol("c"),
-//│ >       [[]],
-//│ >       Return(Call(ValueRef(Symbol("i")), []), false),
-//│ >       true
-//│ >     ),
-//│ >     "d" => FunDefn(
-//│ >       Symbol("d"),
-//│ >       [[]],
-//│ >       Return(
-//│ >         Call(
-//│ >           Select(ValueRef(Symbol("A")), Symbol("g")),
-//│ >           [Arg(None, ValueLit(1))]
-//│ >         ),
-//│ >         false
-//│ >       ),
-//│ >       true
-//│ >     )
-//│ >   }
-//│ > )
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun a() = A.f() \
+//│ >   fun b() = C.h() \
+//│ >   fun c() = i() \
+//│ >   fun d() = A.g(1)
 //│ > Map(4) {
+//│ >   'ValueRef(Symbol("i"))' => [ [Function: i], false ],
 //│ >   'Select(ValueRef(Symbol("C")), Symbol("h"))' => [ [Function: h], false ],
 //│ >   'Select(ValueRef(Symbol("A")), Symbol("f"))' => [ [Function: f_gen], true ],
-//│ >   'ValueRef(Symbol("i"))' => [ [Function: i], false ],
 //│ >   'Select(ValueRef(Symbol("A")), Symbol("g"))' => [ [Function: g_gen], true ]
 //│ > }

@@ -454,17 +454,14 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
         val renderFun = State.runtimeSymbol.asPath.selSN("render")
         val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
-        val tmp = TempSymbol(N, "tmp")
-        val debug =
-          assign(options): options =>
-            // call(cachePath.selSN("toString"), Nil, false): str =>
-            call(renderFun, Ls(cachePath, options), false): str =>
-              call(printFun, Ls(str), false): _ =>
-                // call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
-                call(printFun, Ls(sym.asPath.selSN("defCtx")), false): _ =>
-                  rest
 
-        Scoped(Set(tmp), debug)
+        assign(options): options =>
+          // call(cachePath.selSN("toString"), Nil, false): str =>
+          call(renderFun, Ls(cachePath, options), false): str =>
+            call(printFun, Ls(str), false): _ =>
+              // call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
+              call(printFun, Ls(sym.asPath.selSN("defCtx")), false): _ =>
+                rest
 
       val (newCtor, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
       val allDefs = defsList.fold(defs)((l, r) => l ++ r)
