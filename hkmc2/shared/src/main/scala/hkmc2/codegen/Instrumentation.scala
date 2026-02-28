@@ -22,6 +22,7 @@ case class Context(cache: HashMap[Path, Path], defs: HashMap[Path, (Path => Bloc
   def delCache(p: Path): Context = Context(cache.clone() -= p, defs)
   // TODO: the paths for the definitions will be defined at the constructor of the module, is it possible to reference the value at the ctor, instead of rebuilding them in the function body?
   def addDef(p: Path, cont: (Path => Block) => Block): Context = Context(cache, defs.clone() += (p -> cont))
+  def addDefs(otherDefs: HashMap[Path, (Path => Block) => Block]): Context = Context(cache, defs.clone() ++ otherDefs)
 
 extension [A, B](ls: Iterable[(A => B) => B])
   def collectApply(f: Ls[A] => B): B =
@@ -272,17 +273,17 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
           })
         case _ => false
       // if staged, point to generator function instead of original function
-      val transformer = new BlockTransformer(SymbolSubst()):
-        override def applyPath(p: Path)(k: Path => Block) = p match
-        case Select(qual, Tree.Ident(name)) => k(Select(qual, Tree.Ident(name + "_gen"))(N))
-        case p => k(p)
+      // val transformer = new BlockTransformer(SymbolSubst()):
+      //   override def applyPath(p: Path)(k: Path => Block) = p match
+      //   case Select(qual, Tree.Ident(name)) => k(Select(qual, Tree.Ident(name + "_gen"))(N))
+      //   case p => k(p)
       transformPath(fun): stagedFun =>
-        val funPath = if isStagedFun then
-          fun match
-          case Select(qual, Tree.Ident(name)) => Select(qual, Tree.Ident(name + "_gen"))(N)
-          case Value.Ref(l, _) => Value.Ref(TempSymbol(N, l.nme + "_gen"), N)
-          case _ => fun
-        else fun
+        val funPath = (isStagedFun, fun) match
+        case (true, Select(qual, Tree.Ident(name))) => Select(qual, Tree.Ident(name + "_gen"))(N)
+        case (true, Value.Ref(l, _)) => Value.Ref(TempSymbol(N, l.nme + "_gen"), N)
+        // TODO: cannot point to builtin symbols, we may also delete this entry from defCtx
+        case (false, Value.Ref(l: BuiltinSymbol, _)) => Value.Lit(Tree.UnitLit(false))
+        case _ => fun
         val cont = (k: Path => Block) =>
           transformPath(fun): stagedFun =>
             tuple(Ls(funPath, toValue(isStagedFun))): value =>
@@ -349,11 +350,14 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       assert(cls.companion.isEmpty, "nested module not supported")
       transformBlock(rest): p =>
         transformSymbol(cls.isym): c =>
-          optionNone(): none => // TODO: handle companion object
-            blockCtor("ClsLikeDefn", Ls(c, none)): cls =>
-              blockCtor("Define", Ls(cls, p)): p =>
-                ruleEnd(): end =>
-                  fnPrintCode(p)(k(end, ctx))
+          // staging the methods within the module
+          cls.methods.map(transformFunDefn2).collectApply: pairs =>
+            val (methods, ctxs) = pairs.unzip
+            val newCtx = ctxs.fold(ctx)((acc, ctx) => acc.addDefs(ctx.defs))
+            tuple(methods): methods =>
+              optionNone(): none => // TODO: handle companion object
+                blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
+                  blockCtor("Define", Ls(cls, p))(k(_, newCtx))
     case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>
@@ -380,9 +384,21 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
     case _ => ??? // not supported
 
-  // f.owner returns an InnerSymbol, but we need BlockMemberSymbol of the module to call the function
-  // so we pass modSym instead
-  def transformFunDefn(modSym: BlockMemberSymbol, f: FunDefn): (FunDefn, HashMap[Path, (Path => Block) => Block], (Path => Block) => Block) =
+  // TODO: rename, this is the continuation version of the function
+  def transformFunDefn2(f: FunDefn)(using ctx: Context)(k: ((Path, Context)) => Block): Block =
+    transformBlock(f.body): (body, ctx) =>
+      if f.params.length != 1 then
+        raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
+      // maintain parameter names in instrumented code
+      f.params.map(
+        _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
+      ).collectApply: paramListSyms =>
+        paramListSyms.map(tuple(_)).collectApply: tups =>
+          tuple(tups): tup =>
+            blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
+              blockCtor("FunDefn", Ls(sym, tup, body, toValue(true)))(k(_, ctx))
+
+  def transformFunDefn(f: FunDefn): (FunDefn, HashMap[Path, (Path => Block) => Block], (Path => Block) => Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
 
@@ -405,7 +421,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       (Scoped(Set(argSyms*), rest), defs)
 
     // TODO: replace modSym with f.owner.get?
-    def pathCont(k: Path => Block) = call(modSym.asPath.selSN(genSymName), Ls())(instr => tuple(Ls(toValue(f.sym.nme), instr))(k))
+    def pathCont(k: Path => Block) = call(f.owner.get.asPath.selSN(genSymName), Ls())(instr => tuple(Ls(toValue(f.sym.nme), instr))(k))
     val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, defs, pathCont)
 
@@ -416,11 +432,11 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val sym = c.sym.subst
       val companion = c.companion.get
       val (stagedMethods, defsList, cacheTups) = companion.methods
-        .map(transformFunDefn(sym, _))
+        .map(transformFunDefn)
         .unzip3
 
       val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-      val (stagedCtor, ctorPrint, ctorCache) = transformFunDefn(sym, ctor)
+      val (stagedCtor, ctorPrint, ctorCache) = transformFunDefn(ctor)
 
       // for storing specialized functions in each staged module
       val cacheSym = BlockMemberSymbol("cache", Nil, true)
@@ -431,7 +447,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         (ctorCache :: cacheTups).collectApply: cacheTups =>
           tuple(cacheTups): tup =>
             assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
-              assign(Instantiate(mut = false, State.specializeHelpersSymbol.asPath.selSN("FunCache"), Ls(Arg(N, map)))): mapInit =>
+              assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): mapInit =>
                 Define(ValDefn(cacheTsym, cacheSym, mapInit), rest)
 
       def genMethod(f: FunDefn): FunDefn =
@@ -440,13 +456,24 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
 
         val body = call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
-          // TODO: enforce that the definition will only have one parameter list
           f.params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
             tuple(tups): tups =>
-              call(State.specializeHelpersSymbol.asPath.selSN("specialize"), Ls(cachePath, instr.selSN("value"), tups)): res =>
+              call(helperMod("specialize"), Ls(cachePath, instr.selSN("value"), tups)): res =>
                 Return(res, false)
         f.copy(sym = sym, dSym = dSym, body = body)(false)
-      val genMethods = companion.methods.map(genMethod)
+
+      // add generator functions for classes within the constructor
+      val genCls = new BlockTransformer(new SymbolSubst()):
+        override def applyBlock(b: Block): Block = super.applyBlock(b) match
+        case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
+          val genMethods = c.methods.map(genMethod)
+          val (stagedMethods, debugPrintCode, defs) = c.methods
+            .map(transformFunDefn)
+            .unzip3
+          // FIXME: add the default staged block IRR to the cache
+          val newModule = c.copy(methods = c.methods ++ stagedMethods ++ genMethods)
+          Define(newModule, rest)
+        case b => b
 
       // NOTE: this debug printing only works for top-level modules, nested modules don't work
       // TODO: remove this. only for testing
@@ -456,14 +483,14 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
         assign(options): options =>
-          // call(cachePath.selSN("toString"), Nil, false): str =>
-          call(renderFun, Ls(cachePath, options), false): str =>
+          call(cachePath.selSN("toString"), Nil, false): str =>
             call(printFun, Ls(str), false): _ =>
-              // call(sym.asPath.selSN("defCtx").selSN("toString"), Nil, false): str =>
               call(printFun, Ls(sym.asPath.selSN("defCtx")), false): _ =>
                 rest
 
+      // redendant?
       val (newCtor, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
+
       val allDefs = defsList.fold(defs)((l, r) => l ++ r)
       val defCtxSym = BlockMemberSymbol("defCtx", Nil, true)
       val defCtxTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("defCtx"))
@@ -474,9 +501,10 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
               Define(ValDefn(defCtxTsym, defCtxSym, map), rest)
 
       // used for staging classes inside modules
+      val genMethods = companion.methods.map(genMethod)
       val newCompanion = companion.copy(
         methods = stagedCtor :: companion.methods ++ stagedMethods ++ genMethods,
-        ctor = defCtxDecl(cacheDecl(newCtor)),
+        ctor = defCtxDecl(cacheDecl(debugCont(genCls.applyBlock(companion.ctor)))),
         publicFields = cacheSym -> cacheTsym :: companion.publicFields
       )
       val newModule = c.copy(sym = sym, companion = S(newCompanion))
