@@ -17,6 +17,7 @@ def config(using Config): Config = summon
 type Cfg[A] = Config ?=> A
 
 case class Config(
+  baseDir: io.Path,
   sanityChecks: Opt[SanityChecks],
   effectHandlers: Opt[EffectHandlers],
   liftDefns: Opt[LiftDefns],
@@ -24,9 +25,12 @@ case class Config(
   target: CompilationTarget,
   rewriteWhileLoops: Bool,
   tailRecOpt: Bool,
+  qqEnabled: Bool,
 ):
   
   def stackSafety: Opt[StackSafety] = effectHandlers.flatMap(_.stackSafety)
+
+  def checkInstantiateEffect: Bool = effectHandlers.exists(_.checkInstantiateEffect)
   
   // NOTE: We force the rewriting of while loops to functions when handler lowering is on
   // to prevent the "floating out" of definitions done by handler lowering,
@@ -43,7 +47,8 @@ end Config
 
 object Config:
   
-  val default: Config = Config(
+  def default(baseDir: io.Path): Config = Config(
+    baseDir = baseDir,
     sanityChecks = N, // TODO make the default S
     // sanityChecks = S(SanityChecks(light = true)),
     effectHandlers = N,
@@ -52,11 +57,19 @@ object Config:
     rewriteWhileLoops = false,
     stageCode = false,
     tailRecOpt = true,
+    qqEnabled = false,
   )
   
   case class SanityChecks(light: Bool)
   
-  case class EffectHandlers(debug: Bool, stackSafety: Opt[StackSafety])
+  case class EffectHandlers(
+    debug: Bool,
+    stackSafety: Opt[StackSafety],
+    // Whether we check `Instantiate` nodes for effects. Currently, effects cannot be raised in constructors.
+    checkInstantiateEffect: Bool = false,
+    // A debug option that allows codegen to continue even if an unlifted definition is encountered.
+    softLifterError: Bool = false
+  )
   
   case class StackSafety(stackLimit: Int)
   object StackSafety:
