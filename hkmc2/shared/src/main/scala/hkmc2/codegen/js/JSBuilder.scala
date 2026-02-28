@@ -523,9 +523,10 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
       val t = tl.foldLeft(h)((acc, arm) =>
         acc :: doc" else if (${ cond(arm._1) }) ${ braced(nonNestedScoped(arm._2)(res => returningTerm(res, endSemi = false))) }")
       val e = els match
-      case S(el) =>
-        doc" else ${ braced(nonNestedScoped(el)(res => returningTerm(res, endSemi = false))) }"
-      case N  => doc""
+        case S(End(_)) => doc""
+        case S(el) =>
+          doc" else ${ braced(nonNestedScoped(el)(res => returningTerm(res, endSemi = false))) }"
+        case N  => doc""
       t :: e :: returningTerm(rest, endSemi)
     
     case Begin(sub, thn) =>

@@ -9,7 +9,7 @@ while false then ()
 //│ lbl1: while (true) {
 //│   let scrut1;
 //│   scrut1 = false;
-//│   if (scrut1 === true) { continue lbl1 } else {}
+//│   if (scrut1 === true) { continue lbl1 }
 //│   break;
 //│ }
 //│ block$res2 = runtime.Unit;
@@ -207,7 +207,7 @@ fun f(ls) =
 //│       ls = tl;
 //│       Predef.print(h);
 //│       continue lbl6
-//│     } else {}
+//│     }
 //│     break;
 //│   }
 //│   return Predef.print("Done!")
@@ -248,7 +248,7 @@ let x = 1
 :sjs
 while x is {} do()
 //│ JS (unsanitized):
-//│ lbl7: while (true) { if (x3 instanceof Object) { continue lbl7 } else {} break; } runtime.Unit
+//│ lbl7: while (true) { if (x3 instanceof Object) { continue lbl7 } break; } runtime.Unit
 
 
 
@@ -355,5 +355,14 @@ while
 //│ ╔══[ERROR] Illegal position for prefix keyword 'else'.
 //│ ║  l.347: 	  else 1
 //│ ╙──       	  ^^^^
+
+
+// * https://github.com/hkust-taco/mlscript/issues/401
+:fixme
+// :sjs
+:rewriteWhile
+fun f = while false do ()
+print(f)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 
