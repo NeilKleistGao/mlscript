@@ -420,7 +420,6 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
                   Return(block, false)
       (Scoped(Set(argSyms*), rest), defs)
 
-    // TODO: replace modSym with f.owner.get?
     def pathCont(k: Path => Block) = call(f.owner.get.asPath.selSN(genSymName), Ls())(instr => tuple(Ls(toValue(f.sym.nme), instr))(k))
     val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, defs, pathCont)
@@ -441,7 +440,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       // for storing specialized functions in each staged module
       val cacheSym = BlockMemberSymbol("cache", Nil, true)
       val cacheTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("cache"))
-      val cachePath = sym.asPath.selSN("cache")
+      val cachePath = companion.isym.asPath.selSN("cache")
       // initialize cache for the module
       def cacheDecl(rest: Block) =
         (ctorCache :: cacheTups).collectApply: cacheTups =>
@@ -485,11 +484,11 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         assign(options): options =>
           call(cachePath.selSN("toString"), Nil, false): str =>
             call(printFun, Ls(str), false): _ =>
-              call(printFun, Ls(sym.asPath.selSN("defCtx")), false): _ =>
+              call(printFun, Ls(companion.isym.asPath.selSN("defCtx")), false): _ =>
                 rest
 
-      // redendant?
-      val (newCtor, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
+      // redendant? this collects function calls within the block. maybe this should be a separate function to the staging
+      val (_, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
 
       val allDefs = defsList.fold(defs)((l, r) => l ++ r)
       val defCtxSym = BlockMemberSymbol("defCtx", Nil, true)
