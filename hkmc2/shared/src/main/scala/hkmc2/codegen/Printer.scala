@@ -107,7 +107,6 @@ object Printer:
       val auxClsParams = auxParams.flatMap(_.paramSyms)
       val ctorParams = (clsParams ++ auxClsParams).map(p => summon[Scope].allocateName(p))
       val docCtorParams = if clsParams.isEmpty then doc"" else doc"(${ctorParams.mkDocument(", ")})"
-      val docStaged = if isym.defn.forall(_.hasStagedModifier.isEmpty) then doc"" else doc"staged "
       val docBody = mkDocument(privateFields, publicFields, methods, S(preCtor), ctor)
       val docPreCtor = mkDocument(preCtor)
       val docCtor = mkDocument(ctor)
@@ -116,7 +115,7 @@ object Printer:
         case Pat => "pattern"
         case Obj => "object"
         case Mod => "module"
-      val docCls = doc"${docStaged}${clsType} ${own.fold("")(_.toString+"::")}${sym.nme}${docCtorParams}${docBody}"
+      val docCls = doc"${clsType} ${own.fold("")(_.toString+"::")}${sym.nme}${docCtorParams}${docBody}"
       val docModule = mod match
         case Some(mod) =>
           val docStaged = if mod.isym.defn.forall(_.hasStagedModifier.isEmpty) then doc"" else doc"staged "
