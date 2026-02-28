@@ -35,6 +35,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   val blockNme = baseScp.allocateName(Elaborator.State.blockSymbol)
   val optionNme = baseScp.allocateName(Elaborator.State.optionSymbol)
   val shapeSetNme = baseScp.allocateName(Elaborator.State.shapeSetSymbol)
+  val specializationHelpersNme = baseScp.allocateName(Elaborator.State.specializeHelpersSymbol)
   val definitionMetadataNme = baseScp.allocateName(Elaborator.State.definitionMetadataSymbol)
   val prettyPrintNme = baseScp.allocateName(Elaborator.State.prettyPrintSymbol)
   
@@ -64,6 +65,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       importRuntimeModule(blockNme, blockFile)
       importRuntimeModule(optionNme, optionFile)
       importRuntimeModule(shapeSetNme, shapeSetFile)
+      importRuntimeModule(specializationHelpersNme, specializeHelpersFile)
     h
   
   private var hostCreated = false

@@ -1,0 +1,41 @@
+import "./Block.mls"
+import "./Shape.mls"
+import "./Option.mls"
+
+open Block
+open Shape
+open Option
+
+module SpecializeHelpers with ...
+
+// FIXME: implement proper mangling
+// percent encoding to create valid symbol name
+fun specializeName(funName, shapes) =
+  [... funName + "_" + shapes.toString()]
+    .map((s, _, _) => if s is
+      "[" then "_5b"
+      "]" then "_5d"
+      "(" then "_28"
+      ")" then "_29"
+      "\\" then "_5c"
+      "\"" then "_22"
+      " " then "_20"
+      "," then "_2c"
+      else s
+    ).join("")
+fun propStub(block, shapes) = [block, Dyn()]
+
+fun specialize(cache, block, shapes) = if block is FunDefn(Symbol(funName), ps, body, stage) then
+  // replace function symbol in block definition to new name
+  let newName = specializeName(funName, shapes)
+  if cache.getFun(newName) is
+    Some(x) then x
+    None then
+      let newBody = propStub(body, shapes)
+      cache.setFun(newName, FunDefn(Symbol(newName), ps, newBody, stage))
+
+class FunCache(val cache: Map[String, Symbol]) with
+  fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
+  // NOTE: this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
+  fun setFun(k, v) = cache.set(k, v); v
+  fun toString() = cache.values().map(showDefn).toArray().join("\n")
