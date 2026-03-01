@@ -1,0 +1,34 @@
+:js
+:staging
+
+staged module A with
+  fun f() = 1
+  fun g(x) = x
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun f() = 1 \
+//│ >   fun g(x) = x
+//│ > Map(0) {}
+
+module C with
+  fun h() = 0
+
+fun i() = 2
+
+staged module B with
+  fun a() = A.f()
+  fun b() = C.h()
+  fun c() = i()
+  fun d() = A.g(1)
+//│ > fun ctor_() = \
+//│ >     () \
+//│ >   fun a() = A.f() \
+//│ >   fun b() = C.h() \
+//│ >   fun c() = i() \
+//│ >   fun d() = A.g(1)
+//│ > Map(4) {
+//│ >   'ValueRef(Symbol("i"))' => [ [Function: i], false ],
+//│ >   'Select(ValueRef(Symbol("C")), Symbol("h"))' => [ [Function: h], false ],
+//│ >   'Select(ValueRef(Symbol("A")), Symbol("f"))' => [ [Function: f_gen], true ],
+//│ >   'Select(ValueRef(Symbol("A")), Symbol("g"))' => [ [Function: g_gen], true ]
+//│ > }
