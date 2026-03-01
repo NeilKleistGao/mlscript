@@ -187,6 +187,14 @@ fun sor(defs, ctx, cache, r: Result) = if r is
   Call(f, args) then 
     fun lit(l) = [ValueLit(l), mkLit(l)]
     let argShapes = args.map(a => sop(ctx, a.value))
+    // special handle the special Call function
+    if f is 
+      Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")) 
+        and args is [Arg(None, scrut), Arg(None, lit)] do
+          let recovered = DynSelect(scrut, lit, false)
+          [recovered, sop(ctx, recovered)]
+      Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) do 
+        print("runtime.Tuple.slice not handled") // TODO
     let def = if f is Select(_, symb) then defs.get(f) else None
     if def is
       Some(gen) then 

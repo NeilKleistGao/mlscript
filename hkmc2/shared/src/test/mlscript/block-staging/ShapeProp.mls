@@ -122,12 +122,7 @@ let ctx2 = ctx.clone
 ctx2.add(y, mkLit("b"))
 ctx2.get(y)
 //│ = Some({Lit("a"),Lit("b")})
-//│ ctx2 = Ctx(
-//│   Map(2) {
-//│     "ValueRef(Symbol(\"x\"))" => {Lit(1),Lit(2)},
-//│     "ValueRef(Symbol(\"y\"))" => {Lit("a"),Lit("b")}
-//│   }
-//│ )
+//│ ctx2 = Ctx(Map(2) {"x" => {Lit(1),Lit(2)}, "y" => {Lit("a"),Lit("b")}})
 
 ctx.get(y)
 //│ = Some({Lit("a")})
@@ -159,11 +154,7 @@ ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
 //│ = {Lit("pass")}
 //│ C = ClassSymbol("C", Some(["a"]))
-//│ ctx = Ctx(
-//│   Map(1) {
-//│     "ValueRef(Symbol(\"x\"))" => {Class(ClassSymbol("C", Some(["a"])), [Lit("pass")])}
-//│   }
-//│ )
+//│ ctx = Ctx(Map(1) {"x" => {Class(ClassSymbol("C", Some(["a"])), [Lit("pass")])}})
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
 //│ x = Symbol("x")
 
@@ -338,12 +329,7 @@ sor(defs, Ctx.empty, Cache.empty, callF)
 val ctxXY = Ctx.empty
   .add(ValueRef(x), mkLit(10))
   .add(ValueRef(y), mkLit(32))
-//│ ctxXY = Ctx(
-//│   Map(2) {
-//│     "ValueRef(Symbol(\"x\"))" => {Lit(10)},
-//│     "ValueRef(Symbol(\"y\"))" => {Lit(32)}
-//│   }
-//│ )
+//│ ctxXY = Ctx(Map(2) {"x" => {Lit(10)}, "y" => {Lit(32)}})
 
 // x + y
 val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
