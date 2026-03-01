@@ -38,12 +38,8 @@ let y = liftMany([Lit("a"), Lit(1)])
 //│ x = {Arr([Lit(100), Lit(false), Lit(undefined)], false),Class(Symbol(""), [Lit(42)]),Dyn()}
 //│ y = {Lit("a"),Lit(1)}
 
-sel(x, y)
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:483)
-//│ ╔══[ERROR] Name not found: sel
-//│ ║  l.41: 	sel(x, y)
-//│ ╙──      	^^^
+selSet(x, y)
+//│ = {Dyn(),Lit(false)}
 
 let x = Class(Symbol("A"), [[Symbol("b"), Lit(1)], [Symbol("d"), Dyn()]])
 let x = Arr([Dyn(), Lit(1), x], false)
@@ -69,22 +65,14 @@ mkClass(sym, params)
 [liftMany([Lit(1), Dyn()]), liftMany([Lit(2), Lit("str")])]
 //│ = [{Dyn(),Lit(1)}, {Lit("str"),Lit(2)}]
 
-filter(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)], false)]), Tup(3, false))
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:483)
-//│ ╔══[ERROR] Name not found: filter
-//│ ║  l.72: 	filter(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)], false)]), Tup(3, false))
-//│ ╙──      	^^^^^^
+filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)], false)]), Tup(3, false))
+//│ = {Arr([Lit(1), Lit(2), Lit(3)], false)}
 
 
 let x = mkLit(1)
 let y = Block.Cls(Block.Symbol("Bool"), 0)
-filter(x, y)
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:483)
-//│ ╔══[ERROR] Name not found: filter
-//│ ║  l.82: 	filter(x, y)
-//│ ╙──      	^^^^^^
+filterSet(x, y)
+//│ = {}
 //│ x = {Lit(1)}
 //│ y = Cls(Symbol("Bool"), 0)
 
