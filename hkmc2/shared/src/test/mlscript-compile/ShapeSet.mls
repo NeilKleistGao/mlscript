@@ -136,7 +136,7 @@ class Cache(underlying: Map[String, [String, ShapeSet, Block.Block]], names: Map
       if argShape.isDynArr() then fname
       else if underlying.has(key) then underlying.get(key).0
       else freshName(fname) // TODO: hygiene
-    let s = if underlying.has(key) then union(underlying.get(key).1, resShape) else resShape // Why
+    let s = if underlying.has(key) then union(underlying.get(key).1, resShape) else resShape
     let newDef = if codefrag is
       FunDefn(sym, params, body, stage) then FunDefn(Symbol(newName), params, body, stage)
       else codefrag
@@ -256,8 +256,6 @@ fun prop(defs, ctx, cache, b: Block) = if b is
     sor(defs, ctx, cache, r) is [r1, s1] then 
       if prop(defs, ctx.add(ValueRef(x), s1), cache, b) is [b2, s2] then
         [Assign(x, r1, b2), s2]
-      else
-        print(prop(defs, ctx.add(ValueRef(x), s1), cache, b))
   Match(p, arms, dflt, restBlock) then
     let s = sop(ctx, p)
     let filteredArms = foldl((r, arm) =>
@@ -280,16 +278,15 @@ fun prop(defs, ctx, cache, b: Block) = if b is
         dflt is 
           Some(d) then
             let branchCtx = ctx.clone
-            if not p is ValueLit then do branchCtx.add(p, filteredArms.0)
+            if not p is ValueLit do branchCtx.add(p, filteredArms.0)
             let newDflt = prop(defs, branchCtx, cache, concat(d, restBlock))
             [Match(p, filteredArms.2, Some(newDflt.0), End()), union(filteredArms.1, newDflt.1)]
           else
             [Match(p, filteredArms.2, None, End()), filteredArms.1]
-      else
-        dflt is 
+      n and dflt is 
           Some(d) then
             let branchCtx = ctx.clone
-            if not p is ValueLit then do branchCtx.add(p, filteredArms.0)
+            if not p is ValueLit do branchCtx.add(p, filteredArms.0)
             let newDflt = prop(defs, branchCtx, cache, concat(d, restBlock))
             [Match(p, filteredArms.2, Some(newDflt.0), End()), union(filteredArms.1, newDflt.1)]
           else
