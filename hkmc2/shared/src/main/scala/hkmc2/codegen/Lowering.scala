@@ -267,6 +267,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
               val clsSymb = new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id)
               val stagedAnnots = mod.annotations.filter { 
                 case Annot.Modifier(Keyword.`staged`) => true
+                case _ => false
               }
               val newDefn = ClassDef.Plain(mod.owner, syntax.Cls, clsSymb,
                 mod.bsym,

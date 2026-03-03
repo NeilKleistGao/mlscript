@@ -92,15 +92,26 @@ fun staticSet(s: ShapeSet) =
     1 then Shape.static(v.0)
     else false
 
-open Block
+fun valOf(s : Shape) =
+  if s is
+    Dyn() then throw Error("valOf on Dyn")
+    Lit(l) then l
+    Arr(shapes, inf) then shapes.map((x, _, _) => valOf(x))
+    Class(sym, params) then ???
+    else throw Error("Unknown shape")
 
-fun valOf(s : ShapeSet) = ???
+fun valOfSet(s : ShapeSet) = 
+  if s.values().length ==
+    1 then valOf(s.values().0)
+    else throw Error("valOfSet on non-singleton ShapeSet")
 
 // fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
 //   let rem = arms.filter(arm => not (arm.0.isEmpty() and arm.1 is End))
 //   [flat(rem.map(_.0)), rem.map(_.1)]
 
 // TODO: refactor with hash map?
+
+open Block
 class Ctx(val maps: Map[String, ShapeSet]) with
   fun get(path) =
     let ps = showPath(path)
@@ -117,7 +128,7 @@ class Ctx(val maps: Map[String, ShapeSet]) with
 module Ctx with
   fun empty = Ctx(new Map())
 
-class DefCtx(val defs: Map[String, Function]) with
+class DefCtx(val defs: Map[String, [Function, Bool]]) with
   fun get(sym) =
     if defs.has(sym.name) then Some(defs.get(sym.name))
     else None
@@ -126,7 +137,6 @@ class DefCtx(val defs: Map[String, Function]) with
     this
 module DefCtx with
   fun empty = DefCtx(new Map())
-
 
 // TODO: improve it
 class Cache(underlying: Map[String, [String, ShapeSet, Block.Block]], names: Map[String, Int]) with
@@ -148,12 +158,6 @@ class Cache(underlying: Map[String, [String, ShapeSet, Block.Block]], names: Map
   fun get(fname, argShape) =
     let key = fname ~ argShape.hash()
     if underlying.has(key) then underlying.get(key)
-    else ???
-  fun getSimp(fname, argShape) =
-    let key = fname ~ argShape.hash()
-    if underlying.has(key) then
-      let res = underlying.get(key)
-      [res.1, Symbol(res.0)]
     else ???
   fun freshName(name) =
     if not names.has(name) do
@@ -178,7 +182,7 @@ fun sop(ctx, p: Path): ShapeSet =
     ValueRef(l) then mkDyn()
 
 
-fun sor(defs, ctx, cache, r: Result) = if r is
+fun sor(defs, ctx, r: Result) = if r is
   Path then [r, sop(ctx, r)]
   Instantiate(cls, args) then
     let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("Instantiate with non-ClassSymbol")
@@ -186,7 +190,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
   Tuple(elems) then [r, mkArr(elems.map(a => sop(ctx, a.value)), false)]
   Call(f, args) then 
     fun lit(l) = [ValueLit(l), mkLit(l)]
-    let argShapes = args.map(a => sop(ctx, a.value))
+    let argShapes = args.map((a, _, _) => sop(ctx, a.value))
     // special handle the special Call function
     if f is 
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")) 
@@ -197,7 +201,7 @@ fun sor(defs, ctx, cache, r: Result) = if r is
         print("runtime.Tuple.slice not handled") // TODO
     let def = if f is Select(_, symb) then defs.get(f) else None
     if def is
-      Some(gen) then 
+      Some([gen, true]) then 
         if gen(...argShapes) is [shape, implSymb] then
           [Call(ValueRef(implSymb), args), shape]
         else [r, mkDyn()]
@@ -212,6 +216,8 @@ fun sor(defs, ctx, cache, r: Result) = if r is
       //       [res, resShape, cache]
       //     else [r, mkDyn(), cache]
       //   else [r, mkDyn(), cache]
+      Some([f, false]) and argShapes.every((x, _, _) => staticSet(x)) then
+        let argVals = argShapes.map((s, _, _) => valOfSet(s))
       None and 
         let name = if f is ValueRef(symb) then symb.name
         args is
@@ -254,14 +260,14 @@ fun sor(defs, ctx, cache, r: Result) = if r is
 
 fun prop(defs, ctx, cache, b: Block) = if b is
   End then [b, mkBot()]
-  Return(res, implct) and sor(defs, ctx, cache, res) is [r1, s1] then
+  Return(res, implct) and sor(defs, ctx, res) is [r1, s1] then
     [Return(r1, implct), s1]
   Scoped(symbols, rest) then
-    symbols.forEach((x, i, arr) => ctx.add(ValueRef(x), mkBot()))
+    symbols.forEach((x, _, _) => ctx.add(ValueRef(x), mkBot()))
     let res = prop(defs, ctx, cache, rest)
     [Scoped(symbols, res.0), res.1]
   Assign(x, r, b) and 
-    sor(defs, ctx, cache, r) is [r1, s1] then 
+    sor(defs, ctx, r) is [r1, s1] then 
       if prop(defs, ctx.add(ValueRef(x), s1), cache, b) is [b2, s2] then
         [Assign(x, r1, b2), s2]
   Match(p, arms, dflt, restBlock) then
@@ -276,7 +282,7 @@ fun prop(defs, ctx, cache, b: Block) = if b is
         [restSet(r.0, arm.0), union(r.1, res.1), [...r.2, [arm.0, res.0]]]
     )([s, mkBot(), []], ...arms)
     if filteredArms.2.length is
-      0 and 
+      0 and
         filteredArms.0.isEmpty() then prop(defs, ctx, cache, restBlock)
         else prop(defs, ctx, cache, concat(if dflt is Some(d) then d else End(), restBlock))
       1 and
