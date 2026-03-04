@@ -18,6 +18,28 @@ staged fun f() = 0
 
 :js
 :slot
+:staging
 staged module A
 //│ Pretty Lowered:
-//│   define class A with staged module A in set block$res = undefined in end
+//│  
+//│ define class A with
+//│ staged module A {
+//│   ctor {
+//│     begin
+//│       set tmp = A.ctor$_instr();
+//│       set tmp1 = ‹not in scope: $Block›.printCode(tmp);
+//│       return ‹not in scope: $runtime›.Unit;
+//│       end
+//│   }
+//│   fun module:A::ctor$_instr() {
+//│     set end = new ‹not in scope: $Block›.End();
+//│     set tmp2 = new ‹not in scope: $Block›.Symbol("ctor$");
+//│     set tmp3 = [];
+//│     set tmp4 = [tmp3];
+//│     set tmp5 = new ‹not in scope: $Block›.FunDefn(tmp2, tmp4, end, true);
+//│     return tmp5
+//│   }
+//│ };
+//│ set block$res = undefined;
+//│ end
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
