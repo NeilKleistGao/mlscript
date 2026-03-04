@@ -159,6 +159,21 @@ class TypeInfo(
       doc"(type${idDoc.surroundUnlessEmpty(doc" ")} ${compType.toWat})"
 end TypeInfo
 
+/**
+ * A WebAssembly exception tag declaration.
+ *
+ * In Wasm, a `tag` names an exception kind and points to a function type that describes the
+ * payload values carried by `throw tag ...` and extracted by matching `catch tag ...`.
+ */
+class TagInfo(
+    val id: SymIdx,
+    val typeIdx: TypeIdx
+) extends ToWat:
+
+  def toWat: Document =
+    doc"""(tag ${id.toWat} (type ${typeIdx.toWat})) # (export "${id.id}" (tag ${id.toWat}))"""
+end TagInfo
+
 enum WasmIntrinsicType:
   case TupleArray(mutable: Bool)
 
@@ -193,9 +208,14 @@ object Ctx:
   def empty: Ctx = Ctx(
     types = ArrayBuf.empty,
     namedTypes = MutMap.empty,
+    memoryImports = ArrayBuf.empty,
+    functionImports = ArrayBuf.empty,
+    dataSegments = ArrayBuf.empty,
     funcs = ArrayBuf.empty,
+    funcInfosByIndex = MutMap.empty,
     globals = ArrayBuf.empty,
     namedFuncs = MutMap.empty,
+    tags = ArrayBuf.empty,
     namedGlobals = MutMap.empty,
     locals = MutMap() :: Nil,
     startFunc = N
@@ -215,6 +235,12 @@ object Ctx:
  *   [[ArrayBuf]] containing all type definitions in the module.
  * @param namedTypes
  *   [[MutMap]] containing type symbols mapped to their corresponding Wasm type indices.
+ * @param memoryImports
+ *   [[ArrayBuf]] containing all memory imports in the module.
+ * @param functionImports
+ *   [[ArrayBuf]] containing all function imports in the module.
+ * @param dataSegments
+ *   [[ArrayBuf]] containing all data segments in the module.
  * @param funcs
  *   [[ArrayBuf]] containing all function definitions in the module.
  * @param globals
@@ -230,9 +256,14 @@ object Ctx:
 class Ctx(
     types: ArrayBuf[TypeInfo],
     namedTypes: MutMap[BlockMemberSymbol, NumIdx],
+    memoryImports: ArrayBuf[MemoryImport],
+    functionImports: ArrayBuf[FuncImport],
+    dataSegments: ArrayBuf[DataSegment],
     funcs: ArrayBuf[FuncInfo],
+    funcInfosByIndex: MutMap[NumIdx, FuncInfo],
     globals: ArrayBuf[GlobalInfo],
     namedFuncs: MutMap[Symbol, NumIdx],
+    tags: ArrayBuf[TagInfo],
     namedGlobals: MutMap[Symbol, NumIdx],
     var locals: Ls[MutMap[Local, NumIdx]],
     private var startFunc: Opt[FuncIdx]
@@ -242,6 +273,11 @@ class Ctx(
 
   private val wasmIntrinsicFuncs: MutMap[Str, FuncIdx] = MutMap.empty
   private val wasmIntrinsicTypes: MutMap[WasmIntrinsicType, TypeIdx] = MutMap.empty
+  private val wasmIntrinsicTags: MutMap[Str, TagIdx] = MutMap.empty
+
+  private val cachedMemoryImport: MutMap[(Str, Str), Int] = MutMap.empty
+  private val cachedFunctionImports: MutMap[(Str, Str), FuncIdx] = MutMap.empty
+
   private val singletonByBms: MutMap[BlockMemberSymbol, Ctx.SingletonInfo] = MutMap.empty
   private val singletonByIsym: MutMap[ModuleOrObjectSymbol, Ctx.SingletonInfo] = MutMap.empty
   private val singletonInitActions: ArrayBuf[Expr] = ArrayBuf.empty
@@ -287,11 +323,67 @@ class Ctx(
 
   /** Adds a function into this context. */
   def addFunc(sym: Opt[Symbol], funcInfo: FuncInfo): FuncIdx =
-    val numIdx = NumIdx(funcs.size)
+    val numIdx = NumIdx(functionImports.size + funcs.size)
     funcs += funcInfo
+    funcInfosByIndex(numIdx) = funcInfo
     sym.foreach:
       namedFuncs(_) = numIdx
     FuncIdx(funcInfo.id.getOrElse(numIdx))
+
+  /**
+   * Adds a function import into this context.
+   *
+   * Returns the function index in the global function index space.
+   */
+  def addFunctionImport(sym: Opt[Symbol], funcImport: FuncImport): FuncIdx =
+    val numIdx = NumIdx(functionImports.size + funcs.size)
+    functionImports += funcImport
+    sym.foreach:
+      namedFuncs(_) = numIdx
+    FuncIdx(funcImport.id.getOrElse(numIdx))
+
+  /**
+   * Returns the cached function import for (`module`, `name`), creating it with `createImport`
+   * if needed.
+   */
+  def getOrCreateFunctionImport(
+      module: Str,
+      name: Str,
+  )(createImport: => FuncImport): FuncIdx =
+    cachedFunctionImports.getOrElseUpdate(
+      (module, name),
+      addFunctionImport(N, createImport)
+    )
+
+  /**
+   * Adds or updates a memory import. If the import already exists, its minimum pages are increased
+   * to at least `minPages`.
+   */
+  def ensureMemoryImport(module: Str, name: Str, minPages: Int): Unit =
+    val key = module -> name
+    cachedMemoryImport.get(key) match
+      case S(idx) =>
+        val existing = memoryImports(idx)
+        val newMin = existing.minPages max minPages
+        if newMin =/= existing.minPages then
+          memoryImports(idx) = existing.copy(minPages = newMin)
+      case N =>
+        val idx = memoryImports.size
+        memoryImports += MemoryImport(module, name, minPages)
+        cachedMemoryImport(key) = idx
+
+  /** Returns the minimum page requirement of memory import (`module`, `name`) if present. */
+  def getMemoryImportMinPages(module: Str, name: Str): Opt[Int] =
+    memoryImports.find(m => m.module === module && m.name === name).map(_.minPages)
+
+  /** Adds a data segment into this context. */
+  def addDataSegment(seg: DataSegment): Unit =
+    dataSegments += seg
+
+  /** Adds a tag into this context. */
+  def addTag(tagInfo: TagInfo): TagIdx =
+    tags += tagInfo
+    TagIdx(tagInfo.id)
 
   /**
    * Returns the [[FuncIdx]] of the given `funcref`, optionally resolving the symbolic index into a
@@ -313,7 +405,10 @@ class Ctx(
 
   /** Returns the [[FuncInfo]] instance associated with the given `funcref`. */
   def getFuncInfo(funcref: FuncIdx | Symbol): Opt[FuncInfo] = funcref match
-    case FuncIdx(NumIdx(idx)) => funcs.unapply(idx.toInt)
+    case FuncIdx(numIdx @ NumIdx(idx)) =>
+      funcInfosByIndex.get(numIdx).orElse:
+        val localIdx = idx.toInt - functionImports.size
+        if localIdx < 0 then N else funcs.unapply(localIdx)
     case funcref => getFunc(funcref, resolveSymIdx = true).flatMap(getFuncInfo(_))
 
   /** Same as [[getFuncInfo]] but throws an exception when the `funcref` is not found. */
@@ -423,8 +518,22 @@ class Ctx(
   def getOrCreateWasmIntrinsicType(key: WasmIntrinsicType, createType: => TypeIdx): TypeIdx =
     wasmIntrinsicTypes.getOrElseUpdate(key, createType)
 
+  /** Returns the cached [[TagIdx]] for the intrinsic tag named `name`, creating it if absent. */
+  def getOrCreateWasmIntrinsicTag(name: Str, createTag: => TagIdx): TagIdx =
+    wasmIntrinsicTags.getOrElseUpdate(name, createTag)
+
   def toWat: Document =
-    val startDef = startFunc.toSeq.map(funcIdx => doc"(start ${funcIdx.toWat})")
-    doc"(module #{  # ${(types.toSeq.map(_.toWat) ++ globals.toSeq.map(_.toWat) ++ startDef ++ funcs.toSeq.map(_.toWat)).mkDocument(doc" # ")}) #} "
+    doc"(module #{  # ${
+        (
+          types.toSeq.map(_.toWat)
+            ++ memoryImports.toSeq.map(_.toWat)
+            ++ functionImports.toSeq.map(_.toWat)
+            ++ dataSegments.toSeq.map(_.toWat)
+            ++ globals.toSeq.map(_.toWat)
+            ++ tags.toSeq.map(_.toWat)
+            ++ startFunc.toSeq.map(funcIdx => doc"(start ${funcIdx.toWat})")
+            ++ funcs.toSeq.map(_.toWat)
+        ).mkDocument(doc" # ")
+      } #} )"
 
 end Ctx
