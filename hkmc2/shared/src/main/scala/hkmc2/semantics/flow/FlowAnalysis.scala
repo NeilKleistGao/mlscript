@@ -32,7 +32,8 @@ enum SelectionTarget:
   case CompanionMember(comp: Term, sym: MemberSymbol)
 
 
-
+/** This is a very sketchy exploration/proof of concept of flow analysis
+  * that can be used to help compile programs in a type-directed way without having to perform full type inference. */
 class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
   import tl.*
   
@@ -327,7 +328,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
   def getFlowSymOrType(bms: BlockMemberSymbol): P =
     if bms.getState is summon[State]
     then P.Flow(bms.flow)
-    else P.Typ(Type.Top)
+    else P.Typ(Type.Top) // TODO: should get a frozen inferred type view of the internally inferred flow
   
   
   def solveConstraints(): Unit =
