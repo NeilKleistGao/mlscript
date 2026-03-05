@@ -38,7 +38,7 @@ enum Producer:
     case _ => None
   
   
-  def show(using Scope): Document = this match
+  def show(using Scope, Raise): Document = this match
     case Flow(sym) => scope.allocateOrGetName(sym)
     case Fun(lhs, rhs, caps) => doc"(${lhs.showAsParams} -> ${rhs.show})"
     case tup: Tup => Document.bracketed("[", "]")(showTupElems(tup))
@@ -48,11 +48,11 @@ enum Producer:
     case Typ(typ) => doc"type ${typ.show}"
     case Unknown(t) => doc"¿${t.showDbg}?"
   
-  def showAsParams(using Scope): Document = this match
+  def showAsParams(using Scope, Raise): Document = this match
     case tup: Tup => "(" :: showTupElems(tup) :: doc")"
     case _ => Document.text(s"...$showDbg")
   
-  private def showTupElems(tup: Tup)(using Scope): Document =
+  private def showTupElems(tup: Tup)(using Scope, Raise): Document =
     tup.elems.map:
       case (None, c) => c.show
       case (Some(spd), c) => spd.str :: " " :: c.show
@@ -90,7 +90,7 @@ enum Consumer:
   case Typ(typ: Type)
   
   
-  def show(using Scope): Document = this match
+  def show(using Scope, Raise): Document = this match
     case Flow(sym) => scope.allocateOrGetName(sym)
     case Fun(lhs, rhs) => doc"(${lhs.showAsParams} -> ${rhs.show})"
     case tup: Tup => Document.bracketed("[", "]")(showTupElems(tup))
@@ -98,11 +98,11 @@ enum Consumer:
     case Sel(nme, res) => doc"{${nme.name}: ${res.show}}"
     case Typ(typ) => doc"type ${typ.show}"
   
-  def showAsParams(using Scope): Document = this match
+  def showAsParams(using Scope, Raise): Document = this match
     case tup: Tup => "(" :: showTupElems(tup) :: doc")"
     case _ => doc"(...$show)"
   
-  private def showTupElems(tup: Tup)(using Scope): Document = (
+  private def showTupElems(tup: Tup)(using Scope, Raise): Document = (
       tup.init.iterator.map(_.show) ++ tup.rest.iterator.flatMap:
         case (spd, c, post) =>
           (spd.str :: c.show) :: post.map(_.show)

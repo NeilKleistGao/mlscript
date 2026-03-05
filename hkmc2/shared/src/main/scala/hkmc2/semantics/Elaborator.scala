@@ -253,6 +253,7 @@ object Elaborator:
     val loopEndSymbol = ModuleOrObjectSymbol(DummyTypeDef(syntax.Obj), Ident("LoopEnd"))
     // In JavaScript, `import` can be used for getting current file path, as `import.meta`
     val importSymbol = new VarSymbol(Ident("import"))
+    val noSymbol = NoSymbol()
     val runtimeSymbol = TempSymbol(N, "runtime")
     val definitionMetadataSymbol = TempSymbol(N, "definitionMetadata")
     val prettyPrintSymbol = TempSymbol(N, "prettyPrint")
@@ -260,7 +261,6 @@ object Elaborator:
     val blockSymbol = TempSymbol(N, "Block")
     val shapeSymbol = TempSymbol(N, "Shape")
     val wasmSymbol = TempSymbol(N, "wasm")
-    val effectSigSymbol = ClassSymbol(DummyTypeDef(syntax.Cls), Ident("EffectSig"))
     val nonLocalRetHandlerTrm =
       val id = new Ident("NonLocalReturn")
       val sym = ClassSymbol(DummyTypeDef(syntax.Cls), id)
@@ -326,7 +326,7 @@ import Elaborator.*
 
 
 class Elaborator(val tl: TraceLogger, val wd: io.Path, val prelude: Ctx)
-(using val raise: Raise, val state: State, val cctx: CompilerCtx)
+(using val raise: Raise, val state: State, val cctx: CompilerCtx, val config: Config)
 extends Importer with ucs.SplitElaborator:
   import tl.*
   
@@ -418,13 +418,19 @@ extends Importer with ucs.SplitElaborator:
       Term.Error
     case LetLike(Keywrd(`set`), lhs, S(rhs), S(bod)) =>
       // * Backtracking assignment
-      val lt = subterm(lhs)
-      val sym = TempSymbol(S(lt), "old")
-      Blk(
-        LetDecl(sym, Nil) :: DefineVar(sym, lt) :: Nil, Term.Try(Blk(
-          Term.Assgn(lt, subterm(rhs)) :: Nil,
-          subterm(bod),
-      ), Term.Assgn(lt, sym.ref())))
+      if config.effectHandlers.isDefined then
+        raise(ErrorReport(
+          msg"Backtracking assignment is not supported with effect handlers enabled" ->
+            tree.toLoc :: Nil))
+        Term.Error
+      else
+        val lt = subterm(lhs)
+        val sym = TempSymbol(S(lt), "old")
+        Blk(
+          LetDecl(sym, Nil) :: DefineVar(sym, lt) :: Nil, Term.Try(Blk(
+            Term.Assgn(lt, subterm(rhs)) :: Nil,
+            subterm(bod),
+        ), Term.Assgn(lt, sym.ref())))
     case (hd @ Hndl(id: Ident, c, Block(sts_), S(bod))) => ctx.nest(OuterCtx.LambdaOrHandlerBlock).givenIn:
       
       val sym = fieldOrVarSym(HandlerBind, id)
@@ -538,7 +544,7 @@ extends Importer with ucs.SplitElaborator:
       Term.App(State.builtinOpsMap("!").ref(new Ident("not").withLocOf(kw)), Term.Tup(
         PlainFld(subterm(rhs, inAppPrefix = true)) :: Nil)(DummyTup))(DummyApp, N, FlowSymbol("not-app"))
     case tree @ InfixApp(lhs, Keywrd(Keyword.`is` | Keyword.`and` | Keyword.`or`), rhs) =>
-      Term.IfLike(Keyword.`if`, shorthandSplit(tree))
+      Term.IfLike(Keyword.`if`, IfLikeForm.ReturningIf, shorthandSplit(tree))
     case InfixApp(lhs, kw, rhs) =>
       raise:
         ErrorReport(msg"Unexpected infix use of keyword '${kw.name}' here" -> tree.toLoc :: Nil)
@@ -689,7 +695,7 @@ extends Importer with ucs.SplitElaborator:
       // case _ =>
       //   raise(ErrorReport(msg"Illegal new expression." -> tree.toLoc :: Nil))
       
-    case tree: IfLike => Term.IfLike(tree.kw.kw, split(tree))
+    case tree: IfLike => split(tree)
     
     case Assert(kw, rhs, thno, els) =>
       val (fl, ln) = kw.toLoc match
@@ -710,7 +716,7 @@ extends Importer with ucs.SplitElaborator:
     case Unquoted(body) => Term.Unquoted(subterm(body))
     case tree @ Case(kw, _) =>
       val scrut = VarSymbol(Ident("caseScrut"))
-      val body = Term.IfLike(Keyword.`if`, caseSplit(scrut, tree))
+      val body = caseSplit(scrut, tree)
       val params = Param(FldFlags.empty, scrut, N, Modulefulness.none) :: Nil
       Term.Lam(PlainParamList(params), body).mkLocWith(kw)
     case PrefixApp(kw @ Keywrd(Keyword.`return`), body) =>
@@ -1506,7 +1512,7 @@ extends Importer with ucs.SplitElaborator:
     case Tup(ps) =>
       def go(ps: Ls[Tree], acc: Ls[Param], ctx: Ctx, flags: ParamListFlags): (ParamList, Ctx) =
         ps match
-        case Nil => (ParamList(flags, acc.reverse, N), ctx)
+        case Nil => (ParamList(flags, acc.reverse, N).withLocOf(t), ctx)
         case hd :: tl =>
           val isCtxParam = hd.isModified(Ins)
           val inUsing = flags.ctx || isCtxParam
@@ -1521,7 +1527,7 @@ extends Importer with ucs.SplitElaborator:
               if spd is SpreadKind.Lazy then
                 raise(ErrorReport(msg"Lazy spread parameters not allowed." -> hd.toLoc :: Nil))
               if tl.isEmpty then 
-                (ParamList(flags, acc.reverse, S(p)), newCtx)
+                (ParamList(flags, acc.reverse, S(p)).withLocOf(t), newCtx)
               else
                 raise(ErrorReport(msg"Spread parameters must be the last in the parameter list." -> hd.toLoc :: Nil))
                 go(tl, p :: acc, newCtx, newFlags)

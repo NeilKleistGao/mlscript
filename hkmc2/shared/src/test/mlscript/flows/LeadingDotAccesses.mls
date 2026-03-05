@@ -73,7 +73,7 @@ fun g(x : C) = x
 let d = .a
 f(d)
 g(d)
-//│ ╔══[ERROR] Ambiguous selection with multiple apparent targets:
+//│ ╔══[COMPILATION ERROR] Ambiguous selection with multiple apparent targets:
 //│ ║  l.73: 	let d = .a
 //│ ║        	        ^^
 //│ ╟── companion member a
@@ -97,6 +97,7 @@ g(d)
 //│     app¹⁰  <~  type C
 //│     flow:g⁰  <~  ((type C) -> x⁰)
 //│     flow:g⁰  ~>  ((d⁰) -> app¹⁰)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ d = undefined
 
 :sf
@@ -114,22 +115,23 @@ g(.a)
 :re
 :e
 f(.w)
-//│ ╔══[ERROR] Cannot resolve leading dot selection
-//│ ║  l.116: 	f(.w)
+//│ ╔══[COMPILATION ERROR] Cannot resolve leading dot selection
+//│ ║  l.117: 	f(.w)
 //│ ╙──       	  ^^
 //│ Flowed:
 //│   f⁰{ ~> f⁰ }(_?_.w{ ~> ‹error› })‹app¹³›
 //│ where
 //│     app¹³  <~  type A
-//│ ═══[RUNTIME ERROR] Error: Function 'f' expected 1 argument but got 0
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
 :sf
 :e
 .b(new A)
-//│ ╔══[ERROR] Cannot resolve leading dot selection
-//│ ║  l.128: 	.b(new A)
+//│ ╔══[COMPILATION ERROR] Cannot resolve leading dot selection
+//│ ║  l.129: 	.b(new A)
 //│ ╙──       	^^
 //│ Flowed:
 //│   _?_.b{ ~> ‹error› }(new A⁰)‹app¹⁴›
 //│ where
 //│     app¹⁴  ->  bind²
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.

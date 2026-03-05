@@ -38,7 +38,7 @@ enum Annot extends AutoLocated:
     case Trm(trm) => Vector.single(trm)
     case _: Modifier | Untyped | TailRec | TailCall => Vector.empty
   
-  def show(using Scope, ShowCfg): Document = this match
+  def show(using Scope, ShowCfg, Raise): Document = this match
     case Untyped => doc"‹untyped›"
     case Modifier(mod) => doc"@${mod.name}"
     case Trm(trm) => doc"@${trm.show}"
@@ -301,7 +301,7 @@ enum Term extends Statement:
   case Tup(fields: Ls[Elem])(val tree: Tree.Tup)
   case Mut(underlying: Tup | Rcd | New | DynNew)
   case CtxTup(fields: Ls[Elem])(val tree: Tree.Tup)
-  case IfLike(kw: Keyword.`if`.type | Keyword.`while`.type, split: SimpleSplit)
+  case IfLike(kw: Keyword.SplitLike, form: IfLikeForm, split: SimpleSplit)
   /** `If` expressions synthesized by the pattern compiler. It should only be
    *  created and used in `Lowering`. One must make sure that all terms in the
    *  split are correctly resolved. In the future, we might look for a way to
@@ -431,7 +431,7 @@ enum Term extends Statement:
         case f: Fld => f.copy(term = f.term.mkClone, asc = f.asc.map(_.mkClone))
         case s: Spd => s.copy(term = s.term.mkClone)
       })(term.tree)
-      case IfLike(kw, split) => IfLike(kw, split)
+      case IfLike(kw, form, split) => IfLike(kw, form, split.mkClone)
       case SynthIf(split) => SynthIf(split.mkClone)
       case Lam(params, body) => Lam(params, body.mkClone)
       case FunTy(lhs, rhs, eff) => FunTy(lhs.mkClone, rhs.mkClone, eff.map(_.mkClone))
@@ -511,8 +511,9 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case DynSel(o, f, _) => "dynamic selection"
       case Tup(fields) => "tuple literal"
       case CtxTup(fields) => "contextual tuple literal"
-      case IfLike(Keyword.`if`, body) => "`if` expression"
-      case IfLike(Keyword.`while`, body) => "`while` expression"
+      case IfLike(_, IfLikeForm.ReturningIf, body) => "`if` expression"
+      case IfLike(_, IfLikeForm.ImperativeIf, body) => "`if` statement"
+      case IfLike(_, IfLikeForm.While, body) => "`while` statement"
       case SynthIf(split) => "synthetic `if` expression"
       case Lam(params, body) => "function literal"
       case FunTy(lhs, rhs, eff) => "function type"
@@ -571,9 +572,9 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Tup(fields) => fields.flatMap(_.subTerms).toVector
     case Mut(und) => Vector.single(und)
     case CtxTup(fields) => fields.flatMap(_.subTerms).toVector
-    case IfLike(_, split) => split.subTerms
+    case IfLike(_, _, split) => split.subTerms
     case SynthIf(split) => split.subTerms
-    case Lam(params, body) => Vector.single(body)
+    case Lam(params, body) => params.allParams.iterator.flatMap(_.sign).toVector :+ body
     case Blk(stats, res) => stats.flatMap(_.subTerms).toVector :+ res
     case Rcd(mut, stats) => stats.flatMap(_.subTerms).toVector
     case Quoted(term) => Vector.single(term)
@@ -621,9 +622,9 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case t: Lit => Vector.single(t.lit.asTree)
     case t: Ref => treeOrSubterms(t.tree)
     case t: Tup => treeOrSubterms(t.tree)
-    case l: Lam => l.params.paramSyms.map(_.id).toVector :+ l.body
+    case l: Lam => Vector.double(l.params, l.body)
     case t: App => treeOrSubterms(t.tree)
-    case IfLike(_, split) => Vector.single(split)
+    case IfLike(_, _, split) => Vector.single(split)
     case SynthIf(split) => Vector.single(split)
     case SynthSel(pre, nme) => Vector.double(pre, nme)
     case Sel(pre, nme) => Vector.double(pre, nme)
@@ -631,7 +632,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case _ =>
       subTerms // TODO more precise (include located things that aren't terms)
   
-  def show(using Scope, ShowCfg): Document =
+  def show(using Scope, ShowCfg, Raise): Document =
     def res: Document = this match
       case lit: Lit => lit.lit.idStr
       case r: Ref =>
@@ -718,7 +719,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case _ =>
       showPlain
 
-  def showAsParams(using Scope, ShowCfg): Document = this match
+  def showAsParams(using Scope, ShowCfg, Raise): Document = this match
     case tup: Tup => doc"(${tup.fields.map(_.show).mkDocument(", ")})"
     case _ => doc"(...$show)"
   
@@ -745,7 +746,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Sel(pre, nme) => s"${pre.showDbg}.${nme.name}"
     case SynthSel(pre, nme) => s"(${pre.showDbg}.)${nme.name}"
     case DynSel(pre, fld, _) => s"${pre.showDbg}[${fld.showDbg}]"
-    case IfLike(kw, split) => s"${kw.name} { ${split.showDbg} }"
+    case IfLike(kw, _, split) => s"${kw.name} { ${split.showDbg} }"
     case SynthIf(split) => s"if { ${split.showDbg} }"
     case Lam(params, body) => s"λ${params.showDbg}. ${body.showDbg}"
     case Blk(stats, res) =>
@@ -1144,11 +1145,18 @@ object FldFlags:
       !flags.spec
 
 
+enum IfLikeForm:
+  case ReturningIf, ImperativeIf, While
+  def isImperative: Bool = this match
+    case ReturningIf => false
+    case ImperativeIf | While => true
+
+
 sealed abstract class Elem:
   def subTerms: Ls[Term] = this match
     case Fld(_, term, asc) => term :: asc.toList
     case Spd(_, term) => term :: Nil
-  def show(using Scope, ShowCfg): Document
+  def show(using Scope, ShowCfg, Raise): Document
   def showDbg: Str
 object Elem:
   given Conversion[Term, Elem] = PlainFld(_)
@@ -1157,7 +1165,7 @@ object PlainFld:
   def apply(term: Term) = Fld(FldFlags.empty, term, N)
   def unapply(fld: Fld): Opt[Term] = S(fld.term)
 final case class Spd(k: SpreadKind, term: Term) extends Elem:
-  def show(using Scope, ShowCfg): Document = k.str :: term.show
+  def show(using Scope, ShowCfg, Raise): Document = k.str :: term.show
   def showDbg: Str = k.str + term.showDbg
 
 final case class TyParam(flags: FldFlags, vce: Opt[Bool], sym: VarSymbol) extends Declaration:
@@ -1196,7 +1204,7 @@ extends Declaration, AutoLocated:
   
   override protected def children: Vector[Located] = sym +: sign.toVector
   
-  def show(using Scope, ShowCfg): Document =
+  def show(using Scope, ShowCfg, Raise): Document =
     doc"${flags.show}${sym.showName}${sign.fold(doc"")(": " :: _.show)}"
   
   def showDbg: Str = flags.show + sym + sign.fold("")(": " + _.showDbg)
@@ -1210,7 +1218,7 @@ extends AutoLocated:
   def paramSyms = params.map(_.sym) ++ restParam.map(_.sym)
   def allParams = params ++ restParam.toList
   def subTerms: Ls[Term] = params.flatMap(_.subTerms) ++ restParam.toList.flatMap(_.subTerms)
-  def show(using Scope, ShowCfg): Document =
+  def show(using Scope, ShowCfg, Raise): Document =
     flags.show
     :: doc"(" :: (
       params.map(_.show)
@@ -1239,7 +1247,7 @@ object ParamListFlags:
 trait FldImpl extends AutoLocated:
   self: Fld =>
   def children: Vector[Located] = self.term +: self.asc.toVector
-  def show(using Scope, ShowCfg): Document = flags.show :: self.term.show
+  def show(using Scope, ShowCfg, Raise): Document = flags.show :: self.term.show
   def showDbg: Str = flags.show + self.term.showDbg
   def describe: Str =
     (if self.flags.spec then "specialized " else "") +
@@ -1258,7 +1266,7 @@ object Apps:
 trait BlkImpl:
   this: Blk =>
   def mkBlkClone(using State): Blk = Blk(stats.map(_.mkClone), res.mkClone)
-  def showTopLevel(using Scope, ShowCfg): Document =
+  def showTopLevel(using Scope, ShowCfg, Raise): Document =
     (stats ::: (res match
       case Lit(Tree.UnitLit(false)) => Nil
       case res => res :: Nil)).map(_.show).mkDocument(doc", # ")

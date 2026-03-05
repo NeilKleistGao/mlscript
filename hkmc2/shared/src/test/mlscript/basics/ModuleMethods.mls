@@ -7,10 +7,10 @@ module MM[T]
 
 :e
 fun f(m: M)
-//│ ╔══[ERROR] Expected a non-module type; found reference.
+//│ ╔══[COMPILATION ERROR] Expected a non-module type; found reference.
 //│ ║  l.9: 	fun f(m: M)
 //│ ╙──     	         ^
-//│ ╔══[ERROR] Expected a non-module type; found reference of type M denoting module 'M'.
+//│ ╔══[COMPILATION ERROR] Expected a non-module type; found reference of type M denoting module 'M'.
 //│ ║  l.9: 	fun f(m: M)
 //│ ║       	         ^
 //│ ╙── Non-module parameter must have a non-module type.
@@ -19,7 +19,7 @@ fun f(m)
 
 :e
 f(M)
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.21: 	f(M)
 //│ ║        	  ^
 //│ ╙── Module argument passed to a non-module parameter.
@@ -28,7 +28,7 @@ f(42)
 
 :e
 fun f(module m)
-//│ ╔══[ERROR] Module parameter must have explicit type.
+//│ ╔══[COMPILATION ERROR] Module parameter must have explicit type.
 //│ ║  l.30: 	fun f(module m)
 //│ ╙──      	             ^
 
@@ -40,10 +40,10 @@ f(M)
 
 :e
 fun f[T](module m: T)
-//│ ╔══[ERROR] Expected a module type; found reference.
+//│ ╔══[COMPILATION ERROR] Expected a module type; found reference.
 //│ ║  l.42: 	fun f[T](module m: T)
 //│ ╙──      	                   ^
-//│ ╔══[ERROR] Expected a module type; found reference.
+//│ ╔══[COMPILATION ERROR] Expected a module type; found reference.
 //│ ║  l.42: 	fun f[T](module m: T)
 //│ ║        	                   ^
 //│ ╙── Module parameter must have a module type.
@@ -66,18 +66,18 @@ fun assertNonMM[T](m)
 
 :e
 fun f() = M
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.68: 	fun f() = M
 //│ ║        	          ^
 //│ ╙── Function must be marked as returning a 'module' in order to return a module.
 
 :e
 fun f(): M = M
-//│ ╔══[ERROR] Expected a non-module type; found reference of type M denoting module 'M'.
+//│ ╔══[COMPILATION ERROR] Expected a non-module type; found reference of type M denoting module 'M'.
 //│ ║  l.75: 	fun f(): M = M
 //│ ║        	         ^
 //│ ╙── Function must be marked as returning a 'module' in order to have a module return type.
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.75: 	fun f(): M = M
 //│ ║        	             ^
 //│ ╙── Function must be marked as returning a 'module' in order to return a module.
@@ -86,7 +86,7 @@ fun f(): module M = M
 
 :e
 assertNonM(f())
-//│ ╔══[ERROR] Unexpected moduleful application of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful application of type M.
 //│ ║  l.88: 	assertNonM(f())
 //│ ║        	           ^^^
 //│ ╙── Module argument passed to a non-module parameter.
@@ -95,7 +95,7 @@ assertM(f())
 
 :e
 fun f4[T](): module T = M
-//│ ╔══[ERROR] Expected a module type; found reference.
+//│ ╔══[COMPILATION ERROR] Expected a module type; found reference.
 //│ ║  l.97: 	fun f4[T](): module T = M
 //│ ║        	                    ^
 //│ ╙── Function marked as returning a 'module' must have a module return type.
@@ -104,7 +104,7 @@ fun f[T](): module MM[T] = MM[T]
 
 :e
 assertNonM(f[Int]())
-//│ ╔══[ERROR] Unexpected moduleful application of type MM[T].
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful application of type MM[T].
 //│ ║  l.106: 	assertNonM(f[Int]())
 //│ ║         	           ^^^^^^^^
 //│ ╙── Module argument passed to a non-module parameter.
@@ -115,14 +115,14 @@ assertM(f[Int]())
 :todo
 :e
 fun f3() = return M
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.117: 	fun f3() = return M
 //│ ╙──       	                  ^
 
 :todo
 :e
 fun f3() = (() => M)()
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.124: 	fun f3() = (() => M)()
 //│ ╙──       	                  ^
 
@@ -132,7 +132,7 @@ fun f3() = (() => M)()
 :effectHandlers
 :lift
 fun f3() = (() => return M)()
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.134: 	fun f3() = (() => return M)()
 //│ ╙──       	                         ^
 
@@ -142,7 +142,7 @@ fun f3() = (() => return M)()
 
 :e
 fun f(module m: M) = m
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.144: 	fun f(module m: M) = m
 //│ ║         	                     ^
 //│ ╙── Function must be marked as returning a 'module' in order to return a module.
@@ -155,7 +155,7 @@ fun f(module m: M): module M = m
 
 :e
 val v = M
-//│ ╔══[ERROR] Unexpected moduleful reference of type M.
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.157: 	val v = M
 //│ ║         	        ^
 //│ ╙── Value must be marked as returning a 'module' in order to return a module.
@@ -178,9 +178,9 @@ N.bar(M)
 class C with
   fun foo: module M = M
   val bar: module M = M
-//│ ╔══[ERROR] Function returning modules should not be a class member.
+//│ ╔══[COMPILATION ERROR] Function returning modules should not be a class member.
 //│ ║  l.179: 	  fun foo: module M = M
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^^
-//│ ╔══[ERROR] Value returning modules should not be a class member.
+//│ ╔══[COMPILATION ERROR] Value returning modules should not be a class member.
 //│ ║  l.180: 	  val bar: module M = M
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^^

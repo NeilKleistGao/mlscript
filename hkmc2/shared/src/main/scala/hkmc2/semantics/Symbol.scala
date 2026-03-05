@@ -23,9 +23,9 @@ abstract class Symbol(using State) extends Located:
   
   def getName(using scp: Scope): hkmc2.document.Document =
     import hkmc2.document.*
-    scp.allocateOrGetName(this)
+    scp.allocateOrGetName(this)(using throw _)
   
-  def showName(using scp: Scope, cfg: ShowCfg): hkmc2.document.Document =
+  def showName(using scp: Scope, cfg: ShowCfg)(using Raise): hkmc2.document.Document =
     cfg.shownSymbols += this
     import hkmc2.document.*
     val name = nme
@@ -143,6 +143,14 @@ abstract class Symbol(using State) extends Located:
   def subst(using SymbolSubst): Symbol
   
 end Symbol
+
+
+// * Used, eg, as the Assign receiver of intermediate computations whose result is not used
+final class NoSymbol(using State) extends Symbol:
+  def nme: Str = "‹no symbol›"
+  def toLoc: Option[Loc] = N
+  override def toString: Str = nme
+  def subst(using s: SymbolSubst): NoSymbol = this
 
 
 class FlowSymbol(label: Str)(using State) extends Symbol:
