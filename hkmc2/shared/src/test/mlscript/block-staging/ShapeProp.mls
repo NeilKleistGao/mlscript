@@ -177,48 +177,23 @@ sop(ctx, selPath)
 // sor 
 
 val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
-sor(DefCtx.empty, Ctx.empty, Cache.empty, tup)
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:658)
-//│ ╔══[ERROR] Expected 3 arguments, got 4
-//│ ║  l.180: 	sor(DefCtx.empty, Ctx.empty, Cache.empty, tup)
-//│ ╙──       	   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at REPL144:1:410
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+sor(DefCtx.empty, Ctx.empty, tup)
+//│ = [
+//│   Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))]),
+//│   {Arr([Lit(1), Lit(true)], false)}
+//│ ]
 //│ tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 
 let c = ClassSymbol("C", Some([Symbol("p")]))
 let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
-sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:658)
-//│ ╔══[ERROR] Expected 3 arguments, got 4
-//│ ║  l.203: 	sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
-//│ ╙──       	   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at REPL148:1:531
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+sor(DefCtx.empty, Ctx.empty, inst)
+//│ = [
+//│   Instantiate(
+//│     ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
+//│     [Arg(None, ValueLit(123))]
+//│   ),
+//│   {Class(ClassSymbol("C", Some([Symbol("p")])), [Lit(123)])}
+//│ ]
 //│ c = ClassSymbol("C", Some([Symbol("p")]))
 //│ inst = Instantiate(
 //│   ValueRef(ClassSymbol("C", Some([Symbol("p")]))),
@@ -228,140 +203,40 @@ sor(DefCtx.empty, Ctx.empty, Cache.empty, inst)
 fun testBinOp(op, v1, v2) =
   let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
   let c = Call(ValueRef(Symbol(op)), args)
-  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:658)
-//│ ╔══[ERROR] Expected 3 arguments, got 4
-//│ ║  l.231: 	  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
-//│ ╙──       	     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  sor(DefCtx.empty, Ctx.empty, c).0.lit
 
 :expect 12
 testBinOp("+", 10, 2)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at testBinOp (REPL153:1:727)
-//│     at REPL156:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:214)
-//│ ═══[RUNTIME ERROR] Expected: '12', got: 'undefined'
+//│ = 12
 
 :expect true
 testBinOp("==", 10, 10) 
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at testBinOp (REPL153:1:727)
-//│     at REPL159:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:214)
-//│ ═══[RUNTIME ERROR] Expected: 'true', got: 'undefined'
+//│ = true
 
 :expect false 
 testBinOp("===", 10, "10") 
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at testBinOp (REPL153:1:727)
-//│     at REPL162:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:214)
-//│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
+//│ = false
 
 :expect false
 testBinOp("&&", true, false)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at testBinOp (REPL153:1:727)
-//│     at REPL165:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:214)
-//│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
+//│ = false
 
 fun testUnaryOp(op, v) =
   let args = [Arg(None, ValueLit(v))]
   let c = Call(ValueRef(Symbol(op)), args)
-  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:658)
-//│ ╔══[ERROR] Expected 3 arguments, got 4
-//│ ║  l.317: 	  sor(DefCtx.empty, Ctx.empty, Cache.empty, c).0.lit
-//│ ╙──       	     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  sor(DefCtx.empty, Ctx.empty, c).0.lit
 
 :expect -10
 testUnaryOp("-", 10)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at testUnaryOp (REPL168:1:590)
-//│     at REPL171:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:214)
-//│ ═══[RUNTIME ERROR] Expected: '-10', got: 'undefined'
+//│ = -10
 
 :expect false
 testUnaryOp("!", true)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at testUnaryOp (REPL168:1:590)
-//│     at REPL174:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:214)
-//│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
+//│ = false
 
 :re
 testUnaryOp("~", 10)  
-//│ ═══[RUNTIME ERROR] Error: match error
+//│ ═══[RUNTIME ERROR] Error: Access to required field 'lit' yielded 'undefined'
 
 
 // prop
@@ -463,25 +338,11 @@ val defs = DefCtx.empty.add(fPath, f_gen)
 //│ fSym = Symbol("f")
 
 val callF = Call(fPath, [Arg(None, ValueLit(12))])
-sor(defs, Ctx.empty, Cache.empty, callF)
-//│ FAILURE: Unexpected type error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:658)
-//│ ╔══[ERROR] Expected 3 arguments, got 4
-//│ ║  l.466: 	sor(defs, Ctx.empty, Cache.empty, callF)
-//│ ╙──       	   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:949:38)
-//│     at REPL205:1:283
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+sor(defs, Ctx.empty, callF)
+//│ = [
+//│   Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(None, ValueLit(12))]),
+//│   {Dyn()}
+//│ ]
 //│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(None, ValueLit(12))])
 
 val ctxXY = Ctx.empty
