@@ -66,7 +66,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
       sym match
       case cls: ClassSymbol => P.Ctor(cls, Nil)(t)
       case cls: ModuleOrObjectSymbol => P.Ctor(cls, Nil)(t)
-      case ts: TermSymbol => P.Flow(ts.bms.get.flow)
+      case ts: TermSymbol => getFlowSymOrType(ts.bms.get)
       
     case Ref(sym) =>
       sym match
@@ -80,7 +80,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
         if bms.asTrm.isEmpty then raise:
           ErrorReport:
             msg"Cannot use non-term member ${bms.nme} in term position" -> t.toLoc :: Nil
-        P.Flow(bms.flow)
+        getFlowSymOrType(bms)
       case _: Symbol =>
         log(s"/!\\ Unhandled symbol type: ${sym} (${sym.getClass.getSimpleName}) /!\\")
         P.Unknown(t)
@@ -157,7 +157,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
         sel.resolvedSym match
         case S(sym: BlockMemberSymbol) =>
           log(s"RES ${sym.nme} in ${sel.showDbg}")
-          P.Flow(sym.flow)
+          getFlowSymOrType(sym)
         case S(sym) =>
           selsToExpand += sel
           log(s"Unhandled symbol reference ${sym.nme} in ${sel.showDbg}")
@@ -317,7 +317,19 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
           .map((_, memb))
         case _ => N
     case _ => N
-
+  
+  
+  // * This is a rather hacky way to check whether we're looking at a BMS from the same compilation unit/file,
+  // * in which case we should get access to its internal flow symbol, or whether it's from another file,
+  // * in which case we shouldn't, as flow analysis is supposed to be local
+  // * (if not, we'd notably get race conditions and inconsistencies in compilation).
+  // * ASSUMPTION: This relies on the fact that each file is always elaborated in a distinct State instance.
+  def getFlowSymOrType(bms: BlockMemberSymbol): P =
+    if bms.getState is summon[State]
+    then P.Flow(bms.flow)
+    else P.Typ(Type.Top)
+  
+  
   def solveConstraints(): Unit =
     
     var fuel = MAX_FUEL
@@ -397,7 +409,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
                 case S((path, memb)) =>
                   sel.trm.resolvedTargets ::= SelectionTarget.CompanionMember(path, memb)
                   log(s"Found member ${memb}")
-                  toSolve.push(Constraint(P.Flow(memb.flow), C.Flow(trm.resSym)))
+                  toSolve.push(Constraint(getFlowSymOrType(memb), C.Flow(trm.resSym)))
                 case _ =>
                   log(s"Could not find member ${trm.nme.name} in ${sym}")
               case _ => log("Unhandled RHS for leading dot selections")
@@ -412,7 +424,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
                 case S(memb: BlockMemberSymbol) =>
                   sel.trm.resolvedTargets ::= SelectionTarget.ObjectMember(memb)
                   log(s"Found immediate member ${memb}")
-                  toSolve.push(Constraint(P.Flow(memb.flow), sel.res))
+                  toSolve.push(Constraint(getFlowSymOrType(memb), sel.res))
                 case S(memb) => TODO(memb)
                 case N =>
                   d.moduleCompanion match
@@ -429,7 +441,7 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
                         case S(path) =>
                           sel.trm.resolvedTargets ::= SelectionTarget.CompanionMember(path, memb)
                           val newlhs = memb match
-                            case memb: BlockMemberSymbol => P.Flow(memb.flow)
+                            case memb: BlockMemberSymbol => getFlowSymOrType(memb)
                             case _ => TODO(memb)
                           toSolve.push(Constraint(newlhs, C.Fun(P.Tup((N, lhs) :: Nil), sel.res)))
                         case N => raise:

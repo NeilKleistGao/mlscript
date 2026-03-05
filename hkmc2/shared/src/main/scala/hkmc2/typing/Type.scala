@@ -75,6 +75,11 @@ enum Type extends TypeArg:
     case Inter(l, r) =>
       s"(${l.showDbg} ∧ ${r.showDbg})"
     case NotImplemented => "‹not implemented›"
+    case Tup(fields) =>
+      val fieldStrs = fields.map:
+        case ty: Type => ty.showDbg
+        case (spd, ty) => s"${spd.str} ${ty.showDbg}"
+      s"[${fieldStrs.mkString(", ")}]"
   
   override def subst(f: PartialFunction[Ref, Type]): this.type =
     this.match
@@ -94,6 +99,11 @@ enum Type extends TypeArg:
       case Inter(l, r) =>
         Inter(l.subst(f), r.subst(f))
       case NotImplemented => NotImplemented
+      case Tup(fields) =>
+        Tup(fields.map:
+          case ty: Type => ty.subst(f)
+          case (spd, ty) => (spd, ty.subst(f))
+        )
     .asInstanceOf[this.type]
   
   def symbol: Opt[TypeSymbol | VarSymbol] = this match

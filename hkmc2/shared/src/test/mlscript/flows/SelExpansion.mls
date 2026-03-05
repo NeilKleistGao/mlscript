@@ -306,7 +306,7 @@ module CC with
 //│     flow:x¹  <~  type Int
 //│     flow:getX¹  <~  ((type CC) -> flow:x¹)
 
-:fixme // TODO: handle lifted class defs
+:fixme // TODO: handle lifted class defs: the JS is missing the `.class` access to get the static member `CC2.class.getX`
 CC(123).getX
 //│ Flowed:
 //│   CC¹(123)‹app¹³›.getX‹?›{ ~> CC¹.getX¹(CC¹(123)‹app¹³›)‹app¹⁴› }
@@ -363,5 +363,43 @@ new CC().okay
 //│ where
 //│     
 //│ = 123
+
+
+module Example with
+  class Test(val field: Int)
+  module Test with
+    fun next(self: Test) = Test(self.field + 1)
+//│ Flowed:
+//│   module Example {
+//│     class Test(valfield⁰: Int⁰{ ~> Int⁰ }) {
+//│       val field¹ ‹flow:field⁰› = field⁰
+//│     },
+//│     module Test {
+//│       fun next⁰(self²: ⟨Example⁰.⟩Test⁰) ‹flow:next⁰› = ⟨Example⁰.⟩Test⁰(+(self².field¹, 1)‹app¹⁷›)‹app¹⁸›
+//│     }
+//│   }
+//│ where
+//│     field⁰  <~  type Int
+//│     field⁰  ->  flow:field⁰
+//│     self²  <~  type Test
+//│     flow:field⁰  <~  type Int
+//│     flow:next⁰  <~  ((type Test) -> app¹⁸)
+
+let e = new Example.Test(123)
+//│ Flowed:
+//│   let e⁰,
+//│   e⁰ = new Example¹.Test⁰(123)
+//│ where
+//│     e⁰  <~  Test(123)
+//│ e = Test(123)
+
+:fixme // Same as test case above (missing `.class` access)
+e.next
+//│ Flowed:
+//│   e⁰.next‹?›{ ~> Example¹.Test⁰.next⁰(e⁰)‹app¹⁹› }
+//│ where
+//│     e⁰  <~  Test(123)
+//│     e⁰  ~>  {next: ⋅next⁰}
+//│ ═══[RUNTIME ERROR] TypeError: selRes7.next is not a function
 
 
