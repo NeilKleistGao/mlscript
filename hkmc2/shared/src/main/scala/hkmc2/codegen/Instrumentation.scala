@@ -94,9 +94,14 @@ class InstrumentationImpl(using State, Raise):
   def transformSymbol(sym: Symbol, symName: Str = "sym")(k: Path => Block): Block =
     sym match
     case clsSym: ClassSymbol =>
-      val name = scope.allocateOrGetName(sym)
-      transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
-        blockCtor("ClassSymbol", Ls(toValue(name), paramsOpt), symName)(k)
+      clsSym.defn match
+      case S(defn) =>
+        val name = scope.allocateOrGetName(sym)
+        transformParamsOpt(defn.paramsOpt): paramsOpt =>
+          blockCtor("ClassSymbol", Ls(toValue(name), paramsOpt), symName)(k)
+      case N =>
+        raise(ErrorReport(msg"Unable to infer parameters from ClassSymbol in staged module, which are necessary to reconstruct class instances." -> sym.toLoc :: Nil))
+        End()
     case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
       val name = scope.allocateOrGetName(sym)
       transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
@@ -150,12 +155,10 @@ class InstrumentationImpl(using State, Raise):
           blockCtor("ValueRef", Ls(sym), "var")(k)
       case l: Value.Lit =>
         blockCtor("ValueLit", Ls(l), "lit")(k)
-      case s @ Select(p, i @ Tree.Ident(name)) =>
+      case s @ Select(p, Tree.Ident(name)) =>
         transformPath(p): x =>
-          val sym =
-            if s.symbol.isDefined
-            then transformSymbol(s.symbol.get)
-            else blockCtor("Symbol", Ls(toValue(name)))
+          val sym = s.symbol.map(transformSymbol(_))
+            .getOrElse(blockCtor("Symbol", Ls(toValue(name))))
           sym: sym =>
             blockCtor("Select", Ls(x, sym), "sel")(k)
       case DynSelect(qual, fld, arrayIdx) =>
@@ -184,11 +187,10 @@ class InstrumentationImpl(using State, Raise):
       val stagedFunPath =
         fun match
         case s @ Select(qual, Tree.Ident(name)) => s.symbol.flatMap({
-            case t: TermSymbol => t.owner.flatMap({
-                case sym: DefinitionSymbol[?] =>
-                  sym.defn.get.hasStagedModifier.map(_ =>
-                    Select(qual, Tree.Ident(name + "_gen"))(N)
-                  )
+            case t: TermSymbol => t.owner.flatMap({ case sym: DefinitionSymbol[?] =>
+                sym.defn.flatMap(_.hasStagedModifier.map(_ =>
+                  Select(qual, Tree.Ident(name + "_gen"))(N)
+                ))
               })
             case _ => N
           })
