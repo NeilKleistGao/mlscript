@@ -227,9 +227,8 @@ class FlowAnalysis(using tl: TraceLogger)(using Raise, State, Ctx):
   
   def typeParamList(ps: ParamList): Ls[C] =
     if ps.restParam.nonEmpty then
-      ???
+      ??? // TODO
     ps.params.map(typeParam)
-    // ps.restParam.map(typeParam)
   
   def typeType(t: Term): Type =
   trace[Type](s"Typing consumer: ${t.showDbg}", post = res => s": ${res.showDbg}"):

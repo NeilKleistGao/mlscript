@@ -1,8 +1,7 @@
 package hkmc2
 package semantics
 
-import scala.collection.mutable.Buffer
-import scala.collection.mutable
+import scala.collection.mutable.{Buffer, Set as MutSet}
 
 import mlscript.utils.*, shorthands.*
 import syntax.*
@@ -483,7 +482,7 @@ case class ShowCfg(
   showFlowSymbols: Bool,
 ):
   // * Rather ugly way of collecting shown symbols during show operations
-  val shownSymbols: mutable.Set[Symbol] = mutable.Set.empty
+  val shownSymbols: MutSet[Symbol] = MutSet.empty
 end ShowCfg
 
 
@@ -654,7 +653,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
           if summon[ShowCfg].showFlowSymbols
           then
             summon[ShowCfg].shownSymbols.add(app.resSym)
-            "‹" :: app.resSym.getName :: "›"
+            "‹" :: app.resSym.showPlainName :: "›"
           else ""
         }"
       case lam: Lam => doc"${lam.params.show} => ${lam.body.show}"

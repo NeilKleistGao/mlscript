@@ -21,7 +21,7 @@ abstract class Symbol(using State) extends Located:
   
   val uid: Uid[Symbol] = State.suid.nextUid
   
-  def getName(using scp: Scope): hkmc2.document.Document =
+  def showPlainName(using scp: Scope): hkmc2.document.Document =
     import hkmc2.document.*
     scp.allocateOrGetName(this)(using throw _)
   
@@ -232,9 +232,10 @@ class BuiltinSymbol
     extends Symbol:
   def toLoc: Option[Loc] = N
   override def toString: Str = s"builtin:$nme${State.dbgUid(uid)}"
-
+  
   def subst(using sub: SymbolSubst): BuiltinSymbol = sub.mapBuiltInSym(this)
-
+  
+  // * A basic approximation of builtin operator types
   lazy val signature : semantics.flow.Producer =
     import typing.Type
     import typing.Type.*
