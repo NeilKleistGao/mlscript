@@ -103,7 +103,6 @@ class InstrumentationImpl(using State, Raise):
         raise(ErrorReport(msg"Unable to infer parameters from ClassSymbol in staged module, which are necessary to reconstruct class instances." -> sym.toLoc :: Nil))
         End()
     case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
-      val name = scope.allocateOrGetName(sym)
       transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
     case _: BuiltinSymbol =>
       // retain names to built-in functions
