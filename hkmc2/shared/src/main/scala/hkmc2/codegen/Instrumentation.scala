@@ -254,7 +254,7 @@ class InstrumentationImpl(using State, Raise):
       transformBlock(rest): p =>
         transformSymbol(cls.isym): c =>
           // staging the methods within the module
-          cls.methods.map(transformFunDefn2).collectApply: methods =>
+          cls.methods.map(transformFunDefn).collectApply: methods =>
             tuple(methods): methods =>
               optionNone(): none => // TODO: handle companion object
                 blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
@@ -287,7 +287,7 @@ class InstrumentationImpl(using State, Raise):
       raise(ErrorReport(msg"Other Blocks not supprted in staged module: ${b.toString()}" -> N :: Nil))
       End()
 
-  def transformFunDefn2(f: FunDefn)(using Context)(k: Path => Block): Block =
+  def transformFunDefn(f: FunDefn)(using Context)(k: Path => Block): Block =
     transformBlock(f.body): body =>
       if f.params.length != 1 then
         raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
@@ -300,16 +300,15 @@ class InstrumentationImpl(using State, Raise):
             tuple(tups): tup =>
               blockCtor("FunDefn", Ls(sym, tup, body, toValue(true)))(k)
 
-  def transformFunDefn(f: FunDefn): (FunDefn, Block => Block) =
+  def applyFunDefn(f: FunDefn): (FunDefn, Block => Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
     val sym = f.owner.get.asPath.selSN(genSymName)
-    // NOTE: this debug printing only works for top-level modules, nested modules don't work
 
     // turn into fundefn
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(f.sym.nme + "_instr"))
     val argSyms = f.params.flatMap(_.params).map(_.sym)
-    val newBody = Scoped(Set(argSyms*), transformFunDefn2(f)(using new HashMap)(Return(_, false)))
+    val newBody = Scoped(Set(argSyms*), transformFunDefn(f)(using new HashMap)(Return(_, false)))
 
     // TODO: remove it. only for test
     val debug = (k: Block) => call(sym, Nil)(fnPrintCode(_)(k))
@@ -327,10 +326,10 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val sym = c.sym.subst
       val companion = c.companion.get
       val (stagedMethods, debugPrintCode) = companion.methods
-        .map(impl.transformFunDefn)
+        .map(impl.applyFunDefn)
         .unzip
       val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-      val (stagedCtor, ctorPrint) = impl.transformFunDefn(ctor)
+      val (stagedCtor, ctorPrint) = impl.applyFunDefn(ctor)
 
       val unit = State.runtimeSymbol.asPath.selSN("Unit")
       val debugBlock = (ctorPrint :: debugPrintCode).foldRight((Return(unit, true): Block))(_(_))
@@ -341,7 +340,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         override def applyBlock(b: Block): Block = super.applyBlock(b) match
         case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
           val (stagedMethods, debugPrintCode) = c.methods
-            .map(impl.transformFunDefn)
+            .map(impl.applyFunDefn)
             .unzip
           val newModule = c.copy(methods = c.methods ++ stagedMethods)
           Define(newModule, rest)
