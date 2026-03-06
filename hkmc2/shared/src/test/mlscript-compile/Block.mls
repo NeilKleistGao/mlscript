@@ -21,13 +21,13 @@ type Ident = Symbol
 // this is so that we're able to retrieve information about the class from the symbol
 class ClassSymbol(val name: Str, val paramsOpt: Opt[ParamList]) extends Symbol(name)
 
-class Arg(val spread: Opt[Bool], val value: Path) 
+class Arg(val value: Path) 
 
 class Case with
   constructor
     Lit(val lit: Literal)
     Cls(val cls: Symbol, val path: Path)
-    Tup(val len: Int, val inf: Bool)
+    Tup(val len: Int)
 
 class Result with 
   constructor
@@ -106,11 +106,7 @@ fun showPath(p: Path): Str =
       "Lit(" + showLiteral(lit) + ")"
 
 fun showArg(arg: Arg) =
-  if arg.spread is
-    Some(true) then "..."
-    Some(false) then ".."
-    else ""
-  + showPath(arg.value)
+  showPath(arg.value)
 
 fun showArgs(args: Array[Arg]) =
   "[" + args.map(showArg).join(", ") + "]"
@@ -120,7 +116,7 @@ fun showCase(c: Case): Str =
   if c is
     Lit(lit) then "Lit(" + showLiteral(lit) + ")"
     Cls(cls, path) then "Cls(" + showSymbol(cls) + ", " + showPath(path) + ")"
-    Tup(len, inf) then "Tup(" + len + ", " + inf + ")"
+    Tup(len) then "Tup(" + len + ")"
 
 fun showResult(r: Result): Str =
   if r is

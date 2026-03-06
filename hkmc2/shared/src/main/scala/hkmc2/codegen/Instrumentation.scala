@@ -207,9 +207,12 @@ class InstrumentationImpl(using State, Raise):
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool)) => Block): Block =
     val Arg(spread, value) = a
-    transformOption(spread, bool => assign(toValue(bool))): spreadStaged =>
+    if spread.isDefined then
+      raise(ErrorReport(msg"Spread parameters are not supported in staged module: ${a.toString()}" -> N :: Nil))
+      End()
+    else
       transformPath(value): value =>
-        blockCtor("Arg", Ls(spreadStaged, value)): cde =>
+        blockCtor("Arg", Ls(value)): cde =>
           k(cde, spread.isDefined)
 
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[(Path, Bool)] => Block): Block =
@@ -228,7 +231,11 @@ class InstrumentationImpl(using State, Raise):
       transformSymbol(cls): cls =>
         transformPath(path): path =>
           blockCtor("Cls", Ls(cls, path))(k)
-    case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
+    case Case.Tup(len, true) =>
+      raise(ErrorReport(msg"Spread parameters are not supported in staged module: ${cse.toString()}" -> N :: Nil))
+      End()
+    case Case.Tup(len, false) =>
+      blockCtor("Tup", Ls(toValue(len)))(k)
     case Case.Field(name, safe) =>
       raise(ErrorReport(msg"Case.Field not supported in staged module." -> name.toLoc :: Nil))
       End()
