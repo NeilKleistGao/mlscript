@@ -273,17 +273,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
                 val stagedAnnots = mod.annotations.collect { 
                   case Annot.Modifier(Keyword.`staged`) => Annot.Modifier(Keyword.`staged`) 
                 }
-                // val newDefn = ClassDef.Plain(mod.owner, syntax.Cls, clsSymb,
-                //   mod.bsym,
-                //   Nil,
-                //   N,
-                //   ObjBody(Blk(Nil, UnitVal())),
-                //   S(mod.sym),
-                //   stagedAnnots
-                // )
-                // clsSymb.defn = S(newDefn)
-                // newDefn
-
                 ClassDef.Plain(mod.owner, syntax.Cls, new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id),
                   mod.bsym,
                   Nil,

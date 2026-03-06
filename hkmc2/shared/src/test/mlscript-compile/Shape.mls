@@ -38,27 +38,6 @@ fun show(s: Shape) =
     Arr(shapes, inf) then "Arr([" + shapes.map(show).join(", ") + "], " + inf + ")"
     Class(sym, params) then "Class(" + showSymbol(sym) + ", [" + params.map(show).join(", ") + "])"
 
-fun zipMrg[A](a: Array[A], b: Array[A]): Array[A] =
-  a.map((a, i, _) => mrg2(a, b.at(i)))
-
-// TODO: remove, this is no longer in use
-fun mrg2(s1: Shape, s2: Shape) =
-  if s1 == s2 then s1
-  else if [s1, s2] is 
-    [Lit(l), Class(sym, params)]
-      and isPrimitiveTypeOf(sym, l)
-      then Class(sym, params)
-    [Class(sym1, ps), Class(sym2, s2)]
-      and sym1.name == sym2.name
-      then Class(sym1, ps.map(p => [p.0, zipMrg(p.1, s2)]))
-    [Arr(s1, false), Arr(s2, false)]
-      and s1.length == s2.length
-      then Arr(zipMrg(s1, s2), false)
-    else Dyn()
-
-fun mrg(s1: Array[Shape]) = 
-  s1.reduceRight((acc, s, _, _) => mrg2(s, acc))
-
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
     [Class(sym, params), Lit(n)] and n is Str
