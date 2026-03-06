@@ -162,7 +162,9 @@ class InstrumentationImpl(using State, Raise):
         transformPath(qual): x =>
           transformPath(fld): y =>
             blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k)
-      case _ => ??? // not supported
+      case _: Value.This =>
+        raise(ErrorReport(msg"Value.This not supported in staged module." -> p.toLoc :: Nil))
+        End()
 
   def transformResult(r: Result)(using Context)(k: Path => Block): Block =
     r match
@@ -197,7 +199,9 @@ class InstrumentationImpl(using State, Raise):
         transformArgs(args): args =>
           tuple(args.map(_._1)): tup =>
             blockCtor("Call", Ls(fun, tup), "app")(k)
-    case _ => ??? // not supported
+    case _ =>
+      raise(ErrorReport(msg"Other Results not supported in staged module: ${r.toString()}" -> r.toLoc :: Nil))
+      End()
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool)) => Block): Block =
     val Arg(spread, value) = a
@@ -223,7 +227,9 @@ class InstrumentationImpl(using State, Raise):
         transformPath(path): path =>
           blockCtor("Cls", Ls(cls, path))(k)
     case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
-    case Case.Field(name, safe) => ??? // not supported
+    case Case.Field(name, safe) =>
+      raise(ErrorReport(msg"Case.Field not supported in staged module." -> name.toLoc :: Nil))
+      End()
 
   def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)((p, _) => k(p))
@@ -275,7 +281,9 @@ class InstrumentationImpl(using State, Raise):
     case Break(labelSymbol) =>
       transformSymbol(labelSymbol): labelSymbol =>
         blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
-    case _ => ??? // not supported
+    case _ =>
+      raise(ErrorReport(msg"Other Blocks not supprted in staged module: ${b.toString()}" -> N :: Nil))
+      End()
 
   def transformFunDefn2(f: FunDefn)(using Context)(k: Path => Block): Block =
     transformBlock(f.body): body =>
@@ -290,7 +298,7 @@ class InstrumentationImpl(using State, Raise):
             tuple(tups): tup =>
               blockCtor("FunDefn", Ls(sym, tup, body, toValue(true)))(k)
 
-  def transformFunDefn(f: FunDefn): (FunDefn, Block) =
+  def transformFunDefn(f: FunDefn): (FunDefn, Block => Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
     val sym = f.owner.get.asPath.selSN(genSymName)
@@ -302,19 +310,13 @@ class InstrumentationImpl(using State, Raise):
     val newBody = Scoped(Set(argSyms*), transformFunDefn2(f)(using new HashMap)(Return(_, false)))
 
     // TODO: remove it. only for test
-    val debug = call(sym, Nil)(fnPrintCode(_)(End()))
+    val debug = (k: Block) => call(sym, Nil)(fnPrintCode(_)(k))
     val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, debug)
 
 // TODO: rename as InstrumentationTransformer?
 class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSubst()):
   val impl = new InstrumentationImpl
-
-  def concat(b1: Block, b2: Block): Block =
-    b1.mapTail {
-      case _: End => b2
-      case _ => ???
-    }
 
   override def applyBlock(b: Block): Block =
     super.applyBlock(b) match
@@ -329,7 +331,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val (stagedCtor, ctorPrint) = impl.transformFunDefn(ctor)
 
       val unit = State.runtimeSymbol.asPath.selSN("Unit")
-      val debugBlock = (ctorPrint :: debugPrintCode).foldRight(Return(unit, true))(concat)
+      val debugBlock = (ctorPrint :: debugPrintCode).foldRight((Return(unit, true): Block))(_(_))
       def debugCont(rest: Block) =
         Begin(debugBlock, rest)
       // add generator functions for classes within the constructor

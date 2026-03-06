@@ -112,3 +112,17 @@ module A with
     fun f() = 1
 //│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
+
+:e
+class C(val a)
+staged module A with
+  let x = C(1)
+  fun f() = set x.a = 0
+  fun g() = {1 : 2}
+//│ ═══[COMPILATION ERROR] Other Blocks not supprted in staged module: AssignField(Ref(term:module:A.x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref($runtime,None),Ident(Unit)),false))
+//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
+//│ ║  l.121: 	  fun g() = {1 : 2}
+//│ ╙──       	                 ^
+//│ > FunDefn(Symbol("ctor$"), ([]), Assign(Symbol("x"), Call(Ref(ClassSymbol("C1":[Symbol("a")])), [Lit(1)]), End), true)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+
