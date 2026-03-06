@@ -8,7 +8,7 @@ import document.*
 import document.Document.{braced, bracketed}
 
 import hkmc2.Message.MessageContext
-import hkmc2.syntax.{Tree, MutVal, ImmutVal}
+import hkmc2.syntax.{Tree, MutVal, ImmutVal, SpreadKind}
 import hkmc2.semantics.*
 import Elaborator.{State, Ctx}
 import hkmc2.codegen.Lambda
@@ -87,8 +87,8 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
   
   def argument(a: Arg)(using Raise, Scope): Document =
     val spd = a.spread match
-      case S(true) => doc"..."
-      case S(false) => doc"$runtimeVar.Tuple.split, "
+      case S(SpreadKind.Eager) => doc"..."
+      case S(SpreadKind.Lazy) => doc"$runtimeVar.Tuple.split, "
       case N => doc""
     doc"${spd}${result(a.value)}"
   
@@ -173,7 +173,7 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
     case Tuple(mut, es) if es.isEmpty => if mut then "[]" else doc"$freeze([])"
     case Tuple(mut, es) =>
       val inner =
-        val lazyConcat = es.exists(!_.spread.getOrElse(true))
+        val lazyConcat = es.exists(!_.spread.fold(true)(_.isEager))
         if lazyConcat
         then doc"$runtimeVar.Tuple.lazyConcat(${es.map(argument).mkDocument(doc", ")})"
         else bracketed("[", "]", insertBreak = true):

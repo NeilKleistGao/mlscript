@@ -28,9 +28,11 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
     ln.trim
   
   private val baseScp: utils.Scope =
-    utils.Scope.empty
+    utils.Scope.empty(utils.Scope.Cfg.default)
   private lazy val dbgScp: utils.Scope = // for IR printing only
-    utils.Scope.empty
+    utils.Scope.empty(utils.Scope.Cfg.default.copy(
+      escapeChars = true, useSuperscripts = false,
+    ))
   
   val runtimeNme = baseScp.allocateName(Elaborator.State.runtimeSymbol)(using throw _)
   val termNme = baseScp.allocateName(Elaborator.State.termSymbol)(using throw _)
