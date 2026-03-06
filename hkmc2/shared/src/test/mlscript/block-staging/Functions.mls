@@ -24,71 +24,19 @@ staged module Expressions with
       [1, 2] then 2
       [a, ...] then 3
       else 0
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun lit() = 1
-//│ > fun assign() =
-//│ >   let x
-//│ >   let y
-//│ >   x = 42
-//│ >   y = x
-//│ >   y
-//│ > fun tup1() = [1, 2]
-//│ > fun tup2() = [1, ..x1]
-//│ > fun dynsel() =
-//│ >   let tmp
-//│ >   tmp = [1]
-//│ >   tmp.(0)
-//│ > fun match1() =
-//│ >   let scrut
-//│ >   scrut = 9
-//│ >   if scrut is
-//│ >     Bool then 1
-//│ >     8 then 2
-//│ >     Int then 3
-//│ >     else 0
-//│ > fun match2() =
-//│ >   let tmp1
-//│ >   let middleElements
-//│ >   let element0_
-//│ >   let element1_
-//│ >   let scrut1
-//│ >   let a
-//│ >   scrut1 = [...x1]
-//│ >   if scrut1 is
-//│ >     [] then
-//│ >       tmp1 = 1
-//│ >     [_, _] then
-//│ >       element0_ = Runtime.Tuple.get(scrut1, 0)
-//│ >       element1_ = Runtime.Tuple.get(scrut1, 1)
-//│ >       if element0_ is
-//│ >         1 then
-//│ >           if element1_ is
-//│ >             2 then
-//│ >               tmp1 = 2
-//│ >             else if scrut1 is
-//│ >               [_, ...] then
-//│ >                 middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >                 a = element0_
-//│ >                 tmp1 = 3
-//│ >               else tmp1 = 0
-//│ >         else if scrut1 is
-//│ >           [_, ...] then
-//│ >             middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >             a = element0_
-//│ >             tmp1 = 3
-//│ >           else tmp1 = 0
-//│ >     [_, ...] then
-//│ >       element0_ = Runtime.Tuple.get(scrut1, 0)
-//│ >       middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >       a = element0_
-//│ >       tmp1 = 3
-//│ >     else tmp1 = 0
-//│ >   tmp1
-//│ > Map(2) {
-//│ >   'Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get"))' => [ [Function: get], false ],
-//│ >   'Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice"))' => [ [Function: slice], false ]
-//│ > }
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
+//│ ═══[RUNTIME ERROR] Error: runtime.Tuple.slice not handled in shape propagation
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:716:65)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1137:29)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1145:31)
+//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1194:31)
+//│     at file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:151:35
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1217:43)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1145:31)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1123:27)
+//│     at Expressions.match2_gen (REPL14:1:62403)
+//│     at Expressions.dump (REPL14:1:2916)
 //│ x = [1, 2, 3]
 
 class Outside(a)
@@ -99,17 +47,19 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
-//│ > fun ctor_() =
-//│ >   class Inside1(a1, b)
-//│ >   class NoArg
-//│ > fun inst1() = new Outside(1)
-//│ > fun inst2() = new ClassInstrumentation.NoArg()
-//│ > fun app1() = Outside(1)
-//│ > fun app2() = ClassInstrumentation.Inside1(1, 2)
-//│ > Map(2) {
-//│ >   'Select(ValueRef(Symbol("ClassInstrumentation")), ClassSymbol("Inside1", Some([Symbol("a1"), Symbol("b")])))' => [ undefined, false ],
-//│ >   'ValueRef(ClassSymbol("Outside", Some([Symbol("a")])))' => [ [Function: Outside] { class: [Function] }, false ]
-//│ > }
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
+//│ ═══[RUNTIME ERROR] Error: Instantiate with non-ClassSymbol in shape propagation
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:617:43)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1096:28)
+//│     at ClassInstrumentation.inst2_gen (REPL18:1:14047)
+//│     at ClassInstrumentation.dump (REPL18:1:4691)
+//│     at <static_initializer> (REPL18:1:2279)
+//│     at REPL18:1:19459
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
 
 module Nonstaged with
   fun f() = 1
@@ -119,20 +69,13 @@ staged module CallSubst with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = 1
-//│ > Map(0) {}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call() =
-//│ >   let tmp
-//│ >   tmp = Nonstaged.f()
-//│ >   Staged.f1()
-//│ > Map(2) {
-//│ >   'Select(ValueRef(Symbol("Nonstaged")), Symbol("f"))' => [ [Function: f], false ],
-//│ >   'Select(ValueRef(Symbol("Staged")), Symbol("f1"))' => [ [Function: f_gen], true ]
-//│ > }
+//│ > module Staged with
+//│ >   fun f() = 1
+//│ > module CallSubst with
+//│ >   fun call() =
+//│ >     let tmp
+//│ >     tmp = Nonstaged.f()
+//│ >     f()
 
 module Nonstaged with
   fun f() = 1
@@ -141,16 +84,10 @@ staged module Staged with
 staged module CallSubst with
   fun call() = 
     1 + 1
-    // Nonstaged.f()
-    // Staged.f()
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = 1
-//│ > Map(0) {}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call() = +(1, 1)
-//│ > Map(1) { 'ValueRef(Symbol("+"))' => [ undefined, false ] }
+//│ > module Staged with
+//│ >   fun f() = 1
+//│ > module CallSubst with
+//│ >   fun call() = 2
 
 :w
 staged module Arguments with
@@ -159,15 +96,21 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.160: 	  fun g(x)(y, z)() = z
-//│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x) =
-//│ >   x = 1
-//│ >   x
-//│ > fun g(x)(y, z)() = z
-//│ > Map(0) {}
+//│ ║  l.97: 	  fun g(x)(y, z)() = z
+//│ ╙──      	  ^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
+//│ ═══[RUNTIME ERROR] TypeError: s1.shapeset is not iterable
+//│     at ShapeSet.union (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:341:13)
+//│     at Ctx.add (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:144:27)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1144:24)
+//│     at Arguments.f_gen (REPL27:1:5232)
+//│     at Arguments.dump (REPL27:1:1146)
+//│     at <static_initializer> (REPL27:1:484)
+//│     at REPL27:1:8580
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
 
 staged module OtherBlocks with
   fun scope() =
@@ -180,49 +123,31 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun scope() =
-//│ >   let a
-//│ >   a = 1
-//│ >   OtherBlocks.scope.locally(a)
-//│ > fun breakAndLabel() =
-//│ >   let tmp
-//│ >   let scrut
-//│ >   scrut = 1
-//│ >   if scrut is
-//│ >     2 then
-//│ >       tmp = 0
-//│ >     3 then
-//│ >       tmp = 0
-//│ >     else tmp = 0
-//│ >   tmp
-//│ > Map(1) {
-//│ >   'Select(Select(ValueRef(Symbol("OtherBlocks")), Symbol("scope")), Symbol("locally"))' => [ undefined, false ]
-//│ > }
+//│ > module OtherBlocks with
+//│ >   fun scope() =
+//│ >     let a
+//│ >     a = 1
+//│ >     OtherBlocks.scope.locally(a)
+//│ >   fun breakAndLabel() =
+//│ >     let scrut
+//│ >     let tmp
+//│ >     scrut = 1
+//│ >     tmp = 0
+//│ >     0
 
 // :sjs
 staged module ClassDefs with
   class A
-//│ > fun ctor_() =
-//│ >   class A
-//│ > Map(0) {}
+//│ > module ClassDefs with
+//│ >   
 
 // TODO: how to add the block IR to the cache, for class functions?
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     // fun g() = f() // TODO
-//│ > fun ctor_() =
-//│ >   class InnerClass() with 
-//│ >     fun f() =
-//│ >       let tmp
-//│ >       tmp = Arguments.f(1)
-//│ >       +(1, tmp)
-//│ > Map(2) {
-//│ >   'Select(ValueRef(Symbol("Arguments")), Symbol("f"))' => [ [Function: f_gen], true ],
-//│ >   'ValueRef(Symbol("+"))' => [ undefined, false ]
-//│ > }
+//│ > module ClassFunctions with
+//│ >   
 
 :todo
 staged module ValClass with
@@ -233,16 +158,67 @@ staged module ValClass with
 class A()
 staged module A with
   fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = 1
-//│ > Map(0) {}
+//│ > module A with
+//│ >   fun f() = 1
 
 // nested module
 module A with
   staged module B with
     fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = 1
-//│ > Map(0) {}
+//│ > module B with
+//│ >   fun f() = 1
+
+staged module Test with
+  fun g(x, y) = x 
+  fun k() = g(1, x)
+//│ > module Test with
+//│ >   fun g(x, y) = x
+//│ >   fun g_0(x, y) = 1
+//│ >   fun k() = g_0(1, x1)
+
+staged module Simple with
+  fun inc(x) = x + 1
+  fun t() = inc(41)
+//│ > module Simple with
+//│ >   fun inc(x) = +(x, 1)
+//│ >   fun inc_0(x) = 42
+//│ >   fun t() = inc_0(41)
+
+staged module Match with
+  fun baz(x) = if x is
+    Str then 0 
+    Int then x + 1
+    else -1
+  fun foo() = baz("1")
+  fun foo2() = baz(1)
+//│ > module Match with
+//│ >   fun baz(x) =
+//│ >     if x is
+//│ >       Str then 0
+//│ >       Int then +(x, 1)
+//│ >       else -1
+//│ >   fun baz_0(x) = 0
+//│ >   fun foo() = baz_0("1")
+//│ >   fun baz_1(x) = 2
+//│ >   fun foo2() = baz_1(1)
+
+staged module Math with
+  fun pow(x, n) = if n is
+    1 then x
+    else x * pow(x, n - 1)
+  fun cube(x) = pow(x, 3)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
+//│ ═══[RUNTIME ERROR] RangeError: Maximum call stack size exceeded
+//│     at renderSequence (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:444:45)
+//│     at renderClassInstance (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:442:14)
+//│     at renderValue (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:1185:42)
+//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:316:24)
+//│     at renderSequence (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:479:35)
+//│     at renderArray (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:326:14)
+//│     at renderValue (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:1071:30)
+//│     at lambda (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:435:18)
+//│     at renderSequence (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:479:35)
+//│     at renderClassInstance (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:442:14)
+
+

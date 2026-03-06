@@ -71,7 +71,7 @@ class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicField
 
 class Block with
   constructor
-    Match(val scrut: Path, val arms: Array[[Case, Block]], val dflt: Opt[Block], val rest: Block)
+    Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
     Return(val res: Result, val implct: Bool)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
@@ -125,9 +125,8 @@ fun showResult(r: Result): Str =
     Call(_fun, args) then showPath(_fun) + "(" + showArgs(args) + ")"
     Instantiate(cls, args) then "new " + showPath(cls) + "(" + showArgs(args) + ")"
     Tuple(elems) then "[" + showArgs(elems) + "]"
-    _ then "<unknown result>"
+    _ then "<unknown result:" ~ r ~ ">"
 
-// Case (match arm patterns)
 fun showCase(c) =
   if c is
     Lit(l) then showLiteral(l)
@@ -136,7 +135,7 @@ fun showCase(c) =
         else showParamsOpt(cls.paramsOpt)
     Tup(len, inf) then "[" + Array(len).fill("_").join(", ") +
       (if inf then ", ..." else "") + "]"
-    _ then "<unknown case>"
+    _ then "<unknown case:" ~ c ~ ">"
 
 fun showArm(a) =
   showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
@@ -160,7 +159,7 @@ fun showDefn(d: Defn): Str =
     ClsLikeDefn(sym, methods, _) then
       "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
         + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
-    _ then "<unknown defn>"
+    _ then "<unknown defn:" ~ d ~ ">"
 
 fun showBlock(b) =
   if b is
@@ -176,10 +175,9 @@ fun showBlock(b) =
       + indent(if dflt is Some(db) then "\nelse " + showBlock(db) else "") 
       + showRestBlock(rest)
     Scoped(symbols, rest) then
-      // initialize symbols
       symbols.map(showSymbol).map("let " + _).join("\n") + showRestBlock(rest)
     End() then "()"
-    _ then "<unknown block>" + b
+    _ then "<unknown block:" ~ b ~ ">"
 
 // removes trailing newline
 fun showRestBlock(b : Block): Str =
@@ -198,9 +196,8 @@ fun show(x) =
     Case then showCase(x)
     Defn then showDefn(x)
     Block then showBlock(x)
-  else
-    "<unknown>"
 
-fun printCode(x) = print(show(x))
+fun printCode(x) = 
+  print(show(x))
 
-fun compile(p: Block) = ???
+fun printModule(name, methods) = print("module " + name + " with" + indent("\n" + methods.map(showDefn).join("\n")))
