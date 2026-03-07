@@ -52,7 +52,8 @@ abstract class MLsDiffMaker extends DiffMaker:
   val showResolvedTree = DebugTreeCommand("rt")
   val showFlows = FlagCommand(false, "sf")
   val showLoweredTree = NullaryCommand("lot")
-  val ppLoweredTree = NullaryCommand("slot")
+  val ppLoweredTreeOld = NullaryCommand("slot", () => output("Option ':slot' is deprecated, use ':sir' instead."))
+  val ppLoweredTree = NullaryCommand("sir")
   val showContext = NullaryCommand("ctx")
   val parseOnly = NullaryCommand("parseOnly")
   val funcToCls = NullaryCommand("ftc")
@@ -323,6 +324,7 @@ abstract class MLsDiffMaker extends DiffMaker:
         given ShowCfg = ShowCfg(
           showExpansionMappings = true,
           showFlowSymbols = true,
+          debug = debug.isSet,
         )
         output(s"Flowed:\n${
           import document.*

@@ -480,9 +480,19 @@ extension (self: Blk)
 case class ShowCfg(
   showExpansionMappings: Bool,
   showFlowSymbols: Bool,
+  debug: Bool,
 ):
   // * Rather ugly way of collecting shown symbols during show operations
   val shownSymbols: MutSet[Symbol] = MutSet.empty
+end ShowCfg
+
+object ShowCfg:
+  // * For use when displaying things for internal use (not for end users)
+  val internal = ShowCfg(
+    showFlowSymbols = true,
+    showExpansionMappings = false,
+    debug = false,
+  )
 end ShowCfg
 
 

@@ -1172,10 +1172,9 @@ trait LoweringSelSanityChecks(using Config, TL, Raise, State)
       val selRes = loweringCtx.registerTempSymbol(N, "selRes")
       // * We are careful to access `x.f` before `x.f$__checkNotMethod` in case `x` is, eg, `undefined` and
       // * the access should throw an error like `TypeError: Cannot read property 'f' of undefined`.
-      val discardedSym = loweringCtx.registerTempSymbol(N, "discarded")
       blockBuilder
         .assign(selRes, Select(p, nme)(disamb))
-        .assign(discardedSym, Select(p, Tree.Ident(nme.name+"$__checkNotMethod"))(N))
+        .assign(State.noSymbol, Select(p, Tree.Ident(nme.name+"$__checkNotMethod"))(N))
           .ifthen(selRes.asPath,
             Case.Lit(syntax.Tree.UnitLit(false)),
             Throw(Instantiate(mut = false, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Error"))(N),
