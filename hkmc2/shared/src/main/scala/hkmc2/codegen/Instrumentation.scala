@@ -22,7 +22,7 @@ class InstrumentationImpl(using State, Raise):
   type ArgWrappable = Path | Symbol
   type Context = HashMap[Path, Path]
   // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
-  val scope = Scope.empty
+  val scope = Scope.empty(Scope.Cfg.default)
 
   def asArg(x: ArgWrappable): Arg =
     x match

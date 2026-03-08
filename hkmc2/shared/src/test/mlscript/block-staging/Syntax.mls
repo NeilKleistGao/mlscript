@@ -17,29 +17,32 @@ staged class Foo
 staged fun f() = 0
 
 :js
-:slot
+:sir
 :staging
 staged module A
-//│ Pretty Lowered:
-//│  
-//│ define class A with
-//│ staged module A {
+//│ Lowered:
+//│ let A⁰;
+//│ define class A⁰ {
+//│   staged 
+//│ }
+//│ module A⁰ {
 //│   ctor {
+//│     let tmp, tmp1;
 //│     begin
-//│       set tmp = A.ctor$_instr();
-//│       set tmp1 = ‹not in scope: $Block›.printCode(tmp);
-//│       return ‹not in scope: $runtime›.Unit;
+//│       set tmp = A¹.ctor$_instr﹖();
+//│       set tmp1 = Block⁰.printCode﹖(tmp);
+//│       runtime⁰.Unit﹖;
 //│       end
 //│   }
-//│   fun module:A::ctor$_instr() {
-//│     set end = new ‹not in scope: $Block›.End();
-//│     set tmp2 = new ‹not in scope: $Block›.Symbol("ctor$");
-//│     set tmp3 = [];
-//│     set tmp4 = [tmp3];
-//│     set tmp5 = new ‹not in scope: $Block›.FunDefn(tmp2, tmp4, end, true);
-//│     return tmp5
+//│   fun ctor$_instr⁰() {
+//│     let end, tmp, tmp1, tmp2, tmp3;
+//│     set end = new Block⁰.End﹖();
+//│     set tmp = new Block⁰.Symbol﹖("ctor$");
+//│     set tmp1 = [];
+//│     set tmp2 = [tmp1];
+//│     set tmp3 = new Block⁰.FunDefn﹖(tmp, tmp2, end, true);
+//│     return tmp3
 //│   }
 //│ };
-//│ set block$res = undefined;
 //│ end
 //│ > FunDefn(Symbol("ctor$"), ([]), End, true)
