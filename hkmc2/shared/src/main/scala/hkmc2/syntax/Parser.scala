@@ -613,7 +613,7 @@ abstract class Parser(
             case Round => Tup(ps)
             case Curly => ???
             case Square => TyTup(ps)
-          val res = InfixApp(lhs, new Keywrd(kw).withLoc(S(l0)), rhs).withLoc(S(loc))
+          val res = InfixApp(lhs.withLoc(S(loc)), new Keywrd(kw).withLoc(S(l0)), rhs)
           exprCont(res, prec, allowNewlines = allowNewlines)
         case _ =>
           val sts = ps
@@ -693,6 +693,9 @@ abstract class Parser(
     //   raise(WarningReport(msg"???" -> S(loc) :: Nil))
     //   consume
     //   simpleExprImpl(prec)
+    case (SELECT(name = nme, dynamic = false), loc) :: _ =>
+      consume
+      exprCont(Tree.Sel(Tree.Empty(), new Ident(nme).withLoc(S(loc))), prec, allowNewlines = false) // TODO: use a new tree ctor
     case (tok, loc) :: _ =>
       err(msg"Expected an expression; found ${tok.describe} instead" -> S(loc) :: Nil)
       errExpr

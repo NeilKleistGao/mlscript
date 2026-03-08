@@ -9,7 +9,7 @@ staged module Expressions with
     let y = x
     y
   fun tup1() = [1, 2]
-  fun tup2() = [1, ..x]
+  fun tup2() = [1, x]
   fun dynsel() = [1].(0)
   fun match1() =
     if 9 is
@@ -19,10 +19,10 @@ staged module Expressions with
       9 then 4
       else 0
   fun match2() =
-    if [...x] is
+    if x is
       [] then 1
       [1, 2] then 2
-      [a, ...] then 3
+      [a, _] then 3
       else 0
 //│ > fun ctor_() =
 //│ >   ()
@@ -34,7 +34,7 @@ staged module Expressions with
 //│ >   y = x
 //│ >   y
 //│ > fun tup1() = [1, 2]
-//│ > fun tup2() = [1, ..x1]
+//│ > fun tup2() = [1, x1]
 //│ > fun dynsel() =
 //│ >   let tmp
 //│ >   tmp = [1]
@@ -48,47 +48,28 @@ staged module Expressions with
 //│ >     Int then 3
 //│ >     else 0
 //│ > fun match2() =
-//│ >   let middleElements
-//│ >   let element0_
 //│ >   let element1_
-//│ >   let scrut1
+//│ >   let element0_
 //│ >   let a
 //│ >   let tmp1
-//│ >   scrut1 = [...x1]
-//│ >   if scrut1 is
+//│ >   if x1 is
 //│ >     [] then
 //│ >       tmp1 = 1
 //│ >     [_, _] then
-//│ >       element0_ = Runtime.Tuple.get(scrut1, 0)
-//│ >       element1_ = Runtime.Tuple.get(scrut1, 1)
+//│ >       element0_ = Runtime.Tuple.get(x1, 0)
+//│ >       element1_ = Runtime.Tuple.get(x1, 1)
 //│ >       if element0_ is
 //│ >         1 then
 //│ >           if element1_ is
 //│ >             2 then
 //│ >               tmp1 = 2
-//│ >             else if scrut1 is
-//│ >               [_, ...] then
-//│ >                 middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >                 a = element0_
-//│ >                 tmp1 = 3
-//│ >               else tmp1 = 0
-//│ >         else if scrut1 is
-//│ >           [_, ...] then
-//│ >             middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >             a = element0_
+//│ >             else a = element0_
 //│ >             tmp1 = 3
-//│ >           else tmp1 = 0
-//│ >     [_, ...] then
-//│ >       element0_ = Runtime.Tuple.get(scrut1, 0)
-//│ >       middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >       a = element0_
-//│ >       tmp1 = 3
+//│ >         else a = element0_
+//│ >         tmp1 = 3
 //│ >     else tmp1 = 0
 //│ >   tmp1
-//│ > Map(2) {
-//│ >   'Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get"))' => [ [Function: get], false ],
-//│ >   'Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice"))' => [ [Function: slice], false ]
-//│ > }
+//│ > Map(0) {}
 //│ x = [1, 2, 3]
 
 class Outside(a)
@@ -100,16 +81,13 @@ staged module ClassInstrumentation with
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
 //│ > fun ctor_() =
-//│ >   class Inside1(a1, b)
+//│ >   class Inside(a1, b)
 //│ >   class NoArg
 //│ > fun inst1() = new Outside(1)
 //│ > fun inst2() = new ClassInstrumentation.NoArg()
 //│ > fun app1() = Outside(1)
-//│ > fun app2() = ClassInstrumentation.Inside1(1, 2)
-//│ > Map(2) {
-//│ >   'ValueRef(ClassSymbol("Outside", Some([Symbol("a")])))' => [ [Function: Outside] { class: [Function] }, false ],
-//│ >   'Select(ValueRef(Symbol("ClassInstrumentation")), ClassSymbol("Inside1", Some([Symbol("a1"), Symbol("b")])))' => [ undefined, false ]
-//│ > }
+//│ > fun app2() = ClassInstrumentation.Inside(1, 2)
+//│ > Map(0) {}
 
 module Nonstaged with
   fun f() = 1
@@ -126,13 +104,9 @@ staged module CallSubst with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
-//│ >   let tmp
-//│ >   tmp = Nonstaged.f()
+//│ >   __no__symbol__ = Nonstaged.f()
 //│ >   Staged.f1()
-//│ > Map(2) {
-//│ >   'Select(ValueRef(Symbol("Staged")), Symbol("f1"))' => [ [Function: f_gen], true ],
-//│ >   'Select(ValueRef(Symbol("Nonstaged")), Symbol("f"))' => [ [Function: f], false ]
-//│ > }
+//│ > Map(0) {}
 
 module Nonstaged with
   fun f() = 1
@@ -150,7 +124,7 @@ staged module CallSubst with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() = +(1, 1)
-//│ > Map(1) { 'ValueRef(Symbol("+"))' => [ undefined, false ] }
+//│ > Map(0) {}
 
 :w
 staged module Arguments with
@@ -159,7 +133,7 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.160: 	  fun g(x)(y, z)() = z
+//│ ║  l.134: 	  fun g(x)(y, z)() = z
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -197,9 +171,7 @@ staged module OtherBlocks with
 //│ >       tmp = 0
 //│ >     else tmp = 0
 //│ >   tmp
-//│ > Map(1) {
-//│ >   'Select(Select(ValueRef(Symbol("OtherBlocks")), Symbol("scope")), Symbol("locally"))' => [ undefined, false ]
-//│ > }
+//│ > Map(0) {}
 
 // :sjs
 staged module ClassDefs with
@@ -219,15 +191,12 @@ staged module ClassFunctions with
 //│ >       let tmp
 //│ >       tmp = Arguments.f(1)
 //│ >       +(1, tmp)
-//│ > Map(2) {
-//│ >   'ValueRef(Symbol("+"))' => [ undefined, false ],
-//│ >   'Select(ValueRef(Symbol("Arguments")), Symbol("f"))' => [ [Function: f_gen], true ]
-//│ > }
+//│ > Map(0) {}
 
 :todo
 staged module ValClass with
   class A(val a)
-//│ /!!!\ Uncaught error: scala.NotImplementedError: an implementation is missing
+//│ /!!!\ Uncaught error: scala.NotImplementedError: ValDefn(term:A⁰.a⁰,member:a¹,Ref(a²,None)) (of class ValDefn)
 
 // name collision
 class A()
@@ -246,3 +215,23 @@ module A with
 //│ >   ()
 //│ > fun f() = 1
 //│ > Map(0) {}
+
+:e
+class C(val a)
+staged module A with
+  let x = C(1)
+  fun f() = set x.a = 0
+  fun g() = {1 : 2}
+//│ ═══[COMPILATION ERROR] AssignField(Ref(term:A¹.x⁰,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime⁰,None),Ident(Unit)),false)) is not supported yet.
+//│ ═══[COMPILATION ERROR] Other Blocks not supprted in staged module: AssignField(Ref(term:A¹.x⁰,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime⁰,None),Ident(Unit)),false))
+//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
+//│ ║  l.224: 	  fun g() = {1 : 2}
+//│ ╙──       	                 ^
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+
+:todo
+staged module Spread with
+  fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
+//│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Arg(Some(Lazy),Ref(tmp:tmp⁰,None))
+//│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.

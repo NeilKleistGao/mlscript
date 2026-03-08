@@ -51,6 +51,7 @@ def toValue(lit: Str | Int | BigDecimal | Bool): Value =
   Value.Lit(l)
 
 // removes Label and Break nodes
+// this will be replaced with PR#404: https://github.com/hkust-taco/mlscript/pull/404
 class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSubst()):
   private def inlineLabelRestInDef(d: Defn)(using conts: Map[Symbol, Symbol | Block]): Defn = d match
   case fd @ FunDefn(owner, sym, dSym, params, body) =>
@@ -71,7 +72,7 @@ class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSu
         ClsLikeBody(isym, newMethods, privateFields, publicFields, newCtor)
     }
     ClsLikeDefn(owner, isym, sym, ctorSym, k, paramsOpt, auxParams, parentPath, newMethods, privateFields, publicFields, newPreCtor, newCtor, newCompanion, bufferable)
-  case _ => ??? // not supported yet
+  case _ => TODO(d) // not supported yet
 
   private def inlineLabelRest(b: Block)(using conts: Map[Symbol, Symbol | Block]): Block = b match
   case Begin(body, rest) =>
@@ -116,14 +117,15 @@ class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSu
     else Define(newDefn, newRest)
   case _ =>
     println(s"yydz: $b")
-    ??? // not supported yet.
+    raise(ErrorReport(msg"${b.toString()} is not supported yet." -> N :: Nil)) // temp patch
+    b
 
   override def applyBlock(b: Block): Block = inlineLabelRest(b)(using Map.empty)
 
 // transform Block to Block IR so that it can be instrumented in mlscript
 class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSubst()):
   // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
-  var scope = Scope.empty
+  val scope = Scope.empty(Scope.Cfg.default)
   val inline = new LabelTransformer
 
   // helpers for constructing Block
@@ -178,11 +180,15 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
   def transformSymbol(sym: Symbol, symName: Str = "sym")(k: Path => Block): Block =
     sym match
     case clsSym: ClassSymbol =>
-      val name = scope.allocateOrGetName(sym)
-      transformParamsOpt(clsSym.defn.get.paramsOpt): paramsOpt =>
-        blockCtor("ClassSymbol", Ls(toValue(name), paramsOpt), symName)(k)
+      clsSym.defn match
+      case S(defn) =>
+        val name = scope.allocateOrGetName(sym)
+        transformParamsOpt(defn.paramsOpt): paramsOpt =>
+          blockCtor("ClassSymbol", Ls(toValue(name), paramsOpt), symName)(k)
+      case N =>
+        raise(ErrorReport(msg"Unable to infer parameters from ClassSymbol in staged module, which are necessary to reconstruct class instances." -> sym.toLoc :: Nil))
+        End()
     case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
-      val name = scope.allocateOrGetName(sym)
       transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
     case _: BuiltinSymbol =>
       // retain names to built-in functions
@@ -233,19 +239,19 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
           blockCtor("ValueRef", Ls(sym), "var")(k)
       case l: Value.Lit =>
         blockCtor("ValueLit", Ls(l), "lit")(k)
-      case s @ Select(p, i @ Tree.Ident(name)) =>
+      case s @ Select(p, Tree.Ident(name)) =>
         transformPath(p): x =>
-          val sym =
-            if s.symbol.isDefined
-            then transformSymbol(s.symbol.get)
-            else blockCtor("Symbol", Ls(toValue(name)))
+          val sym = s.symbol.map(transformSymbol(_))
+            .getOrElse(blockCtor("Symbol", Ls(toValue(name))))
           sym: sym =>
             blockCtor("Select", Ls(x, sym), "sel")(k)
       case DynSelect(qual, fld, arrayIdx) =>
         transformPath(qual): x =>
           transformPath(fld): y =>
             blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k)
-      case _ => ??? // not supported
+      case _: Value.This =>
+        raise(ErrorReport(msg"Value.This not supported in staged module." -> p.toLoc :: Nil))
+        End()
 
   def transformResult(r: Result)(using ctx: Context)(k: (Path, Context) => Block): Block =
     r match
@@ -267,7 +273,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         case s @ Select(qual, Tree.Ident(name)) => s.symbol.exists({
             case t: TermSymbol => t.owner.exists({
                 case sym: DefinitionSymbol[?] =>
-                  sym.defn.get.hasStagedModifier.isDefined
+                  sym.defn.exists(_.hasStagedModifier.isDefined)
               })
             case _ => false
           })
@@ -292,14 +298,19 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         val newCtx = ctx.addDef(fun, cont)
         transformArgs(args): args =>
           tuple(args.map(_._1)): tup =>
-            blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, newCtx))
-    case _ => ??? // not supported
+            blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, ctx))
+    case _ =>
+      raise(ErrorReport(msg"Other Results not supported in staged module: ${r.toString()}" -> r.toLoc :: Nil))
+      End()
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool)) => Block): Block =
     val Arg(spread, value) = a
-    transformOption(spread, bool => assign(toValue(bool))): spreadStaged =>
+    if spread.isDefined then
+      raise(ErrorReport(msg"Spread parameters are not supported in staged module: ${a.toString()}" -> N :: Nil))
+      End()
+    else
       transformPath(value): value =>
-        blockCtor("Arg", Ls(spreadStaged, value)): cde =>
+        blockCtor("Arg", Ls(value)): cde =>
           k(cde, spread.isDefined)
 
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[(Path, Bool)] => Block): Block =
@@ -318,8 +329,14 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       transformSymbol(cls): cls =>
         transformPath(path): path =>
           blockCtor("Cls", Ls(cls, path))(k)
-    case Case.Tup(len, inf) => blockCtor("Tup", Ls(len, inf).map(toValue))(k)
-    case Case.Field(name, safe) => ??? // not supported
+    case Case.Tup(len, true) =>
+      raise(ErrorReport(msg"Spread parameters are not supported in staged module: ${cse.toString()}" -> N :: Nil))
+      End()
+    case Case.Tup(len, false) =>
+      blockCtor("Tup", Ls(toValue(len)))(k)
+    case Case.Field(name, safe) =>
+      raise(ErrorReport(msg"Case.Field not supported in staged module." -> name.toLoc :: Nil))
+      End()
 
   def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
     transformBlock(b)((p, _) => k(p))
@@ -351,7 +368,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       transformBlock(rest): p =>
         transformSymbol(cls.isym): c =>
           // staging the methods within the module
-          cls.methods.map(transformFunDefn2).collectApply: pairs =>
+          cls.methods.map(transformFunDefn).collectApply: pairs =>
             val (methods, ctxs) = pairs.unzip
             val newCtx = ctxs.fold(ctx)((acc, ctx) => acc.addDefs(ctx.defs))
             tuple(methods): methods =>
@@ -382,10 +399,12 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
     case Break(labelSymbol) =>
       transformSymbol(labelSymbol): labelSymbol =>
         blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
-    case _ => ??? // not supported
+    case _ =>
+      raise(ErrorReport(msg"Other Blocks not supprted in staged module: ${b.toString()}" -> N :: Nil))
+      End()
 
   // TODO: rename, this is the continuation version of the function
-  def transformFunDefn2(f: FunDefn)(using ctx: Context)(k: ((Path, Context)) => Block): Block =
+  def transformFunDefn(f: FunDefn)(using Context)(k: ((Path, Context)) => Block): Block =
     transformBlock(f.body): (body, ctx) =>
       if f.params.length != 1 then
         raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
@@ -398,7 +417,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
             blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
               blockCtor("FunDefn", Ls(sym, tup, body, toValue(true)))(k(_, ctx))
 
-  def transformFunDefn(f: FunDefn): (FunDefn, HashMap[Path, (Path => Block) => Block], (Path => Block) => Block) =
+  def applyFunDefnWithDefs(f: FunDefn): (FunDefn, HashMap[Path, (Path => Block) => Block], (Path => Block) => Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
 
@@ -425,87 +444,91 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
     (newFun, defs, pathCont)
 
   override def applyBlock(b: Block): Block =
-    super.applyBlock(inline.applyBlock(b)) match
+    super.applyBlock(b) match
     // find modules with staged annotation
-    case Define(c: ClsLikeDefn, rest) if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
-      val sym = c.sym.subst
-      val companion = c.companion.get
-      val (stagedMethods, defsList, cacheTups) = companion.methods
-        .map(transformFunDefn)
-        .unzip3
-
-      val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-      val (stagedCtor, ctorPrint, ctorCache) = transformFunDefn(ctor)
-
-      // for storing specialized functions in each staged module
-      val cacheSym = BlockMemberSymbol("cache", Nil, true)
-      val cacheTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("cache"))
-      val cachePath = companion.isym.asPath.selSN("cache")
-      // initialize cache for the module
-      def cacheDecl(rest: Block) =
-        (ctorCache :: cacheTups).collectApply: cacheTups =>
-          tuple(cacheTups): tup =>
-            assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
-              assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): mapInit =>
-                Define(ValDefn(cacheTsym, cacheSym, mapInit), rest)
-
-      def genMethod(f: FunDefn): FunDefn =
-        val genSymName = f.sym.nme + "_gen"
-        val sym = BlockMemberSymbol(genSymName, Nil, false)
-        val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
-
-        val body = call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
-          f.params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
-            tuple(tups): tups =>
-              call(helperMod("specialize"), Ls(cachePath, instr.selSN("value"), tups)): res =>
-                Return(res, false)
-        f.copy(sym = sym, dSym = dSym, body = body)(false)
-
-      // add generator functions for classes within the constructor
-      val genCls = new BlockTransformer(new SymbolSubst()):
-        override def applyBlock(b: Block): Block = super.applyBlock(b) match
-        case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
-          val genMethods = c.methods.map(genMethod)
-          val (stagedMethods, debugPrintCode, defs) = c.methods
-            .map(transformFunDefn)
+    case Define(defn: ClsLikeDefn, rest) if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
+      inline.applyDefn(defn) {
+        case c: ClsLikeDefn =>
+          val sym = c.sym.subst
+          val companion = c.companion.get
+          val (stagedMethods, defsList, cacheTups) = companion.methods
+            .map(applyFunDefnWithDefs)
             .unzip3
-          // FIXME: add the default staged block IRR to the cache
-          val newModule = c.copy(methods = c.methods ++ stagedMethods ++ genMethods)
+
+          val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
+          val (stagedCtor, ctorPrint, ctorCache) = applyFunDefnWithDefs(ctor)
+
+          // for storing specialized functions in each staged module
+          val cacheSym = BlockMemberSymbol("cache", Nil, true)
+          val cacheTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("cache"))
+          val cachePath = companion.isym.asPath.selSN("cache")
+          // initialize cache for the module
+          def cacheDecl(rest: Block) =
+            (ctorCache :: cacheTups).collectApply: cacheTups =>
+              tuple(cacheTups): tup =>
+                assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
+                  assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): mapInit =>
+                    Define(ValDefn(cacheTsym, cacheSym, mapInit), rest)
+
+          def genMethod(f: FunDefn): FunDefn =
+            val genSymName = f.sym.nme + "_gen"
+            val sym = BlockMemberSymbol(genSymName, Nil, false)
+            val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
+
+            val body = call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
+              f.params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
+                tuple(tups): tups =>
+                  call(helperMod("specialize"), Ls(cachePath, instr.selSN("value"), tups)): res =>
+                    Return(res, false)
+            f.copy(sym = sym, dSym = dSym, body = body)(false)
+
+          // add generator functions for classes within the constructor
+          val genCls = new BlockTransformer(new SymbolSubst()):
+            override def applyBlock(b: Block): Block = super.applyBlock(b) match
+            case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
+              val genMethods = c.methods.map(genMethod)
+              val (stagedMethods, debugPrintCode, defs) = c.methods
+                .map(applyFunDefnWithDefs)
+                .unzip3
+              // FIXME: add the default staged block IRR to the cache
+              val newModule = c.copy(methods = c.methods ++ stagedMethods ++ genMethods)
+              Define(newModule, rest)
+            case b => b
+
+          // NOTE: this debug printing only works for top-level modules, nested modules don't work
+          // TODO: remove this. only for testing
+          def debugCont(rest: Block) =
+            val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
+            val renderFun = State.runtimeSymbol.asPath.selSN("render")
+            val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
+
+            assign(options): options =>
+              call(cachePath.selSN("toString"), Nil, false): str =>
+                call(printFun, Ls(str), false): _ =>
+                  call(printFun, Ls(companion.isym.asPath.selSN("defCtx")), false): _ =>
+                    rest
+
+          // redendant? this collects function calls within the block. maybe this should be a separate function to the staging
+          val (_, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
+
+          val allDefs = defsList.fold(defs)((l, r) => l ++ r)
+          val defCtxSym = BlockMemberSymbol("defCtx", Nil, true)
+          val defCtxTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("defCtx"))
+          def defCtxDecl(rest: Block) =
+            allDefs.values.collectApply: defs =>
+              tuple(defs): tup =>
+                assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
+                  Define(ValDefn(defCtxTsym, defCtxSym, map), rest)
+
+          // used for staging classes inside modules
+          val genMethods = companion.methods.map(genMethod)
+          val newCompanion = companion.copy(
+            methods = stagedCtor :: companion.methods ++ stagedMethods ++ genMethods,
+            ctor = defCtxDecl(cacheDecl(debugCont(genCls.applyBlock(companion.ctor)))),
+            publicFields = cacheSym -> cacheTsym :: companion.publicFields
+          )
+          val newModule = c.copy(sym = sym, companion = S(newCompanion))
           Define(newModule, rest)
-        case b => b
-
-      // NOTE: this debug printing only works for top-level modules, nested modules don't work
-      // TODO: remove this. only for testing
-      def debugCont(rest: Block) =
-        val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
-        val renderFun = State.runtimeSymbol.asPath.selSN("render")
-        val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
-
-        assign(options): options =>
-          call(cachePath.selSN("toString"), Nil, false): str =>
-            call(printFun, Ls(str), false): _ =>
-              call(printFun, Ls(companion.isym.asPath.selSN("defCtx")), false): _ =>
-                rest
-
-      // redendant? this collects function calls within the block. maybe this should be a separate function to the staging
-      val (_, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
-
-      val allDefs = defsList.fold(defs)((l, r) => l ++ r)
-      val defCtxSym = BlockMemberSymbol("defCtx", Nil, true)
-      val defCtxTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("defCtx"))
-      def defCtxDecl(rest: Block) =
-        allDefs.values.collectApply: defs =>
-          tuple(defs): tup =>
-            assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
-              Define(ValDefn(defCtxTsym, defCtxSym, map), rest)
-
-      // used for staging classes inside modules
-      val genMethods = companion.methods.map(genMethod)
-      val newCompanion = companion.copy(
-        methods = stagedCtor :: companion.methods ++ stagedMethods ++ genMethods,
-        ctor = defCtxDecl(cacheDecl(debugCont(genCls.applyBlock(companion.ctor)))),
-        publicFields = cacheSym -> cacheTsym :: companion.publicFields
-      )
-      val newModule = c.copy(sym = sym, companion = S(newCompanion))
-      Define(newModule, rest)
+        case _ => ??? // unreachable, LabelTransformer doesn't change the block type
+      }
     case b => b
