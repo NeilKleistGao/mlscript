@@ -257,12 +257,12 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
     r match
     case p: Path => transformPath(p)(k(_, ctx))
     case Tuple(mut, elems) =>
-      assert(!mut, "mutable tuple not supported")
+      if mut then raise(ErrorReport(msg"Mutable tuples not supported in staged module." -> r.toLoc :: Nil))
       transformArgs(elems): xs =>
         tuple(xs.map(_._1)): codes =>
           blockCtor("Tuple", Ls(codes), "tup")(k(_, ctx))
     case Instantiate(mut, cls, args) =>
-      assert(!mut, "mutable instantiation not supported")
+      if mut then raise(ErrorReport(msg"Mutable instantiations not supported in staged module." -> r.toLoc :: Nil))
       transformArgs(args): xs =>
         transformPath(cls): cls =>
           tuple(xs.map(_._1)): codes =>
@@ -300,18 +300,15 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
           tuple(args.map(_._1)): tup =>
             blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, ctx))
     case _ =>
-      raise(ErrorReport(msg"Other Results not supported in staged module: ${r.toString()}" -> r.toLoc :: Nil))
+      raise(ErrorReport(msg"Other Results not supported in staged module." -> r.toLoc :: Nil))
       End()
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool)) => Block): Block =
     val Arg(spread, value) = a
-    if spread.isDefined then
-      raise(ErrorReport(msg"Spread parameters are not supported in staged module: ${a.toString()}" -> N :: Nil))
-      End()
-    else
-      transformPath(value): value =>
-        blockCtor("Arg", Ls(value)): cde =>
-          k(cde, spread.isDefined)
+    if spread.isDefined then raise(ErrorReport(msg"Spread parameters are not supported in staged module." -> value.toLoc :: Nil))
+    transformPath(value): value =>
+      blockCtor("Arg", Ls(value)): cde =>
+        k(cde, spread.isDefined)
 
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[(Path, Bool)] => Block): Block =
     args.map(transformArg).collectApply(k)
@@ -329,10 +326,8 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       transformSymbol(cls): cls =>
         transformPath(path): path =>
           blockCtor("Cls", Ls(cls, path))(k)
-    case Case.Tup(len, true) =>
-      raise(ErrorReport(msg"Spread parameters are not supported in staged module: ${cse.toString()}" -> N :: Nil))
-      End()
-    case Case.Tup(len, false) =>
+    case Case.Tup(len, inf) =>
+      if inf then raise(ErrorReport(msg"Spread parameters are not supported in staged module: ${cse.toString()}" -> N :: Nil))
       blockCtor("Tup", Ls(toValue(len)))(k)
     case Case.Field(name, safe) =>
       raise(ErrorReport(msg"Case.Field not supported in staged module." -> name.toLoc :: Nil))
