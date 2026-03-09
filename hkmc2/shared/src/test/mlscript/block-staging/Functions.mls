@@ -241,7 +241,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] AssignField(Ref(term:A¹.x⁰,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime⁰,None),Ident(Unit)),false)) is not supported yet.
 //│ ═══[COMPILATION ERROR] Other Blocks not supprted in staged module: AssignField(Ref(term:A¹.x⁰,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime⁰,None),Ident(Unit)),false))
-//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
+//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
 //│ ║  l.241: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
@@ -249,6 +249,28 @@ staged module A with
 :todo
 staged module Spread with
   fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
-//│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Arg(Some(Lazy),Ref(tmp:tmp⁰,None))
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module.
+//│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() =
+//│ >   let scrut
+//│ >   let x
+//│ >   let tmp
+//│ >   let tmp1
+//│ >   let middleElements
+//│ >   let element0_
+//│ >   tmp = [1, 2]
+//│ >   scrut = [1, tmp]
+//│ >   if scrut is
+//│ >     [_] then
+//│ >       element0_ = Runtime.Tuple.get(scrut, 0)
+//│ >       middleElements = Runtime.Tuple.slice(scrut, 1, 0)
+//│ >       if element0_ is
+//│ >         1 then
+//│ >           x = middleElements
+//│ >           tmp1 = x
+//│ >         else tmp1 = 0
+//│ >     else tmp1 = 0
+//│ >   tmp1
+//│ > Map(1) { 'f' => [Function: f_gen] }
