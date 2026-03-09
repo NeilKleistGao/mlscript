@@ -449,14 +449,13 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
     case Define(defn: ClsLikeDefn, rest) if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
       inline.applyDefn(defn) {
         case c: ClsLikeDefn =>
-          val sym = c.sym.subst
           val companion = c.companion.get
-          val (stagedMethods, defsList, cacheTups) = companion.methods
+          val (stagedMethods, _, cacheTups) = companion.methods
             .map(applyFunDefnWithDefs)
             .unzip3
 
           val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-          val (stagedCtor, ctorPrint, ctorCache) = applyFunDefnWithDefs(ctor)
+          val (stagedCtor, _, ctorCache) = applyFunDefnWithDefs(ctor)
 
           // for storing specialized functions in each staged module
           val cacheSym = BlockMemberSymbol("cache", Nil, true)
@@ -487,10 +486,10 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
             override def applyBlock(b: Block): Block = super.applyBlock(b) match
             case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
               val genMethods = c.methods.map(genMethod)
-              val (stagedMethods, debugPrintCode, defs) = c.methods
+              val (stagedMethods, _, defs) = c.methods
                 .map(applyFunDefnWithDefs)
                 .unzip3
-              // FIXME: add the default staged block IRR to the cache
+              // FIXME: add the default staged block IR to the cache
               val newModule = c.copy(methods = c.methods ++ stagedMethods ++ genMethods)
               Define(newModule, rest)
             case b => b
@@ -505,29 +504,32 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
             assign(options): options =>
               call(cachePath.selSN("toString"), Nil, false): str =>
                 call(printFun, Ls(str), false): _ =>
-                  call(printFun, Ls(companion.isym.asPath.selSN("defCtx")), false): _ =>
+                  call(printFun, Ls(companion.isym.asPath.selSN("generatorMap")), false): _ =>
                     rest
 
           // redendant? this collects function calls within the block. maybe this should be a separate function to the staging
-          val (_, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
+          // val (_, defs) = transformBlockWithDefs(companion.ctor)(using Context(new HashMap(), new HashMap()))(_ => debugCont(End()))
+          val (genMethods, generatorEntries) = companion.methods.map(f => {
+            val gen = genMethod(f)
+            def generatorEntry = tuple(Ls(toValue(f.sym.nme), companion.isym.asPath.selSN(gen.sym.nme)))
+            (gen, generatorEntry)
+          }).unzip
 
-          val allDefs = defsList.fold(defs)((l, r) => l ++ r)
-          val defCtxSym = BlockMemberSymbol("defCtx", Nil, true)
-          val defCtxTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("defCtx"))
-          def defCtxDecl(rest: Block) =
-            allDefs.values.collectApply: defs =>
+          val generatorMapSym = BlockMemberSymbol("generatorMap", Nil, true)
+          val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(companion.isym), Tree.Ident("generatorMap"))
+          def generatorMapDecl(rest: Block) =
+            generatorEntries.collectApply: defs =>
               tuple(defs): tup =>
                 assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
-                  Define(ValDefn(defCtxTsym, defCtxSym, map), rest)
+                  Define(ValDefn(generatorMapTsym, generatorMapSym, map), rest)
 
           // used for staging classes inside modules
-          val genMethods = companion.methods.map(genMethod)
           val newCompanion = companion.copy(
             methods = stagedCtor :: companion.methods ++ stagedMethods ++ genMethods,
-            ctor = defCtxDecl(cacheDecl(debugCont(genCls.applyBlock(companion.ctor)))),
+            ctor = generatorMapDecl(cacheDecl(debugCont(genCls.applyBlock(companion.ctor)))),
             publicFields = cacheSym -> cacheTsym :: companion.publicFields
           )
-          val newModule = c.copy(sym = sym, companion = S(newCompanion))
+          val newModule = c.copy(companion = S(newCompanion))
           Define(newModule, rest)
         case _ => ??? // unreachable, LabelTransformer doesn't change the block type
       }

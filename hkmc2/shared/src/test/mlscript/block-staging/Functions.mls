@@ -69,7 +69,15 @@ staged module Expressions with
 //│ >         tmp1 = 3
 //│ >     else tmp1 = 0
 //│ >   tmp1
-//│ > Map(0) {}
+//│ > Map(7) {
+//│ >   'lit' => [Function: lit_gen],
+//│ >   'assign' => [Function: assign_gen],
+//│ >   'tup1' => [Function: tup1_gen],
+//│ >   'tup2' => [Function: tup2_gen],
+//│ >   'dynsel' => [Function: dynsel_gen],
+//│ >   'match1' => [Function: match1_gen],
+//│ >   'match2' => [Function: match2_gen]
+//│ > }
 //│ x = [1, 2, 3]
 
 class Outside(a)
@@ -87,7 +95,12 @@ staged module ClassInstrumentation with
 //│ > fun inst2() = new ClassInstrumentation.NoArg()
 //│ > fun app1() = Outside(1)
 //│ > fun app2() = ClassInstrumentation.Inside(1, 2)
-//│ > Map(0) {}
+//│ > Map(4) {
+//│ >   'inst1' => [Function: inst1_gen],
+//│ >   'inst2' => [Function: inst2_gen],
+//│ >   'app1' => [Function: app1_gen],
+//│ >   'app2' => [Function: app2_gen]
+//│ > }
 
 module Nonstaged with
   fun f() = 1
@@ -97,16 +110,16 @@ staged module CallSubst with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ > fun ctor_() =
+//│ > fun ctor_1() =
 //│ >   ()
-//│ > fun f() = 1
-//│ > Map(0) {}
+//│ > fun f2() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
 //│ >   __no__symbol__ = Nonstaged.f()
 //│ >   Staged.f1()
-//│ > Map(0) {}
+//│ > Map(1) { 'call' => [Function: call_gen] }
 
 module Nonstaged with
   fun f() = 1
@@ -117,14 +130,14 @@ staged module CallSubst with
     1 + 1
     // Nonstaged.f()
     // Staged.f()
-//│ > fun ctor_() =
+//│ > fun ctor_1() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(0) {}
+//│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() = +(1, 1)
-//│ > Map(0) {}
+//│ > Map(1) { 'call' => [Function: call_gen] }
 
 :w
 staged module Arguments with
@@ -133,7 +146,7 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.134: 	  fun g(x)(y, z)() = z
+//│ ║  l.147: 	  fun g(x)(y, z)() = z
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -141,7 +154,7 @@ staged module Arguments with
 //│ >   x = 1
 //│ >   x
 //│ > fun g(x)(y, z)() = z
-//│ > Map(0) {}
+//│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
 
 staged module OtherBlocks with
   fun scope() =
@@ -156,7 +169,7 @@ staged module OtherBlocks with
       else 0
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun scope() =
+//│ > fun scope1() =
 //│ >   let a
 //│ >   a = 1
 //│ >   OtherBlocks.scope.locally(a)
@@ -171,7 +184,10 @@ staged module OtherBlocks with
 //│ >       tmp = 0
 //│ >     else tmp = 0
 //│ >   tmp
-//│ > Map(0) {}
+//│ > Map(2) {
+//│ >   'scope' => [Function: scope_gen],
+//│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
+//│ > }
 
 // :sjs
 staged module ClassDefs with
@@ -184,17 +200,18 @@ staged module ClassDefs with
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
-    // fun g() = f() // TODO
+    fun g() = f() // TODO
 //│ > fun ctor_() =
 //│ >   class InnerClass() with 
 //│ >     fun f() =
 //│ >       let tmp
 //│ >       tmp = Arguments.f(1)
 //│ >       +(1, tmp)
+//│ >     fun g() = InnerClass.f1()
 //│ > Map(0) {}
 
 :todo
-staged module ValClass with
+staged module DataClass with
   class A(val a)
 //│ /!!!\ Uncaught error: scala.NotImplementedError: ValDefn(term:A⁰.a⁰,member:a¹,Ref(a²,None)) (of class ValDefn)
 
@@ -205,7 +222,7 @@ staged module A with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(0) {}
+//│ > Map(1) { 'f' => [Function: f_gen] }
 
 // nested module
 module A with
@@ -214,7 +231,7 @@ module A with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(0) {}
+//│ > Map(1) { 'f' => [Function: f_gen] }
 
 :e
 class C(val a)
@@ -225,7 +242,7 @@ staged module A with
 //│ ═══[COMPILATION ERROR] AssignField(Ref(term:A¹.x⁰,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime⁰,None),Ident(Unit)),false)) is not supported yet.
 //│ ═══[COMPILATION ERROR] Other Blocks not supprted in staged module: AssignField(Ref(term:A¹.x⁰,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime⁰,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
-//│ ║  l.224: 	  fun g() = {1 : 2}
+//│ ║  l.241: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
