@@ -1,4 +1,6 @@
 :js
+:patMatConsequentSharingThreshold 1
+// ^ force dedup even for small consequents
 
 
 let
@@ -142,6 +144,16 @@ if false do ()
 //│   }
 //│ }
 //│ 123
+//│ = 123
+
+:patMatConsequentSharingThreshold 10
+
+// * How it ought to be:
+:sjs
+if false do ()
+123
+//│ JS (unsanitized):
+//│ let scrut1; scrut1 = false; if (scrut1 !== true) {} 123
 //│ = 123
 
 

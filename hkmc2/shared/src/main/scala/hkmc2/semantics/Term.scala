@@ -721,6 +721,10 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case _ => res
     case _ => res
   
+  def size: Int = this match
+    case Lit(Tree.StrLit(str)) => str.size / 4 + 1
+    case _ => children.size + 1
+  
   def showDbg: Str = this match
     case r: Ref =>
       showPlain
