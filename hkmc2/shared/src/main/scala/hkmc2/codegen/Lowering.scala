@@ -1088,7 +1088,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       if config.funcToCls then Lifter(FirstClassFunctionTransformer().transform(merged)).transform
       else merged
 
-    val staged = Instrumentation(using summon).applyBlock(funcToCls)
+    val staged = Instrumentation(using summon).applyBlockFinal(funcToCls)
     
     val res =
       if config.tailRecOpt then TailRecOpt().transform(staged)

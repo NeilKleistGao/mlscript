@@ -1,0 +1,51 @@
+:js
+:staging
+
+staged module M with
+  class C with
+    fun f() = 1
+    fun g() = f()
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("C", class C, None, []), [FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true),FunDefn(Symbol("g"), ([]), Return(Call(Select(Ref(ClassSymbol("C", class C, None, [])), Symbol("f")), []), false), true)], TODO), End), true)
+
+// :sir
+staged module A with
+  fun f() = 1
+module B with
+  fun f() = 1
+class C
+staged module D with
+  class E
+  fun f() =
+    A.f()
+    B.f()
+    1 is C
+  fun builtin() = 1 is Int
+  fun inner() = D.E
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
+//│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("E", class E, None, []), [], TODO), End), true)
+//│ > FunDefn(Symbol("f"), ([]), Scoped([Symbol("scrut")], Assign(Symbol("$_no$_symbol$_"), Call(Select(Ref(ModuleSymbol("A", class A)), Symbol("f_gen")), []), Assign(Symbol("$_no$_symbol$_"), Call(Select(Ref(ModuleSymbol("B", class B)), Symbol("f")), []), Assign(Symbol("scrut"), Lit(1), Match(Ref(Symbol("scrut")), [Cls(ClassSymbol("C", class C, None, []), Ref(ClassSymbol("C", class C, None, []))) -> Return(Lit(true), false)], Return(Lit(false), false), End))))), true)
+//│ > FunDefn(Symbol("builtin"), ([]), Scoped([Symbol("scrut1")], Assign(Symbol("scrut1"), Lit(1), Match(Ref(Symbol("scrut1")), [Cls(VirtualClassSymbol("Int"), Select(Ref(Symbol("runtime")), Symbol("unreachable"))) -> Return(Lit(true), false)], Return(Lit(false), false), End))), true)
+//│ > FunDefn(Symbol("inner"), ([]), Return(Select(Ref(ModuleSymbol("D", class D { E: class E })), ClassSymbol("E", class E, None, [])), false), true)
+
+// :sjs
+// :lot
+module A with
+  module B with
+    class C(a)
+staged module M with
+  fun f() = D.f()
+  fun g() = D.E
+  fun h() = A.B.C(1)
+  fun i() = A.B.C
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("f"), ([]), Return(Call(Select(Ref(ModuleSymbol("D", class D { E: class E })), Symbol("f_gen")), []), false), true)
+//│ > FunDefn(Symbol("g"), ([]), Return(Select(Ref(ModuleSymbol("D", class D { E: class E })), ClassSymbol("E", class E, None, [])), false), true)
+//│ > FunDefn(Symbol("h"), ([]), Return(Call(Select(Select(Ref(ModuleSymbol("A", class A { B: class B { C: fun C { class: class C } } })), ModuleSymbol("B", class B { C: fun C { class: class C } })), ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), [])), [Lit(1)]), false), true)
+//│ > FunDefn(Symbol("i"), ([]), Return(Select(Select(Ref(ModuleSymbol("A", class A { B: class B { C: fun C { class: class C } } })), ModuleSymbol("B", class B { C: fun C { class: class C } })), ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), [])), false), true)
+
+:ftc
+staged module M with
+  fun f() = x => x
+//│ > FunDefn(Symbol("ctor$"), ([]), End, true)
+//│ > FunDefn(Symbol("f"), ([]), Scoped([Symbol("tmp")], Assign(Symbol("tmp"), Instantiate(Ref(ClassSymbol("Function$", class Function$, None, [])), []), Return(Ref(Symbol("tmp")), false))), true)

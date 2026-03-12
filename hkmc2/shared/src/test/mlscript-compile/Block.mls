@@ -18,8 +18,31 @@ type ParamList = Array[Symbol]
 
 class Symbol(val name: Str)
 type Ident = Symbol
-// this is so that we're able to retrieve information about the class from the symbol
-class ClassSymbol(val name: Str, val paramsOpt: Opt[ParamList]) extends Symbol(name)
+
+class VirtualClassSymbol(val name: Str) extends Symbol(name)
+class ClassSymbol(val name: Str, val value, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList]) extends Symbol(name)
+class ModuleSymbol(val name: Str, val value) extends Symbol(name)
+class Arm(val cse: Case, val body: Block)
+
+fun isPrimitiveType(sym: Symbol) = 
+  if sym.name is
+    "Str" then true
+    "Int" then true
+    "Num" then true
+    "Bool" then true
+    "TypedArray" then true
+    else false
+
+fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
+  if [sym.name, l] is
+    ["Str", l] and l is Str then true
+    ["Int", i] and i is Int then true
+    ["Num", n] and n is Num then true
+    ["Bool", b] and b is Bool then true
+    ["TypedArray", a] and a is TypedArray then true
+    else false
+
+// Classes defined in Block.scala
 
 class Arg(val value: Path) 
 
@@ -82,15 +105,7 @@ fun showLiteral(l: Literal) =
     else l.toString()
 
 fun showSymbol(s: Symbol) =
-  // console.log("printing " + s)
-  if s is
-    ClassSymbol(name, args) then 
-      "ClassSymbol(" + "\"" + name + "\"" +
-      if args
-          is Some(args) then ":[" + args.map(showSymbol).join(", ") + "]"
-          is None then ""
-      + ")"
-    _ then "Symbol(" + "\"" + s.name + "\"" + ")"
+  s.toString()
 
 fun showIdent(i: Ident) = showSymbol(i)
 

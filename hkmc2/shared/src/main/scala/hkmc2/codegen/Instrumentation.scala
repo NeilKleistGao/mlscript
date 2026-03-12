@@ -10,7 +10,7 @@ import scala.util.chaining._
 import mlscript.utils.*, shorthands.*
 
 import semantics.*
-import semantics.Elaborator.State
+import semantics.Elaborator.{State, Ctx, ctx}
 
 import syntax.{Literal, Tree}
 
@@ -18,7 +18,9 @@ import syntax.{Literal, Tree}
 // this avoids having to rebuild the same shapes everytime they are needed
 
 // transform Block to Block IR so that it can be instrumented in mlscript
-class InstrumentationImpl(using State, Raise):
+class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new SymbolSubst()):
+  val defnMap = HashMap[Symbol, ClsLikeDefn]()
+
   type ArgWrappable = Path | Symbol
   type Context = HashMap[Path, Path]
   // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
@@ -91,22 +93,40 @@ class InstrumentationImpl(using State, Raise):
 
   // transformation helpers
 
-  def transformSymbol(sym: Symbol, symName: Str = "sym")(k: Path => Block): Block =
+  // if sym is ClassSymbol, we may need pOpt to link to the path pointing the the value of the symbol
+  def transformSymbol(sym: Symbol, pOpt: Option[Path] = N, symName: Str = "sym")(k: Path => Block): Block =
     sym match
-    case clsSym: ClassSymbol =>
-      clsSym.defn match
-      case S(defn) =>
-        val name = scope.allocateOrGetName(sym)
-        transformParamsOpt(defn.paramsOpt): paramsOpt =>
-          blockCtor("ClassSymbol", Ls(toValue(name), paramsOpt), symName)(k)
-      case N =>
-        raise(ErrorReport(msg"Unable to infer parameters from ClassSymbol in staged module, which are necessary to reconstruct class instances." -> sym.toLoc :: Nil))
-        End()
-    case t: TermSymbol if t.defn.exists(_.sym.asCls.isDefined) =>
-      transformSymbol(t.defn.get.sym.asCls.get, symName)(k)
-    case _: BuiltinSymbol =>
-      // retain names to built-in functions
+    case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
+      transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
+    // retain names to built-in functions or function definitions
+    case t: TermSymbol if t.defn.exists(_.k == syntax.Fun) =>
       blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    case _: BuiltinSymbol =>
+      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
+      blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(k)
+    case baseSym: BaseTypeSymbol =>
+      val name = scope.allocateOrGetName(sym)
+      val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
+      case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
+      case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+      case _ =>
+        raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
+        return End()
+
+      val path: ArgWrappable = pOpt.getOrElse(owner match
+      case S(owner) => owner.asPath.selSN(sym.nme)
+      case N => bsym
+      )
+      baseSym match
+      case _: ClassSymbol =>
+        transformParamsOpt(paramsOpt): paramsOpt =>
+          auxParams.map(ps => transformParamList(ps)).collectApply: auxParams =>
+            tuple(auxParams): auxParams =>
+              blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
+      case _: ModuleOrObjectSymbol =>
+        blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
+
     case _ =>
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)
@@ -156,7 +176,7 @@ class InstrumentationImpl(using State, Raise):
         blockCtor("ValueLit", Ls(l), "lit")(k)
       case s @ Select(p, Tree.Ident(name)) =>
         transformPath(p): x =>
-          val sym = s.symbol.map(transformSymbol(_))
+          val sym = s.symbol.map(transformSymbol(_, S(s)))
             .getOrElse(blockCtor("Symbol", Ls(toValue(name))))
           sym: sym =>
             blockCtor("Select", Ls(x, sym), "sel")(k)
@@ -306,7 +326,7 @@ class InstrumentationImpl(using State, Raise):
             tuple(tups): tup =>
               blockCtor("FunDefn", Ls(sym, tup, body, toValue(true)))(k)
 
-  def applyFunDefn(f: FunDefn): (FunDefn, Block => Block) =
+  def applyFunDefnInner(f: FunDefn): (FunDefn, Block => Block) =
     val genSymName = f.sym.nme + "_instr"
     val genSym = BlockMemberSymbol(genSymName, Nil, false)
     val sym = f.owner.get.asPath.selSN(genSymName)
@@ -321,10 +341,6 @@ class InstrumentationImpl(using State, Raise):
     val newFun = f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
     (newFun, debug)
 
-// TODO: rename as InstrumentationTransformer?
-class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSubst()):
-  val impl = new InstrumentationImpl
-
   override def applyBlock(b: Block): Block =
     super.applyBlock(b) match
     // find modules with staged annotation
@@ -332,10 +348,10 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val sym = c.sym.subst
       val companion = c.companion.get
       val (stagedMethods, debugPrintCode) = companion.methods
-        .map(impl.applyFunDefn)
+        .map(applyFunDefnInner)
         .unzip
       val ctor = FunDefn.withFreshSymbol(S(companion.isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-      val (stagedCtor, ctorPrint) = impl.applyFunDefn(ctor)
+      val (stagedCtor, ctorPrint) = applyFunDefnInner(ctor)
 
       val unit = State.runtimeSymbol.asPath.selSN("Unit")
       val debugBlock = (ctorPrint :: debugPrintCode).foldRight((Return(unit, true): Block))(_(_))
@@ -346,7 +362,7 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
         override def applyBlock(b: Block): Block = super.applyBlock(b) match
         case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
           val (stagedMethods, debugPrintCode) = c.methods
-            .map(impl.applyFunDefn)
+            .map(applyFunDefnInner)
             .unzip
           val newModule = c.copy(methods = c.methods ++ stagedMethods)
           Define(newModule, rest)
@@ -356,3 +372,18 @@ class Instrumentation(using State, Raise) extends BlockTransformer(new SymbolSub
       val newModule = c.copy(sym = sym, companion = S(newCompanion))
       Define(newModule, rest)
     case b => b
+
+  // recover `defn` for when `sym.defn` is `None`, when the definition was generated by other compiler passes
+  def mkDefnMap(b: Block) =
+    val transformer = new BlockTransformer(new SymbolSubst()):
+      override def applyDefn(defn: Defn)(k: Defn => Block) = defn match
+      case c: ClsLikeDefn =>
+        defnMap.addOne(c.isym, c)
+        // c.companion.map(defn => defnMap.addOne(defn.isym, defn))
+        super.applyDefn(defn)(k)
+      case _ => super.applyDefn(defn)(k)
+    transformer.applyBlock(b)
+
+  def applyBlockFinal(b: Block) =
+    mkDefnMap(b)
+    applyBlock(b)
