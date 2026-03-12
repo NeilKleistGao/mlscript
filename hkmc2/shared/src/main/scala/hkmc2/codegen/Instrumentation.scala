@@ -316,7 +316,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
   def transformFunDefn(f: FunDefn)(using Context)(k: Path => Block): Block =
     transformBlock(f.body): body =>
       if f.params.length != 1 then
-        raise(WarningReport(msg"Multiple parameter lists are not supported in shape propagation yet." -> f.sym.toLoc :: Nil))
+        raise(WarningReport(msg":ftc must be enabled for functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
       // maintain parameter names in instrumented code
       f.params.map(
         _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
