@@ -17,8 +17,6 @@ type Literal = null | undefined | Str | Int | Num | Bool
 type ParamList = Array[Symbol]
 
 class Symbol(val name: Str)
-type Ident = Symbol
-
 class VirtualClassSymbol(val name: Str) extends Symbol(name)
 class ClassSymbol(val name: Str, val value, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList]) extends Symbol(name)
 class ModuleSymbol(val name: Str, val value) extends Symbol(name)
@@ -60,7 +58,7 @@ class Result with
 
 class Path extends Result with
   constructor
-    Select(val qual: Path, val name: Ident)
+    Select(val qual: Path, val name: Symbol)
     DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool) // is arrayIdx used?
     ValueRef(val l: Symbol)
     ValueLit(val lit: Literal)
@@ -107,12 +105,10 @@ fun showLiteral(l: Literal) =
 fun showSymbol(s: Symbol) =
   s.toString()
 
-fun showIdent(i: Ident) = showSymbol(i)
-
 fun showPath(p: Path): Str =
   if p is
     Select(qual, name) then
-      "Select(" + showPath(qual) + ", " + showIdent(name) + ")"
+      "Select(" + showPath(qual) + ", " + showSymbol(name) + ")"
     DynSelect(qual, fld, arrayIdx) then
       "DynSelect(" + showPath(qual) + ", " + showPath(fld) + ", " + showBool(arrayIdx) + ")"
     ValueRef(l) then
