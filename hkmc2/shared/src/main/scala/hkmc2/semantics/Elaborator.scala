@@ -250,11 +250,6 @@ object Elaborator:
   class State:
     val suid = new Uid.Symbol.State
     given State = this
-    val dbgScope = Scope.empty(Scope.Cfg.default.copy(
-      escapeChars = false,
-      useSuperscripts = true,
-      includeZero = true,
-    ))
     val globalThisSymbol = TopLevelSymbol("globalThis")
     val unitSymbol = ModuleOrObjectSymbol(DummyTypeDef(syntax.Obj), Ident("Unit"))
     val loopEndSymbol = ModuleOrObjectSymbol(DummyTypeDef(syntax.Obj), Ident("LoopEnd"))
@@ -354,6 +349,7 @@ class Elaborator(val tl: TraceLogger, val wd: io.Path, val prelude: Ctx)
 (using val raise: Raise, val state: State, val cctx: CompilerCtx, val config: Config)
 extends Importer with ucs.SplitElaborator:
   import tl.*
+  given TraceLogger = tl
   
   lazy val illegalMemberNameTail =
     msg"Member names must start with a letter or underscore, followed by letters, digits, or underscores." -> N
@@ -564,7 +560,7 @@ extends Importer with ucs.SplitElaborator:
           val (syms, nestCtx) = funParams(lhs)
           Term.Lam(syms, term(rhs)(using nestCtx))
       case TyTup(tys) =>
-        val constraints = tys.flatMap(constraint)
+        val constraints = tys.flatMap(maybeConstraint)
         val body = term(rhs)
         Term.Constrained(constraints, body)
     case InfixApp(lhs, Keywrd(Keyword.`as`), rhs) =>
@@ -1534,15 +1530,19 @@ extends Importer with ucs.SplitElaborator:
     ps_ctx
   
   /** Elaborate a subtyping constraint. */
-  def constraint(t: Tree): Ctxl[Option[SubConstraint]] =
+  def constraint(lhs: Tree, op: "<:<" | ">:>", rhs: Tree): Ctxl[SubConstraint] =
+    val l = term(lhs)
+    val r = term(rhs)
+    val dir = op match
+      case "<:<" => SubDir.Sub
+      case ">:>" => SubDir.Sup
+    SubConstraint(l, r, dir)
+ 
+  /** Elaborate a subtyping constraint that may be malformed. */
+  def maybeConstraint(t: Tree): Ctxl[Option[SubConstraint]] =
     t match
-    case InfixApp(lhs, op @ (Keywrd(Keyword.`<:`) | Keywrd(Keyword.`:>`)), rhs) =>
-      val l = term(lhs)
-      val r = term(rhs)
-      val dir = op match
-        case Keywrd(Keyword.`<:`) => SubDir.Sub
-        case Keywrd(Keyword.`:>`) => SubDir.Sup
-      S(SubConstraint(l, r, dir))
+    case OpApp(lhs, Ident(op : ("<:<" | ">:>")), rhs :: Nil) =>
+      S(constraint(lhs, op, rhs))
     case _ =>
       raise(ErrorReport(msg"Illegal constraint syntax." -> t.toLoc :: Nil))
       N
