@@ -94,7 +94,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
 
   // transformation helpers
 
-  // if sym is ClassSymbol, we may need pOpt to link to the path pointing the the value of the symbol
+  // if sym is ClassSymbol, we may need pOpt to link to the path pointing to the value of the symbol
   def transformSymbol(sym: Symbol, pOpt: Option[Path] = N, symName: Str = "sym")(k: Path => Block): Block =
     sym match
     case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
