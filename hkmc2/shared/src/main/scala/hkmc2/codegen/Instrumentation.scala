@@ -309,7 +309,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
       transformSymbol(labelSymbol): labelSymbol =>
         blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
     case _ =>
-      raise(ErrorReport(msg"Other Blocks not supprted in staged module: ${b.toString()}" -> N :: Nil))
+      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}" -> N :: Nil))
       End()
 
   def transformFunDefn(f: FunDefn)(using Context)(k: Path => Block): Block =
@@ -372,7 +372,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
       Define(newModule, rest)
     case b => b
 
-  def mkDefnMap(b: Block) =
+  def mkDefnMap(b: Block): Unit =
     val transformer = new BlockTransformer(new SymbolSubst()):
       override def applyDefn(defn: Defn)(k: Defn => Block) = defn match
       case c: ClsLikeDefn =>
