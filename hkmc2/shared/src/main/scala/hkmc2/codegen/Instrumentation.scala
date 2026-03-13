@@ -5,7 +5,7 @@ import utils.*
 import hkmc2.Message.MessageContext
 
 import scala.collection.mutable.HashMap
-import scala.util.chaining._
+import scala.util.chaining.*
 
 import mlscript.utils.*, shorthands.*
 
@@ -126,7 +126,6 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
               blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
       case _: ModuleOrObjectSymbol =>
         blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
-
     case _ =>
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)

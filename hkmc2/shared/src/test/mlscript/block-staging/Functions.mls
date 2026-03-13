@@ -87,7 +87,6 @@ staged module OtherBlocks with
 //│ > FunDefn(Symbol("scope"), ([]), Scoped([Symbol("a")], Assign(Symbol("a"), Lit(1), Return(Call(Select(Select(Ref(ModuleSymbol("OtherBlocks", class OtherBlocks)), Symbol("scope")), Symbol("locally")), [Ref(Symbol("a"))]), false))), true)
 //│ > FunDefn(Symbol("breakAndLabel"), ([]), Scoped([Symbol("scrut")], Assign(Symbol("scrut"), Lit(1), Match(Ref(Symbol("scrut")), [Lit(2) -> Return(Lit(0), false), Lit(3) -> Return(Lit(0), false)], Return(Lit(0), false), End))), true)
 
-
 staged module ClassDefs with
   class A
 //│ > FunDefn(Symbol("ctor$"), ([]), Define(ClsLikeDefn(ClassSymbol("A", class A, None, []), [], TODO), End), true)
@@ -112,7 +111,7 @@ module A with
 //│ > FunDefn(Symbol("ctor$"), ([]), End, true)
 //│ > FunDefn(Symbol("f"), ([]), Return(Lit(1), false), true)
 
-// TODO: reject this after removing Label and Break from Block IR
+// TODO: force enable :ftc to desugar Label and Break
 staged module M with
   fun f() = if 1 is
     0 then 2
@@ -129,7 +128,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supprted in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
-//│ ║  l.129: 	  fun g() = {1 : 2}
+//│ ║  l.128: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > FunDefn(Symbol("ctor$"), ([]), Assign(Symbol("x"), Call(Ref(ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), [])), [Lit(1)]), End), true)
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
