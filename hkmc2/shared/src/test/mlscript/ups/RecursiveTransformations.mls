@@ -30,8 +30,8 @@ f([[[0]]])
 
 
 
-let arr = fromArray of [1,2,3]
-//│ arr = Cons(3, Cons(2, Cons(1, Nil)))
+let arr = fromArray of [1, 2, 3]
+//│ arr = Cons(1, Cons(2, Cons(3, Nil)))
 
 
 pattern Find(pattern P) =
@@ -39,9 +39,9 @@ pattern Find(pattern P) =
   | (h :: (Find(P) as [res, t])) => [res, h :: t]
 
 assert arr is Find(1) as res, res
-//│ = [1, Cons(3, Cons(2, Nil))]
+//│ = [1, Cons(2, Cons(3, Nil))]
 assert arr is Find(2) as res, res
-//│ = [2, Cons(3, Cons(1, Nil))]
+//│ = [2, Cons(1, Cons(3, Nil))]
 assert arr is Find(0) as res else "oops", res
 //│ = "oops"
 
@@ -77,7 +77,7 @@ assert arr is MultiSet as res, res
 pattern Id = _
 
 :fixme
-if [1,2,3] is
+if [1, 2, 3] is
   MultiSet(2, MultiSet(1, Id(x))) do print(x)
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'arg$Id$0$'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'arg$Id$0$'
@@ -95,9 +95,13 @@ pattern MultiSet(pattern Head, pattern Rest) =
   | ((Head as h) :: (Rest as r)) => h :: r
   | (((h0 :: h :: r) => h :: h0 :: r) as MultiSet(Head, Rest) as res) => res
 
-:re
 arr is
   MultiSet(1, _)
+//│ = true
+
+:re
+arr is
+  MultiSet(3, _)
 //│ ═══[RUNTIME ERROR] RangeError: Maximum call stack size exceeded
 
 arr is
