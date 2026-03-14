@@ -2,7 +2,9 @@
 
 What would TypeScript look like if was designed with type inference, soundness, and pattern matching in mind?
 
-This original question lead to the creation of the MLscript programming language.
+This original question lead to the creation of the MLscript programming language,
+a modern object-oriented and functional programming language for the Web.
+
 Since then, the goals of the language have evolved,
 and MLscript has become a more ambitious effort at defining a next-generation high-level programming language,
 aiming to maximize reliability, expressiveness, and performance.
@@ -18,6 +20,9 @@ and most notably:
 The latter is in active development, on the `hkmc2` branch.
 The continuous integration (CI) has been set up to only test this version of the compiler.
 The `mlscript` branch contains the last commit where the CI was set up to test the old version-1 compiler.
+
+The webpage at https://hkust-taco.github.io/mlscript/ still demonstrates the old version-1 compiler.
+An online demo of hkmc2 (already somewhat outdated) can be found at https://mlscript.fun/.
 
 
 # MLscript Compiler Version 1
