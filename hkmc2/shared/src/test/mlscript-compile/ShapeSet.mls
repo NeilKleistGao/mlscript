@@ -113,10 +113,10 @@ fun val2path(v) =
   if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then [Block.End(), Block.ValueLit(v)]
   else if Array.isArray(v) then
     let mapped = v.map(val2path)
-    let blocks = mapped.filter(_ is [_, _]).map(_ => _.0)
-    let paths = mapped.map((m, _, _) => if m is [_, p] then p else m)
+    let blocks = mapped.map(_.0)
+    let paths = mapped.map(_.0) 
     let tupSym = freshId("tup")
-    let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map((p, _, _) => Block.Arg(None, p))), Block.End())
+    let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(None, _))), Block.End())
     let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
   else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
