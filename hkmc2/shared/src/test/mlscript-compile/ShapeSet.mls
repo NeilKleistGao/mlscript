@@ -104,10 +104,34 @@ fun valOfSet(s : ShapeSet) =
     1 then valOf(s.values().0)
     else throw Error("valOfSet on non-singleton ShapeSet")
   
+let idCounter = 0
+fun freshId(prefix) =
+  set idCounter = idCounter + 1
+  Block.Symbol(prefix + "_" + idCounter.toString())
+
 fun val2path(v) = 
-  if typeof(v) ==
-    "number" then Block.ValueLit(v)
-    else Block.ValueLit(42)
+  if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then [Block.End(), Block.ValueLit(v)]
+  else if Array.isArray(v) then
+    let mapped = v.map(val2path)
+    let blocks = mapped.filter(_ is [_, _]).map(_ => _.0)
+    let paths = mapped.map((m, _, _) => if m is [_, p] then p else m)
+    let tupSym = freshId("tup")
+    let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map((p, _, _) => Block.Arg(None, p))), Block.End())
+    let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
+    [fullBlock, Block.ValueRef(tupSym)]
+  else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
+    let md = v.constructor.(Symbols.definitionMetadata)
+    let clsName = md.0
+    let paramNames = md.2
+    let classSym = Block.ClassSymbol(clsName, None)
+    let mapped = paramNames.map((fld, _, _) => val2path(v.(fld)))
+    let blocks = mapped.filter(_ is [_, _]).map(_ => _.0)
+    let paths = mapped.map((m, _, _) => if m is [_, p] then p else m)
+    let objSym = freshId("obj")
+    let objAssign = Block.Assign(objSym, Block.Instantiate(Block.ValueRef(classSym), paths.map((p, _, _) => Block.Arg(None, p))), Block.End())
+    let fullBlock = foldl((b, acc) => Block.concat(b, acc))(objAssign, ...blocks)
+    [fullBlock, Block.ValueRef(objSym)]
+  else [Block.End(), Block.ValueLit(42)]
 
 
 // fun pruneBadArms(arms: Array[[ShapeSet, Block]]) =
@@ -139,8 +163,8 @@ class DefCtx(val defctx: Map[String, [Function, Bool]]) with
   fun get(p) =
     if defctx.has(p.toString()) then defctx.get(p.toString())
     else None
-  fun add(p, genFunc, staged) = // for debug only
-    if staged then
+  fun add(p, genFunc, stage) = // ?? using stage as variable name causes error
+    if stage then
       defctx.set(showPath(p), [genFunc, true])
     else
       defctx.set(showPath(p), [genFunc, false])
@@ -201,27 +225,27 @@ fun sor(defctx, ctx, r: Result) = if r is
   Path and 
     let s = sop(ctx, r)
     staticSet(s) then 
-      [val2path(valOfSet(s)), s]
+      if val2path(valOfSet(s)) is [blk, res] then [blk, res, s] else throw Error("val2path failed")
     else
-      [r, s]
+      [End(), r, s]
   Instantiate(cls, args) then
     let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("Instantiate with non-ClassSymbol in shape propagation")
-    [r, mkClass(sym, args.map(a => sop(ctx, a.value)))]
-  Tuple(elems) then [r, mkArr(elems.map(a => sop(ctx, a.value)), false)]
+    [End(), r, mkClass(sym, args.map(a => sop(ctx, a.value)))]
+  Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)), false)]
   Call(f, args) then 
-    fun lit(l) = [ValueLit(l), mkLit(l)]
+    fun lit(l) = [End(), ValueLit(l), mkLit(l)]
     let argShapes = args.map((a, _, _) => sop(ctx, a.value))
     // special handle the special Call function
     if f is 
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")) 
-        and args is [Arg(None, scrut), Arg(None, lit)] do
-          let recovered = DynSelect(scrut, lit, false)
-          [recovered, sop(ctx, recovered)]
+        and args is [Arg(None, scrut), Arg(None, litArg)] do
+          let recovered = DynSelect(scrut, litArg, false)
+          [End(), recovered, sop(ctx, recovered)]
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) do 
         throw Error("runtime.Tuple.slice not handled in shape propagation") // TODO
     if defctx.get(f) is
       [gen, true] and gen(...argShapes) is [shape, implSymb] then
-        [Call(ValueRef(implSymb), args), shape]
+        [End(), Call(ValueRef(implSymb), args), shape]
       [undefined, false] and f is ValueRef(symb) and // means built in
         let name = symb.name
         args is
@@ -245,11 +269,11 @@ fun sor(defctx, ctx, r: Result) = if r is
             "!==" then lit(l1 !== l2)
             "&&" then lit(l1 && l2)
             "||" then lit(l1 || l2)
-      [f, false] and argShapes.every((x, _, _) => staticSet(x)) then
+      [funct, false] and argShapes.every((x, _, _) => staticSet(x)) then
         let argVals = argShapes.map((s, _, _) => valOfSet(s))
         // TODO
-        [r, mkDyn()]
-      else [r, mkDyn()]
+        [End(), r, mkDyn()]
+      else [End(), r, mkDyn()]
 
   // Call(f, args) and
   //   let k = [f, args.map(sop(ctx, _))] 
@@ -268,16 +292,16 @@ fun sor(defctx, ctx, r: Result) = if r is
 
 fun prop(defctx, ctx, cache, b: Block) = if b is
     End then [b, mkBot()]
-    Return(res, implct) and sor(defctx, ctx, res) is [r1, s1] then
-      [Return(r1, implct), s1]
+    Return(res, implct) and sor(defctx, ctx, res) is [blk, r1, s1] then
+      [concat(blk, Return(r1, implct)), s1]
     Scoped(symbols, rest) then
       symbols.forEach((x, _, _) => ctx.add(ValueRef(x), mkBot()))
       let res = prop(defctx, ctx, cache, rest)
       [Scoped(symbols, res.0), res.1]
     Assign(x, r, b) and 
-      sor(defctx, ctx, r) is [r1, s1] then 
+      sor(defctx, ctx, r) is [blk, r1, s1] then 
         if prop(defctx, ctx.add(ValueRef(x), s1), cache, b) is [b2, s2] then
-          [Assign(x, r1, b2), s2]
+          [concat(blk, Assign(x, r1, b2)), s2]
     Match(p, arms, dflt, restBlock) then
       let s = sop(ctx, p)
       let filteredArms = foldl((r, arm) =>
