@@ -123,7 +123,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
       baseSym match
       case _: ClassSymbol =>
         transformParamsOpt(paramsOpt): paramsOpt =>
-          auxParams.map(ps => transformParamList(ps)).collectApply: auxParams =>
+          auxParams.map(transformParamList).collectApply: auxParams =>
             tuple(auxParams): auxParams =>
               blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
       case _: ModuleOrObjectSymbol =>
