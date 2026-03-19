@@ -373,12 +373,12 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
     case b => b
 
   def mkDefnMap(b: Block): Unit =
-    val transformer = new BlockTransformer(new SymbolSubst()):
-      override def applyDefn(defn: Defn)(k: Defn => Block) = defn match
+    val transformer = new BlockTraverser:
+      override def applyDefn(defn: Defn) = defn match
       case c: ClsLikeDefn =>
         defnMap.addOne(c.isym, c)
-        super.applyDefn(defn)(k)
-      case _ => super.applyDefn(defn)(k)
+        super.applyDefn(defn)
+      case _ => super.applyDefn(defn)
     transformer.applyBlock(b)
 
   def applyBlockFinal(b: Block) =
