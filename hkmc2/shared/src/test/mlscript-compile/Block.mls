@@ -48,7 +48,7 @@ class Case with
   constructor
     Lit(val lit: Literal)
     Cls(val cls: ClassSymbol, val path: Path)
-    Tup(val len: Int, val inf: Bool)
+    Tup(val len: Int)
 
 class Result with 
   constructor
@@ -129,8 +129,7 @@ fun showCase(c) =
     Cls(cls, p) then showSymbol(cls) +
       if isPrimitiveType(cls) then ""
         else showParamsOpt(cls.paramsOpt)
-    Tup(len, inf) then "[" + Array(len).fill("_").join(", ") +
-      (if inf then ", ..." else "") + "]"
+    Tup(len) then "[" + Array(len).fill("_").join(", ") + "]"
     _ then "<unknown case>"
 
 fun showArm(a) =
