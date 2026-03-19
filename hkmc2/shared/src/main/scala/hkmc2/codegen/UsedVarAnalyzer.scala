@@ -36,7 +36,7 @@ object UsedVarAnalyzer:
   *
   * Assumes the input trees have no lambdas.
   */
-class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State, IgnoredScopes):
+class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
   import UsedVarAnalyzer.*
   
   object SDSym:
@@ -72,12 +72,9 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State, IgnoredScopes
         
         case _ => super.applyBlock(b)
       
-      def addModObjParent(node: ScopeNode) = node.bestModOrObjOwner.foreach: d =>
-        accessed.accessed.add(d)
-      
       override def applyPath(p: Path): Unit = p match
         case Value.Ref(_: BuiltinSymbol, _) => super.applyPath(p)
-        case RefOfBms(_, SDSym(dSym)) =>
+        case RefOfBms(_, SDSym(dSym), _) =>
           val node = scopeData.getNode(dSym)
           node.obj match
             // Here, we add an edge to a definition, even if it is the result of a field selection, if it is:
@@ -178,13 +175,7 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State, IgnoredScopes
     // Traverses the node's children, and stops when a child that is accessed by one of its children is found.
     // The analysis will be performed on *all* of the traversed nodes simultaneously.
     // We will later recurse on the children of all these nodes.
-    val nexts: Buffer[ScopeNode] = Buffer.empty
-    def findNodes(s: ScopeNode): List[ScopeNode] = s :: s.children.flatMap: child =>
-      if accessedByChild(child.obj.toInfo) then
-        nexts.addOne(child)
-        List.empty
-      else findNodes(child)
-    val nodes = findNodes(s)
+    val (nodes, nexts) = s.partitionTree(x => accessedByChild(x.obj.toInfo))
     
     val allLocals = nodes.flatMap(node => node.obj.definedLocals).toSet
     
@@ -270,15 +261,10 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State, IgnoredScopes
       case ScopedObject.Func(fun, _) => fun.body
       case ScopedObject.ScopedBlock(uid, block) => block
       case ScopedObject.Loop(sym, block) => block
-    
-    // traverse all scoped blocks and loops
-    val nexts: Buffer[ScopeNode] = Buffer.empty
-    def findNodes(s: ScopeNode): List[ScopeNode] = s :: s.children.flatMap:
-      case c @ ScopeNode(obj = obj: (ScopedObject.ScopedBlock | ScopedObject.Loop)) => findNodes(c)
-      case c =>
-        nexts.addOne(c)
-        List.empty
-    val nodes = findNodes(s)
+
+    val (nodes, nexts) = s.partitionTree2:
+      case obj: (ScopedObject.ScopedBlock | ScopedObject.Loop) => false
+      case _ => true
     
     val locals = nodes.flatMap(_.obj.definedLocals).toSet
     
@@ -415,16 +401,16 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State, IgnoredScopes
 
         override def applyResult(r: Result): Unit = 
           r match
-          case Call(RefOfBms(_, SDSym(d)), args) =>
+          case Call(RefOfBms(_, SDSym(d), _), args) =>
             args.foreach(super.applyArg(_))
             handleCalledScope(d)
-          case Instantiate(mut, RefOfBms(_, SDSym(d)), args) =>
+          case Instantiate(mut, RefOfBms(_, SDSym(d), _), args) =>
             args.foreach(super.applyArg)
             handleCalledScope(d)
           case _ => super.applyResult(r)
         
         override def applyPath(p: Path): Unit = p match
-          case RefOfBms(_, SDSym(d)) =>
+          case RefOfBms(_, SDSym(d), _) =>
             scopeInfos.get(d) match
             case None => super.applyPath(p)
             case Some(defn) =>
@@ -502,12 +488,14 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State, IgnoredScopes
   private val (m1, m2) = scopeData.scopeTree.root.children.map(findAccesses).unzip
   val accessMapWithIgnored = m1.foldLeft[Map[ScopedInfo, AccessInfo]](Map.empty)(_ ++ _)
   val accessMap = m2.foldLeft[Map[ScopedInfo, AccessInfo]](Map.empty)(_ ++ _)
-    
-  val reqdCaptures: Map[ScopedInfo, Set[Local]] = scopeData.root.children.foldLeft(Map.empty):
+  
+  // We make these lazy, because not all users of UsedVarAnalyzer need this analysis. For now, only the lifter needs it.
+  
+  lazy val reqdCaptures: Map[ScopedInfo, Set[Local]] = scopeData.root.children.foldLeft(Map.empty):
     case (acc, node) => acc ++ reqdCaptureLocals(node)
   
   // For local inside a capture, finds the node to which this local belongs.
-  val capturesMap =
+  lazy val capturesMap =
     for
       case (info -> reqCap) <- reqdCaptures
       s <- reqCap

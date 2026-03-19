@@ -9,7 +9,7 @@ staged module Expressions with
     let y = x
     y
   fun tup1() = [1, 2]
-  fun tup2() = [1, ..x]
+  fun tup2() = [1, x]
   fun dynsel() = [1].(0)
   fun match1() =
     if 9 is
@@ -19,10 +19,10 @@ staged module Expressions with
       9 then 4
       else 0
   fun match2() =
-    if [...x] is
+    if x is
       [] then 1
       [1, 2] then 2
-      [a, ...] then 3
+      [a, _] then 3
       else 0
 //│ > fun ctor_() =
 //│ >   ()
@@ -34,7 +34,7 @@ staged module Expressions with
 //│ >   y = x
 //│ >   y
 //│ > fun tup1() = [1, 2]
-//│ > fun tup2() = [1, ..x1]
+//│ > fun tup2() = [1, x1]
 //│ > fun dynsel() =
 //│ >   let tmp
 //│ >   tmp = [1]
@@ -48,43 +48,23 @@ staged module Expressions with
 //│ >     Int then 3
 //│ >     else 0
 //│ > fun match2() =
-//│ >   let a
-//│ >   let tmp1
-//│ >   let middleElements
-//│ >   let element0_
 //│ >   let element1_
-//│ >   let scrut1
-//│ >   scrut1 = [...x1]
-//│ >   if scrut1 is
-//│ >     [] then
-//│ >       tmp1 = 1
+//│ >   let element0_
+//│ >   let a
+//│ >   if x1 is
+//│ >     [] then 1
 //│ >     [_, _] then
-//│ >       element0_ = Runtime.Tuple.get(scrut1, 0)
-//│ >       element1_ = Runtime.Tuple.get(scrut1, 1)
+//│ >       element0_ = Runtime.Tuple.get(x1, 0)
+//│ >       element1_ = Runtime.Tuple.get(x1, 1)
 //│ >       if element0_ is
 //│ >         1 then
 //│ >           if element1_ is
-//│ >             2 then
-//│ >               tmp1 = 2
-//│ >             else if scrut1 is
-//│ >               [_, ...] then
-//│ >                 middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >                 a = element0_
-//│ >                 tmp1 = 3
-//│ >               else tmp1 = 0
-//│ >         else if scrut1 is
-//│ >           [_, ...] then
-//│ >             middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >             a = element0_
-//│ >             tmp1 = 3
-//│ >           else tmp1 = 0
-//│ >     [_, ...] then
-//│ >       element0_ = Runtime.Tuple.get(scrut1, 0)
-//│ >       middleElements = Runtime.Tuple.slice(scrut1, 1, 0)
-//│ >       a = element0_
-//│ >       tmp1 = 3
-//│ >     else tmp1 = 0
-//│ >   tmp1
+//│ >             2 then 2
+//│ >             else a = element0_
+//│ >             3
+//│ >         else a = element0_
+//│ >         3
+//│ >     else 0
 //│ x = [1, 2, 3]
 
 class Outside(a)
@@ -96,12 +76,12 @@ staged module ClassInstrumentation with
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
 //│ > fun ctor_() =
-//│ >   class Inside1(a1, b)
+//│ >   class Inside(a1, b)
 //│ >   class NoArg
 //│ > fun inst1() = new Outside(1)
 //│ > fun inst2() = new ClassInstrumentation.NoArg()
 //│ > fun app1() = Outside(1)
-//│ > fun app2() = ClassInstrumentation.Inside1(1, 2)
+//│ > fun app2() = ClassInstrumentation.Inside(1, 2)
 
 module Nonstaged with
   fun f() = 1
@@ -118,27 +98,25 @@ staged module CallSubst with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   tmp = +(1, 1)
-//│ >   tmp1 = Nonstaged.f()
+//│ >   __no__symbol__ = +(1, 1)
+//│ >   __no__symbol__ = Nonstaged.f()
 //│ >   Staged.f_gen()
 
-:w
+:ftc
 staged module Arguments with
   fun f(x) =
     x = 1
     x
   fun g(x)(y, z)() = z
-//│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.132: 	  fun g(x)(y, z)() = z
-//│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
 //│ >   x = 1
 //│ >   x
-//│ > fun g(x)(y, z)() = z
+//│ > fun g(x) =
+//│ >   let tmp
+//│ >   tmp = new Function_()
+//│ >   tmp
 
 staged module OtherBlocks with
   fun scope() =
@@ -159,15 +137,11 @@ staged module OtherBlocks with
 //│ >   OtherBlocks.scope.locally(a)
 //│ > fun breakAndLabel() =
 //│ >   let scrut
-//│ >   let tmp
 //│ >   scrut = 1
 //│ >   if scrut is
-//│ >     2 then
-//│ >       tmp = 0
-//│ >     3 then
-//│ >       tmp = 0
-//│ >     else tmp = 0
-//│ >   tmp
+//│ >     2 then 0
+//│ >     3 then 0
+//│ >     else 0
 
 staged module ClassDefs with
   class A
@@ -179,12 +153,33 @@ staged module ClassFunctions with
     fun f() = 1
     fun g() = 1
 //│ > fun ctor_() =
-//│ >   class A
+//│ >   class A with 
+//│ >     fun f() = 1
+//│ >     fun g() = 1
 
-:todo
+// :lot
+:todo ValDefn in class
 staged module ValClass with
   class A(val a)
-//│ /!!!\ Uncaught error: scala.NotImplementedError: an implementation is missing
+//│ > fun ctor_() =
+//│ >   class A(a)
+
+staged module ClassDefs with
+  class A
+//│ > fun ctor_() =
+//│ >   class A
+
+staged module ClassFunctions with
+  class InnerClass() with
+    fun f() = 1 + Arguments.f(1)
+    fun g() = f() // TODO
+//│ > fun ctor_() =
+//│ >   class InnerClass() with 
+//│ >     fun f() =
+//│ >       let tmp
+//│ >       tmp = Arguments.f_gen(1)
+//│ >       +(1, tmp)
+//│ >     fun g() = InnerClass.f()
 
 // name collision
 class A()
@@ -201,3 +196,53 @@ module A with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
+
+
+// TODO: force enable :ftc to desugar Label and Break
+:todo
+staged module M with
+  fun f() = 
+    let x = 1
+    while x == 1 do
+      set x = x + 1
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
+//│ ║  l.205: 	    let x = 1
+//│ ║         	        ^
+//│ ╟── which references the symbol introduced here
+//│ ║  l.205: 	    let x = 1
+//│ ╙──       	        ^
+//│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
+//│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
+//│ ║  l.205: 	    let x = 1
+//│ ║         	        ^
+//│ ╟── which references the symbol introduced here
+//│ ║  l.205: 	    let x = 1
+//│ ╙──       	        ^
+//│ > fun ctor_() =
+//│ >   ()
+//│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
+
+:e
+class C(val a)
+staged module A with
+  let x = C(1)
+  fun f() = set x.a = 0
+  fun g() = {1 : 2}
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
+//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
+//│ ║  l.232: 	  fun g() = {1 : 2}
+//│ ╙──       	                 ^
+//│ > fun ctor_() =
+//│ >   x = C(1)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+
+:todo
+staged module Spread with
+  fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
+//│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Arg(Some(Lazy),Ref(tmp:tmp,None))
+//│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
+//│ > fun ctor_() =
+//│ >   ()
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.

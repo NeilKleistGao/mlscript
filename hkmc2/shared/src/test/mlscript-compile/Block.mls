@@ -17,9 +17,10 @@ type Literal = null | undefined | Str | Int | Num | Bool
 type ParamList = Array[Symbol]
 
 class Symbol(val name: Str)
-type Ident = Symbol
 // this is so that we're able to retrieve information about the class from the symbol
-class ClassSymbol(val name: Str, val paramsOpt: Opt[ParamList]) extends Symbol(name)
+class VirtualClassSymbol(val name: Str) extends Symbol(name)
+class ClassSymbol(val name: Str, val value, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList]) extends Symbol(name)
+class ModuleSymbol(val name: Str, val value) extends Symbol(name)
 class Arm(val cse: Case, val body: Block)
 
 fun isPrimitiveType(sym: Symbol) = 
@@ -38,9 +39,10 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
     ["Bool", b] and b is Bool then true
     else false
 
+
 // Classes defined in Block.scala
 
-class Arg(val spread: Opt[Bool], val value: Path) 
+class Arg(val value: Path) 
 
 class Case with
   constructor
@@ -56,7 +58,7 @@ class Result with
 
 class Path extends Result with
   constructor
-    Select(val qual: Path, val name: Ident)
+    Select(val qual: Path, val name: Symbol)
     DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool) // is arrayIdx used?
     ValueRef(val l: Symbol)
     ValueLit(val lit: Literal)
@@ -99,21 +101,15 @@ fun showSymbol(s: Symbol) = if s.name is
   "runtime" then "Runtime"
   else s.name.replaceAll("$", "_")
 
-fun showIdent(i: Ident) = showSymbol(i)
-
 fun showPath(p: Path): Str =
   if p is
-    Select(qual, name) then showPath(qual) + "." + showIdent(name)
+    Select(qual, name) then showPath(qual) + "." + showSymbol(name)
     DynSelect(qual, fld, arrayIdx) then showPath(qual) + ".(" + showPath(fld) + ")" 
     ValueRef(l) then showSymbol(l)
     ValueLit(lit) then showLiteral(lit)
 
 fun showArg(arg: Arg) =
-  if arg.spread is
-    Some(true) then "..."
-    Some(false) then ".."
-    else ""
-  + showPath(arg.value)
+  showPath(arg.value)
 
 fun showArgs(args: Array[Arg]) =
   args.map(showArg).join(", ")
@@ -121,7 +117,7 @@ fun showArgs(args: Array[Arg]) =
 fun showResult(r: Result): Str =
   if r is
     Path then showPath(r)
-    Call(_fun, args) then showPath(_fun) + "(" + showArgs(args) + ")"
+    Call(fun_, args) then showPath(fun_) + "(" + showArgs(args) + ")"
     Instantiate(cls, args) then "new " + showPath(cls) + "(" + showArgs(args) + ")"
     Tuple(elems) then "[" + showArgs(elems) + "]"
     _ then "<unknown result>"

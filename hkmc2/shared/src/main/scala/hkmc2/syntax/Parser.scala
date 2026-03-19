@@ -84,7 +84,7 @@ object Parser:
       val r = opStr.last
       (precOf(opStr.head), precOf(r) - (if r === '/' || r === ',' || r === ':' then 1 else 0))
   }
-  val prefixOps: Set[Str] = Set("!", "+", "-", "~", "@")
+  val prefixOps: Set[Str] = Set("!", "+", "-", "~", "@", "|", "&")
   
   type Indent_Curly = Curly.type | Indent.type
   
@@ -572,21 +572,27 @@ abstract class Parser(
       exprCont(id, prec, allowNewlines = true)
     case (IDENT(nme, sym), loc) :: _ =>
       Keyword.all.get(nme) match
-        case S(kw) => // * Expressions starting with keywords should be handled in parseRule
-          // * I guess this case is not really supposed to be ever reached (?)
-          err(msg"Unexpected ${kw.toString} in this position" -> S(loc) :: Nil)
-          errExpr
-        case N =>
-          consume
-          val id = Tree.Ident(nme).withLoc(S(loc))
-          if prefixOps.contains(nme)
-          then
-            yeetSpaces match
-              case Nil => id
-              case _ =>
-                val rhs = expr(PrefixOpsPrec, allowNewlines = allowNewlines)
-                exprCont(App(id, PlainTup(rhs)), prec, allowNewlines = allowNewlines)
-          else exprCont(id, prec, allowNewlines = allowNewlines)
+      case S(kw) => // * Expressions starting with keywords should be handled in parseRule
+        // * I guess this case is not really supposed to ever be reached (?)
+        err(msg"Unexpected ${kw.toString} in this position" -> S(loc) :: Nil)
+        errExpr
+      case N =>
+        consume
+        val id = Tree.Ident(nme).withLoc(S(loc))
+        if prefixOps.contains(nme)
+        then
+          yeetSpaces match
+          case Nil => id
+          case _ =>
+            val newPrec =
+              if nme === "!" then
+                // Special case: bang operator currently used in BbML
+                PrefixOpsPrec
+              else
+                opCharPrec(nme.head)
+            val rhs = expr(newPrec, allowNewlines = allowNewlines)
+            exprCont(App(id, PlainTup(rhs)), prec, allowNewlines = allowNewlines)
+        else exprCont(id, prec, allowNewlines = allowNewlines)
     case (LITVAL(lit), loc) :: _ =>
       consume
       exprCont(lit.asTree.withLoc(S(loc)), prec, allowNewlines = allowNewlines)
@@ -613,7 +619,7 @@ abstract class Parser(
             case Round => Tup(ps)
             case Curly => ???
             case Square => TyTup(ps)
-          val res = InfixApp(lhs, new Keywrd(kw).withLoc(S(l0)), rhs).withLoc(S(loc))
+          val res = InfixApp(lhs.withLoc(S(loc)), new Keywrd(kw).withLoc(S(l0)), rhs)
           exprCont(res, prec, allowNewlines = allowNewlines)
         case _ =>
           val sts = ps
@@ -693,6 +699,9 @@ abstract class Parser(
     //   raise(WarningReport(msg"???" -> S(loc) :: Nil))
     //   consume
     //   simpleExprImpl(prec)
+    case (SELECT(name = nme, dynamic = false), loc) :: _ =>
+      consume
+      exprCont(Tree.Sel(Tree.Empty(), new Ident(nme).withLoc(S(loc))), prec, allowNewlines = false) // TODO: use a new tree ctor
     case (tok, loc) :: _ =>
       err(msg"Expected an expression; found ${tok.describe} instead" -> S(loc) :: Nil)
       errExpr
@@ -745,7 +754,7 @@ abstract class Parser(
    *  TODO: parse let bindings
    */
   def opSplit(lhs: Tree, splittingOpLoc: Loc, prec: Int)(using Line): Tree =
-    wrap((lhs,splittingOpLoc,prec))(opSplitImpl(lhs, splittingOpLoc, prec, Nil))
+    wrap((lhs, splittingOpLoc, prec))(opSplitImpl(lhs, splittingOpLoc, prec, Nil))
   def opSplitImpl(lhs: Tree, splittingOpLoc: Loc, prec: Int, acc: Ls[Tree]): Tree =
     val (newAcc, e) = yeetSpaces match
       case (PrefixRule(kw, rule), loc) :: _ =>
@@ -862,13 +871,18 @@ abstract class Parser(
         consume
         consume
         val inner = rec(toks, S(br.innerLoc), br.describe).concludeWith(_.expr(0, allowNewlines = true))
-        exprCont(DynAccess(acc, Bra(bk, inner)), prec, allowNewlines = allowNewlines)
+        exprCont(DynAccess(acc, Bra(bk, inner)).withLoc(S(l0 ++ l1)), prec, allowNewlines = allowNewlines)
       
       case (PERIOD, l0) :: (br @ BRACKETS(Curly, toks), l1) :: _ =>
         consume
         consume
         val inner = rec(toks, S(br.innerLoc), br.describe).concludeWith(_.blockMaybeIndented)
         exprCont(OpenIn(acc, Block(inner)), prec, allowNewlines = allowNewlines)
+        
+      case (PERIOD, l0) :: (LITVAL(lit: (Tree & Literal)), l1) :: _ =>
+        consume
+        consume
+        exprCont(DynAccess(acc, lit.withLoc(S(l1))).withLoc(S(l0 ++ l1)), prec, allowNewlines = allowNewlines)
         
         /* 
       case (PERIOD, l0) :: (br @ BRACKETS(Square, toks), l1) :: _ =>
