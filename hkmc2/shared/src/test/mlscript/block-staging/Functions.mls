@@ -1,6 +1,7 @@
 :js
 :staging
 
+:sjs
 let x = [1, 2, 3]
 staged module Expressions with
   fun lit() = 1
@@ -18,25 +19,621 @@ staged module Expressions with
       Int then 3
       9 then 4
       else 0
-  fun match2() =
-    if [...x] is
-      [] then 1
-      [1, 2] then 2
-      [a, ...] then 3
-      else 0
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL14:1:1705)
-//│     at REPL14:1:62880
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+  // fun match2() =
+  //   if [...x] is
+  //     [] then 1
+  //     [1, 2] then 2
+  //     [a, ...] then 3
+  //     else 0
+//│ JS (unsanitized):
+//│ let Expressions1, x;
+//│ x = globalThis.Object.freeze([
+//│   1,
+//│   2,
+//│   3
+//│ ]);
+//│ (class Expressions {
+//│   static {
+//│     Expressions1 = this
+//│   }
+//│   constructor() {
+//│     runtime.Unit;
+//│   }
+//│   static {
+//│     let tmp, tmp1, tmp2, tmp3, tmp4;
+//│     tmp2 = globalThis.Object.freeze([]);
+//│     tmp3 = globalThis.Object.freeze(new globalThis.Map(tmp2));
+//│     tmp4 = ShapeSet.DefCtx(tmp3);
+//│     this.defCtx = tmp4;
+//│     tmp1 = runtime.safeCall(ShapeSet.emptyCache());
+//│     this.cache = tmp1;
+//│     tmp = Expressions.dump();
+//│   }
+//│   static ctor$_instr() {
+//│     let end, tmp, tmp1, tmp2, tmp3;
+//│     end = globalThis.Object.freeze(new Block.End());
+//│     tmp = globalThis.Object.freeze([]);
+//│     tmp1 = globalThis.Object.freeze([
+//│       tmp
+//│     ]);
+//│     tmp2 = globalThis.Object.freeze(new Block.Symbol("ctor$"));
+//│     tmp3 = globalThis.Object.freeze(new Block.FunDefn(tmp2, tmp1, end, true));
+//│     return tmp3
+//│   } 
+//│   static dump() {
+//│     let dyn, defs, res, restmp, restmp1, restmp2, restmp3, restmp4, restmp5;
+//│     dyn = ShapeSet.mkDyn();
+//│     restmp5 = Expressions.lit_gen();
+//│     restmp4 = Expressions.assign_gen();
+//│     restmp3 = Expressions.tup1_gen();
+//│     restmp2 = Expressions.tup2_gen();
+//│     restmp1 = Expressions.dynsel_gen();
+//│     restmp = Expressions.match1_gen();
+//│     defs = Expressions.cache.getImps();
+//│     res = Block.printModule("Expressions", defs);
+//│     return res
+//│   } 
+//│   static lit() {
+//│     return 1
+//│   } 
+//│   static assign() {
+//│     let x1, y;
+//│     x1 = 42;
+//│     y = x1;
+//│     return y
+//│   } 
+//│   static tup1() {
+//│     return globalThis.Object.freeze([
+//│       1,
+//│       2
+//│     ])
+//│   } 
+//│   static tup2() {
+//│     return globalThis.Object.freeze(runtime.Tuple.lazyConcat(1, runtime.Tuple.split, x))
+//│   } 
+//│   static dynsel() {
+//│     let tmp;
+//│     tmp = globalThis.Object.freeze([
+//│       1
+//│     ]);
+//│     return tmp[0]
+//│   } 
+//│   static match1() {
+//│     let scrut;
+//│     scrut = 9;
+//│     if (typeof scrut === 'boolean') {
+//│       return 1
+//│     } else if (scrut === 8) {
+//│       return 2
+//│     } else if (globalThis.Number.isInteger(scrut)) {
+//│       return 3
+//│     } else {
+//│       return 0
+//│     }
+//│   } 
+//│   static lit_instr() {
+//│     let lit, return1, tmp, tmp1, tmp2, tmp3;
+//│     lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│     return1 = globalThis.Object.freeze(new Block.Return(lit, false));
+//│     tmp = globalThis.Object.freeze([]);
+//│     tmp1 = globalThis.Object.freeze([
+//│       tmp
+//│     ]);
+//│     tmp2 = globalThis.Object.freeze(new Block.Symbol("lit"));
+//│     tmp3 = globalThis.Object.freeze(new Block.FunDefn(tmp2, tmp1, return1, true));
+//│     return tmp3
+//│   } 
+//│   static assign_instr() {
+//│     let x1, y, sym, sym1, tmp, lit, sym2, tmp1, sym3, tmp2, return1, assign, assign1, tmp3, tmp4, tmp5, tmp6, tmp7;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("x"));
+//│     sym1 = globalThis.Object.freeze(new Block.Symbol("y"));
+//│     tmp = globalThis.Object.freeze([
+//│       sym,
+//│       sym1
+//│     ]);
+//│     lit = globalThis.Object.freeze(new Block.ValueLit(42));
+//│     sym2 = globalThis.Object.freeze(new Block.Symbol("x"));
+//│     tmp1 = globalThis.Object.freeze(new Block.ValueRef(sym2));
+//│     x1 = tmp1;
+//│     sym3 = globalThis.Object.freeze(new Block.Symbol("y"));
+//│     tmp2 = globalThis.Object.freeze(new Block.ValueRef(sym3));
+//│     y = tmp2;
+//│     return1 = globalThis.Object.freeze(new Block.Return(tmp2, false));
+//│     assign = globalThis.Object.freeze(new Block.Assign(sym3, tmp1, return1));
+//│     assign1 = globalThis.Object.freeze(new Block.Assign(sym2, lit, assign));
+//│     tmp3 = globalThis.Object.freeze(new Block.Scoped(tmp, assign1));
+//│     tmp4 = globalThis.Object.freeze([]);
+//│     tmp5 = globalThis.Object.freeze([
+//│       tmp4
+//│     ]);
+//│     tmp6 = globalThis.Object.freeze(new Block.Symbol("assign"));
+//│     tmp7 = globalThis.Object.freeze(new Block.FunDefn(tmp6, tmp5, tmp3, true));
+//│     return tmp7
+//│   } 
+//│   static tup1_instr() {
+//│     let tmp, lit, tmp1, tmp2, lit1, tmp3, tmp4, tup, return1, tmp5, tmp6, tmp7, tmp8;
+//│     tmp = option.None;
+//│     lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│     tmp1 = globalThis.Object.freeze(new Block.Arg(tmp, lit));
+//│     tmp2 = option.None;
+//│     lit1 = globalThis.Object.freeze(new Block.ValueLit(2));
+//│     tmp3 = globalThis.Object.freeze(new Block.Arg(tmp2, lit1));
+//│     tmp4 = globalThis.Object.freeze([
+//│       tmp1,
+//│       tmp3
+//│     ]);
+//│     tup = globalThis.Object.freeze(new Block.Tuple(tmp4));
+//│     return1 = globalThis.Object.freeze(new Block.Return(tup, false));
+//│     tmp5 = globalThis.Object.freeze([]);
+//│     tmp6 = globalThis.Object.freeze([
+//│       tmp5
+//│     ]);
+//│     tmp7 = globalThis.Object.freeze(new Block.Symbol("tup1"));
+//│     tmp8 = globalThis.Object.freeze(new Block.FunDefn(tmp7, tmp6, return1, true));
+//│     return tmp8
+//│   } 
+//│   static tup2_instr() {
+//│     let tmp, lit, tmp1, tmp2, tmp3, sym, var1, tmp4, tmp5, tup, return1, tmp6, tmp7, tmp8, tmp9;
+//│     tmp = option.None;
+//│     lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│     tmp1 = globalThis.Object.freeze(new Block.Arg(tmp, lit));
+//│     tmp2 = false;
+//│     tmp3 = globalThis.Object.freeze(new option.Some(tmp2));
+//│     sym = globalThis.Object.freeze(new Block.Symbol("x1"));
+//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
+//│     tmp4 = globalThis.Object.freeze(new Block.Arg(tmp3, var1));
+//│     tmp5 = globalThis.Object.freeze([
+//│       tmp1,
+//│       tmp4
+//│     ]);
+//│     tup = globalThis.Object.freeze(new Block.Tuple(tmp5));
+//│     return1 = globalThis.Object.freeze(new Block.Return(tup, false));
+//│     tmp6 = globalThis.Object.freeze([]);
+//│     tmp7 = globalThis.Object.freeze([
+//│       tmp6
+//│     ]);
+//│     tmp8 = globalThis.Object.freeze(new Block.Symbol("tup2"));
+//│     tmp9 = globalThis.Object.freeze(new Block.FunDefn(tmp8, tmp7, return1, true));
+//│     return tmp9
+//│   } 
+//│   static dynsel_instr() {
+//│     let tmp, sym, tmp1, tmp2, lit, tmp3, tmp4, tup, sym1, tmp5, lit1, dynsel, return1, assign, tmp6, tmp7, tmp8, tmp9, tmp10;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("tmp"));
+//│     tmp1 = globalThis.Object.freeze([
+//│       sym
+//│     ]);
+//│     tmp2 = option.None;
+//│     lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│     tmp3 = globalThis.Object.freeze(new Block.Arg(tmp2, lit));
+//│     tmp4 = globalThis.Object.freeze([
+//│       tmp3
+//│     ]);
+//│     tup = globalThis.Object.freeze(new Block.Tuple(tmp4));
+//│     sym1 = globalThis.Object.freeze(new Block.Symbol("tmp"));
+//│     tmp5 = globalThis.Object.freeze(new Block.ValueRef(sym1));
+//│     tmp = tmp5;
+//│     lit1 = globalThis.Object.freeze(new Block.ValueLit(0));
+//│     dynsel = globalThis.Object.freeze(new Block.DynSelect(tmp5, lit1, false));
+//│     return1 = globalThis.Object.freeze(new Block.Return(dynsel, false));
+//│     assign = globalThis.Object.freeze(new Block.Assign(sym1, tup, return1));
+//│     tmp6 = globalThis.Object.freeze(new Block.Scoped(tmp1, assign));
+//│     tmp7 = globalThis.Object.freeze([]);
+//│     tmp8 = globalThis.Object.freeze([
+//│       tmp7
+//│     ]);
+//│     tmp9 = globalThis.Object.freeze(new Block.Symbol("dynsel"));
+//│     tmp10 = globalThis.Object.freeze(new Block.FunDefn(tmp9, tmp8, tmp6, true));
+//│     return tmp10
+//│   } 
+//│   static match1_instr() {
+//│     let scrut, sym, tmp, lit, sym1, tmp1, tmp2, sym2, sym3, var1, tmp3, sel, tmp4, lit1, return1, tmp5, tmp6, lit2, return2, tmp7, tmp8, sym4, sym5, var2, tmp9, sel1, tmp10, lit3, return3, tmp11, tmp12, end, lit4, return4, tmp13, branches, end1, match, assign, tmp14, tmp15, tmp16, tmp17, tmp18;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("scrut"));
+//│     tmp = globalThis.Object.freeze([
+//│       sym
+//│     ]);
+//│     lit = globalThis.Object.freeze(new Block.ValueLit(9));
+//│     sym1 = globalThis.Object.freeze(new Block.Symbol("scrut"));
+//│     tmp1 = globalThis.Object.freeze(new Block.ValueRef(sym1));
+//│     scrut = tmp1;
+//│     tmp2 = option.None;
+//│     sym2 = globalThis.Object.freeze(new Block.ClassSymbol("Bool", tmp2));
+//│     sym3 = globalThis.Object.freeze(new Block.Symbol("runtime"));
+//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym3));
+//│     tmp3 = globalThis.Object.freeze(new Block.Symbol("unreachable"));
+//│     sel = globalThis.Object.freeze(new Block.Select(var1, tmp3));
+//│     tmp4 = globalThis.Object.freeze(new Block.Cls(sym2, sel));
+//│     lit1 = globalThis.Object.freeze(new Block.ValueLit(1));
+//│     return1 = globalThis.Object.freeze(new Block.Return(lit1, false));
+//│     tmp5 = globalThis.Object.freeze(new Block.Arm(tmp4, return1));
+//│     tmp6 = globalThis.Object.freeze(new Block.Lit(8));
+//│     lit2 = globalThis.Object.freeze(new Block.ValueLit(2));
+//│     return2 = globalThis.Object.freeze(new Block.Return(lit2, false));
+//│     tmp7 = globalThis.Object.freeze(new Block.Arm(tmp6, return2));
+//│     tmp8 = option.None;
+//│     sym4 = globalThis.Object.freeze(new Block.ClassSymbol("Int", tmp8));
+//│     sym5 = globalThis.Object.freeze(new Block.Symbol("runtime"));
+//│     var2 = globalThis.Object.freeze(new Block.ValueRef(sym5));
+//│     tmp9 = globalThis.Object.freeze(new Block.Symbol("unreachable"));
+//│     sel1 = globalThis.Object.freeze(new Block.Select(var2, tmp9));
+//│     tmp10 = globalThis.Object.freeze(new Block.Cls(sym4, sel1));
+//│     lit3 = globalThis.Object.freeze(new Block.ValueLit(3));
+//│     return3 = globalThis.Object.freeze(new Block.Return(lit3, false));
+//│     tmp11 = globalThis.Object.freeze(new Block.Arm(tmp10, return3));
+//│     tmp12 = globalThis.Object.freeze([
+//│       tmp5,
+//│       tmp7,
+//│       tmp11
+//│     ]);
+//│     end = globalThis.Object.freeze(new Block.End());
+//│     lit4 = globalThis.Object.freeze(new Block.ValueLit(0));
+//│     return4 = globalThis.Object.freeze(new Block.Return(lit4, false));
+//│     tmp13 = globalThis.Object.freeze(new option.Some(return4));
+//│     branches = globalThis.Object.freeze(new Block.Match(tmp1, tmp12, tmp13, end));
+//│     end1 = globalThis.Object.freeze(new Block.End());
+//│     match = Block.concat(branches, end1);
+//│     assign = globalThis.Object.freeze(new Block.Assign(sym1, lit, match));
+//│     tmp14 = globalThis.Object.freeze(new Block.Scoped(tmp, assign));
+//│     tmp15 = globalThis.Object.freeze([]);
+//│     tmp16 = globalThis.Object.freeze([
+//│       tmp15
+//│     ]);
+//│     tmp17 = globalThis.Object.freeze(new Block.Symbol("match1"));
+//│     tmp18 = globalThis.Object.freeze(new Block.FunDefn(tmp17, tmp16, tmp14, true));
+//│     return tmp18
+//│   } 
+//│   static lit_gen() {
+//│     let fname, args, set, scrut;
+//│     fname = "lit";
+//│     args = globalThis.Object.freeze([]);
+//│     set = ShapeSet.mkArr(args, false);
+//│     scrut = Expressions.cache.has(fname, set);
+//│     if (scrut === true) {
+//│       let cached, cachedName, cachedShape, cachedSym, simpRet;
+//│       cached = Expressions.cache.get(fname, set);
+//│       cachedName = cached.at(0);
+//│       cachedShape = cached.at(1);
+//│       cachedSym = globalThis.Object.freeze(new Block.Symbol(cachedName));
+//│       simpRet = globalThis.Object.freeze([
+//│         cachedShape,
+//│         cachedSym
+//│       ]);
+//│       return simpRet
+//│     } else {
+//│       let lit, return1, ctx, tmp, tmp1, tmp2, proped, propedBlock, propedShape, block, newName, ret;
+//│       lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│       return1 = globalThis.Object.freeze(new Block.Return(lit, false));
+//│       ctx = ShapeSet.emptyCtx();
+//│       tmp = globalThis.Object.freeze(new Block.Symbol("lit"));
+//│       tmp1 = globalThis.Object.freeze([]);
+//│       tmp2 = globalThis.Object.freeze([
+//│         tmp1
+//│       ]);
+//│       proped = ShapeSet.prop(Expressions.defCtx, ctx, Expressions.cache, return1);
+//│       propedBlock = proped.at(0);
+//│       propedShape = proped.at(1);
+//│       block = globalThis.Object.freeze(new Block.FunDefn(tmp, tmp2, propedBlock, true));
+//│       newName = Expressions.cache.add(fname, set, block, propedShape);
+//│       ret = globalThis.Object.freeze([
+//│         propedShape,
+//│         newName
+//│       ]);
+//│       return ret
+//│     }
+//│   } 
+//│   static assign_gen() {
+//│     let fname, args, set, scrut;
+//│     fname = "assign";
+//│     args = globalThis.Object.freeze([]);
+//│     set = ShapeSet.mkArr(args, false);
+//│     scrut = Expressions.cache.has(fname, set);
+//│     if (scrut === true) {
+//│       let cached, cachedName, cachedShape, cachedSym, simpRet;
+//│       cached = Expressions.cache.get(fname, set);
+//│       cachedName = cached.at(0);
+//│       cachedShape = cached.at(1);
+//│       cachedSym = globalThis.Object.freeze(new Block.Symbol(cachedName));
+//│       simpRet = globalThis.Object.freeze([
+//│         cachedShape,
+//│         cachedSym
+//│       ]);
+//│       return simpRet
+//│     } else {
+//│       let x1, y, sym, sym1, tmp, lit, sym2, tmp1, sym3, tmp2, return1, assign, assign1, tmp3, ctx, tmp4, tmp5, tmp6, proped, propedBlock, propedShape, block, newName, ret;
+//│       sym = globalThis.Object.freeze(new Block.Symbol("x"));
+//│       sym1 = globalThis.Object.freeze(new Block.Symbol("y"));
+//│       tmp = globalThis.Object.freeze([
+//│         sym,
+//│         sym1
+//│       ]);
+//│       lit = globalThis.Object.freeze(new Block.ValueLit(42));
+//│       sym2 = globalThis.Object.freeze(new Block.Symbol("x"));
+//│       tmp1 = globalThis.Object.freeze(new Block.ValueRef(sym2));
+//│       x1 = tmp1;
+//│       sym3 = globalThis.Object.freeze(new Block.Symbol("y"));
+//│       tmp2 = globalThis.Object.freeze(new Block.ValueRef(sym3));
+//│       y = tmp2;
+//│       return1 = globalThis.Object.freeze(new Block.Return(tmp2, false));
+//│       assign = globalThis.Object.freeze(new Block.Assign(sym3, tmp1, return1));
+//│       assign1 = globalThis.Object.freeze(new Block.Assign(sym2, lit, assign));
+//│       tmp3 = globalThis.Object.freeze(new Block.Scoped(tmp, assign1));
+//│       ctx = ShapeSet.emptyCtx();
+//│       tmp4 = globalThis.Object.freeze(new Block.Symbol("assign"));
+//│       tmp5 = globalThis.Object.freeze([]);
+//│       tmp6 = globalThis.Object.freeze([
+//│         tmp5
+//│       ]);
+//│       proped = ShapeSet.prop(Expressions.defCtx, ctx, Expressions.cache, tmp3);
+//│       propedBlock = proped.at(0);
+//│       propedShape = proped.at(1);
+//│       block = globalThis.Object.freeze(new Block.FunDefn(tmp4, tmp6, propedBlock, true));
+//│       newName = Expressions.cache.add(fname, set, block, propedShape);
+//│       ret = globalThis.Object.freeze([
+//│         propedShape,
+//│         newName
+//│       ]);
+//│       return ret
+//│     }
+//│   } 
+//│   static tup1_gen() {
+//│     let fname, args, set, scrut;
+//│     fname = "tup1";
+//│     args = globalThis.Object.freeze([]);
+//│     set = ShapeSet.mkArr(args, false);
+//│     scrut = Expressions.cache.has(fname, set);
+//│     if (scrut === true) {
+//│       let cached, cachedName, cachedShape, cachedSym, simpRet;
+//│       cached = Expressions.cache.get(fname, set);
+//│       cachedName = cached.at(0);
+//│       cachedShape = cached.at(1);
+//│       cachedSym = globalThis.Object.freeze(new Block.Symbol(cachedName));
+//│       simpRet = globalThis.Object.freeze([
+//│         cachedShape,
+//│         cachedSym
+//│       ]);
+//│       return simpRet
+//│     } else {
+//│       let tmp, lit, tmp1, tmp2, lit1, tmp3, tmp4, tup, return1, ctx, tmp5, tmp6, tmp7, proped, propedBlock, propedShape, block, newName, ret;
+//│       tmp = option.None;
+//│       lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│       tmp1 = globalThis.Object.freeze(new Block.Arg(tmp, lit));
+//│       tmp2 = option.None;
+//│       lit1 = globalThis.Object.freeze(new Block.ValueLit(2));
+//│       tmp3 = globalThis.Object.freeze(new Block.Arg(tmp2, lit1));
+//│       tmp4 = globalThis.Object.freeze([
+//│         tmp1,
+//│         tmp3
+//│       ]);
+//│       tup = globalThis.Object.freeze(new Block.Tuple(tmp4));
+//│       return1 = globalThis.Object.freeze(new Block.Return(tup, false));
+//│       ctx = ShapeSet.emptyCtx();
+//│       tmp5 = globalThis.Object.freeze(new Block.Symbol("tup1"));
+//│       tmp6 = globalThis.Object.freeze([]);
+//│       tmp7 = globalThis.Object.freeze([
+//│         tmp6
+//│       ]);
+//│       proped = ShapeSet.prop(Expressions.defCtx, ctx, Expressions.cache, return1);
+//│       propedBlock = proped.at(0);
+//│       propedShape = proped.at(1);
+//│       block = globalThis.Object.freeze(new Block.FunDefn(tmp5, tmp7, propedBlock, true));
+//│       newName = Expressions.cache.add(fname, set, block, propedShape);
+//│       ret = globalThis.Object.freeze([
+//│         propedShape,
+//│         newName
+//│       ]);
+//│       return ret
+//│     }
+//│   } 
+//│   static tup2_gen() {
+//│     let fname, args, set, scrut;
+//│     fname = "tup2";
+//│     args = globalThis.Object.freeze([]);
+//│     set = ShapeSet.mkArr(args, false);
+//│     scrut = Expressions.cache.has(fname, set);
+//│     if (scrut === true) {
+//│       let cached, cachedName, cachedShape, cachedSym, simpRet;
+//│       cached = Expressions.cache.get(fname, set);
+//│       cachedName = cached.at(0);
+//│       cachedShape = cached.at(1);
+//│       cachedSym = globalThis.Object.freeze(new Block.Symbol(cachedName));
+//│       simpRet = globalThis.Object.freeze([
+//│         cachedShape,
+//│         cachedSym
+//│       ]);
+//│       return simpRet
+//│     } else {
+//│       let tmp, lit, tmp1, tmp2, tmp3, sym, var1, tmp4, tmp5, tup, return1, ctx, tmp6, tmp7, tmp8, proped, propedBlock, propedShape, block, newName, ret;
+//│       tmp = option.None;
+//│       lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│       tmp1 = globalThis.Object.freeze(new Block.Arg(tmp, lit));
+//│       tmp2 = false;
+//│       tmp3 = globalThis.Object.freeze(new option.Some(tmp2));
+//│       sym = globalThis.Object.freeze(new Block.Symbol("x1"));
+//│       var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
+//│       tmp4 = globalThis.Object.freeze(new Block.Arg(tmp3, var1));
+//│       tmp5 = globalThis.Object.freeze([
+//│         tmp1,
+//│         tmp4
+//│       ]);
+//│       tup = globalThis.Object.freeze(new Block.Tuple(tmp5));
+//│       return1 = globalThis.Object.freeze(new Block.Return(tup, false));
+//│       ctx = ShapeSet.emptyCtx();
+//│       tmp6 = globalThis.Object.freeze(new Block.Symbol("tup2"));
+//│       tmp7 = globalThis.Object.freeze([]);
+//│       tmp8 = globalThis.Object.freeze([
+//│         tmp7
+//│       ]);
+//│       proped = ShapeSet.prop(Expressions.defCtx, ctx, Expressions.cache, return1);
+//│       propedBlock = proped.at(0);
+//│       propedShape = proped.at(1);
+//│       block = globalThis.Object.freeze(new Block.FunDefn(tmp6, tmp8, propedBlock, true));
+//│       newName = Expressions.cache.add(fname, set, block, propedShape);
+//│       ret = globalThis.Object.freeze([
+//│         propedShape,
+//│         newName
+//│       ]);
+//│       return ret
+//│     }
+//│   } 
+//│   static dynsel_gen() {
+//│     let fname, args, set, scrut;
+//│     fname = "dynsel";
+//│     args = globalThis.Object.freeze([]);
+//│     set = ShapeSet.mkArr(args, false);
+//│     scrut = Expressions.cache.has(fname, set);
+//│     if (scrut === true) {
+//│       let cached, cachedName, cachedShape, cachedSym, simpRet;
+//│       cached = Expressions.cache.get(fname, set);
+//│       cachedName = cached.at(0);
+//│       cachedShape = cached.at(1);
+//│       cachedSym = globalThis.Object.freeze(new Block.Symbol(cachedName));
+//│       simpRet = globalThis.Object.freeze([
+//│         cachedShape,
+//│         cachedSym
+//│       ]);
+//│       return simpRet
+//│     } else {
+//│       let tmp, sym, tmp1, tmp2, lit, tmp3, tmp4, tup, sym1, tmp5, lit1, dynsel, return1, assign, tmp6, ctx, tmp7, tmp8, tmp9, proped, propedBlock, propedShape, block, newName, ret;
+//│       sym = globalThis.Object.freeze(new Block.Symbol("tmp"));
+//│       tmp1 = globalThis.Object.freeze([
+//│         sym
+//│       ]);
+//│       tmp2 = option.None;
+//│       lit = globalThis.Object.freeze(new Block.ValueLit(1));
+//│       tmp3 = globalThis.Object.freeze(new Block.Arg(tmp2, lit));
+//│       tmp4 = globalThis.Object.freeze([
+//│         tmp3
+//│       ]);
+//│       tup = globalThis.Object.freeze(new Block.Tuple(tmp4));
+//│       sym1 = globalThis.Object.freeze(new Block.Symbol("tmp"));
+//│       tmp5 = globalThis.Object.freeze(new Block.ValueRef(sym1));
+//│       tmp = tmp5;
+//│       lit1 = globalThis.Object.freeze(new Block.ValueLit(0));
+//│       dynsel = globalThis.Object.freeze(new Block.DynSelect(tmp5, lit1, false));
+//│       return1 = globalThis.Object.freeze(new Block.Return(dynsel, false));
+//│       assign = globalThis.Object.freeze(new Block.Assign(sym1, tup, return1));
+//│       tmp6 = globalThis.Object.freeze(new Block.Scoped(tmp1, assign));
+//│       ctx = ShapeSet.emptyCtx();
+//│       tmp7 = globalThis.Object.freeze(new Block.Symbol("dynsel"));
+//│       tmp8 = globalThis.Object.freeze([]);
+//│       tmp9 = globalThis.Object.freeze([
+//│         tmp8
+//│       ]);
+//│       proped = ShapeSet.prop(Expressions.defCtx, ctx, Expressions.cache, tmp6);
+//│       propedBlock = proped.at(0);
+//│       propedShape = proped.at(1);
+//│       block = globalThis.Object.freeze(new Block.FunDefn(tmp7, tmp9, propedBlock, true));
+//│       newName = Expressions.cache.add(fname, set, block, propedShape);
+//│       ret = globalThis.Object.freeze([
+//│         propedShape,
+//│         newName
+//│       ]);
+//│       return ret
+//│     }
+//│   } 
+//│   static match1_gen() {
+//│     let fname, args, set, scrut;
+//│     fname = "match1";
+//│     args = globalThis.Object.freeze([]);
+//│     set = ShapeSet.mkArr(args, false);
+//│     scrut = Expressions.cache.has(fname, set);
+//│     if (scrut === true) {
+//│       let cached, cachedName, cachedShape, cachedSym, simpRet;
+//│       cached = Expressions.cache.get(fname, set);
+//│       cachedName = cached.at(0);
+//│       cachedShape = cached.at(1);
+//│       cachedSym = globalThis.Object.freeze(new Block.Symbol(cachedName));
+//│       simpRet = globalThis.Object.freeze([
+//│         cachedShape,
+//│         cachedSym
+//│       ]);
+//│       return simpRet
+//│     } else {
+//│       let scrut1, sym, tmp, lit, sym1, tmp1, tmp2, sym2, sym3, var1, tmp3, sel, tmp4, lit1, return1, tmp5, tmp6, lit2, return2, tmp7, tmp8, sym4, sym5, var2, tmp9, sel1, tmp10, lit3, return3, tmp11, tmp12, end, lit4, return4, tmp13, branches, end1, match, assign, tmp14, ctx, tmp15, tmp16, tmp17, proped, propedBlock, propedShape, block, newName, ret;
+//│       sym = globalThis.Object.freeze(new Block.Symbol("scrut"));
+//│       tmp = globalThis.Object.freeze([
+//│         sym
+//│       ]);
+//│       lit = globalThis.Object.freeze(new Block.ValueLit(9));
+//│       sym1 = globalThis.Object.freeze(new Block.Symbol("scrut"));
+//│       tmp1 = globalThis.Object.freeze(new Block.ValueRef(sym1));
+//│       scrut1 = tmp1;
+//│       tmp2 = option.None;
+//│       sym2 = globalThis.Object.freeze(new Block.ClassSymbol("Bool", tmp2));
+//│       sym3 = globalThis.Object.freeze(new Block.Symbol("runtime"));
+//│       var1 = globalThis.Object.freeze(new Block.ValueRef(sym3));
+//│       tmp3 = globalThis.Object.freeze(new Block.Symbol("unreachable"));
+//│       sel = globalThis.Object.freeze(new Block.Select(var1, tmp3));
+//│       tmp4 = globalThis.Object.freeze(new Block.Cls(sym2, sel));
+//│       lit1 = globalThis.Object.freeze(new Block.ValueLit(1));
+//│       return1 = globalThis.Object.freeze(new Block.Return(lit1, false));
+//│       tmp5 = globalThis.Object.freeze(new Block.Arm(tmp4, return1));
+//│       tmp6 = globalThis.Object.freeze(new Block.Lit(8));
+//│       lit2 = globalThis.Object.freeze(new Block.ValueLit(2));
+//│       return2 = globalThis.Object.freeze(new Block.Return(lit2, false));
+//│       tmp7 = globalThis.Object.freeze(new Block.Arm(tmp6, return2));
+//│       tmp8 = option.None;
+//│       sym4 = globalThis.Object.freeze(new Block.ClassSymbol("Int", tmp8));
+//│       sym5 = globalThis.Object.freeze(new Block.Symbol("runtime"));
+//│       var2 = globalThis.Object.freeze(new Block.ValueRef(sym5));
+//│       tmp9 = globalThis.Object.freeze(new Block.Symbol("unreachable"));
+//│       sel1 = globalThis.Object.freeze(new Block.Select(var2, tmp9));
+//│       tmp10 = globalThis.Object.freeze(new Block.Cls(sym4, sel1));
+//│       lit3 = globalThis.Object.freeze(new Block.ValueLit(3));
+//│       return3 = globalThis.Object.freeze(new Block.Return(lit3, false));
+//│       tmp11 = globalThis.Object.freeze(new Block.Arm(tmp10, return3));
+//│       tmp12 = globalThis.Object.freeze([
+//│         tmp5,
+//│         tmp7,
+//│         tmp11
+//│       ]);
+//│       end = globalThis.Object.freeze(new Block.End());
+//│       lit4 = globalThis.Object.freeze(new Block.ValueLit(0));
+//│       return4 = globalThis.Object.freeze(new Block.Return(lit4, false));
+//│       tmp13 = globalThis.Object.freeze(new option.Some(return4));
+//│       branches = globalThis.Object.freeze(new Block.Match(tmp1, tmp12, tmp13, end));
+//│       end1 = globalThis.Object.freeze(new Block.End());
+//│       match = Block.concat(branches, end1);
+//│       assign = globalThis.Object.freeze(new Block.Assign(sym1, lit, match));
+//│       tmp14 = globalThis.Object.freeze(new Block.Scoped(tmp, assign));
+//│       ctx = ShapeSet.emptyCtx();
+//│       tmp15 = globalThis.Object.freeze(new Block.Symbol("match1"));
+//│       tmp16 = globalThis.Object.freeze([]);
+//│       tmp17 = globalThis.Object.freeze([
+//│         tmp16
+//│       ]);
+//│       proped = ShapeSet.prop(Expressions.defCtx, ctx, Expressions.cache, tmp14);
+//│       propedBlock = proped.at(0);
+//│       propedShape = proped.at(1);
+//│       block = globalThis.Object.freeze(new Block.FunDefn(tmp15, tmp17, propedBlock, true));
+//│       newName = Expressions.cache.add(fname, set, block, propedShape);
+//│       ret = globalThis.Object.freeze([
+//│         propedShape,
+//│         newName
+//│       ]);
+//│       return ret
+//│     }
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "Expressions"]; 
+//│ });
+//│ > module Expressions with
+//│ >   fun lit() = 1
+//│ >   fun assign() =
+//│ >     let x
+//│ >     let y
+//│ >     x = 42
+//│ >     y = 42
+//│ >     42
+//│ >   fun tup1() = [1, 2]
+//│ >   fun tup2() = [1, ..x1]
+//│ >   fun dynsel() =
+//│ >     let tmp
+//│ >     tmp = [1]
+//│ >     1
+//│ >   fun match1() =
+//│ >     let scrut
+//│ >     scrut = 9
+//│ >     3
 //│ x = [1, 2, 3]
 
 class Outside(a)
@@ -49,17 +646,17 @@ staged module ClassInstrumentation with
   fun app2() = Inside(1, 2)
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL18:1:2114)
+//│ ═══[RUNTIME ERROR] Error: Instantiate with non-ClassSymbol in shape propagation
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:785:43)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1278:28)
+//│     at ClassInstrumentation.inst2_gen (REPL18:1:14047)
+//│     at ClassInstrumentation.dump (REPL18:1:4691)
+//│     at <static_initializer> (REPL18:1:2279)
 //│     at REPL18:1:19459
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│     at REPLServer.defaultEval (node:repl:593:22)
 //│     at bound (node:domain:433:15)
 //│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
 
 module Nonstaged with
   fun f() = 1
@@ -69,19 +666,13 @@ staged module CallSubst with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL21:1:663)
-//│     at REPL21:1:3810
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module Staged with
+//│ >   fun f() = 1
+//│ > module CallSubst with
+//│ >   fun call() =
+//│ >     let tmp
+//│ >     tmp = Nonstaged.f()
+//│ >     f()
 
 module Nonstaged with
   fun f() = 1
@@ -90,19 +681,10 @@ staged module Staged with
 staged module CallSubst with
   fun call() = 
     1 + 1
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL24:1:665)
-//│     at REPL24:1:3820
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module Staged with
+//│ >   fun f() = 1
+//│ > module CallSubst with
+//│ >   fun call() = 2
 
 :w
 staged module Arguments with
@@ -111,21 +693,21 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ ╔══[WARNING] Multiple parameter lists are not supported in shape propagation yet.
-//│ ║  l.112: 	  fun g(x)(y, z)() = z
+//│ ║  l.694: 	  fun g(x)(y, z)() = z
 //│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL27:1:332)
+//│ ═══[RUNTIME ERROR] TypeError: s1.shapeset is not iterable
+//│     at ShapeSet.union (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:352:13)
+//│     at Ctx.add (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:146:27)
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1331:24)
+//│     at Arguments.f_gen (REPL27:1:5232)
+//│     at Arguments.dump (REPL27:1:1146)
+//│     at <static_initializer> (REPL27:1:484)
 //│     at REPL27:1:8580
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│     at REPLServer.defaultEval (node:repl:593:22)
 //│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
 
 staged module OtherBlocks with
   fun scope() =
@@ -138,55 +720,31 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL30:1:1002)
-//│     at REPL30:1:14393
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module OtherBlocks with
+//│ >   fun scope() =
+//│ >     let a
+//│ >     a = 1
+//│ >     OtherBlocks.scope.locally(a)
+//│ >   fun breakAndLabel() =
+//│ >     let tmp
+//│ >     let scrut
+//│ >     scrut = 1
+//│ >     tmp = 0
+//│ >     0
 
 // :sjs
 staged module ClassDefs with
   class A
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL33:1:332)
-//│     at REPL33:1:1828
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module ClassDefs with
+//│ >   
 
 // TODO: how to add the block IR to the cache, for class functions?
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     // fun g() = f() // TODO
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL36:1:1204)
-//│     at REPL36:1:11129
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module ClassFunctions with
+//│ >   
 
 :todo
 staged module ValClass with
@@ -197,71 +755,31 @@ staged module ValClass with
 class A()
 staged module A with
   fun f() = 1
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL39:1:381)
-//│     at REPL39:1:3491
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module A with
+//│ >   fun f() = 1
 
 // nested module
 module A with
   staged module B with
     fun f() = 1
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL42:1:474)
-//│     at <static_initializer> (REPL42:1:3916)
-//│     at REPL42:1:4023
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
+//│ > module B with
+//│ >   fun f() = 1
 
 staged module Test with
   fun g(x, y) = x 
   fun k() = g(1, x)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL45:1:809)
-//│     at REPL45:1:8485
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module Test with
+//│ >   fun g(x, y) = x
+//│ >   fun g_0(x, y) = 1
+//│ >   fun k() = g_0(1, x1)
 
 staged module Simple with
   fun inc(x) = x + 1
   fun t() = inc(41)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL48:1:1177)
-//│     at REPL48:1:9229
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module Simple with
+//│ >   fun inc(x) = +(x, 1)
+//│ >   fun inc_0(x) = 42
+//│ >   fun t() = inc_0(41)
 
 staged module Match with
   fun baz(x) = if x is
@@ -270,19 +788,16 @@ staged module Match with
     else -1
   fun foo() = baz("1")
   fun foo2() = baz(1)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL51:1:1532)
-//│     at REPL51:1:17470
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ > module Match with
+//│ >   fun baz(x) =
+//│ >     if x is
+//│ >       Str then 0
+//│ >       Int then +(x, 1)
+//│ >       else -1
+//│ >   fun baz_0(x) = 0
+//│ >   fun foo() = baz_0("1")
+//│ >   fun baz_1(x) = 2
+//│ >   fun foo2() = baz_1(1)
 
 :sjs
 staged module Math with
@@ -300,27 +815,27 @@ staged module Math with
 //│     runtime.Unit;
 //│   }
 //│   static {
-//│     let tmp, tmp1, sym, var1, sym1, sel, tmp2, tmp3, tmp4, sym2, var2, tmp5, tmp6, tmp7, sym3, var3, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13;
-//│     sym = globalThis.Object.freeze(new Block.Symbol("Math"));
+//│     let tmp, tmp1, sym, var1, tmp2, tmp3, tmp4, sym1, var2, sym2, sel, tmp5, tmp6, tmp7, sym3, var3, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13;
+//│     sym = globalThis.Object.freeze(new Block.Symbol("*"));
 //│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym));
-//│     sym1 = globalThis.Object.freeze(new Block.Symbol("pow"));
-//│     sel = globalThis.Object.freeze(new Block.Select(var1, sym1));
 //│     tmp2 = globalThis.Object.freeze([
-//│       Math.pow_gen,
-//│       true
+//│       undefined,
+//│       false
 //│     ]);
-//│     tmp3 = sel.hash();
+//│     tmp3 = var1.hash();
 //│     tmp4 = globalThis.Object.freeze([
 //│       tmp3,
 //│       tmp2
 //│     ]);
-//│     sym2 = globalThis.Object.freeze(new Block.Symbol("*"));
-//│     var2 = globalThis.Object.freeze(new Block.ValueRef(sym2));
+//│     sym1 = globalThis.Object.freeze(new Block.Symbol("Math"));
+//│     var2 = globalThis.Object.freeze(new Block.ValueRef(sym1));
+//│     sym2 = globalThis.Object.freeze(new Block.Symbol("pow"));
+//│     sel = globalThis.Object.freeze(new Block.Select(var2, sym2));
 //│     tmp5 = globalThis.Object.freeze([
-//│       undefined,
-//│       false
+//│       Math.pow_gen,
+//│       true
 //│     ]);
-//│     tmp6 = var2.hash();
+//│     tmp6 = sel.hash();
 //│     tmp7 = globalThis.Object.freeze([
 //│       tmp6,
 //│       tmp5
@@ -687,16 +1202,16 @@ staged module Math with
 //│ });
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:165)
-//│ ═══[RUNTIME ERROR] TypeError: ShapeSet.DefCtx is not a function
-//│     at <static_initializer> (REPL54:1:1527)
-//│     at REPL54:1:17105
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ ═══[RUNTIME ERROR] RangeError: Maximum call stack size exceeded
+//│     at renderValue (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:982:39)
+//│     at lambda (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:435:18)
+//│     at renderSequence (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:479:35)
+//│     at renderClassInstance (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:442:14)
+//│     at renderValue (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:1185:42)
+//│     at lambda (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:435:18)
+//│     at renderSequence (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:479:35)
+//│     at renderClassInstance (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:442:14)
+//│     at renderValue (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:1185:42)
+//│     at lambda (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:435:18)
 
 

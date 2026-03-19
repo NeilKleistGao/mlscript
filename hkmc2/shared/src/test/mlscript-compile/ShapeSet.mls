@@ -161,13 +161,10 @@ fun emptyCtx() = Ctx(new Map())
 
 class DefCtx(val defctx: Map[String, [Function, Bool]]) with
   fun get(p) =
-    if defctx.has(p.toString()) then defctx.get(p.toString())
+    if defctx.has(showPath(p)) then defctx.get(showPath(p))
     else None
-  fun add(p, genFunc, stage) = // ?? using stage as variable name causes error
-    if stage then
-      defctx.set(showPath(p), [genFunc, true])
-    else
-      defctx.set(showPath(p), [genFunc, false])
+  fun add(p, genFunc, stage) =
+    defctx.set(showPath(p), [genFunc, stage])
     this
 
 module DefCtx with
