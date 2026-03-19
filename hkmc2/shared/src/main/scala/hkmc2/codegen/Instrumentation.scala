@@ -356,10 +356,13 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
     case Define(c: ClsLikeDefn, rest) if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
       val companion = c.companion.get
       val isym = companion.isym
-      val stagedMethods = companion.methods.map(stageMethod)
 
       val ctor = FunDefn.withFreshSymbol(S(isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-      val stagedCtor = stageMethod(ctor)
+      // val stagedCtor = stageMethod(ctor)
+      val (stagedMethods, cacheEntries) = (ctor :: companion.methods).map(f =>
+        val staged = stageMethod(f)
+        (staged, (k: Path => Block) => call(isym.asPath.selSN(staged.sym.nme), Nil)(p => tuple(Ls(toValue(f.sym.nme), p))(k)))
+      ).unzip
 
       // for storing specialized functions in each staged module
       val cacheSym = BlockMemberSymbol("cache", Nil, true)
@@ -367,7 +370,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
       val cachePath = isym.asPath.selSN("cache")
       // initialize cache for the module
       def cacheDecl(rest: Block) =
-        (stagedCtor :: stagedMethods).map(cacheEntry).collectApply: cacheTups =>
+        cacheEntries.collectApply: cacheTups =>
           tuple(cacheTups): tup =>
             assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
               assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): mapInit =>
@@ -397,10 +400,10 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
               call(printFun, Ls(isym.asPath.selSN("generatorMap")), false): _ =>
                 rest
 
-      val (genMethods, generatorEntries) = companion.methods.map(f => {
+      val (genMethods, generatorEntries) = companion.methods.map(f =>
         val gen = genMethod(f, cachePath)
         (gen, tuple(Ls(toValue(f.sym.nme), isym.asPath.selSN(gen.sym.nme))))
-      }).unzip
+      ).unzip
 
       val generatorMapSym = BlockMemberSymbol("generatorMap", Nil, true)
       val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(isym), Tree.Ident("generatorMap"))
@@ -412,7 +415,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = stagedCtor :: companion.methods ++ stagedMethods ++ genMethods,
+        methods = companion.methods ++ stagedMethods ++ genMethods,
         ctor = generatorMapDecl(cacheDecl(debugCont(genCls.applyBlock(companion.ctor)))),
         publicFields = cacheSym -> cacheTsym :: companion.publicFields
       )
