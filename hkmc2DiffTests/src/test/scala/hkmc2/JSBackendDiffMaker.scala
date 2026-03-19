@@ -29,8 +29,8 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   
   private val baseScp: utils.Scope =
     utils.Scope.empty(utils.Scope.Cfg.default)
-  private lazy val dbgScp: utils.Scope = // for IR printing only
-    utils.Scope.empty(utils.Scope.Cfg.default.copy(
+  private lazy val irPrintingScp: utils.Scope = // for IR printing only
+    Scope.empty(Scope.Cfg.default.copy(
       escapeChars = false,
       useSuperscripts = false,
       includeZero = false,
@@ -97,7 +97,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       val nestedScp = baseScp.nest
       val je = nestedScp.givenIn:
         jsb.programBody(le, N, wd)
-      val jsStr = je.stripBreaks.mkString(100)
+      val jsStr = je.stripBreaks.mkString(output.ColWidth)
       output(s"JS (unsanitized):")
       output(jsStr)
     if js.isSet then
@@ -122,7 +122,6 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
         case Return(res, implct) =>
           assert(implct)
           Assign(resSym, res, Return(Value.Lit(syntax.Tree.UnitLit(false)), true))
-        case _: Scoped => lastWords("impossible: mapTail should have handled this case specially")
         case tl: (Throw | Break | Continue) => tl
       )
       if showLoweredTree.isSet then
@@ -143,12 +142,12 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
           showFlowSymbols = true,
           debug = debug.isSet,
         )
-        output(Printer.worksheet(lowered)(using raise, dbgScp).mkString())
+        output(Printer().worksheet(lowered)(using irPrintingScp).mkString(output.ColWidth))
       
       val (pre, js) = nestedScp.givenIn:
         jsb.worksheet(loweredMapped)
-      val preStr = pre.stripBreaks.mkString(100)
-      val jsStr = js.stripBreaks.mkString(100)
+      val preStr = pre.stripBreaks.mkString(output.ColWidth)
+      val jsStr = js.stripBreaks.mkString(output.ColWidth)
       if showSanitizedJS.isSet then
         output(s"JS:")
         if preStr.nonEmpty then output(preStr)
@@ -212,7 +211,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
             implct = true)
           val je = nestedScp.givenIn:
             jsb.block(le, endSemi = false)
-          val jsStr = je.stripBreaks.mkString(100)
+          val jsStr = je.stripBreaks.mkString(output.ColWidth)
           mkQuery("", jsStr): out =>
             // Omit the last line which is always "undefined" or the unit.
             val result = out.lastIndexOf('\n') match

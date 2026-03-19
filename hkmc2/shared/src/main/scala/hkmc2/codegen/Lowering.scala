@@ -1055,9 +1055,27 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     val desug = LambdaRewriter.desugar(blk)
     
+    val deforested =
+      val outterTl = tl
+      config.deforest match
+        case None => desug
+        case Some(dCfg) =>
+          /*
+          // * For some weird reason (Scala bug?),
+          // * the version below leads to a stack overflows during its initialization
+          given TraceLogger with
+            override def doTrace: Bool = dCfg.debug
+            override def emitDbg(str: Str): Unit = outterTl.emitDbg(s"deforest > $str")
+          */
+          (new TraceLogger:
+            override def doTrace: Bool = dCfg.debug
+            override def emitDbg(str: Str): Unit = outterTl.emitDbg(s"deforest > $str")
+          ).givenIn:
+            deforest.Deforest(Program(imps.map(imp => imp.sym -> imp.str), desug)).main
+    
     val handlerPaths = new HandlerPaths
 
-    val withHandlers1 = config.effectHandlers.fold(desug): opt =>
+    val withHandlers1 = config.effectHandlers.fold(deforested): opt =>
       HandlerLowering(handlerPaths, opt).translateHandleBlocks(desug)
     
     val shouldFlattenScopes = config.effectHandlers.isDefined
@@ -1087,7 +1105,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       if config.funcToCls then Lifter(FirstClassFunctionTransformer().transform(merged)).transform
       else merged
 
-    val staged = Instrumentation(using summon).applyBlock(funcToCls)
+    val staged = Instrumentation(using summon).applyBlockFinal(funcToCls)
     
     val res =
       if config.tailRecOpt then TailRecOpt().transform(staged)
