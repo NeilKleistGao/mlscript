@@ -33,15 +33,15 @@ printCode(DynSelect(ValueRef(Symbol("p")), ValueRef(Symbol("field")), false))
 
 class A(val x)(y)
 class B
-let aSym = ClassSymbol("A", A, Some([Symbol("x")]), [Symbol("y")])
-let bSym = ClassSymbol("B", B, None, None)
+let aSym = ClassSymbol("A", A, Some([Symbol("x")]), [[Symbol("y")]])
+let bSym = ClassSymbol("B", B, None, [])
 //│ aSym = ClassSymbol(
 //│   "A",
 //│   fun A { class: class A },
 //│   Some([Symbol("x")]),
-//│   [Symbol("y")]
+//│   [[Symbol("y")]]
 //│ )
-//│ bSym = ClassSymbol("B", class B, None, None)
+//│ bSym = ClassSymbol("B", class B, None, [])
 
 printCode(Call(ValueRef(Symbol("f")), [Arg(ValueLit(3))]))
 printCode(Instantiate(ValueRef(aSym), [Arg(ValueLit(0))]))
@@ -57,7 +57,7 @@ printCode(f)
 printCode(ClsLikeDefn(aSym, [f], None))
 printCode(ClsLikeDefn(bSym, [], None))
 //│ > fun f(x) = 1
-//│ > class A(x) with 
+//│ > class A(x)(y) with 
 //│ >   fun f(x) = 1
 //│ > class B
 

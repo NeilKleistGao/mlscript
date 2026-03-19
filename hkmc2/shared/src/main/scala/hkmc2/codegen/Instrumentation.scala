@@ -321,7 +321,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
     val newBody =
       val rest = transformBlock(f.body)(using Context(new HashMap())): body =>
         if f.params.length != 1 then
-          raise(WarningReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
+          raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
         // maintain parameter names in instrumented code
         f.params.map(
           _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
