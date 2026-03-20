@@ -109,6 +109,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
       blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(k)
     case baseSym: BaseTypeSymbol =>
       val name = scope.allocateOrGetName(sym)
+      // FIXME: we want the parent path for subtyping, but it is only available for ClsLikeDefn, not ClassDef
       val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
       case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
       case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
@@ -124,7 +125,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         transformParamsOpt(paramsOpt): paramsOpt =>
           auxParams.map(transformParamList).collectApply: auxParams =>
             tuple(auxParams): auxParams =>
-              blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
+              blockCtor("ClassSymbol", Ls(toValue(name), path, toValue(0), paramsOpt, auxParams, toValue(0)), symName)(k)
       case _: ModuleOrObjectSymbol =>
         blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
     case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
@@ -266,6 +267,14 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
               optionNone(): none => // TODO: handle companion object
                 blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
                   blockCtor("Define", Ls(cls, p))(k(_, ctx))
+    case Define(v: ValDefn, rest) =>
+      // TODO: only allow ValDefn inside ctors
+      transformBlock(rest): p =>
+        transformOption(v.tsym.owner, transformSymbol(_, N, "test")): owner =>
+          transformSymbol(v.sym): sym =>
+            transformPath(v.rhs): rhs =>
+              blockCtor("ValDefn", Ls(owner, sym, rhs)): v =>
+                blockCtor("Define", Ls(v, p))(k(_, ctx))
     case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>

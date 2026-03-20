@@ -20,7 +20,7 @@ type ParamList = Array[Symbol]
 class Symbol(val name: Str)
 // this is so that we're able to retrieve information about the class from the symbol
 class VirtualClassSymbol(val name: Str) extends Symbol(name)
-class ClassSymbol(val name: Str, val value, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList]) extends Symbol(name)
+class ClassSymbol(val name: Str, val value, val moduleValue, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList], parentPath) extends Symbol(name)
 class ModuleSymbol(val name: Str, val value) extends Symbol(name)
 class Arm(val cse: Case, val body: Block)
 
@@ -66,6 +66,7 @@ class Path extends Result with
 
 class Defn with 
   constructor 
+    ValDefn(val tsym: Symbol, val sym: Symbol, val rhs: Path)
     ClsLikeDefn(val sym: ClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
     FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block, val stage: Bool)
 
@@ -155,7 +156,10 @@ fun showDefn(d: Defn): Str =
     ClsLikeDefn(sym, methods, _) then
       "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams).join("")
         + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
-    _ then "<unknown defn>"
+    ValDefn(owner, sym, rhs) then
+      (if owner is Some(owner) then showSymbol(owner) else "")
+        + "." + showSymbol(sym) + " = " + showPath(rhs)
+    _ then "<unknown defn: " + d.toString() + " >"
 
 fun showBlock(b) =
   if b is
