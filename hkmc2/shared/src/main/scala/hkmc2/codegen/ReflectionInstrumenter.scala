@@ -276,6 +276,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
               optionNone(): none => // TODO: handle companion object
                 blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
                   blockCtor("Define", Ls(cls, p))(k(_, ctx))
+    case Define(v: ValDefn, rest) =>
+      // TODO: only allow ValDefn inside ctors
+      transformBlock(rest): p =>
+        transformOption(v.tsym.owner, transformSymbol(_, N, "test")): owner =>
+          transformSymbol(v.sym): sym =>
+            transformPath(v.rhs): rhs =>
+              blockCtor("ValDefn", Ls(owner, sym, rhs)): v =>
+                blockCtor("Define", Ls(v, p))(k(_, ctx))
     case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>

@@ -65,6 +65,7 @@ class Path extends Result with
 
 class Defn with 
   constructor 
+    ValDefn(val tsym: Symbol, val sym: Symbol, val rhs: Path)
     ClsLikeDefn(val sym: ClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
     FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block, val stage: Bool)
 
@@ -155,7 +156,11 @@ fun showDefn(d: Defn): Str =
     ClsLikeDefn(sym, methods, _) then
       "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
         + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
-    _ then "<unknown defn>"
+    // TODO: used to represent assignments in constructors, which still need some adjustments
+    ValDefn(owner, sym, rhs) then
+      "set " + (if owner is Some(owner) then showSymbol(owner) + "." else "")
+        + showSymbol(sym) + " = " + showPath(rhs)
+    _ then "<unknown defn: " + d.toString() + " >"
 
 fun showBlock(b) =
   if b is
