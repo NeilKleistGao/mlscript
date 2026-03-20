@@ -101,11 +101,10 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
     sym match
     case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
       transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
-    // retain names to built-in functions or function definitions
-    case t: TermSymbol if t.defn.exists(_.k == syntax.Fun) =>
-      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
-    case _: BuiltinSymbol =>
-      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+    // avoid name collision
+    case _: TempSymbol | _: NoSymbol =>
+      val name = scope.allocateOrGetName(sym)
+      blockCtor("Symbol", Ls(toValue(name)), symName)(k)
     case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
       blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(k)
     case baseSym: BaseTypeSymbol =>
@@ -128,9 +127,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
               blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
       case _: ModuleOrObjectSymbol =>
         blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
-    case _ =>
-      val name = scope.allocateOrGetName(sym)
-      blockCtor("Symbol", Ls(toValue(name)), symName)(k)
+    case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
     xOpt match
