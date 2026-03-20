@@ -151,7 +151,6 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
       ctx =>
         tuple(arms): arms =>
           ruleEnd(): e =>
-            // TODO: use transformOption here
             def dfltStaged(k: (Path, Context) => Block) =
               dflt match
               case S(dflt) =>
@@ -219,11 +218,15 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
   def transformArgs(args: Ls[Arg])(using Context)(k: Ls[(Path, Bool)] => Block): Block =
     args.map(transformArg).collectApply(k)
 
+  // maintain parameter names in instrumented code
   def transformParamList(ps: ParamList)(k: Path => Block) =
     ps.params.map(p => transformSymbol(p.sym)).collectApply(tuple(_)(k))
 
   def transformParamsOpt(pOpt: Opt[ParamList])(k: Path => Block) =
     transformOption(pOpt, transformParamList)(k)
+
+  def transformParams(params: Ls[ParamList])(k: Path => Block) =
+    params.map(transformParamList).collectApply(tuple(_)(k))
 
   def transformCase(cse: Case)(using Context)(k: Path => Block): Block =
     cse match
@@ -306,16 +309,12 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
   // TODO: rename, this is the continuation version of the function
   def transformFunDefn(f: FunDefn)(using Context)(k: ((Path, Context)) => Block): Block =
     transformBlock(f.body): (body, ctx) =>
-      if f.params.length != 1 then
+      if f.params.length > 1 then
         raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
       // maintain parameter names in instrumented code
-      f.params.map(
-        _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
-      ).collectApply: paramListSyms =>
-        paramListSyms.map(tuple(_)).collectApply: tups =>
-          tuple(tups): tup =>
-            blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
-              blockCtor("FunDefn", Ls(sym, tup, body, toValue(true)))(k(_, ctx))
+      transformParams(f.params): paramList =>
+        blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
+          blockCtor("FunDefn", Ls(sym, paramList, body, toValue(true)))(k(_, ctx))
 
   def stageMethod(f: FunDefn): FunDefn =
     val genSymName = f.sym.nme + "_instr"
@@ -326,17 +325,13 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
     val argSyms = f.params.flatMap(_.params).map(_.sym)
     val newBody =
       val rest = transformBlock(f.body)(using Context(new HashMap())): body =>
-        if f.params.length != 1 then
+        if f.params.length > 1 then
           raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
         // maintain parameter names in instrumented code
-        f.params.map(
-          _.params.map(p => blockCtor("Symbol", Ls(toValue(p.sym.nme)))).collectApply
-        ).collectApply: paramListSyms =>
-          paramListSyms.map(tuple(_)).collectApply: tups =>
-            tuple(tups): tup =>
-              transformSymbol(f.sym): sym =>
-                blockCtor("FunDefn", Ls(sym, tup, body, toValue(true))): block =>
-                  Return(block, false)
+        transformParams(f.params): paramList =>
+          transformSymbol(f.sym): sym =>
+            blockCtor("FunDefn", Ls(sym, paramList, body, toValue(true))): block =>
+              Return(block, false)
       (Scoped(Set(argSyms*), rest))
 
     f.copy(sym = genSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
