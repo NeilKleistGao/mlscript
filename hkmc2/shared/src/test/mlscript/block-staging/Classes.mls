@@ -1,0 +1,87 @@
+:js
+:staging
+
+:sir
+staged class C with
+  fun f() = 1
+//│ Lowered:
+//│ let C⁰;
+//│ define C⁰ as staged class C¹ {
+//│   method f⁰ = fun () {
+//│     return 1
+//│   }
+//│ } {}
+//│ module C² {
+//│   constructor {
+//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13;
+//│     set tmp7 = C².ctor$_instr﹖();
+//│     set tmp8 = ["ctor$", tmp7];
+//│     set tmp9 = C².f_instr﹖();
+//│     set tmp10 = ["f", tmp9];
+//│     set tmp11 = [tmp8, tmp10];
+//│     set tmp12 = new globalThis⁰.Map﹖(tmp11);
+//│     set tmp13 = new SpecializeHelpers⁰.FunCache﹖(tmp12);
+//│     define cache$C⁰ as val cache$C¹ = tmp13;
+//│     set tmp4 = ["f", C².f_gen﹖];
+//│     set tmp5 = [tmp4];
+//│     set tmp6 = new globalThis⁰.Map﹖(tmp5);
+//│     define generatorMap$C⁰ as val generatorMap$C¹ = tmp6;
+//│     set tmp = { "indent": true };
+//│     set tmp1 = C².cache$C﹖.toString﹖();
+//│     set tmp2 = globalThis⁰.console﹖.log﹖(tmp1);
+//│     set tmp3 = globalThis⁰.console﹖.log﹖(C².generatorMap$C﹖);
+//│     end
+//│   }
+//│   method ctor$_instr⁰ = fun () {
+//│     let end, tmp, tmp1, sym, tmp2;
+//│     set end = new Block⁰.End﹖();
+//│     set tmp = [];
+//│     set tmp1 = [tmp];
+//│     set sym = new Block⁰.Symbol﹖("ctor$");
+//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, end, true);
+//│     return tmp2
+//│   }
+//│   method f_instr⁰ = fun () {
+//│     let lit, return1, tmp, tmp1, sym, tmp2;
+//│     set lit = new Block⁰.ValueLit﹖(1);
+//│     set return1 = new Block⁰.Return﹖(lit, false);
+//│     set tmp = [];
+//│     set tmp1 = [tmp];
+//│     set sym = new Block⁰.Symbol﹖("f");
+//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, return1, true);
+//│     return tmp2
+//│   }
+//│   method f_gen⁰ = fun (cls)() {
+//│     let tmp, tmp1, tmp2, tmp3, tmp4;
+//│     set tmp = C².cache$C﹖.getFun﹖("f");
+//│     set tmp1 = [cls];
+//│     set tmp2 = [];
+//│     set tmp3 = [tmp1, tmp2];
+//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, tmp.value﹖, tmp3);
+//│     return tmp4
+//│   }
+//│ };
+//│ end
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
+
+:e
+staged class C(x)
+//│ ╔══[COMPILATION ERROR] Staged classes must be a data class.
+//│ ║  l.71: 	staged class C(x)
+//│ ╙──      	       ^^^^^^^^^^
+
+staged class B(val x) with
+  fun f(y) = this.x + y
+staged class D(val x) extends B(x+1) with
+  fun f() = 42
+//│ > fun ctor_() =
+//│ >   B1.x = x
+//│ > fun f(y) = +(B1.x, y)
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > fun ctor_() =
+//│ >   D1.x = x
+//│ > fun f() = 42
+//│ > Map(1) { 'f' => [Function: f_gen] }

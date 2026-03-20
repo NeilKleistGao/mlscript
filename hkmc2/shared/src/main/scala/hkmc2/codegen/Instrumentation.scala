@@ -339,56 +339,71 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
   def cacheEntry(f: FunDefn)(k: Path => Block) =
     call(f.owner.get.asPath.selSN(f.sym.nme), Nil)(instr => tuple(Ls(toValue(f.sym.nme), instr))(k))
 
-  def genMethod(f: FunDefn, cachePath: Path): FunDefn =
+  def genMethod(f: FunDefn, cachePath: Path, forClass: Bool): FunDefn =
     val genSymName = f.sym.nme + "_gen"
     val sym = BlockMemberSymbol(genSymName, Nil, false)
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
 
+    val params = if forClass then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
     val body = call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
-      f.params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
-        tuple(tups): tups =>
-          call(helperMod("specialize"), Ls(cachePath, instr.selSN("value"), tups)): res =>
+      params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
+        tuple(tups): args =>
+          call(helperMod("specialize"), Ls(cachePath, instr.selSN("value"), args)): res =>
             Return(res, false)
-    f.copy(sym = sym, dSym = dSym, body = body)(false)
+    f.copy(params = params, sym = sym, dSym = dSym, body = body)(false)
 
   override def applyBlock(b: Block): Block =
     super.applyBlock(b) match
-    // find modules with staged annotation
-    case Define(c: ClsLikeDefn, rest) if c.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) =>
-      val companion = c.companion.get
-      val isym = companion.isym
+    // TODO: assume staged classes have no companion module
+    // find modules with staged annotation, or classes without companion module
+    case Define(defn: ClsLikeDefn, rest)
+        if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) ||
+          defn.companion.isEmpty && defn.isym.defn.exists(_.hasStagedModifier.isDefined) =>
+      val (sym, companion, ctor, methods) = defn.companion match
+      case S(companion) => (companion.isym, companion, companion.ctor, companion.methods)
+      case N =>
+        if !defn.privateFields.isEmpty then
+          raise(ErrorReport(msg"Staged classes must be a data class." -> defn.sym.toLoc :: Nil))
+          return End()
+        (defn.sym, ClsLikeBody(ModuleOrObjectSymbol(Tree.TypeDef(syntax.Mod, Tree.Empty(), N), Tree.Ident(defn.sym.nme)), Nil, Nil, Nil, End()), defn.ctor, defn.methods)
 
-      val ctor = FunDefn.withFreshSymbol(S(isym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), companion.ctor)(false)
-      // val stagedCtor = stageMethod(ctor)
-      val (stagedMethods, cacheEntries) = (ctor :: companion.methods).map(f =>
+      val modSym = companion.isym
+
+      // avoid name clash of cache and generator map for derived staged classes
+      val suffix = "$" + scope.allocateOrGetName(sym)
+      // for storing specialized functions in each staged module
+      val cacheNme = "cache" + suffix
+      val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
+      val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
+      val cachePath = modSym.asPath.selSN(cacheNme)
+      val generatorMapNme = "generatorMap" + suffix
+      val generatorMapSym = BlockMemberSymbol(generatorMapNme, Nil, true)
+      val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(generatorMapNme))
+
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil), Ls(PlainParamList(Nil)), ctor)(false)
+      val (stagedMethods, cacheEntries) = (ctorFun :: methods).map(f =>
         val staged = stageMethod(f)
-        (staged, (k: Path => Block) => call(isym.asPath.selSN(staged.sym.nme), Nil)(p => tuple(Ls(toValue(f.sym.nme), p))(k)))
+        (staged, (k: Path => Block) => call(modSym.asPath.selSN(staged.sym.nme), Nil)(p => tuple(Ls(toValue(f.sym.nme), p))(k)))
+      ).unzip
+      val (genMethods, generatorEntries) = methods.map(f =>
+        val gen = genMethod(f, cachePath, defn.companion.isEmpty)
+        (gen, tuple(Ls(toValue(f.sym.nme), modSym.asPath.selSN(gen.sym.nme))))
       ).unzip
 
-      // for storing specialized functions in each staged module
-      val cacheSym = BlockMemberSymbol("cache", Nil, true)
-      val cacheTsym = TermSymbol(syntax.ImmutVal, S(isym), Tree.Ident("cache"))
-      val cachePath = isym.asPath.selSN("cache")
       // initialize cache for the module
       def cacheDecl(rest: Block) =
         cacheEntries.collectApply: cacheTups =>
           tuple(cacheTups): tup =>
-            assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
-              assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): mapInit =>
-                Define(ValDefn(cacheTsym, cacheSym, mapInit), rest)
+            this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
+              assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
+                Define(ValDefn(cacheTsym, cacheSym, funCache), rest)
 
-      // add generator functions for classes within the constructor
-      val genCls = new BlockTransformer(new SymbolSubst()):
-        override def applyBlock(b: Block): Block = super.applyBlock(b) match
-        case Define(c: ClsLikeDefn, rest) if c.companion.isEmpty =>
-          val genMethods = c.methods.map(genMethod(_, cachePath))
-          val stagedMethods = c.methods.map(stageMethod)
-          // FIXME: add the default staged block IR to the cache
-          val newModule = c.copy(methods = c.methods ++ stagedMethods ++ genMethods)
-          Define(newModule, rest)
-        case b => b
+      def generatorMapDecl(rest: Block) =
+        generatorEntries.collectApply: defs =>
+          tuple(defs): tup =>
+            this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
+              Define(ValDefn(generatorMapTsym, generatorMapSym, map), rest)
 
-      // NOTE: this debug printing only works for top-level modules, nested modules don't work
       // TODO: remove this. only for testing
       def debugCont(rest: Block) =
         val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
@@ -398,30 +413,16 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         assign(options): options =>
           call(cachePath.selSN("toString"), Nil, false): str =>
             call(printFun, Ls(str), false): _ =>
-              call(printFun, Ls(isym.asPath.selSN("generatorMap")), false): _ =>
-                rest
-
-      val (genMethods, generatorEntries) = companion.methods.map(f =>
-        val gen = genMethod(f, cachePath)
-        (gen, tuple(Ls(toValue(f.sym.nme), isym.asPath.selSN(gen.sym.nme))))
-      ).unzip
-
-      val generatorMapSym = BlockMemberSymbol("generatorMap", Nil, true)
-      val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(isym), Tree.Ident("generatorMap"))
-      def generatorMapDecl(rest: Block) =
-        generatorEntries.collectApply: defs =>
-          tuple(defs): tup =>
-            assign(Instantiate(mut = false, State.globalThisSymbol.asPath.selSN("Map"), Ls(Arg(N, tup)))): map =>
-              Define(ValDefn(generatorMapTsym, generatorMapSym, map), rest)
+              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false)(_ => rest)
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
         methods = companion.methods ++ stagedMethods ++ genMethods,
-        ctor = generatorMapDecl(cacheDecl(debugCont(genCls.applyBlock(companion.ctor)))),
-        publicFields = cacheSym -> cacheTsym :: companion.publicFields
+        ctor = cacheDecl(generatorMapDecl(debugCont(companion.ctor))),
+        publicFields = companion.publicFields
       )
-      val newModule = c.copy(companion = S(newCompanion))
-      Define(newModule, rest)
+      val newClsLikeDefn = defn.copy(companion = S(newCompanion))
+      Define(newClsLikeDefn, rest)
     case b => b
 
   def mkDefnMap(b: Block): Unit =
