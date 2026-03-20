@@ -313,8 +313,8 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
       // maintain parameter names in instrumented code
       transformParams(f.params): paramList =>
-        blockCtor("Symbol", Ls(toValue(f.sym.nme))): sym =>
-          blockCtor("FunDefn", Ls(sym, paramList, body, toValue(true)))(k(_, ctx))
+        transformSymbol(f.sym): sym =>
+          blockCtor("FunDefn", Ls(sym, paramList, body))(k(_, ctx))
 
   def stageMethod(f: FunDefn): FunDefn =
     val genSymName = f.sym.nme + "_instr"

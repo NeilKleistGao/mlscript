@@ -25,14 +25,14 @@ fun specializeName(funName, shapes) =
     ).join("")
 fun propStub(block, shapes) = [block, Dyn()]
 
-fun specialize(cache, block, shapes) = if block is FunDefn(Symbol(funName), ps, body, stage) then
+fun specialize(cache, block, shapes) = if block is FunDefn(Symbol(funName), ps, body) then
   // replace function symbol in block definition to new name
   let newName = specializeName(funName, shapes)
   if cache.getFun(newName) is
     Some(x) then x
     None then
       let newBody = propStub(body, shapes)
-      cache.setFun(newName, FunDefn(Symbol(newName), ps, newBody, stage))
+      cache.setFun(newName, FunDefn(Symbol(newName), ps, newBody))
 
 class FunCache(val cache: Map[String, Symbol]) with
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None

@@ -68,7 +68,7 @@ class Defn with
   constructor 
     ValDefn(val tsym: Symbol, val sym: Symbol, val rhs: Path)
     ClsLikeDefn(val sym: ClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
-    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block, val stage: Bool)
+    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
 
@@ -150,7 +150,7 @@ fun showParamList(ps: Array[ParamList]) =
 
 fun showDefn(d: Defn): Str =
   if d is
-    FunDefn(sym, ps, body, _) then
+    FunDefn(sym, ps, body) then
       "fun " + showSymbol(sym) + showParamList(ps) + " =" +
       (if body is Return then " " else "\n  ") + indent(showBlock(body))
     ClsLikeDefn(sym, methods, _) then
