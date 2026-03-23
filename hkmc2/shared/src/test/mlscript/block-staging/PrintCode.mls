@@ -26,23 +26,39 @@ printCode(Symbol("runtime"))
 //│ > internal_
 //│ > Runtime
 
-printCode(Select(ValueRef(Symbol("A")), Symbol("x")))
-printCode(DynSelect(ValueRef(Symbol("B")), ValueRef(Symbol("field")), false))
-//│ > A.x
-//│ > B.(field)
+printCode(Select(ValueRef(Symbol("p")), Symbol("x")))
+printCode(DynSelect(ValueRef(Symbol("p")), ValueRef(Symbol("field")), false))
+//│ > p.x
+//│ > p.(field)
 
-printCode(Call(ValueRef(Symbol("f")), [Arg(None, ValueLit(3))]))
-printCode(Instantiate(ValueRef(ClassSymbol("A", Some([[Symbol("x")]]))), [Arg(None, ValueLit(0))]))
-printCode(Tuple([Arg(Some(true), ValueRef(Symbol("x"))), Arg(Some(false), ValueRef(Symbol("y")))]))
+class A(val x)(y)
+class B
+let aSym = ClassSymbol("A", A, Some([Symbol("x")]), [[Symbol("y")]])
+let bSym = ClassSymbol("B", B, None, [])
+//│ aSym = ClassSymbol(
+//│   "A",
+//│   fun A { class: class A },
+//│   Some([Symbol("x")]),
+//│   [[Symbol("y")]]
+//│ )
+//│ bSym = ClassSymbol("B", class B, None, [])
+
+printCode(Call(ValueRef(Symbol("f")), [Arg(ValueLit(3))]))
+printCode(Instantiate(ValueRef(aSym), [Arg(ValueLit(0))]))
+printCode(Tuple([Arg(ValueRef(Symbol("x"))), Arg(ValueRef(Symbol("y")))]))
 //│ > f(3)
 //│ > new A(0)
-//│ > [...x, ..y]
+//│ > [x, y]
 
-printCode(FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false), false))
-printCode(ClsLikeDefn(ClassSymbol("A", Some([Symbol("x")])), [], undefined))
-printCode(ClsLikeDefn(ClassSymbol("B", None), [], undefined))
+let f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false), false)
+//│ f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false), false)
+
+printCode(f)
+printCode(ClsLikeDefn(aSym, [f], None))
+printCode(ClsLikeDefn(bSym, [], None))
 //│ > fun f(x) = 1
-//│ > class A(x)
+//│ > class A(x)(y) with 
+//│ >   fun f(x) = 1
 //│ > class B
 
 printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), Return(ValueRef(Symbol("x")), true))))

@@ -17,7 +17,44 @@ staged class Foo
 staged fun f() = 0
 
 :js
-:slot
+:sir
+:staging
 staged module A
-//│ Pretty Lowered:
-//│   define staged class A with staged module A in set block$res = undefined in end
+//│ Lowered:
+//│ let A⁰;
+//│ define A⁰ as class A¹ {
+//│   staged 
+//│ }
+//│ module A² {
+//│   val cache⁰;
+//│   constructor {
+//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10;
+//│     set tmp9 = [];
+//│     set tmp10 = new globalThis⁰.Map﹖(tmp9);
+//│     define generatorMap⁰ as val generatorMap¹ = tmp10;
+//│     set tmp4 = A².ctor$_instr﹖();
+//│     set tmp5 = ["ctor$_instr", tmp4];
+//│     set tmp6 = [tmp5];
+//│     set tmp7 = new globalThis⁰.Map﹖(tmp6);
+//│     set tmp8 = new SpecializeHelpers⁰.FunCache﹖(tmp7);
+//│     define cache⁰ as val cache¹ = tmp8;
+//│     set tmp = { "indent": true };
+//│     set tmp1 = A².cache﹖.toString﹖();
+//│     set tmp2 = globalThis⁰.console﹖.log﹖(tmp1);
+//│     set tmp3 = globalThis⁰.console﹖.log﹖(A².generatorMap﹖);
+//│     end
+//│   }
+//│   method ctor$_instr⁰ = fun () {
+//│     let end, tmp, tmp1, sym, tmp2;
+//│     set end = new Block⁰.End﹖();
+//│     set tmp = [];
+//│     set tmp1 = [tmp];
+//│     set sym = new Block⁰.Symbol﹖("ctor$");
+//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, end, true);
+//│     return tmp2
+//│   }
+//│ };
+//│ end
+//│ > fun ctor_() =
+//│ >   ()
+//│ > Map(0) {}
