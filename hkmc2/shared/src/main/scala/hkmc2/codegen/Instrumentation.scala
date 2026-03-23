@@ -52,6 +52,9 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
   // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
   val scope = Scope.empty(Scope.Cfg.default)
   val defnMap = HashMap[Symbol, ClsLikeDefn | ClsLikeBody]()
+  val symbolMapSym: Symbol = TempSymbol(N, "symbolMap")
+  // only create symbolMap if we create entries to avoid changing IR for unrelated tests
+  var symbolMapUsed: Bool = false
 
   // helpers for constructing Block
 
@@ -98,6 +101,9 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
 
   // if sym is ClassSymbol, we may need pOpt to link to the path pointing to the value of the symbol
   def transformSymbol(sym: Symbol, pOpt: Option[Path] = N, symName: Str = "sym")(k: Path => Block): Block =
+    def checkMap(p: Path) =
+      symbolMapUsed = true
+      blockCall("checkMap", Ls(symbolMapSym, p))(k)
     sym match
     case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
       transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
@@ -106,7 +112,7 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)
     case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
-      blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(k)
+      blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap)
     case baseSym: BaseTypeSymbol =>
       val name = scope.allocateOrGetName(sym)
       // FIXME: we want the parent path for subtyping, but it is only available for ClsLikeDefn, not ClassDef
@@ -125,9 +131,9 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         transformParamsOpt(paramsOpt): paramsOpt =>
           auxParams.map(transformParamList).collectApply: auxParams =>
             tuple(auxParams): auxParams =>
-              blockCtor("ClassSymbol", Ls(toValue(name), path, toValue(0), paramsOpt, auxParams, toValue(0)), symName)(k)
+              blockCtor("ClassSymbol", Ls(toValue(name), path, toValue(0), paramsOpt, auxParams, toValue(0)), symName)(checkMap)
       case _: ModuleOrObjectSymbol =>
-        blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
+        blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap)
     case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block =
@@ -336,7 +342,6 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) ||
           defn.companion.isEmpty && defn.isym.defn.exists(_.hasStagedModifier.isDefined) =>
       val (sym, companion, ctor, ctorParams, methods) = defn.companion match
-      // TODO: combine prector and ctor here
       case S(companion) => (companion.isym, companion, companion.ctor, N, companion.methods)
       case N =>
         if !defn.privateFields.isEmpty then
@@ -414,7 +419,10 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         assign(options): options =>
           call(cachePath.selSN("toString"), Nil, false): str =>
             call(printFun, Ls(str), false): _ =>
-              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false)(_ => rest)
+              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
+                if symbolMapUsed
+                then call(printFun, Ls(symbolMapSym), false)(_ => rest)
+                else rest
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
@@ -437,4 +445,14 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
 
   def applyBlockFinal(b: Block) =
     mkDefnMap(b)
-    applyBlock(b)
+    val rest = applyBlock(b)
+    if symbolMapUsed then
+      Scoped(
+        Set(symbolMapSym),
+        Assign(
+          symbolMapSym,
+          Instantiate(false, State.globalThisSymbol.asPath.selSN("Map"), Nil),
+          rest
+        )
+      )
+    else rest

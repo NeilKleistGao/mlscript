@@ -5,6 +5,15 @@ staged class A(val a)
 //│ > fun ctor_(a) =
 //│ >   A1.a = a
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
+//│ > Map(1) {
+//│ >   'ClassSymbol("A1", fun A { class: class A }, 0, Some([Symbol("a")]), [], _)' => ClassSymbol {
+//│ >     name: 'A1',
+//│ >     value: [Function: A] { class: [Function] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
 
 :sir
 staged class C with
@@ -85,7 +94,7 @@ staged class C with
 :e
 staged class C(x)
 //│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
-//│ ║  l.86: 	staged class C(x)
+//│ ║  l.95: 	staged class C(x)
 //│ ╙──      	       ^^^^^^^^^^
 
 staged class B(val x) with
@@ -97,6 +106,15 @@ staged class D(val x) extends B(x+1) with
 //│ >   B1.x = x
 //│ > fun f(y) = +(B1.x, y)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   'ClassSymbol("B1", fun B { class: class B }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >     name: 'B1',
+//│ >     value: [Function: B] { class: [Function] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
 //│ > fun ctor_(x) =
 //│ >   let tmp
 //│ >   let tmp1
@@ -106,3 +124,19 @@ staged class D(val x) extends B(x+1) with
 //│ >   D1.y = 1
 //│ > fun f() = 42
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   'ClassSymbol("B1", fun B { class: class B }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >     name: 'B1',
+//│ >     value: [Function: B] { class: [Function] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   'ClassSymbol("D1", fun D { class: class D }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >     name: 'D1',
+//│ >     value: [Function: D] { class: [Function] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
