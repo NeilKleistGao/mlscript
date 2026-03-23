@@ -1,6 +1,11 @@
 :js
 :staging
 
+staged class A(val a)
+//│ > fun ctor_(a) =
+//│ >   A1.a = a
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
+
 :sir
 staged class C with
   fun f() = 1
@@ -13,19 +18,20 @@ staged class C with
 //│ } {}
 //│ module C² {
 //│   constructor {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13;
-//│     set tmp7 = C².ctor$_instr﹖();
-//│     set tmp8 = ["ctor$", tmp7];
-//│     set tmp9 = C².f_instr﹖();
-//│     set tmp10 = ["f", tmp9];
-//│     set tmp11 = [tmp8, tmp10];
-//│     set tmp12 = new globalThis⁰.Map﹖(tmp11);
-//│     set tmp13 = new SpecializeHelpers⁰.FunCache﹖(tmp12);
-//│     define cache$C⁰ as val cache$C¹ = tmp13;
-//│     set tmp4 = ["f", C².f_gen﹖];
-//│     set tmp5 = [tmp4];
-//│     set tmp6 = new globalThis⁰.Map﹖(tmp5);
-//│     define generatorMap$C⁰ as val generatorMap$C¹ = tmp6;
+//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13, tmp14;
+//│     set tmp8 = C².ctor$_instr﹖();
+//│     set tmp9 = ["ctor$", tmp8];
+//│     set tmp10 = C².f_instr﹖();
+//│     set tmp11 = ["f", tmp10];
+//│     set tmp12 = [tmp9, tmp11];
+//│     set tmp13 = new globalThis⁰.Map﹖(tmp12);
+//│     set tmp14 = new SpecializeHelpers⁰.FunCache﹖(tmp13);
+//│     define cache$C⁰ as val cache$C¹ = tmp14;
+//│     set tmp4 = ["ctor$", C².ctor$_gen﹖];
+//│     set tmp5 = ["f", C².f_gen﹖];
+//│     set tmp6 = [tmp4, tmp5];
+//│     set tmp7 = new globalThis⁰.Map﹖(tmp6);
+//│     define generatorMap$C⁰ as val generatorMap$C¹ = tmp7;
 //│     set tmp = { "indent": true };
 //│     set tmp1 = C².cache$C﹖.toString﹖();
 //│     set tmp2 = globalThis⁰.console﹖.log﹖(tmp1);
@@ -38,8 +44,17 @@ staged class C with
 //│     set tmp = [];
 //│     set tmp1 = [tmp];
 //│     set sym = new Block⁰.Symbol﹖("ctor$");
-//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, end, true);
+//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, end);
 //│     return tmp2
+//│   }
+//│   method ctor$_gen⁰ = fun (cls)() {
+//│     let tmp, tmp1, tmp2, tmp3, tmp4;
+//│     set tmp = C².cache$C﹖.getFun﹖("ctor$");
+//│     set tmp1 = [cls];
+//│     set tmp2 = [];
+//│     set tmp3 = [tmp1, tmp2];
+//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, "ctor$", C².ctor$_instr﹖, tmp3);
+//│     return tmp4
 //│   }
 //│   method f_instr⁰ = fun () {
 //│     let lit, return1, tmp, tmp1, sym, tmp2;
@@ -48,16 +63,16 @@ staged class C with
 //│     set tmp = [];
 //│     set tmp1 = [tmp];
 //│     set sym = new Block⁰.Symbol﹖("f");
-//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, return1, true);
+//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, return1);
 //│     return tmp2
 //│   }
-//│   method f_gen⁰ = fun (cls)() {
+//│   method f_gen⁰ = fun (cls1)() {
 //│     let tmp, tmp1, tmp2, tmp3, tmp4;
 //│     set tmp = C².cache$C﹖.getFun﹖("f");
-//│     set tmp1 = [cls];
+//│     set tmp1 = [cls1];
 //│     set tmp2 = [];
 //│     set tmp3 = [tmp1, tmp2];
-//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, tmp.value﹖, tmp3);
+//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, "f", C².f_instr﹖, tmp3);
 //│     return tmp4
 //│   }
 //│ };
@@ -65,23 +80,29 @@ staged class C with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :e
 staged class C(x)
-//│ ╔══[COMPILATION ERROR] Staged classes must be a data class.
-//│ ║  l.71: 	staged class C(x)
+//│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
+//│ ║  l.86: 	staged class C(x)
 //│ ╙──      	       ^^^^^^^^^^
 
 staged class B(val x) with
   fun f(y) = this.x + y
 staged class D(val x) extends B(x+1) with
+  val y = 1
   fun f() = 42
-//│ > fun ctor_() =
+//│ > fun ctor_(x) =
 //│ >   B1.x = x
 //│ > fun f(y) = +(B1.x, y)
-//│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > fun ctor_() =
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > fun ctor_(x) =
+//│ >   let tmp
+//│ >   let tmp1
+//│ >   tmp1 = +(x, 1)
+//│ >   tmp = super(tmp1)
 //│ >   D1.x = x
+//│ >   D1.y = 1
 //│ > fun f() = 42
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }

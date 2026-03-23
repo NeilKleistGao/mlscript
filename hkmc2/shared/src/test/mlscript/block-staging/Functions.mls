@@ -65,7 +65,8 @@ staged module Expressions with
 //│ >         else a = element0_
 //│ >         3
 //│ >     else 0
-//│ > Map(7) {
+//│ > Map(8) {
+//│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'lit' => [Function: lit_gen],
 //│ >   'assign' => [Function: assign_gen],
 //│ >   'tup1' => [Function: tup1_gen],
@@ -91,7 +92,8 @@ staged module ClassInstrumentation with
 //│ > fun inst2() = new ClassInstrumentation.NoArg()
 //│ > fun app1() = Outside(1)
 //│ > fun app2() = ClassInstrumentation.Inside(1, 2)
-//│ > Map(4) {
+//│ > Map(5) {
+//│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'inst1' => [Function: inst1_gen],
 //│ >   'inst2' => [Function: inst2_gen],
 //│ >   'app1' => [Function: app1_gen],
@@ -109,13 +111,16 @@ staged module CallSubst with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
 //│ >   __no__symbol__ = Nonstaged.f()
 //│ >   Staged.f()
-//│ > Map(1) { 'call' => [Function: call_gen] }
+//│ > Map(2) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'call' => [Function: call_gen]
+//│ > }
 
 :ftc
 staged module Arguments with
@@ -132,7 +137,11 @@ staged module Arguments with
 //│ >   let tmp
 //│ >   tmp = new Function_()
 //│ >   tmp
-//│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'f' => [Function: f_gen],
+//│ >   'g' => [Function: g_gen]
+//│ > }
 
 staged module OtherBlocks with
   fun scope() =
@@ -158,7 +167,8 @@ staged module OtherBlocks with
 //│ >     2 then 0
 //│ >     3 then 0
 //│ >     else 0
-//│ > Map(2) {
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'scope' => [Function: scope_gen],
 //│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
 //│ > }
@@ -167,7 +177,7 @@ staged module ClassDefs with
   class A
 //│ > fun ctor_() =
 //│ >   class A
-//│ > Map(0) {}
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 
 // TODO: how to add the block IR to the cache, for class functions?
 staged module ClassFunctions with
@@ -181,28 +191,13 @@ staged module ClassFunctions with
 //│ >       tmp = Arguments.f(1)
 //│ >       +(1, tmp)
 //│ >     fun g() = InnerClass.f()
-//│ > Map(0) {}
-
-:todo ValDefn in ctor of class
-staged module DataClass with
-  class A(val a)
-//│ > fun ctor_() =
-//│ >   class A(a)
-//│ > Map(0) {}
-
-// :lot
-:todo ValDefn in class
-staged module ValClass with
-  class A(val a)
-//│ > fun ctor_() =
-//│ >   class A(a)
-//│ > Map(0) {}
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 
 staged module ClassDefs with
   class A
 //│ > fun ctor_() =
 //│ >   class A
-//│ > Map(0) {}
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 
 staged module ClassFunctions with
   class InnerClass() with
@@ -215,7 +210,7 @@ staged module ClassFunctions with
 //│ >       tmp = Arguments.f(1)
 //│ >       +(1, tmp)
 //│ >     fun g() = InnerClass.f()
-//│ > Map(0) {}
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 
 // name collision
 class A()
@@ -224,7 +219,7 @@ staged module A with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 // nested module
 module A with
@@ -233,7 +228,7 @@ module A with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :todo force enable :ftc to desugar Label and Break
 staged module M with
@@ -243,18 +238,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.241: 	    let x = 1
+//│ ║  l.236: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.241: 	    let x = 1
+//│ ║  l.236: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.241: 	    let x = 1
+//│ ║  l.236: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.241: 	    let x = 1
+//│ ║  l.236: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -266,7 +261,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.266: 	  fun g() = {1 : 2}
+//│ ║  l.261: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -295,4 +290,4 @@ staged module Spread with
 //│ >           x
 //│ >         else 0
 //│ >     else 0
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
