@@ -153,8 +153,6 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
         output(Printer().worksheet(lowered_0)(using irPrintingScp).mkString(output.ColWidth))
       
       val lowered_1 =
-        // val bs = BlockSimplifier()
-        // bs.DeadCodeElim().applyProgram(lowered_0)
         BlockSimplifier(symbolsToPreserve)(lowered_0)
       
       // TODO: Test that transformers retain object identity when there are no changes
