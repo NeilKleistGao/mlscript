@@ -9,7 +9,7 @@ staged module M with
 //│ >   class C with 
 //│ >     fun f() = 1
 //│ >     fun g() = C.f()
-//│ > Map(0) {}
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 
 staged module A with
   fun f() = 1
@@ -27,16 +27,16 @@ staged module D with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > fun ctor_() =
 //│ >   class E
 //│ > fun f() =
 //│ >   __no__symbol__ = A.f()
 //│ >   B.f()
 //│ > fun matching() =
+//│ >   let tmp
 //│ >   let scrut
 //│ >   let scrut1
-//│ >   let tmp
 //│ >   scrut = 1
 //│ >   if scrut is
 //│ >     Int then
@@ -46,7 +46,8 @@ staged module D with
 //│ >   if scrut1 is
 //│ >     C(a, b) then true
 //│ >     else false
-//│ > Map(2) {
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'matching' => [Function: matching_gen]
 //│ > }
@@ -66,18 +67,18 @@ staged module M with
 //│ > fun f() =
 //│ >   __no__symbol__ = A.B.C(1)
 //│ >   M.E
-//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :e
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.73: 	  fun g()() = 1
+//│ ║  l.74: 	  fun g()() = 1
 //│ ╙──      	  ^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun g()() = 1
-//│ > Map(1) { 'g' => [Function: g_gen] }
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'g' => [Function: g_gen] }
 
 :ftc
 staged module M with
@@ -93,4 +94,8 @@ staged module M with
 //│ >   let tmp1
 //│ >   tmp1 = new Function_1()
 //│ >   tmp1
-//│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'f' => [Function: f_gen],
+//│ >   'g' => [Function: g_gen]
+//│ > }
