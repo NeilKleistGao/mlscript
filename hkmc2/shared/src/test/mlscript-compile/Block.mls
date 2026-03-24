@@ -17,10 +17,9 @@ type Literal = null | undefined | Str | Int | Num | Bool
 
 type ParamList = Array[Symbol]
 
-class Symbol(val name: Str)
-// this is so that we're able to retrieve information about the class from the symbol
+class Symbol(val name: Str) extends CachedHash
 class VirtualClassSymbol(val name: Str) extends Symbol(name)
-class ClassSymbol(val name: Str, val value, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList]) extends Symbol(name)
+class ClassSymbol(val name: Str, val value, val moduleValue, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList], parentPath) extends Symbol(name)
 class ModuleSymbol(val name: Str, val value) extends Symbol(name)
 class Arm(val cse: Case, val body: Block)
 
@@ -40,8 +39,20 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
     ["Bool", b] and b is Bool then true
     else false
 
-
-// Classes defined in Block.scala
+// TODO: move this to somewhere appropriate
+// TODO: is this the only way? we cannot assign a property to a class that is not extensible 
+fun checkMap(symbolMap, value) = 
+  // this approach of updating the class value doesn't work if the class is not extensible
+  // if classValue.("stagedSymbol") is
+  //   v and v is Symbol then v
+  //   else set classValue.("stagedSymbol") = value; value
+  // console.log(symbolMap, value)
+  // FIXME: depends on hashes of equal data classes to be equal 
+  let key = value.hash()
+  let v = symbolMap.get(key)
+  if v is 
+    Symbol then v
+    else symbolMap.set(key, value); value
 
 class Arg(val value: Path) 
 
@@ -66,8 +77,9 @@ class Path extends Result with
 
 class Defn with 
   constructor 
+    ValDefn(val tsym: Symbol, val sym: Symbol, val rhs: Path)
     ClsLikeDefn(val sym: ClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
-    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block, val stage: Bool)
+    FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
 
@@ -148,13 +160,16 @@ fun showParamList(ps: Array[ParamList]) =
 
 fun showDefn(d: Defn): Str =
   if d is
-    FunDefn(sym, ps, body, _) then
+    FunDefn(sym, ps, body) then
       "fun " + showSymbol(sym) + showParamList(ps) + " =" +
       (if body is Return then " " else "\n  ") + indent(showBlock(body))
     ClsLikeDefn(sym, methods, _) then
       "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams).join("")
         + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
-    _ then "<unknown defn:" ~ d ~ ">"
+    ValDefn(owner, sym, rhs) then
+      (if owner is Some(owner) then showSymbol(owner) else "")
+        + "." + showSymbol(sym) + " = " + showPath(rhs)
+    _ then "<unknown defn: " + d.toString() + " >"
 
 fun showBlock(b) =
   if b is
