@@ -29,7 +29,7 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
   fun toString() = "{" ~ shapeset.keys().toArray().toSorted().toString() ~ "}"
 
   fun isDynArr() =
-    if shapeset.size == 1 and values().0 is Arr(shapes, _) then shapes.every(s => s is Dyn) else false
+    if shapeset.size == 1 and values().0 is Arr(shapes) then shapes.every(s => s is Dyn) else false
 
 
 module ShapeSet with
@@ -60,11 +60,11 @@ fun mkDyn() = lift(Dyn())
 
 fun mkLit(l) = lift(Lit(l))
 
-fun mkArr(shapes: Array[ShapeSet], inf: Bool) = 
+fun mkArr(shapes: Array[ShapeSet]) = 
   shapes
     .map(_.shapeset.values().toArray())
     |> prod
-    .map(x => Arr(x, inf))
+    .map(x => Arr(x))
     |> liftMany
 
 fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) = 
@@ -95,7 +95,7 @@ fun valOf(s : Shape) =
   if s is
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
-    Arr(shapes, inf) then shapes.map((x, _, _) => valOf(x))
+    Arr(shapes) then shapes.map((x, _, _) => valOf(x))
     Class(sym, params) then ???
     else throw Error("Unknown shape")
 
@@ -226,9 +226,12 @@ fun sor(defctx, ctx, r: Result) = if r is
     else
       [End(), r, s]
   Instantiate(cls, args) then
-    let sym = if cls is ValueRef(s) and s is ClassSymbol then s else throw Error("Instantiate with non-ClassSymbol in shape propagation")
+    let sym = if cls is ValueRef(s) and s is ClassSymbol then s 
+    else 
+      print(cls)
+      throw Error("Instantiate with non-ClassSymbol in shape propagation")
     [End(), r, mkClass(sym, args.map(a => sop(ctx, a.value)))]
-  Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)), false)]
+  Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args) then 
     fun lit(l) = [End(), ValueLit(l), mkLit(l)]
     let argShapes = args.map((a, _, _) => sop(ctx, a.value))
