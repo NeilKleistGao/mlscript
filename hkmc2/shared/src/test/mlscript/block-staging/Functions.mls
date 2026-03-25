@@ -98,7 +98,6 @@ staged module CallSubst with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
-//│ >   __no__symbol__ = +(1, 1)
 //│ >   __no__symbol__ = Nonstaged.f()
 //│ >   Staged.f_gen()
 
@@ -172,7 +171,7 @@ staged module ClassDefs with
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
-    fun g() = f() // TODO
+    fun g() = f()
 //│ > fun ctor_() =
 //│ >   class InnerClass() with 
 //│ >     fun f() =
@@ -207,22 +206,38 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.205: 	    let x = 1
+//│ ║  l.204: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.205: 	    let x = 1
+//│ ║  l.204: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.205: 	    let x = 1
+//│ ║  l.204: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.205: 	    let x = 1
+//│ ║  l.204: 	    let x = 1
 //│ ╙──       	        ^
 //│ > fun ctor_() =
 //│ >   ()
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
+
+// TODO: force enable :ftc to desugar Label and Break
+staged module M with
+  fun f() = if 1 is
+    0 then 2
+    1 then 2
+    else 2
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() =
+//│ >   let scrut
+//│ >   scrut = 1
+//│ >   if scrut is
+//│ >     0 then 2
+//│ >     1 then 2
+//│ >     else 2
 
 :e
 class C(val a)
@@ -232,7 +247,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
-//│ ║  l.232: 	  fun g() = {1 : 2}
+//│ ║  l.247: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > fun ctor_() =
 //│ >   x = C(1)
