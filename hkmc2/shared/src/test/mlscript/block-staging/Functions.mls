@@ -263,7 +263,7 @@ staged module ClassDefs with
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
-    fun g() = f() // TODO
+    fun g() = f()
 //│ > fun ctor_() =
 //│ >   class InnerClass() with 
 //│ >     fun f() =
@@ -339,6 +339,23 @@ staged module M with
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
+// TODO: force enable :ftc to desugar Label and Break
+staged module M with
+  fun f() = if 1 is
+    0 then 2
+    1 then 2
+    else 2
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() =
+//│ >   let scrut
+//│ >   scrut = 1
+//│ >   if scrut is
+//│ >     0 then 2
+//│ >     1 then 2
+//│ >     else 2
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+
 :e
 class C(val a)
 staged module A with
@@ -347,7 +364,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.347: 	  fun g() = {1 : 2}
+//│ ║  l.364: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -359,11 +376,11 @@ staged module Spread with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() =
-//│ >   let middleElements
-//│ >   let element0_
 //│ >   let scrut
 //│ >   let tmp
 //│ >   let x
+//│ >   let middleElements
+//│ >   let element0_
 //│ >   tmp = [1, 2]
 //│ >   scrut = [1, tmp]
 //│ >   if scrut is
