@@ -66,7 +66,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
   def ctor(using State)(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
+    assign(Instantiate(true, cls, args.map(asArg)), symName)(k)
 
   def call(using State)(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
@@ -130,7 +130,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             transformParamsOpt(paramsOpt): paramsOpt =>
               auxParams.map(transformParamList).collectApply: auxParams =>
                 tuple(auxParams): auxParams =>
-                  blockCtor("ClassSymbol", Ls(toValue(name), path, toValue(0), paramsOpt, auxParams, toValue(0)), symName)(checkMap(path, _))
+                  blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
             blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
       case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
@@ -393,7 +393,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         cacheEntries.collectApply: cacheTups =>
           tuple(cacheTups): tup =>
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
+              assign(Instantiate(false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
                 Define(ValDefn(cacheTsym, cacheSym, funCache), rest)
 
       def generatorMapDecl(rest: Block) =
