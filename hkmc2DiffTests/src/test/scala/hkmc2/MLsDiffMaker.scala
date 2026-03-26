@@ -11,7 +11,7 @@ import semantics.Elaborator.Ctx
 
 abstract class MLsDiffMaker extends DiffMaker:
   
-  val bbmlOpt: Command[?]
+  val invalmlOpt: Command[?]
   
   val rootPath: Str // * Absolute path to the root of the project
   val preludeFile: io.Path // * Contains declarations of JS builtins
@@ -63,6 +63,8 @@ abstract class MLsDiffMaker extends DiffMaker:
   // * Compiler configuration
   
   val noSanityCheck = NullaryCommand("noSanityCheck")
+  val noFreeze = NullaryCommand("noFreeze")
+  val noModuleCheck = NullaryCommand("noModuleCheck")
   val effectHandlers = Command("effectHandlers")(_.trim)
   val effectHandlersOptions = Set("debug", "")
   val stackSafe = Command("stackSafe")(_.trim)
@@ -118,6 +120,8 @@ abstract class MLsDiffMaker extends DiffMaker:
       qqEnabled = importQQ.isSet,
       funcToCls = funcToCls.isSet,
       commentGeneratedCode = debug.isSet,
+      noFreeze = noFreeze.isSet,
+      noModuleCheck = noModuleCheck.isSet,
     )
   
   
