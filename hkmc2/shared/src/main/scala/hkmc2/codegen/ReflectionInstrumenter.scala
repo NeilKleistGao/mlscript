@@ -402,7 +402,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       def debugCont(rest: Block) =
         val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
         // val renderFun = State.runtimeSymbol.asPath.selSN("render")
-        // val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
+        val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
         val gens = methods.map { f =>
           val genSymName = f.sym.nme + "_gen"
