@@ -1,15 +1,16 @@
 :js
 :staging
 
-let x = [1, 2, 3]
 staged module Expressions with
-  fun lit() = 1
+  fun lit(x) = x + x
   fun assign() =
     let x = 42
     let y = x
     y
   fun tup1() = [1, 2]
-  fun tup2() = [1, x]
+  fun tup2() = 
+    let x = [1, 2, 3]
+    [1, x]
   fun dynsel() = [1].(0)
   fun match1() =
     if 9 is
@@ -19,52 +20,39 @@ staged module Expressions with
       9 then 4
       else 0
   fun match2() =
+    let x = [1, 2, 3]
     if x is
       [] then 1
       [1, 2] then 2
       [a, _] then 3
       else 0
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun lit() = 1
+//│ > fun lit(x) = +(x, x)
 //│ > fun assign() =
-//│ >   let y
 //│ >   let x
+//│ >   let y
 //│ >   x = 42
-//│ >   y = x
-//│ >   y
+//│ >   y = 42
+//│ >   42
 //│ > fun tup1() = [1, 2]
-//│ > fun tup2() = [1, x]
+//│ > fun tup2() =
+//│ >   let x
+//│ >   x = [1, 2, 3]
+//│ >   [1, x]
 //│ > fun dynsel() =
 //│ >   let tmp
 //│ >   tmp = [1]
-//│ >   tmp.(0)
+//│ >   1
 //│ > fun match1() =
 //│ >   let scrut
 //│ >   scrut = 9
-//│ >   if scrut is
-//│ >     Bool then 1
-//│ >     8 then 2
-//│ >     Int then 3
-//│ >     else 0
+//│ >   3
 //│ > fun match2() =
+//│ >   let x
 //│ >   let a
 //│ >   let element1_
 //│ >   let element0_
-//│ >   if x is
-//│ >     [] then 1
-//│ >     [_, _] then
-//│ >       element0_ = Runtime.Tuple.get(x, 0)
-//│ >       element1_ = Runtime.Tuple.get(x, 1)
-//│ >       if element0_ is
-//│ >         1 then
-//│ >           if element1_ is
-//│ >             2 then 2
-//│ >             else a = element0_
-//│ >             3
-//│ >         else a = element0_
-//│ >         3
-//│ >     else 0
+//│ >   x = [1, 2, 3]
+//│ >   0
 //│ > Map(8) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'lit' => [Function: lit_gen],
@@ -79,47 +67,26 @@ staged module Expressions with
 //│ >   'VirtualClassSymbol("Bool")' => VirtualClassSymbol { name: 'Bool' },
 //│ >   'VirtualClassSymbol("Int")' => VirtualClassSymbol { name: 'Int' }
 //│ > }
-//│ x = [1, 2, 3]
 
-:sjs
-// class Outside(a)
+class Outside(a)
 staged module ClassInstrumentation with
-  // class Inside(a, b)
-  class Outside(a)
+  class Inside(a, b)
   class NoArg
   fun inst1() = Outside(1)
   fun inst2() = new NoArg
   fun app1() = Outside(1)
-  fun app2() = Inside(1, 2)
-//│ > fun ctor_() =
-//│ >   class Inside(a, b)
-//│ >   class NoArg
-//│ > fun inst1() = new Outside(1)
+  // fun app2() = Inside(1, 2)
+//│ > Instantiate(Select(ValueRef(ModuleSymbol("ClassInstrumentation", class ClassInstrumentation { cache$ClassInstrumentation: fun inst1() = Outside(1), generatorMap$ClassInstrumentation: Map(4) {"ctor$" => fun ctor$_gen, "inst1" => fun inst1_gen, "inst2" => fun inst2_gen, "app1" => fun app1_gen} })), ClassSymbol("NoArg", undefined, 0, None, [], _)), [])
+//│ > fun inst1() = Outside(1)
 //│ > fun inst2() = new ClassInstrumentation.NoArg()
 //│ > fun app1() = Outside(1)
-//│ > fun app2() = ClassInstrumentation.Inside(1, 2)
-//│ > Map(5) {
+//│ > Map(4) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'inst1' => [Function: inst1_gen],
 //│ >   'inst2' => [Function: inst2_gen],
-//│ >   'app1' => [Function: app1_gen],
-//│ >   'app2' => [Function: app2_gen]
+//│ >   'app1' => [Function: app1_gen]
 //│ > }
-//│ > Map(4) {
-//│ >   'ClassSymbol("NoArg", undefined, 0, None, [], _)' => ClassSymbol {
-//│ >     name: 'NoArg',
-//│ >     value: undefined,
-//│ >     moduleValue: 0,
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
-//│ >   },
-//│ >   'ClassSymbol("Inside", undefined, 0, Some([Symbol("a"), Symbol("b")]), [], _)' => ClassSymbol {
-//│ >     name: 'Inside',
-//│ >     value: undefined,
-//│ >     moduleValue: 0,
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   },
+//│ > Map(3) {
 //│ >   'ClassSymbol("Outside", fun Outside { class: class Outside }, 0, Some([Symbol("a")]), [], _)' => ClassSymbol {
 //│ >     name: 'Outside',
 //│ >     value: [Function: Outside] { class: [Function] },
@@ -127,12 +94,19 @@ staged module ClassInstrumentation with
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   'ModuleSymbol("ClassInstrumentation", class ClassInstrumentation)' => ModuleSymbol {
+//│ >   'ModuleSymbol("ClassInstrumentation", class ClassInstrumentation { cache$ClassInstrumentation: fun inst1() = Outside(1), generatorMap$ClassInstrumentation: Map(4) {"ctor$" => fun ctor$_gen, "inst1" => fun inst1_gen, "inst2" => fun inst2_gen, "app1" => fun app1_gen} })' => ModuleSymbol {
 //│ >     name: 'ClassInstrumentation',
 //│ >     value: [class ClassInstrumentation] {
 //│ >       'cache$ClassInstrumentation': [FunCache],
 //│ >       'generatorMap$ClassInstrumentation': [Map]
 //│ >     }
+//│ >   },
+//│ >   'ClassSymbol("NoArg", undefined, 0, None, [], _)' => ClassSymbol {
+//│ >     name: 'NoArg',
+//│ >     value: undefined,
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
 //│ >   }
 //│ > }
 
@@ -144,36 +118,22 @@ staged module CallSubst with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ > fun ctor_() =
-//│ >   ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(0) {}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call() =
-//│ >   __no__symbol__ = Nonstaged.f()
-//│ >   Staged.f()
-//│ > Map(2) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'call' => [Function: call_gen]
-//│ > }
-//│ > Map(2) {
-//│ >   'ModuleSymbol("Nonstaged", class Nonstaged)' => ModuleSymbol {
-//│ >     name: 'Nonstaged',
-//│ >     value: [class Nonstaged] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   },
-//│ >   'ModuleSymbol("Staged", class Staged { cache$Staged: fun ctor_() =\n' +
-//│ >     '  ()\n' +
-//│ >     'fun f() = 1, generatorMap$Staged: Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen} })' => ModuleSymbol {
-//│ >     name: 'Staged',
-//│ >     value: [class Staged] {
-//│ >       'cache$Staged': [FunCache],
-//│ >       'generatorMap$Staged': [Map],
-//│ >       Symbol(mlscript.definitionMetadata): [Array]
-//│ >     }
-//│ >   }
-//│ > }
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'get')
+//│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:336:48)
+//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:612:38)
+//│     at SpecializeHelpers.specialize (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:870:39)
+//│     at CallSubst.call_gen (REPL20:1:7399)
+//│     at <static_initializer> (REPL20:1:4221)
+//│     at REPL20:1:7551
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
 
 
 :ftc
@@ -182,31 +142,20 @@ staged module Arguments with
     x = 1
     x
   fun g(x)(y, z)() = z
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x) =
-//│ >   x = 1
-//│ >   x
-//│ > fun g(x) =
-//│ >   let tmp
-//│ >   tmp = new Function_()
-//│ >   tmp
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'g' => [Function: g_gen]
-//│ > }
-//│ > Map(1) {
-//│ >   'ClassSymbol("Function$", class Function$, 0, None, [], _)' => ClassSymbol {
-//│ >     name: 'Function$',
-//│ >     value: [class Function$1 extends Function] {
-//│ >       Symbol(mlscript.definitionMetadata): [Array]
-//│ >     },
-//│ >     moduleValue: 0,
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
-//│ >   }
-//│ > }
+//│ > Instantiate(ValueRef(ClassSymbol("Function$", class Function$, 0, None, [], _)), [])
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
+//│ ═══[RUNTIME ERROR] Error: Not implemented
+//│     at get notImplementedError (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Predef.mjs:414:39)
+//│     at ShapeSet.valOf (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:301:21)
+//│     at ShapeSet.valOfSet (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:313:23)
+//│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:148:24)
+//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:568:37)
+//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:622:40)
+//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:598:36)
+//│     at SpecializeHelpers.specialize (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:870:39)
+//│     at Arguments.g_gen (REPL23:1:6927)
+//│     at <static_initializer> (REPL23:1:2678)
 
 staged module OtherBlocks with
   fun scope() =
@@ -219,8 +168,6 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > fun ctor_() =
-//│ >   ()
 //│ > fun scope() =
 //│ >   let a
 //│ >   a = 1
@@ -228,17 +175,14 @@ staged module OtherBlocks with
 //│ > fun breakAndLabel() =
 //│ >   let scrut
 //│ >   scrut = 1
-//│ >   if scrut is
-//│ >     2 then 0
-//│ >     3 then 0
-//│ >     else 0
+//│ >   0
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'scope' => [Function: scope_gen],
 //│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
 //│ > }
 //│ > Map(1) {
-//│ >   'ModuleSymbol("OtherBlocks", class OtherBlocks)' => ModuleSymbol {
+//│ >   'ModuleSymbol("OtherBlocks", class OtherBlocks { cache$OtherBlocks: , generatorMap$OtherBlocks: Map(3) {"ctor$" => fun ctor$_gen, "scope" => fun scope_gen, "breakAndLabel" => fun breakAndLabel_gen} })' => ModuleSymbol {
 //│ >     name: 'OtherBlocks',
 //│ >     value: [class OtherBlocks] {
 //│ >       'cache$OtherBlocks': [FunCache],
@@ -249,63 +193,22 @@ staged module OtherBlocks with
 
 staged module ClassDefs with
   class A
-//│ > fun ctor_() =
-//│ >   class A
+//│ > 
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
-//│ > Map(1) {
-//│ >   'ClassSymbol("A", undefined, 0, None, [], _)' => ClassSymbol {
-//│ >     name: 'A',
-//│ >     value: undefined,
-//│ >     moduleValue: 0,
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
-//│ >   }
-//│ > }
+//│ > Map(0) {}
 
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f() // TODO
-//│ > fun ctor_() =
-//│ >   class InnerClass() with 
-//│ >     fun f() =
-//│ >       let tmp
-//│ >       tmp = Arguments.f(1)
-//│ >       +(1, tmp)
-//│ >     fun g() = InnerClass.f()
+//│ > 
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
-//│ > Map(2) {
-//│ >   'ClassSymbol("InnerClass", undefined, 0, Some([]), [], _)' => ClassSymbol {
-//│ >     name: 'InnerClass',
-//│ >     value: undefined,
-//│ >     moduleValue: 0,
-//│ >     paramsOpt: Some { value: [] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   'ModuleSymbol("Arguments", class Arguments { cache$Arguments: fun ctor_() =\n' +
-//│ >     '  ()\n' +
-//│ >     'fun f(x) =\n' +
-//│ >     '  x = 1\n' +
-//│ >     '  x\n' +
-//│ >     'fun g(x) =\n' +
-//│ >     '  let tmp\n' +
-//│ >     '  tmp = new Function_()\n' +
-//│ >     '  tmp, generatorMap$Arguments: Map(3) {"ctor$" => fun ctor$_gen, "f" => fun f_gen, "g" => fun g_gen} })' => ModuleSymbol {
-//│ >     name: 'Arguments',
-//│ >     value: [class Arguments] {
-//│ >       'cache$Arguments': [FunCache],
-//│ >       'generatorMap$Arguments': [Map],
-//│ >       Symbol(mlscript.definitionMetadata): [Array]
-//│ >     }
-//│ >   }
-//│ > }
+//│ > Map(0) {}
 
 // name collision
 class A()
 staged module A with
   fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
@@ -313,8 +216,6 @@ staged module A with
 module A with
   staged module B with
     fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
@@ -325,36 +226,21 @@ staged module M with
     while x == 1 do
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.714: 	    let x = 1
+//│ ║  l.225: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.714: 	    let x = 1
+//│ ║  l.225: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.714: 	    let x = 1
+//│ ║  l.225: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.714: 	    let x = 1
+//│ ║  l.225: 	    let x = 1
 //│ ╙──       	        ^
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.322: 	    let x = 1
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.322: 	    let x = 1
-//│ ╙──       	        ^
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.322: 	    let x = 1
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.322: 	    let x = 1
-//│ ╙──       	        ^
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│ ═══[RUNTIME ERROR] ReferenceError: x is not defined
 
 :e
 class C(val a)
@@ -364,17 +250,15 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.347: 	  fun g() = {1 : 2}
+//│ ║  l.250: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│ ═══[RUNTIME ERROR] Error: match error
 
 :todo
 staged module Spread with
   fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module.
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
-//│ > fun ctor_() =
-//│ >   ()
 //│ > fun f() =
 //│ >   let middleElements
 //│ >   let element0_
@@ -383,14 +267,5 @@ staged module Spread with
 //│ >   let x
 //│ >   tmp = [1, 2]
 //│ >   scrut = [1, tmp]
-//│ >   if scrut is
-//│ >     [_] then
-//│ >       element0_ = Runtime.Tuple.get(scrut, 0)
-//│ >       middleElements = Runtime.Tuple.slice(scrut, 1, 0)
-//│ >       if element0_ is
-//│ >         1 then
-//│ >           x = middleElements
-//│ >           x
-//│ >         else 0
-//│ >     else 0
+//│ >   0
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }

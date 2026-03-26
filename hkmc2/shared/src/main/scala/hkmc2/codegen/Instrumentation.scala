@@ -376,11 +376,10 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
 
         val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
-        val body = call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
-          params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
-            tuple(tups): args =>
-              call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
-                Return(res, false)
+        val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
+          tuple(tups): args =>
+            call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
+              Return(res, false)
         f.copy(params = params, sym = sym, dSym = dSym, body = body)(false)
 
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false)
@@ -398,11 +397,9 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
 
       // initialize cache for the module
       def cacheDecl(rest: Block) =
-        cacheEntries.collectApply: cacheTups =>
-          tuple(cacheTups): tup =>
-            this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
-                Define(ValDefn(cacheTsym, cacheSym, funCache), rest)
+          this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): map =>
+            assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
+              Define(ValDefn(cacheTsym, cacheSym, funCache), rest)
 
       def generatorMapDecl(rest: Block) =
         generatorEntries.collectApply: defs =>
@@ -416,13 +413,34 @@ class Instrumentation(using State, Raise, Ctx) extends BlockTransformer(new Symb
         val renderFun = State.runtimeSymbol.asPath.selSN("render")
         val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
-        assign(options): options =>
-          call(cachePath.selSN("toString"), Nil, false): str =>
-            call(printFun, Ls(str), false): _ =>
-              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
-                if symbolMapUsed
-                then call(printFun, Ls(symbolMapSym), false)(_ => rest)
-                else rest
+        val gens = methods.map { f =>
+          val genSymName = f.sym.nme + "_gen"
+          val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
+          (modSym.asPath.selSN(genSymName), params)
+        }
+
+        call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
+          def callAllGens(gens: Ls[(Path, Ls[ParamList])], k: Block): Block = gens match
+            case Nil => k
+            case (genPath, params) :: tail =>
+              def curryCall(funPath: Path, paramsLeft: Ls[ParamList], innerK: Block): Block =
+                paramsLeft match
+                  case Nil => innerK
+                  case pList :: Nil =>
+                    val args = pList.params.map(_ => dynVal)
+                    call(funPath, args, isMlsFun = true, symName = "tmp_gen_res")(_ => innerK)
+                  case pList :: xs =>
+                    val args = pList.params.map(_ => dynVal)
+                    call(funPath, args, isMlsFun = true, symName = "tmp_gen_curry")(res => curryCall(res, xs, innerK))
+              curryCall(genPath, params, callAllGens(tail, k))
+
+          callAllGens(gens, assign(options)(options =>
+            call(cachePath.selSN("toString"), Nil, false)(str =>
+              call(printFun, Ls(str), false)(_ =>
+                call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false)(_ =>
+                  if symbolMapUsed
+                  then call(printFun, Ls(symbolMapSym), false)(_ => rest)
+                  else rest)))))
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(

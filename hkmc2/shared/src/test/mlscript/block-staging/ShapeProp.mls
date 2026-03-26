@@ -36,17 +36,7 @@ Shape.static(Shape.Lit("Hi"))
 valOf(Dyn())
 //│ ═══[RUNTIME ERROR] Error: valOf on Dyn
 
-valOf(Arr([Lit(1), Arr([Lit(2), Lit(3)], false)], false))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.39: 	valOf(Arr([Lit(1), Arr([Lit(2), Lit(3)], false)], false))
-//│ ╙──      	         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.39: 	valOf(Arr([Lit(1), Arr([Lit(2), Lit(3)], false)], false))
-//│ ╙──      	                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+valOf(Arr([Lit(1), Arr([Lit(2), Lit(3)])]))
 //│ = [1, [2, 3]]
 
 :re
@@ -70,32 +60,17 @@ selSet(arrSp, mkLit(1))
 selSet(mkDyn(), mkLit(5))
 //│ = {Dyn()}
 
-let a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
-let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)], false)])
+let a = Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"]), [], undefined), [Lit(42), Lit("c")])
+let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)])])
 selSet(x, liftMany([Lit("a"), Lit(2)]))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.73: 	let a = Class(ClassSymbol("A", Some(["a", "b"])), [Lit(42), Lit("c")])
-//│ ╙──      	                         ^^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.74: 	let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)], false)])
-//│ ╙──      	                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ = {Dyn(),Lit(undefined)}
+//│ = {Dyn(),Lit(42),Lit(undefined)}
 //│ a = Class(
-//│   ClassSymbol("A", Some(["a", "b"]), undefined, undefined),
+//│   ClassSymbol("A", undefined, undefined, Some(["a", "b"]), [], _),
 //│   [Lit(42), Lit("c")]
 //│ )
-//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ClassSymbol("A", Some(["a", "b"]), undefined, undefined), [Lit(42), Lit("c")]),Dyn()}
+//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"]), [], _), [Lit(42), Lit("c")]),Dyn()}
 
-selSet(lift(Arr([Dyn(), Lit(1), a], false)), mkLit(1))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.93: 	selSet(lift(Arr([Dyn(), Lit(1), a], false)), mkLit(1))
-//│ ╙──      	               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+selSet(lift(Arr([Dyn(), Lit(1), a])), mkLit(1))
 //│ = {Lit(1)}
 
 // union
@@ -106,13 +81,13 @@ union(x, y)
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.104: 	let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
-//│ ╙──       	                     ^^^^^^^^^^^^^^^^^
+//│ ║  l.79: 	let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
+//│ ╙──      	                     ^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.104: 	let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
-//│ ╙──       	                                                   ^^^^^^^^^^^^^^^^^
+//│ ║  l.79: 	let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
+//│ ╙──      	                                                   ^^^^^^^^^^^^^^^^^
 //│ = {Arr([Lit(1)]),Arr([Lit(2)]),Lit(1),Lit(2)}
 //│ x = {Lit(1),Lit(2)}
 //│ y = {Arr([Lit(1)]),Arr([Lit(2)]),Lit(1)}
@@ -126,7 +101,7 @@ filterSet(mkDyn(), Block.Tup(2, true))
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.125: 	filterSet(mkDyn(), Block.Tup(2, true))
+//│ ║  l.100: 	filterSet(mkDyn(), Block.Tup(2, true))
 //│ ╙──       	                            ^^^^^^^^^
 //│ = {Arr([fun Dyn { class: class Dyn }, fun Dyn { class: class Dyn }])}
 
@@ -134,14 +109,14 @@ let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1),
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.133: 	let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
+//│ ║  l.108: 	let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
 //│ ╙──       	                                                   ^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.133: 	let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
+//│ ║  l.108: 	let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
 //│ ╙──       	                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ClassSymbol("A", Some(["a", "b"]), undefined, undefined), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
+//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"]), [], _), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
@@ -151,7 +126,7 @@ filterSet(filterShapes, Block.Lit(1))
 assert(filterSet(filterShapes, Block.Lit(2)).isEmpty())
 
 filterSet(filterShapes, Block.Cls(Symbol("A"), undefined))
-//│ = {Class(ClassSymbol("A", Some(["a", "b"]), undefined, undefined), [Lit(42), Lit("c")])}
+//│ = {Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"]), [], _), [Lit(42), Lit("c")])}
 
 filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
 //│ = {Lit(1)}
@@ -160,7 +135,7 @@ filterSet(filterShapes, Tup(3, false))
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.159: 	filterSet(filterShapes, Tup(3, false))
+//│ ║  l.134: 	filterSet(filterShapes, Tup(3, false))
 //│ ╙──       	                           ^^^^^^^^^^
 //│ = {Arr([Lit(1), Lit(2), Lit(3)])}
 
@@ -168,7 +143,7 @@ filterSet(filterShapes, Tup(4, true))
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.167: 	filterSet(filterShapes, Tup(4, true))
+//│ ║  l.142: 	filterSet(filterShapes, Tup(4, true))
 //│ ╙──       	                           ^^^^^^^^^
 //│ = {}
 
@@ -176,7 +151,7 @@ assert(filterSet(filterShapes, Tup(0, false)).isEmpty())
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.175: 	assert(filterSet(filterShapes, Tup(0, false)).isEmpty())
+//│ ║  l.150: 	assert(filterSet(filterShapes, Tup(0, false)).isEmpty())
 //│ ╙──       	                                  ^^^^^^^^^^
 
 open Block
@@ -238,11 +213,11 @@ ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.234: 	val C = ClassSymbol("C", Some(["a"]))
+//│ ╔══[COMPILATION ERROR] Expected 6 arguments, got 2
+//│ ║  l.209: 	val C = ClassSymbol("C", Some(["a"]))
 //│ ╙──       	                   ^^^^^^^^^^^^^^^^^^
 //│ = {}
-//│ C = ClassSymbol("C", Some(["a"]), undefined, undefined)
+//│ C = ClassSymbol("C", Some(["a"]), undefined, undefined, undefined, _)
 //│ ctx = Ctx(_)
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
 //│ x = Symbol("x")
@@ -252,59 +227,68 @@ sop(ctx, selPath)
 val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 sor(DefCtx.empty, Ctx.empty, tup)
 //│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
+//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
+//│ ║  l.228: 	sor(DefCtx.empty, Ctx.empty, tup)
+//│ ╙──       	    ^^^^^^
+//│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.252: 	val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
+//│ ║  l.227: 	val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 //│ ╙──       	                    ^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.252: 	val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
+//│ ║  l.227: 	val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
 //│ ╙──       	                                            ^^^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 3
+//│ ║  l.228: 	sor(DefCtx.empty, Ctx.empty, tup)
+//│ ╙──       	   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:787:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:789:37)
-//│     at REPL144:1:411
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ tup = Tuple([Arg(None), Arg(None)])
 
 let c = ClassSymbol("C", Some([Symbol("p")]))
 let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
 sor(DefCtx.empty, Ctx.empty, inst)
 //│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
+//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
+//│ ║  l.256: 	sor(DefCtx.empty, Ctx.empty, inst)
+//│ ╙──       	    ^^^^^^
+//│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.279: 	let c = ClassSymbol("C", Some([Symbol("p")]))
+//│ ╔══[COMPILATION ERROR] Expected 6 arguments, got 2
+//│ ║  l.254: 	let c = ClassSymbol("C", Some([Symbol("p")]))
 //│ ╙──       	                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.280: 	let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
+//│ ║  l.255: 	let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
 //│ ╙──       	                                        ^^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 3
+//│ ║  l.256: 	sor(DefCtx.empty, Ctx.empty, inst)
+//│ ╙──       	   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:773:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:775:36)
-//│     at REPL148:1:532
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│ c = ClassSymbol("C", Some([Symbol("p")]), undefined, undefined)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ c = ClassSymbol("C", Some([Symbol("p")]), undefined, undefined, undefined, _)
 //│ inst = Instantiate(
-//│   ValueRef(ClassSymbol("C", Some([Symbol("p")]), undefined, undefined)),
+//│   ValueRef(
+//│     ClassSymbol(
+//│       "C",
+//│       Some([Symbol("p")]),
+//│       undefined,
+//│       undefined,
+//│       undefined,
+//│       _
+//│     )
+//│   ),
 //│   [Arg(None)]
 //│ )
 
@@ -318,31 +302,31 @@ fun testBinOp(op, v1, v2) =
   def.add(ValueRef(Symbol("&&")), undefined, false)
   sor(def, Ctx.empty, c).1.lit
 //│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
+//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
+//│ ║  l.298: 	  let def = DefCtx.empty
+//│ ╙──       	            ^^^^^^
+//│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.312: 	  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
+//│ ║  l.296: 	  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
 //│ ╙──       	                 ^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.312: 	  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
+//│ ║  l.296: 	  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
 //│ ╙──       	                                          ^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 3
+//│ ║  l.303: 	  sor(def, Ctx.empty, c).1.lit
+//│ ╙──       	     ^^^^^^^^^^^^^^^^^^^
 
 :expect 12
 testBinOp("+", 10, 2)
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
-//│     at testBinOp (REPL153:1:1400)
-//│     at REPL156:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:225)
 //│ ═══[RUNTIME ERROR] Expected: '12', got: 'undefined'
@@ -351,17 +335,7 @@ testBinOp("+", 10, 2)
 testBinOp("==", 10, 10) 
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
-//│     at testBinOp (REPL153:1:1400)
-//│     at REPL159:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:225)
 //│ ═══[RUNTIME ERROR] Expected: 'true', got: 'undefined'
@@ -370,17 +344,7 @@ testBinOp("==", 10, 10)
 testBinOp("===", 10, "10") 
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
-//│     at testBinOp (REPL153:1:1400)
-//│     at REPL162:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:225)
 //│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
@@ -389,17 +353,7 @@ testBinOp("===", 10, "10")
 testBinOp("&&", true, false)
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
-//│     at testBinOp (REPL153:1:1400)
-//│     at REPL165:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:225)
 //│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
@@ -413,26 +367,26 @@ fun testUnaryOp(op, v) =
   def.add(ValueRef(Symbol("~")), undefined, false)
   sor(def, Ctx.empty, c).1.lit
 //│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
+//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
+//│ ║  l.364: 	  let def = DefCtx.empty
+//│ ╙──       	            ^^^^^^
+//│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.408: 	  let args = [Arg(None, ValueLit(v))]
+//│ ║  l.362: 	  let args = [Arg(None, ValueLit(v))]
 //│ ╙──       	                 ^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 3
+//│ ║  l.368: 	  sor(def, Ctx.empty, c).1.lit
+//│ ╙──       	     ^^^^^^^^^^^^^^^^^^^
 
 :expect -10
 testUnaryOp("-", 10)
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
-//│     at testUnaryOp (REPL168:1:1099)
-//│     at REPL171:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:225)
 //│ ═══[RUNTIME ERROR] Expected: '-10', got: 'undefined'
@@ -441,24 +395,14 @@ testUnaryOp("-", 10)
 testUnaryOp("!", true)
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
-//│     at testUnaryOp (REPL168:1:1099)
-//│     at REPL174:1:39
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:225)
 //│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
 
 :re
 testUnaryOp("~", 10)  
-//│ ═══[RUNTIME ERROR] Error: match error
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
 
 // prop
@@ -478,38 +422,38 @@ let plus = ValueRef(Symbol("+"))
 let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
 prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
+//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
+//│ ║  l.423: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
+//│ ╙──       	     ^^^^^^
+//│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.478: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
+//│ ║  l.422: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
 //│ ╙──       	                                             ^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.478: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
+//│ ║  l.422: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
 //│ ╙──       	                                                                     ^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.478: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
+//│ ║  l.422: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
 //│ ╙──       	                                                                                                                  ^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.478: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
+//│ ║  l.422: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
 //│ ╙──       	                                                                                                                                          ^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 3 arguments, got 4
+//│ ║  l.423: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
+//│ ╙──       	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
-//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1274:29)
-//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1260:27)
-//│     at REPL187:1:910
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ c = Scoped(
 //│   [Symbol("x")],
 //│   Assign(
@@ -522,22 +466,28 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
 prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
+//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
+//│ ║  l.467: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
+//│ ╙──       	     ^^^^^^
+//│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.522: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
+//│ ╔══[COMPILATION ERROR] Expected 6 arguments, got 2
+//│ ║  l.466: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
 //│ ╙──       	                                                                                  ^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.522: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
+//│ ╔══[COMPILATION ERROR] Expected 6 arguments, got 2
+//│ ║  l.466: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
 //│ ╙──       	                                                                                                                                                                                                                                                        ^^^^^^^^^^^^^
-//│ = [
-//│   Scoped(
-//│     [Symbol("x")],
-//│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3), false))
-//│   ),
-//│   {Lit(3)}
-//│ ]
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 3 arguments, got 4
+//│ ║  l.467: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
+//│ ╙──       	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ c = Scoped(
 //│   [Symbol("x")],
 //│   Assign(
@@ -548,7 +498,7 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│       [
 //│         Arm(
 //│           Cls(
-//│             ClassSymbol("Bool", None, undefined, undefined),
+//│             ClassSymbol("Bool", None, undefined, undefined, undefined, _),
 //│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
 //│           ),
 //│           Return(ValueLit(1), false)
@@ -556,7 +506,7 @@ prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
 //│         Arm(Lit(8), Return(ValueLit(2), false)),
 //│         Arm(
 //│           Cls(
-//│             ClassSymbol("Int", None, undefined, undefined),
+//│             ClassSymbol("Int", None, undefined, undefined, undefined, _),
 //│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
 //│           ),
 //│           Return(ValueLit(3), false)
@@ -575,8 +525,16 @@ val fSym = Symbol("f")
 val M = ValueRef(Symbol("M"))
 val fPath = Select(M, fSym)
 val defs = DefCtx.empty.add(fPath, f_gen, true)
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
+//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
+//│ ║  l.527: 	val defs = DefCtx.empty.add(fPath, f_gen, true)
+//│ ╙──       	           ^^^^^^
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ M = ValueRef(Symbol("M"))
-//│ defs = DefCtx(Map(1) {"M.f" => [fun f_gen, true]})
+//│ defs = undefined
 //│ fPath = Select(ValueRef(Symbol("M")), Symbol("f"))
 //│ fSym = Symbol("f")
 
@@ -585,21 +543,26 @@ sor(defs, Ctx.empty, callF)
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.583: 	val callF = Call(fPath, [Arg(None, ValueLit(12))])
+//│ ║  l.541: 	val callF = Call(fPath, [Arg(None, ValueLit(12))])
 //│ ╙──       	                            ^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 3
+//│ ║  l.542: 	sor(defs, Ctx.empty, callF)
+//│ ╙──       	   ^^^^^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
 //│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at Ctx.get (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:118:20)
-//│     at ShapeSet.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:687:34)
-//│     at lambda2 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:813:25)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:815:42)
+//│     at ShapeSet.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:997:38)
 //│     at REPL205:1:284
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│     at REPLServer.defaultEval (node:repl:593:22)
 //│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:922:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
 //│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(None)])
 
 val ctxXY = Ctx.empty
@@ -614,24 +577,29 @@ prop(defs, ctxXY, Cache.empty, blockAdd)
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.611: 	val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
+//│ ║  l.574: 	val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
 //│ ╙──       	                                     ^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.611: 	val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
+//│ ║  l.574: 	val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
 //│ ╙──       	                                                             ^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 3 arguments, got 4
+//│ ║  l.576: 	prop(defs, ctxXY, Cache.empty, blockAdd)
+//│ ╙──       	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
 //│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:620:38)
-//│     at showArg (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:624:18)
+//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:650:38)
+//│     at showArg (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:654:18)
 //│     at Array.map (<anonymous>)
-//│     at Block.showArgs (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:628:33)
-//│     at Block.showResult (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:642:20)
-//│     at Block.showBlock (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:818:20)
-//│     at Block.show (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:889:20)
-//│     at Block.printCode (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:896:17)
+//│     at Block.showArgs (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:658:33)
+//│     at Block.showResult (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:672:20)
+//│     at Block.showBlock (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:868:20)
+//│     at Block.show (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:939:20)
+//│     at Block.printCode (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:946:17)
 //│     at REPL213:1:436
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│ blockAdd = Return(Call(ValueRef(Symbol("+")), [Arg(None), Arg(None)]), false)
@@ -639,6 +607,11 @@ prop(defs, ctxXY, Cache.empty, blockAdd)
 val blockBranch = Scoped([z], Match(ValueLit(1), [Arm(Lit(1), Assign(z, ValueLit(1), End())), Arm(Lit(2), Assign(z, ValueLit(2), End()))], Some(Assign(z, ValueLit(3), End())), Return(ValueRef(z), false)))
 printCode(blockBranch)
 prop(defs, Ctx.empty, Cache.empty, blockBranch)
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 3 arguments, got 4
+//│ ║  l.609: 	prop(defs, Ctx.empty, Cache.empty, blockBranch)
+//│ ╙──       	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ > let z
 //│ > if 1 is
 //│ >   1 then
@@ -647,13 +620,19 @@ prop(defs, Ctx.empty, Cache.empty, blockBranch)
 //│ >     z = 2
 //│ >   else z = 3
 //│ > z
-//│ = [
-//│   Scoped(
-//│     [Symbol("z")],
-//│     Assign(Symbol("z"), ValueLit(1), Return(ValueLit(1), false))
-//│   ),
-//│   {Lit(1)}
-//│ ]
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
+//│ ═══[RUNTIME ERROR] Error: match error
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1227:38)
+//│     at REPL217:1:1322
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:922:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
 //│ blockBranch = Scoped(
 //│   [Symbol("z")],
 //│   Match(
@@ -670,6 +649,11 @@ prop(defs, Ctx.empty, Cache.empty, blockBranch)
 val earlyRetBlock = Scoped([x, y], Assign(x, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Return(ValueLit(10), false)), Arm(Lit(false), Assign(y, ValueLit(20), End()))], End(), Return(ValueRef(y), false))))
 printCode(earlyRetBlock)
 prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 3 arguments, got 4
+//│ ║  l.651: 	prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
+//│ ╙──       	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ > let x
 //│ > let y
 //│ > x = false
@@ -678,17 +662,19 @@ prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
 //│ >   false then
 //│ >     y = 20
 //│ > y
-//│ = [
-//│   Scoped(
-//│     [Symbol("x"), Symbol("y")],
-//│     Assign(
-//│       Symbol("x"),
-//│       ValueLit(false),
-//│       Assign(Symbol("y"), ValueLit(20), Return(ValueLit(20), false))
-//│     )
-//│   ),
-//│   {Lit(20)}
-//│ ]
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
+//│ ═══[RUNTIME ERROR] Error: match error
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1227:38)
+//│     at REPL221:1:1222
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:922:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
 //│ earlyRetBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
 //│   Assign(
@@ -720,12 +706,24 @@ let c = Cache.empty
 val res = prop(defs, Ctx.empty, c, nestedBlock)
 c.add("f", mkDyn(), res.0, res.1)
 c.printImps()
-//│ > let x
-//│ > let y
-//│ > x = true
-//│ > y = false
-//│ > 2
-//│ = [()]
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
+//│ ╔══[COMPILATION ERROR] Expected 3 arguments, got 4
+//│ ║  l.706: 	val res = prop(defs, Ctx.empty, c, nestedBlock)
+//│ ╙──       	              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
+//│ ═══[RUNTIME ERROR] Error: match error
+//│     at ShapeSet.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:1227:38)
+//│     at REPL225:1:1693
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:922:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
 //│ c = Cache(_, _)
 //│ nestedBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
@@ -754,24 +752,14 @@ c.printImps()
 //│     )
 //│   )
 //│ )
-//│ res = [
-//│   Scoped(
-//│     [Symbol("x"), Symbol("y")],
-//│     Assign(
-//│       Symbol("x"),
-//│       ValueLit(true),
-//│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2), false))
-//│     )
-//│   ),
-//│   {Lit(2),Lit(4)}
-//│ ]
+//│ res = undefined
 
 val2path(1)
 //│ = [End(), ValueLit(1)]
 
 val2path([1, 2, 3])
 //│ = [
-//│   Assign(Symbol("tup_1"), Tuple([Arg(None), Arg(None), Arg(None)]), End()),
+//│   Assign(Symbol("tup_1"), Tuple([Arg(End()), Arg(End()), Arg(End())]), End()),
 //│   ValueRef(Symbol("tup_1"))
 //│ ]
 
@@ -780,11 +768,11 @@ val2path(TestClass(1, 2))
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
 //│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:559:38)
-//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:540:20)
-//│     at lambda11 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:625:32)
+//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:589:38)
+//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:570:20)
+//│     at lambda11 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:573:32)
 //│     at file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:151:35
-//│     at ShapeSet.val2path (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:628:47)
+//│     at ShapeSet.val2path (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:576:47)
 //│     at REPL237:1:490
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│     at REPLServer.defaultEval (node:repl:593:22)
@@ -796,11 +784,11 @@ val2path(TestClass(1, [1,2]))
 //│ FAILURE: Unexpected runtime error
 //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:176)
 //│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:559:38)
-//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:540:20)
-//│     at lambda11 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:625:32)
+//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:589:38)
+//│     at Block.concat (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:570:20)
+//│     at lambda11 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:573:32)
 //│     at file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:151:35
-//│     at ShapeSet.val2path (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:628:47)
+//│     at ShapeSet.val2path (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:576:47)
 //│     at REPL240:1:168
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│     at REPLServer.defaultEval (node:repl:593:22)
