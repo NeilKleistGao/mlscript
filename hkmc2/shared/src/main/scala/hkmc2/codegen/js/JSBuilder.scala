@@ -26,7 +26,7 @@ abstract class CodeBuilder:
   type Context
   
 
-class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
+class JSBuilder(using TL, State, Ctx, Config) extends CodeBuilder:
   import JSBuilder.*
   
   def checkMLsCalls: Bool = false
@@ -44,8 +44,8 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
   )
   val needsParens: Set[Str] = Set(",")
   
-  val freeze = "globalThis.Object.freeze"
-  lazy val freezeDefns = if freezeDefinitions then "globalThis.Object.freeze" else ""
+  val freeze = if !config.noFreeze then "globalThis.Object.freeze" else ""
+  lazy val freezeDefns = if freezeDefinitions && !config.noFreeze then "globalThis.Object.freeze" else ""
   
   // TODO use this to avoid parens when we generate recomposed expressions later
   enum Context:
@@ -611,9 +611,13 @@ class JSBuilder(using TL, State, Ctx) extends CodeBuilder:
     case Begin(sub, thn) =>
       doc"${returningTerm(sub, endSemi = true)}${returningTerm(thn, endSemi)}"
       
-    case End("") => doc""
-    case End(msg) =>
+    case End(msg) if config.commentGeneratedCode && msg.nonEmpty =>
       doc" # /* $msg */"
+    case End(_) => doc""
+    
+    case Unreachable(msg) if config.commentGeneratedCode =>
+      doc" # /* Unreachable: $msg */"
+    case Unreachable(_) => doc""
     
     case Throw(res) =>
       doc" # throw ${result(res)}${mkSemi}"

@@ -1,105 +1,14 @@
 :js
 :staging
 
-:sjs
 staged class A(val a)
-//│ JS (unsanitized):
-//│ let A1, symbolMap;
-//│ symbolMap = globalThis.Object.freeze(new globalThis.Map());
-//│ A1 = function A(a) {
-//│   return globalThis.Object.freeze(new A.class(a));
-//│ };
-//│ (class A {
-//│   static {
-//│     A1.class = this
-//│   }
-//│   constructor(a) {
-//│     this.a = a;
-//│   }
-//│   static {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12;
-//│     tmp8 = A.ctor$_instr();
-//│     tmp9 = globalThis.Object.freeze([
-//│       "ctor$",
-//│       tmp8
-//│     ]);
-//│     tmp10 = globalThis.Object.freeze([
-//│       tmp9
-//│     ]);
-//│     tmp11 = globalThis.Object.freeze(new globalThis.Map(tmp10));
-//│     tmp12 = globalThis.Object.freeze(new SpecializeHelpers.FunCache(tmp11));
-//│     this.cache$A = tmp12;
-//│     tmp5 = globalThis.Object.freeze([
-//│       "ctor$",
-//│       A.ctor$_gen
-//│     ]);
-//│     tmp6 = globalThis.Object.freeze([
-//│       tmp5
-//│     ]);
-//│     tmp7 = globalThis.Object.freeze(new globalThis.Map(tmp6));
-//│     this.generatorMap$A = tmp7;
-//│     tmp = globalThis.Object.freeze({
-//│       indent: true
-//│     });
-//│     tmp1 = runtime.safeCall(A.cache$A.toString());
-//│     tmp2 = runtime.safeCall(globalThis.console.log(tmp1));
-//│     tmp3 = runtime.safeCall(globalThis.console.log(A.generatorMap$A));
-//│     tmp4 = runtime.safeCall(globalThis.console.log(symbolMap));
-//│   }
-//│   static ctor$_instr() {
-//│     let end, sym, tmp, tmp1, tmp2, test, tmp3, tmp4, sym1, sym2, var1, tmp5, tmp6, sym3, tmp7, tmp8, sym4, tmp9;
-//│     end = globalThis.Object.freeze(new Block.End());
-//│     sym = globalThis.Object.freeze(new Block.Symbol("a"));
-//│     tmp = globalThis.Object.freeze([
-//│       sym
-//│     ]);
-//│     tmp1 = globalThis.Object.freeze(new option.Some(tmp));
-//│     tmp2 = globalThis.Object.freeze([]);
-//│     test = globalThis.Object.freeze(new Block.ClassSymbol("A1", A1, 0, tmp1, tmp2, 0));
-//│     tmp3 = Block.checkMap(symbolMap, test);
-//│     tmp4 = globalThis.Object.freeze(new option.Some(tmp3));
-//│     sym1 = globalThis.Object.freeze(new Block.Symbol("a"));
-//│     sym2 = globalThis.Object.freeze(new Block.Symbol("a"));
-//│     var1 = globalThis.Object.freeze(new Block.ValueRef(sym2));
-//│     tmp5 = globalThis.Object.freeze(new Block.ValDefn(tmp4, sym1, var1));
-//│     tmp6 = globalThis.Object.freeze(new Block.Define(tmp5, end));
-//│     sym3 = globalThis.Object.freeze(new Block.Symbol("a"));
-//│     tmp7 = globalThis.Object.freeze([
-//│       sym3
-//│     ]);
-//│     tmp8 = globalThis.Object.freeze([
-//│       tmp7
-//│     ]);
-//│     sym4 = globalThis.Object.freeze(new Block.Symbol("ctor$"));
-//│     tmp9 = globalThis.Object.freeze(new Block.FunDefn(sym4, tmp8, tmp6));
-//│     return tmp9
-//│   } 
-//│   static ctor$_gen(cls) {
-//│     return (a) => {
-//│       let tmp, tmp1, tmp2, tmp3, tmp4;
-//│       tmp = A.cache$A.getFun("ctor$");
-//│       tmp1 = globalThis.Object.freeze([
-//│         cls
-//│       ]);
-//│       tmp2 = globalThis.Object.freeze([
-//│         a
-//│       ]);
-//│       tmp3 = globalThis.Object.freeze([
-//│         tmp1,
-//│         tmp2
-//│       ]);
-//│       tmp4 = SpecializeHelpers.specialize(A.cache$A, "ctor$", A.ctor$_instr, tmp3);
-//│       return tmp4
-//│     }
-//│   }
-//│   toString() { return runtime.render(this); }
-//│   static [definitionMetadata] = ["class", "A", ["a"]]; 
-//│ });
 //│ > fun ctor_(a) =
 //│ >   A1.a = a
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
-//│ >   'ClassSymbol("A1", fun A { class: class A }, 0, Some([Symbol("a")]), [], _)' => ClassSymbol {
+//│ >   [Function: A] {
+//│ >     class: [class A] { 'cache$A': [FunCache], 'generatorMap$A': [Map] }
+//│ >   } => ClassSymbol {
 //│ >     name: 'A1',
 //│ >     value: [Function: A] { class: [Function] },
 //│ >     moduleValue: 0,
@@ -108,80 +17,37 @@ staged class A(val a)
 //│ >   }
 //│ > }
 
-:sir
+staged module C with
+  class I
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
+//│ > Map(1) {
+//│ >   [class I] { Symbol(mlscript.definitionMetadata): [ 'class', 'I' ] } => ClassSymbol {
+//│ >     name: 'I',
+//│ >     value: [class I] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
+// :sjs
+class C
+staged module M with
+  fun f() = C
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [class C2] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [class C2] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
+// :sir
 staged class C with
   fun f() = 1
-//│ Lowered:
-//│ let C⁰;
-//│ define C⁰ as staged class C¹ {
-//│   method f⁰ = fun () {
-//│     return 1
-//│   }
-//│ } {}
-//│ module C² {
-//│   constructor {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13, tmp14;
-//│     set tmp8 = C².ctor$_instr﹖();
-//│     set tmp9 = ["ctor$", tmp8];
-//│     set tmp10 = C².f_instr﹖();
-//│     set tmp11 = ["f", tmp10];
-//│     set tmp12 = [tmp9, tmp11];
-//│     set tmp13 = new globalThis⁰.Map﹖(tmp12);
-//│     set tmp14 = new SpecializeHelpers⁰.FunCache﹖(tmp13);
-//│     define cache$C⁰ as val cache$C¹ = tmp14;
-//│     set tmp4 = ["ctor$", C².ctor$_gen﹖];
-//│     set tmp5 = ["f", C².f_gen﹖];
-//│     set tmp6 = [tmp4, tmp5];
-//│     set tmp7 = new globalThis⁰.Map﹖(tmp6);
-//│     define generatorMap$C⁰ as val generatorMap$C¹ = tmp7;
-//│     set tmp = { "indent": true };
-//│     set tmp1 = C².cache$C﹖.toString﹖();
-//│     set tmp2 = globalThis⁰.console﹖.log﹖(tmp1);
-//│     set tmp3 = globalThis⁰.console﹖.log﹖(C².generatorMap$C﹖);
-//│     end
-//│   }
-//│   method ctor$_instr⁰ = fun () {
-//│     let end, tmp, tmp1, sym, tmp2;
-//│     set end = new Block⁰.End﹖();
-//│     set tmp = [];
-//│     set tmp1 = [tmp];
-//│     set sym = new Block⁰.Symbol﹖("ctor$");
-//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, end);
-//│     return tmp2
-//│   }
-//│   method ctor$_gen⁰ = fun (cls)() {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4;
-//│     set tmp = C².cache$C﹖.getFun﹖("ctor$");
-//│     set tmp1 = [cls];
-//│     set tmp2 = [];
-//│     set tmp3 = [tmp1, tmp2];
-//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, "ctor$", C².ctor$_instr﹖, tmp3);
-//│     return tmp4
-//│   }
-//│   method f_instr⁰ = fun () {
-//│     let lit, return1, tmp, tmp1, sym, tmp2;
-//│     set lit = new Block⁰.ValueLit﹖(1);
-//│     set return1 = new Block⁰.Return﹖(lit, false);
-//│     set tmp = [];
-//│     set tmp1 = [tmp];
-//│     set sym = new Block⁰.Symbol﹖("f");
-//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, return1);
-//│     return tmp2
-//│   }
-//│   method f_gen⁰ = fun (cls1)() {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4;
-//│     set tmp = C².cache$C﹖.getFun﹖("f");
-//│     set tmp1 = [cls1];
-//│     set tmp2 = [];
-//│     set tmp3 = [tmp1, tmp2];
-//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, "f", C².f_instr﹖, tmp3);
-//│     return tmp4
-//│   }
-//│ };
-//│ end
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :e
@@ -195,12 +61,11 @@ staged class B(val x) with
 staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
-//│ > fun ctor_(x) =
-//│ >   B1.x = x
-//│ > fun f(y) = +(B1.x, y)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
-//│ >   'ClassSymbol("B1", fun B { class: class B }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >   [Function: B] {
+//│ >     class: [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] }
+//│ >   } => ClassSymbol {
 //│ >     name: 'B1',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     moduleValue: 0,
@@ -208,24 +73,27 @@ staged class D(val x) extends B(x+1) with
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor_(x) =
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   tmp1 = +(x, 1)
-//│ >   tmp = super(tmp1)
-//│ >   D1.x = x
-//│ >   D1.y = 1
-//│ > fun f() = 42
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
-//│ >   'ClassSymbol("B1", fun B { class: class B }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >   [Function: B] {
+//│ >     class: [class B] {
+//│ >       'cache$B': [FunCache],
+//│ >       'generatorMap$B': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   } => ClassSymbol {
 //│ >     name: 'B1',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     moduleValue: 0,
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   'ClassSymbol("D1", fun D { class: class D }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >   [Function: D] {
+//│ >     class: [class D extends B] {
+//│ >       'cache$D': [FunCache],
+//│ >       'generatorMap$D': [Map]
+//│ >     }
+//│ >   } => ClassSymbol {
 //│ >     name: 'D1',
 //│ >     value: [Function: D] { class: [Function] },
 //│ >     moduleValue: 0,
