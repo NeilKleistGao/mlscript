@@ -76,8 +76,8 @@ staged module Expressions with
 //│ >   'match2' => [Function: match2_gen]
 //│ > }
 //│ > Map(2) {
-//│ >   'VirtualClassSymbol("Bool")' => VirtualClassSymbol { name: 'Bool' },
-//│ >   'VirtualClassSymbol("Int")' => VirtualClassSymbol { name: 'Int' }
+//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
+//│ >   'Int' => VirtualClassSymbol { name: 'Int' }
 //│ > }
 //│ x = [1, 2, 3]
 
@@ -104,30 +104,49 @@ staged module ClassInstrumentation with
 //│ >   'app2' => [Function: app2_gen]
 //│ > }
 //│ > Map(4) {
-//│ >   'ClassSymbol("NoArg", undefined, 0, None, [], _)' => ClassSymbol {
+//│ >   [class NoArg] {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'NoArg' ]
+//│ >   } => ClassSymbol {
 //│ >     name: 'NoArg',
-//│ >     value: undefined,
+//│ >     value: [class NoArg] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     moduleValue: 0,
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
 //│ >   },
-//│ >   'ClassSymbol("Inside", undefined, 0, Some([Symbol("a"), Symbol("b")]), [], _)' => ClassSymbol {
+//│ >   [Function: Inside] {
+//│ >     class: [class Inside] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
 //│ >     name: 'Inside',
-//│ >     value: undefined,
+//│ >     value: [Function: Inside] { class: [Function] },
 //│ >     moduleValue: 0,
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   'ClassSymbol("Outside", fun Outside { class: class Outside }, 0, Some([Symbol("a")]), [], _)' => ClassSymbol {
+//│ >   [Function: Outside] {
+//│ >     class: [class Outside] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
 //│ >     name: 'Outside',
 //│ >     value: [Function: Outside] { class: [Function] },
 //│ >     moduleValue: 0,
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   'ModuleSymbol("ClassInstrumentation", class ClassInstrumentation)' => ModuleSymbol {
+//│ >   [class ClassInstrumentation] {
+//│ >     Inside: [Function: Inside] { class: [Function] },
+//│ >     NoArg: [class NoArg] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     'cache$ClassInstrumentation': FunCache { cache: [Map] },
+//│ >     'generatorMap$ClassInstrumentation': Map(5) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'inst1' => [Function: inst1_gen],
+//│ >       'inst2' => [Function: inst2_gen],
+//│ >       'app1' => [Function: app1_gen],
+//│ >       'app2' => [Function: app2_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
 //│ >     name: 'ClassInstrumentation',
 //│ >     value: [class ClassInstrumentation] {
+//│ >       Inside: [Function],
+//│ >       NoArg: [Function],
 //│ >       'cache$ClassInstrumentation': [FunCache],
 //│ >       'generatorMap$ClassInstrumentation': [Map]
 //│ >     }
@@ -146,7 +165,6 @@ staged module CallSubst with
 //│ >   ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(0) {}
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
@@ -157,13 +175,20 @@ staged module CallSubst with
 //│ >   'call' => [Function: call_gen]
 //│ > }
 //│ > Map(2) {
-//│ >   'ModuleSymbol("Nonstaged", class Nonstaged)' => ModuleSymbol {
+//│ >   [class Nonstaged] {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Nonstaged' ]
+//│ >   } => ModuleSymbol {
 //│ >     name: 'Nonstaged',
 //│ >     value: [class Nonstaged] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   },
-//│ >   'ModuleSymbol("Staged", class Staged { cache$Staged: fun ctor_() =\n' +
-//│ >     '  ()\n' +
-//│ >     'fun f() = 1, generatorMap$Staged: Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen} })' => ModuleSymbol {
+//│ >   [class Staged] {
+//│ >     'cache$Staged': FunCache { cache: [Map] },
+//│ >     'generatorMap$Staged': Map(2) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen]
+//│ >     },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Staged' ]
+//│ >   } => ModuleSymbol {
 //│ >     name: 'Staged',
 //│ >     value: [class Staged] {
 //│ >       'cache$Staged': [FunCache],
@@ -195,7 +220,9 @@ staged module Arguments with
 //│ >   'g' => [Function: g_gen]
 //│ > }
 //│ > Map(1) {
-//│ >   'ClassSymbol("Function$", class Function$, 0, None, [], _)' => ClassSymbol {
+//│ >   [class Function$1 extends Function] {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
+//│ >   } => ClassSymbol {
 //│ >     name: 'Function$',
 //│ >     value: [class Function$1 extends Function] {
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
@@ -236,7 +263,14 @@ staged module OtherBlocks with
 //│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
 //│ > }
 //│ > Map(1) {
-//│ >   'ModuleSymbol("OtherBlocks", class OtherBlocks)' => ModuleSymbol {
+//│ >   [class OtherBlocks] {
+//│ >     'cache$OtherBlocks': FunCache { cache: [Map] },
+//│ >     'generatorMap$OtherBlocks': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'scope' => [Function: scope_gen],
+//│ >       'breakAndLabel' => [Function: breakAndLabel_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
 //│ >     name: 'OtherBlocks',
 //│ >     value: [class OtherBlocks] {
 //│ >       'cache$OtherBlocks': [FunCache],
@@ -251,15 +285,16 @@ staged module ClassDefs with
 //│ >   class A
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
-//│ >   'ClassSymbol("A", undefined, 0, None, [], _)' => ClassSymbol {
+//│ >   [class A] { Symbol(mlscript.definitionMetadata): [ 'class', 'A' ] } => ClassSymbol {
 //│ >     name: 'A',
-//│ >     value: undefined,
+//│ >     value: [class A] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     moduleValue: 0,
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
 //│ >   }
 //│ > }
 
+// :sjs
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
@@ -273,22 +308,24 @@ staged module ClassFunctions with
 //│ >     fun g() = InnerClass.f()
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(2) {
-//│ >   'ClassSymbol("InnerClass", undefined, 0, Some([]), [], _)' => ClassSymbol {
+//│ >   [Function: InnerClass] {
+//│ >     class: [class InnerClass] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
 //│ >     name: 'InnerClass',
-//│ >     value: undefined,
+//│ >     value: [Function: InnerClass] { class: [Function] },
 //│ >     moduleValue: 0,
 //│ >     paramsOpt: Some { value: [] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   'ModuleSymbol("Arguments", class Arguments { cache$Arguments: fun ctor_() =\n' +
-//│ >     '  ()\n' +
-//│ >     'fun f(x) =\n' +
-//│ >     '  x = 1\n' +
-//│ >     '  x\n' +
-//│ >     'fun g(x) =\n' +
-//│ >     '  let tmp\n' +
-//│ >     '  tmp = new Function_()\n' +
-//│ >     '  tmp, generatorMap$Arguments: Map(3) {"ctor$" => fun ctor$_gen, "f" => fun f_gen, "g" => fun g_gen} })' => ModuleSymbol {
+//│ >   [class Arguments] {
+//│ >     'cache$Arguments': FunCache { cache: [Map] },
+//│ >     'generatorMap$Arguments': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen],
+//│ >       'g' => [Function: g_gen]
+//│ >     },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Arguments' ]
+//│ >   } => ModuleSymbol {
 //│ >     name: 'Arguments',
 //│ >     value: [class Arguments] {
 //│ >       'cache$Arguments': [FunCache],
@@ -324,18 +361,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.322: 	    let x = 1
+//│ ║  l.359: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.322: 	    let x = 1
+//│ ║  l.359: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.322: 	    let x = 1
+//│ ║  l.359: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.322: 	    let x = 1
+//│ ║  l.359: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -364,7 +401,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.364: 	  fun g() = {1 : 2}
+//│ ║  l.401: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -376,11 +413,11 @@ staged module Spread with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() =
+//│ >   let element0_
 //│ >   let scrut
 //│ >   let tmp
 //│ >   let x
 //│ >   let middleElements
-//│ >   let element0_
 //│ >   tmp = [1, 2]
 //│ >   scrut = [1, tmp]
 //│ >   if scrut is
@@ -393,4 +430,6 @@ staged module Spread with
 //│ >           x
 //│ >         else 0
 //│ >     else 0
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }

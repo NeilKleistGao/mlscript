@@ -3,10 +3,12 @@
 
 staged class A(val a)
 //│ > fun ctor_(a) =
-//│ >   A1.a = a
+//│ >   set A1.a = a
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
-//│ >   'ClassSymbol("A1", fun A { class: class A }, 0, Some([Symbol("a")]), [], _)' => ClassSymbol {
+//│ >   [Function: A] {
+//│ >     class: [class A] { 'cache$A': [FunCache], 'generatorMap$A': [Map] }
+//│ >   } => ClassSymbol {
 //│ >     name: 'A1',
 //│ >     value: [Function: A] { class: [Function] },
 //│ >     moduleValue: 0,
@@ -15,77 +17,42 @@ staged class A(val a)
 //│ >   }
 //│ > }
 
-:sir
+staged module C with
+  class I
+//│ > fun ctor_() =
+//│ >   class I
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
+//│ > Map(1) {
+//│ >   [class I] { Symbol(mlscript.definitionMetadata): [ 'class', 'I' ] } => ClassSymbol {
+//│ >     name: 'I',
+//│ >     value: [class I] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
+// :sjs
+class C
+staged module M with
+  fun f() = C
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = C
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [class C2] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [class C2] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
+// :sir
 staged class C with
   fun f() = 1
-//│ Lowered:
-//│ let C⁰;
-//│ define C⁰ as staged class C¹ {
-//│   method f⁰ = fun () {
-//│     return 1
-//│   }
-//│ } {}
-//│ module C² {
-//│   constructor {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13, tmp14;
-//│     set tmp8 = C².ctor$_instr﹖();
-//│     set tmp9 = ["ctor$", tmp8];
-//│     set tmp10 = C².f_instr﹖();
-//│     set tmp11 = ["f", tmp10];
-//│     set tmp12 = [tmp9, tmp11];
-//│     set tmp13 = new globalThis⁰.Map﹖(tmp12);
-//│     set tmp14 = new SpecializeHelpers⁰.FunCache﹖(tmp13);
-//│     define cache$C⁰ as val cache$C¹ = tmp14;
-//│     set tmp4 = ["ctor$", C².ctor$_gen﹖];
-//│     set tmp5 = ["f", C².f_gen﹖];
-//│     set tmp6 = [tmp4, tmp5];
-//│     set tmp7 = new globalThis⁰.Map﹖(tmp6);
-//│     define generatorMap$C⁰ as val generatorMap$C¹ = tmp7;
-//│     set tmp = { "indent": true };
-//│     set tmp1 = C².cache$C﹖.toString﹖();
-//│     set tmp2 = globalThis⁰.console﹖.log﹖(tmp1);
-//│     set tmp3 = globalThis⁰.console﹖.log﹖(C².generatorMap$C﹖);
-//│     end
-//│   }
-//│   method ctor$_instr⁰ = fun () {
-//│     let end, tmp, tmp1, sym, tmp2;
-//│     set end = new Block⁰.End﹖();
-//│     set tmp = [];
-//│     set tmp1 = [tmp];
-//│     set sym = new Block⁰.Symbol﹖("ctor$");
-//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, end);
-//│     return tmp2
-//│   }
-//│   method ctor$_gen⁰ = fun (cls)() {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4;
-//│     set tmp = C².cache$C﹖.getFun﹖("ctor$");
-//│     set tmp1 = [cls];
-//│     set tmp2 = [];
-//│     set tmp3 = [tmp1, tmp2];
-//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, "ctor$", C².ctor$_instr﹖, tmp3);
-//│     return tmp4
-//│   }
-//│   method f_instr⁰ = fun () {
-//│     let lit, return1, tmp, tmp1, sym, tmp2;
-//│     set lit = new Block⁰.ValueLit﹖(1);
-//│     set return1 = new Block⁰.Return﹖(lit, false);
-//│     set tmp = [];
-//│     set tmp1 = [tmp];
-//│     set sym = new Block⁰.Symbol﹖("f");
-//│     set tmp2 = new Block⁰.FunDefn﹖(sym, tmp1, return1);
-//│     return tmp2
-//│   }
-//│   method f_gen⁰ = fun (cls1)() {
-//│     let tmp, tmp1, tmp2, tmp3, tmp4;
-//│     set tmp = C².cache$C﹖.getFun﹖("f");
-//│     set tmp1 = [cls1];
-//│     set tmp2 = [];
-//│     set tmp3 = [tmp1, tmp2];
-//│     set tmp4 = SpecializeHelpers⁰.specialize﹖(C².cache$C﹖, "f", C².f_instr﹖, tmp3);
-//│     return tmp4
-//│   }
-//│ };
-//│ end
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
@@ -94,7 +61,7 @@ staged class C with
 :e
 staged class C(x)
 //│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
-//│ ║  l.95: 	staged class C(x)
+//│ ║  l.91: 	staged class C(x)
 //│ ╙──      	       ^^^^^^^^^^
 
 staged class B(val x) with
@@ -103,11 +70,13 @@ staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
 //│ > fun ctor_(x) =
-//│ >   B1.x = x
+//│ >   set B1.x = x
 //│ > fun f(y) = +(B1.x, y)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
-//│ >   'ClassSymbol("B1", fun B { class: class B }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >   [Function: B] {
+//│ >     class: [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] }
+//│ >   } => ClassSymbol {
 //│ >     name: 'B1',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     moduleValue: 0,
@@ -117,22 +86,30 @@ staged class D(val x) extends B(x+1) with
 //│ > }
 //│ > fun ctor_(x) =
 //│ >   let tmp
-//│ >   let tmp1
-//│ >   tmp1 = +(x, 1)
-//│ >   tmp = super(tmp1)
-//│ >   D1.x = x
-//│ >   D1.y = 1
+//│ >   tmp = +(x, 1)
+//│ >   super(tmp)
 //│ > fun f() = 42
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
-//│ >   'ClassSymbol("B1", fun B { class: class B }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >   [Function: B] {
+//│ >     class: [class B] {
+//│ >       'cache$B': [FunCache],
+//│ >       'generatorMap$B': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   } => ClassSymbol {
 //│ >     name: 'B1',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     moduleValue: 0,
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   'ClassSymbol("D1", fun D { class: class D }, 0, Some([Symbol("x")]), [], _)' => ClassSymbol {
+//│ >   [Function: D] {
+//│ >     class: [class D extends B] {
+//│ >       'cache$D': [FunCache],
+//│ >       'generatorMap$D': [Map]
+//│ >     }
+//│ >   } => ClassSymbol {
 //│ >     name: 'D1',
 //│ >     value: [Function: D] { class: [Function] },
 //│ >     moduleValue: 0,

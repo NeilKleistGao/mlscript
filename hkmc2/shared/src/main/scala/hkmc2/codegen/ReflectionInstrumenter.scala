@@ -41,10 +41,10 @@ def asArg(x: ArgWrappable): Arg =
 // null and undefined are missing
 def toValue(lit: Str | Int | BigDecimal | Bool): Value =
   val l = lit match
-  case i: Int => Tree.IntLit(i)
-  case b: Bool => Tree.BoolLit(b)
-  case s: Str => Tree.StrLit(s)
-  case n: BigDecimal => Tree.DecLit(n)
+    case i: Int => Tree.IntLit(i)
+    case b: Bool => Tree.BoolLit(b)
+    case s: Str => Tree.StrLit(s)
+    case n: BigDecimal => Tree.DecLit(n)
   Value.Lit(l)
 
 // transform Block to Block IR so that it can be instrumented in mlscript
@@ -101,10 +101,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   // if sym is ClassSymbol, we may need pOpt to link to the path pointing to the value of the symbol
   def transformSymbol(sym: Symbol, pOpt: Option[Path] = N, symName: Str = "sym")(k: Path => Block): Block =
-    def checkMap(p: Path) =
+    def checkMap(key: Path, p: Path) =
       symbolMapUsed = true
-      blockCall("checkMap", Ls(symbolMapSym, p))(k)
-    sym match  
+      blockCall("checkMap", Ls(symbolMapSym, key, p))(k)
+    sym match
       case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
         transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
       // avoid name collision
@@ -112,7 +112,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val name = scope.allocateOrGetName(sym)
         blockCtor("Symbol", Ls(toValue(name)), symName)(k)
       case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
-        blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap)
+        blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap(toValue(sym.nme), _))
       case baseSym: BaseTypeSymbol =>
         val name = scope.allocateOrGetName(sym)
         // FIXME: we want the parent path for subtyping, but it is only available for ClsLikeDefn, not ClassDef
@@ -123,17 +123,17 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
             return End()
 
-        val path: ArgWrappable = pOpt.getOrElse(owner match
+        val path = pOpt.getOrElse(owner match
           case S(owner) => owner.asPath.selSN(sym.nme)
-          case N => bsym)
+          case N => bsym.asPath)
         baseSym match
           case _: ClassSymbol =>
             transformParamsOpt(paramsOpt): paramsOpt =>
               auxParams.map(transformParamList).collectApply: auxParams =>
                 tuple(auxParams): auxParams =>
-                  blockCtor("ClassSymbol", Ls(toValue(name), path, toValue(0), paramsOpt, auxParams, toValue(0)), symName)(checkMap)
+                  blockCtor("ClassSymbol", Ls(toValue(name), path, toValue(0), paramsOpt, auxParams, toValue(0)), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
-            blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap)
+            blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
       case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block = xOpt match
@@ -329,7 +329,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
     f.copy(sym = stageSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
 
-  override def applyBlock(b: Block): Block = super.applyBlock(b) match
+  override def applyBlock(b: Block): Block = b match
     // TODO: assume staged classes have no companion module
     // find modules with staged annotation, or classes without companion module
     case Define(defn: ClsLikeDefn, rest)
@@ -421,12 +421,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       // used for staging classes inside modules
       val newCompanion = companion.copy(
         methods = companion.methods ++ helperMethods.flatten,
-        ctor = cacheDecl(generatorMapDecl(debugCont(companion.ctor))),
+        ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
         publicFields = companion.publicFields
       )
       val newClsLikeDefn = defn.copy(companion = S(newCompanion))
-      Define(newClsLikeDefn, rest)
-    case b => b
+      Define(newClsLikeDefn, applyBlock(rest))
+    case b => super.applyBlock(b)
 
   def mkDefnMap(b: Block): Unit =
     val transformer = new BlockTraverser:

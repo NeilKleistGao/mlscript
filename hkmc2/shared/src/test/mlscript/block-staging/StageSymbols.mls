@@ -10,6 +10,15 @@ staged module M with
 //│ >     fun f() = 1
 //│ >     fun g() = C.f()
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
+//│ > Map(1) {
+//│ >   [class C] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [class C] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   }
+//│ > }
 
 staged module A with
   fun f() = 1
@@ -51,6 +60,44 @@ staged module D with
 //│ >   'f' => [Function: f_gen],
 //│ >   'matching' => [Function: matching_gen]
 //│ > }
+//│ > Map(5) {
+//│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ClassSymbol {
+//│ >     name: 'E',
+//│ >     value: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class A] {
+//│ >     'cache$A': FunCache { cache: [Map] },
+//│ >     'generatorMap$A': Map(2) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen]
+//│ >     },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'A' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'A',
+//│ >     value: [class A] {
+//│ >       'cache$A': [FunCache],
+//│ >       'generatorMap$A': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [class B] { Symbol(mlscript.definitionMetadata): [ 'class', 'B' ] } => ModuleSymbol {
+//│ >     name: 'B',
+//│ >     value: [class B] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   },
+//│ >   'Int' => VirtualClassSymbol { name: 'Int' },
+//│ >   [Function: C] {
+//│ >     class: [class C1] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: [ [Array], [Array] ]
+//│ >   }
+//│ > }
 
 module A with
   module B with
@@ -68,13 +115,69 @@ staged module M with
 //│ >   __no__symbol__ = A.B.C(1)
 //│ >   M.E
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(5) {
+//│ >   [class E1] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ClassSymbol {
+//│ >     name: 'E',
+//│ >     value: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class A2] {
+//│ >     B: [class B2] {
+//│ >       C: [Function],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'A' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'A',
+//│ >     value: [class A2] {
+//│ >       B: [Function],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [class B2] {
+//│ >     C: [Function: C] { class: [Function] },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'B' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'B',
+//│ >     value: [class B2] {
+//│ >       C: [Function],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [Function: C] {
+//│ >     class: [class C3] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class M2] {
+//│ >     E: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     'cache$M': FunCache { cache: [Map] },
+//│ >     'generatorMap$M': Map(2) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'M',
+//│ >     value: [class M2] {
+//│ >       E: [Function],
+//│ >       'cache$M': [FunCache],
+//│ >       'generatorMap$M': [Map]
+//│ >     }
+//│ >   }
+//│ > }
 
 :e
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.74: 	  fun g()() = 1
-//│ ╙──      	  ^^^^^^^^^^^^^
+//│ ║  l.177: 	  fun g()() = 1
+//│ ╙──       	  ^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun g()() = 1
@@ -98,4 +201,28 @@ staged module M with
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'g' => [Function: g_gen]
+//│ > }
+//│ > Map(2) {
+//│ >   [class Function$1 extends Function] {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
+//│ >   } => ClassSymbol {
+//│ >     name: 'Function$',
+//│ >     value: [class Function$1 extends Function] {
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class Function$ extends Function] {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
+//│ >   } => ClassSymbol {
+//│ >     name: 'Function$1',
+//│ >     value: [class Function$ extends Function] {
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     },
+//│ >     moduleValue: 0,
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   }
 //│ > }
