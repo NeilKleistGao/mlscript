@@ -361,13 +361,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val genSymName = f.sym.nme + "_gen"
         val sym = BlockMemberSymbol(genSymName, Nil, false)
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
-        
-        val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
-        val body = call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
-          params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
-            tuple(tups): args =>
-              call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
-                Return(res, false)
+
+        // refresh parameters
+        val funParams = f.params.map(ps => PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme))))))
+        val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
+        val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
+          tuple(tups): args =>
+            call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
+              Return(res, false)
         FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false)
 
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false)
