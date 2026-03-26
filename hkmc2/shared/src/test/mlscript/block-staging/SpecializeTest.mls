@@ -1,0 +1,45 @@
+:js
+:staging
+
+import "../../mlscript-compile/Shape.mls"
+
+open Shape
+
+staged module M with  
+  fun f(x) =
+    let y = x * 2
+    y
+
+:e
+M.f_gen(Dyn())
+//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'f_gen'
+//│ ║  l.14: 	M.f_gen(Dyn())
+//│ ╙──      	 ^^^^^^
+//│ = [Symbol("f_Dyn_28_29"), [[Dyn()]]]
+
+:e
+M.f_gen(Lit(2))
+//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'f_gen'
+//│ ║  l.21: 	M.f_gen(Lit(2))
+//│ ╙──      	 ^^^^^^
+//│ = [Symbol("f_Lit_282_29"), [[Lit(2)]]]
+
+:e
+print(M."cache$M")
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
+//│ ║  l.28: 	print(M."cache$M")
+//│ ╙──      	      ^
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(x) =
+//│ >   let y
+//│ >   y = *(x, 2)
+//│ >   y
+//│ > fun f_Dyn_28_29(x) =
+//│ >   let y
+//│ >   y = *(x, 2)
+//│ >   y
+//│ > fun f_Lit_282_29(x) =
+//│ >   let y
+//│ >   y = *(x, 2)
+//│ >   y

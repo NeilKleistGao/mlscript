@@ -166,6 +166,7 @@ fun showDefn(d: Defn): Str =
     ClsLikeDefn(sym, methods, _) then
       "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams).join("")
         + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
+    // TODO: used to represent assignments in constructors, which still need some adjustment
     ValDefn(owner, sym, rhs) then
       (if owner is Some(owner) then showSymbol(owner) else "")
         + "." + showSymbol(sym) + " = " + showPath(rhs)

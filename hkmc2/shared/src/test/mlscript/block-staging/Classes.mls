@@ -1,6 +1,24 @@
 :js
 :staging
 
+import "../../mlscript-compile/Block.mls"
+
+class C with
+  fun call(x) = x + 1
+staged module M with
+  fun f(x) = x.C#call(10)
+
+// TODO: copy C# annotation to Block IR
+:e
+print(M."cache$M")
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
+//│ ║  l.13: 	print(M."cache$M")
+//│ ╙──      	      ^
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(x) = x.call(10)
+
+
 staged class A(val a)
 //│ > Map(1) {
 //│ >   [Function: A] {
@@ -29,9 +47,9 @@ class C
 staged module M with
   fun f() = C
 //│ > Map(1) {
-//│ >   [class C2] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ClassSymbol {
+//│ >   [class C4] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ClassSymbol {
 //│ >     name: 'C',
-//│ >     value: [class C2] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     value: [class C4] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
 //│ >   }
@@ -44,7 +62,7 @@ staged class C with
 :e
 staged class C(x)
 //│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
-//│ ║  l.81: 	staged class C(x)
+//│ ║  l.63: 	staged class C(x)
 //│ ╙──      	       ^^^^^^^^^^
 
 staged class B(val x) with
@@ -84,6 +102,49 @@ staged class D(val x) extends B(x+1) with
 //│ >     name: 'D1',
 //│ >     value: [Function: D] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
+class Unstaged
+staged class Staged(val x) with
+ fun inner() = 1
+staged module M with
+  fun f() =
+    Unstaged;
+    Staged
+//│ > Map(1) {
+//│ >   [Function: Staged] {
+//│ >     class: [class Staged] {
+//│ >       'cache$Staged': [FunCache],
+//│ >       'generatorMap$Staged': [Map]
+//│ >     }
+//│ >   } => ClassSymbol {
+//│ >     name: 'Staged1',
+//│ >     value: [Function: Staged] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+//│ > Map(2) {
+//│ >   [Function: Staged] {
+//│ >     class: [class Staged] {
+//│ >       'cache$Staged': [FunCache],
+//│ >       'generatorMap$Staged': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   } => ClassSymbol {
+//│ >     name: 'Staged1',
+//│ >     value: [Function: Staged] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class Unstaged] {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Unstaged' ]
+//│ >   } => ClassSymbol {
+//│ >     name: 'Unstaged',
+//│ >     value: [class Unstaged] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     paramsOpt: None {},
 //│ >     auxParams: []
 //│ >   }
 //│ > }
