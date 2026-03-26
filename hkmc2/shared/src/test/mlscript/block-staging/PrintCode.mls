@@ -33,16 +33,14 @@ printCode(DynSelect(ValueRef(Symbol("p")), ValueRef(Symbol("field")), false))
 
 class B
 class D(val x)(y) extends B
-let bSym = ClassSymbol("B", B, undefined, None, [], undefined)
-let dSym = ClassSymbol("A", D, undefined, Some([Symbol("x")]), [[Symbol("y")]], B)
-//│ bSym = ClassSymbol("B", class B, undefined, None, [], _)
+let bSym = ClassSymbol("B", B, None, [])
+let dSym = ClassSymbol("A", D, Some([Symbol("x")]), [[Symbol("y")]])
+//│ bSym = ClassSymbol("B", class B, None, [])
 //│ dSym = ClassSymbol(
 //│   "A",
 //│   fun D { class: class D },
-//│   undefined,
 //│   Some([Symbol("x")]),
-//│   [[Symbol("y")]],
-//│   _
+//│   [[Symbol("y")]]
 //│ )
 
 printCode(Call(ValueRef(Symbol("f")), [Arg(ValueLit(3))]))
@@ -56,8 +54,8 @@ let f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false))
 //│ f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false))
 
 printCode(f)
-printCode(ClsLikeDefn(dSym, [f], None))
-printCode(ClsLikeDefn(bSym, [], None))
+printCode(ClsLikeDefn(dSym, [f], []))
+printCode(ClsLikeDefn(bSym, [], []))
 //│ > fun f(x) = 1
 //│ > class A(x)(y) with 
 //│ >   fun f(x) = 1
