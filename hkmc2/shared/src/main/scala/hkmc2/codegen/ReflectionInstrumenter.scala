@@ -362,7 +362,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val sym = BlockMemberSymbol(genSymName, Nil, false)
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
         
-        val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
+        val params = (if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: Nil else Nil) ::: f.params.map { pl =>
+          PlainParamList(pl.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
+        }
         val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
           tuple(tups): args =>
             call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
