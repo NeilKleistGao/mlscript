@@ -200,6 +200,7 @@ fun specialize(cache, funName, dflt, shapes) =
       defn is FunDefn(Symbol(_), ps, body) then
         let ctx = Ctx.empty
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), shapes.(i).(j))))
+        cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
         let res = prop(ctx, body)
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, res.0), res.1])
         [entry.0.sym, entry.1]
