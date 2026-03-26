@@ -24,16 +24,6 @@ staged module Expressions with
       [1, 2] then 2
       [a, _] then 3
       else 0
-//│ > Map(8) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'lit' => [Function: lit_gen],
-//│ >   'assign' => [Function: assign_gen],
-//│ >   'tup1' => [Function: tup1_gen],
-//│ >   'tup2' => [Function: tup2_gen],
-//│ >   'dynsel' => [Function: dynsel_gen],
-//│ >   'match1' => [Function: match1_gen],
-//│ >   'match2' => [Function: match2_gen]
-//│ > }
 //│ > Map(2) {
 //│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
 //│ >   'Int' => VirtualClassSymbol { name: 'Int' }
@@ -43,14 +33,14 @@ staged module Expressions with
 :e
 print(Expressions."cache$Expressions")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Expressions.
-//│ ║  l.44: 	print(Expressions."cache$Expressions")
+//│ ║  l.34: 	print(Expressions."cache$Expressions")
 //│ ╙──      	      ^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun lit() = 1
 //│ > fun assign() =
-//│ >   let x
 //│ >   let y
+//│ >   let x
 //│ >   x = 42
 //│ >   y = x
 //│ >   y
@@ -95,13 +85,6 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
-//│ > Map(5) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'inst1' => [Function: inst1_gen],
-//│ >   'inst2' => [Function: inst2_gen],
-//│ >   'app1' => [Function: app1_gen],
-//│ >   'app2' => [Function: app2_gen]
-//│ > }
 //│ > Map(4) {
 //│ >   [class NoArg] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'NoArg' ]
@@ -152,7 +135,7 @@ staged module ClassInstrumentation with
 :e
 print(ClassInstrumentation.("cache$ClassInstrumentation"))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassInstrumentation.
-//│ ║  l.153: 	print(ClassInstrumentation.("cache$ClassInstrumentation"))
+//│ ║  l.136: 	print(ClassInstrumentation.("cache$ClassInstrumentation"))
 //│ ╙──       	      ^^^^^^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class Inside(a, b)
@@ -166,15 +149,10 @@ module Nonstaged with
   fun f() = 1
 staged module Staged with
   fun f() = 1
-staged module CallSubst with
+staged module Call with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(2) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'call' => [Function: call_gen]
-//│ > }
 //│ > Map(2) {
 //│ >   [class Nonstaged] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Nonstaged' ]
@@ -200,10 +178,10 @@ staged module CallSubst with
 //│ > }
 
 :e
-print(CallSubst."cache$CallSubst")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type CallSubst.
-//│ ║  l.203: 	print(CallSubst."cache$CallSubst")
-//│ ╙──       	      ^^^^^^^^^
+print(Call."cache$Call")
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Call.
+//│ ║  l.181: 	print(Call."cache$Call")
+//│ ╙──       	      ^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
@@ -216,11 +194,6 @@ staged module Arguments with
     x = 1
     x
   fun g(x)(y, z)() = z
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'g' => [Function: g_gen]
-//│ > }
 //│ > Map(1) {
 //│ >   [class Function$1 extends Function] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
@@ -237,7 +210,7 @@ staged module Arguments with
 :e
 print(Arguments."cache$Arguments")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Arguments.
-//│ ║  l.238: 	print(Arguments."cache$Arguments")
+//│ ║  l.211: 	print(Arguments."cache$Arguments")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -260,11 +233,6 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'scope' => [Function: scope_gen],
-//│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
-//│ > }
 //│ > Map(1) {
 //│ >   [class OtherBlocks] {
 //│ >     'cache$OtherBlocks': FunCache { cache: [Map] },
@@ -285,7 +253,7 @@ staged module OtherBlocks with
 :e
 print(OtherBlocks."cache$OtherBlocks")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type OtherBlocks.
-//│ ║  l.286: 	print(OtherBlocks."cache$OtherBlocks")
+//│ ║  l.254: 	print(OtherBlocks."cache$OtherBlocks")
 //│ ╙──       	      ^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -303,7 +271,6 @@ print(OtherBlocks."cache$OtherBlocks")
 
 staged module ClassDefs with
   class A
-//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
 //│ >   [class A] { Symbol(mlscript.definitionMetadata): [ 'class', 'A' ] } => ClassSymbol {
 //│ >     name: 'A',
@@ -316,7 +283,7 @@ staged module ClassDefs with
 :e
 print(ClassDefs."cache$ClassDefs")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassDefs.
-//│ ║  l.317: 	print(ClassDefs."cache$ClassDefs")
+//│ ║  l.284: 	print(ClassDefs."cache$ClassDefs")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class A
@@ -326,7 +293,6 @@ staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
-//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(2) {
 //│ >   [Function: InnerClass] {
 //│ >     class: [class InnerClass] { Symbol(mlscript.definitionMetadata): [Array] }
@@ -357,7 +323,7 @@ staged module ClassFunctions with
 :e
 print(ClassFunctions."cache$ClassFunctions")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassFunctions.
-//│ ║  l.358: 	print(ClassFunctions."cache$ClassFunctions")
+//│ ║  l.324: 	print(ClassFunctions."cache$ClassFunctions")
 //│ ╙──       	      ^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class InnerClass() with 
@@ -371,7 +337,6 @@ print(ClassFunctions."cache$ClassFunctions")
 class A()
 staged module A with
   fun f() = 1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 print(A."class"."cache$A")
 //│ > fun ctor_() =
@@ -382,12 +347,11 @@ print(A."class"."cache$A")
 module A with
   staged module B with
     fun f() = 1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :e
 print(A.B."cache$B")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful selection of type B.
-//│ ║  l.388: 	print(A.B."cache$B")
+//│ ║  l.352: 	print(A.B."cache$B")
 //│ ╙──       	      ^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -395,28 +359,15 @@ print(A.B."cache$B")
 
 staged module Shadowing with
   fun f(x, x) = x
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :todo these symbols may be confused dueing shape propagation
 print(Shadowing."cache$Shadowing")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Shadowing.
-//│ ║  l.401: 	print(Shadowing."cache$Shadowing")
+//│ ║  l.364: 	print(Shadowing."cache$Shadowing")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x, x) = x
-
-// testing generatorMap
-staged module M with
-  fun f() = 1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-
-:e
-M."generatorMap$M"
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.415: 	M."generatorMap$M"
-//│ ╙──       	^
-//│ = Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen}
 
 :todo force enable :ftc to desugar Label and Break
 :ftc
@@ -427,18 +378,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.425: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.425: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.425: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.425: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -450,7 +401,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.450: 	  fun g() = {1 : 2}
+//│ ║  l.401: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -459,11 +410,3 @@ staged module Spread with
   fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module.
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-
-:todo
-staged module RetUnit with
-  fun f() = ()
-//│ ═══[COMPILATION ERROR] Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: object:Unit
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
-

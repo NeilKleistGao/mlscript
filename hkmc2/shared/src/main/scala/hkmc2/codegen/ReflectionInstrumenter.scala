@@ -412,10 +412,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         // assign(options): options =>
         // call(cachePath.selSN("toString"), Nil, false): str =>
         // call(printFun, Ls(str), false): _ =>
-        call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
-          if symbolMapUsed
-          then call(printFun, Ls(symbolMapSym), false)(_ => rest)
-          else rest
+        // call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
+        if symbolMapUsed
+        then call(printFun, Ls(symbolMapSym), false)(_ => rest)
+        else rest
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
