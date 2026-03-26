@@ -382,10 +382,15 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val staged = stageMethod(f)
         val stagedPath = modSym.asPath.selSN(staged.sym.nme)
         val gen = genMethod(f, stagedPath)
+        def cacheDebug(k: Path => Block) =
+          call(stagedPath, Nil): res =>
+            // stub for the returned shape of the function
+            tuple(Ls(res, toValue(1))): entry =>
+              tuple(Ls(toValue(f.sym.nme), entry))(k)
 
         (
           Ls(staged, gen),
-          (k: Path => Block) => call(stagedPath, Nil)(p => tuple(Ls(toValue(f.sym.nme), p))(k)),
+          cacheDebug,
           tuple(Ls(toValue(f.sym.nme), modSym.asPath.selSN(gen.sym.nme)))
         )
       ).unzip3
@@ -407,16 +412,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       // TODO: remove this. only for testing
       def debugCont(rest: Block) =
         val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
-        val renderFun = State.runtimeSymbol.asPath.selSN("render")
-        val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
+        // val renderFun = State.runtimeSymbol.asPath.selSN("render")
+        // val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
-        assign(options): options =>
-          call(cachePath.selSN("toString"), Nil, false): str =>
-            call(printFun, Ls(str), false): _ =>
-              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
-                if symbolMapUsed
-                then call(printFun, Ls(symbolMapSym), false)(_ => rest)
-                else rest
+        // assign(options): options =>
+        // call(cachePath.selSN("toString"), Nil, false): str =>
+        // call(printFun, Ls(str), false): _ =>
+        call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
+          if symbolMapUsed
+          then call(printFun, Ls(symbolMapSym), false)(_ => rest)
+          else rest
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(

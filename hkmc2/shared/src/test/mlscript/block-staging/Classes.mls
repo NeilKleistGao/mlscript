@@ -2,8 +2,6 @@
 :staging
 
 staged class A(val a)
-//│ > fun ctor_(a) =
-//│ >   set A1.a = a
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
 //│ >   [Function: A] {
@@ -19,8 +17,6 @@ staged class A(val a)
 
 staged module C with
   class I
-//│ > fun ctor_() =
-//│ >   class I
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
 //│ >   [class I] { Symbol(mlscript.definitionMetadata): [ 'class', 'I' ] } => ClassSymbol {
@@ -36,9 +32,6 @@ staged module C with
 class C
 staged module M with
   fun f() = C
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = C
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
 //│ >   [class C2] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ClassSymbol {
@@ -53,15 +46,12 @@ staged module M with
 // :sir
 staged class C with
   fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :e
 staged class C(x)
 //│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
-//│ ║  l.91: 	staged class C(x)
+//│ ║  l.85: 	staged class C(x)
 //│ ╙──      	       ^^^^^^^^^^
 
 staged class B(val x) with
@@ -69,9 +59,6 @@ staged class B(val x) with
 staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
-//│ > fun ctor_(x) =
-//│ >   set B1.x = x
-//│ > fun f(y) = +(B1.x, y)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
 //│ >   [Function: B] {
@@ -84,11 +71,6 @@ staged class D(val x) extends B(x+1) with
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor_(x) =
-//│ >   let tmp
-//│ >   tmp = +(x, 1)
-//│ >   super(tmp)
-//│ > fun f() = 42
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: B] {
