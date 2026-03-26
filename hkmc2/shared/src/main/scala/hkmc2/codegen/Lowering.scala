@@ -760,18 +760,18 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     case Quoted(body) => quote(body)(k)
     
-    // * BbML-specific cases: t.Cls#field and mutable operations
+    // * InvalML-specific cases: t.Cls#field and mutable operations
     case sp @ SelProj(prefix, _, proj) =>
       setupSelection(prefix, proj, N)(k)
     case Resolved(sp @ SelProj(prefix, _, proj), sym) =>
       setupSelection(prefix, proj, S(sym))(k)
     case Region(reg, body) =>
       loweringCtx.collectScopedSym(reg)
-      Assign(reg, Instantiate(mut = false, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Region"))(N), Nil),
+      Assign(reg, Instantiate(mut = true, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Region"))(N), Nil),
         term_nonTail(body)(k))
     case RegRef(reg, value) =>
       plainArgs(reg :: value :: Nil): args =>
-        k(Instantiate(mut = false, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Ref"))(N), args))
+        k(Instantiate(mut = true, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Ref"))(N), args))
     case Drop(ref) =>
       subTerm(ref): _ =>
         k(unit)
