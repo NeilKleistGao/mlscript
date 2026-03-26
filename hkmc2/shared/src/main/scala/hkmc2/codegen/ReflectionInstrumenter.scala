@@ -33,8 +33,7 @@ extension [A, B](ls: Iterable[(A => B) => B])
 
 type ArgWrappable = Path | Symbol
 
-def asArg(x: ArgWrappable): Arg =
-  x match
+def asArg(x: ArgWrappable): Arg = x match
   case p: Path => p.asArg
   case l: Symbol => l.asPath.asArg
 
@@ -327,7 +326,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val rest = transformFunDefn(f)(using Context(new HashMap()))((block, _) => Return(block, false))
       (Scoped(Set(argSyms*), rest))
 
-    f.copy(sym = stageSym, dSym = dSym, params = Ls(PlainParamList(Nil)), body = newBody)(false)
+    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false)
 
   override def applyBlock(b: Block): Block = b match
     // TODO: assume staged classes have no companion module
@@ -336,20 +335,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) ||
           defn.companion.isEmpty && defn.isym.defn.exists(_.hasStagedModifier.isDefined) =>
       val (sym, companion, ctor, ctorParams, methods) = defn.companion match
-      case S(companion) => (companion.isym, companion, companion.ctor, N, companion.methods)
-      case N =>
-        if !defn.privateFields.isEmpty then
-          raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
-          return End()
-        val companion = ClsLikeBody(ModuleOrObjectSymbol(Tree.TypeDef(syntax.Mod, Tree.Empty(), N), Tree.Ident(defn.sym.nme)), Nil, Nil, Nil, End())
-        val ctor = defn.preCtor.mapTail({
-          case Return(res, implct) => assign(res)(_ => defn.ctor)
-          case _: End => defn.ctor
-          case _ =>
-            raise(ErrorReport(msg"Unexpected BlockTail of preCtor, the tail will be discarded." -> defn.sym.toLoc :: Nil))
-            defn.ctor
-        })
-        (defn.sym, companion, ctor, defn.paramsOpt, defn.methods)
+        case S(companion) => (companion.isym, companion, companion.ctor, N, companion.methods)
+        case N =>
+          if !defn.privateFields.isEmpty then
+            raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
+            return End()
+          val companion = ClsLikeBody(ModuleOrObjectSymbol(Tree.TypeDef(syntax.Mod, Tree.Empty(), N), Tree.Ident(defn.sym.nme)), Nil, Nil, Nil, End())
+          val ctor = Begin(defn.preCtor, defn.ctor)
+          (defn.sym, companion, ctor, defn.paramsOpt, defn.methods)
 
       val modSym = companion.isym
 
@@ -368,16 +361,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val genSymName = f.sym.nme + "_gen"
         val sym = BlockMemberSymbol(genSymName, Nil, false)
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
-
+        
         val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
         val body = call(cachePath.selSN("getFun"), Ls(toValue(f.sym.nme))): instr =>
           params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
             tuple(tups): args =>
               call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
                 Return(res, false)
-        f.copy(params = params, sym = sym, dSym = dSym, body = body)(false)
+        FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false)
 
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false)
       val (helperMethods, cacheEntries, generatorEntries) = (ctorFun :: methods).map(f =>
         val staged = stageMethod(f)
         val stagedPath = modSym.asPath.selSN(staged.sym.nme)
