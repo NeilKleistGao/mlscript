@@ -32,6 +32,14 @@ x => x
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = class anonymous
 
+:fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
+:checkIR
+x => x
+//│ ╔══[INTERNAL ERROR] [BlockChecker] Invalid IR: symbol x⁰ is bound more than once
+//│ ║  l.37: 	x => x
+//│ ╙──      	^
+//│ = class anonymous
+
 
 fun f(x, y, b) =
   aux(z => x + z) * aux(z => if b then y + z else y - z)
@@ -89,12 +97,12 @@ let f = foo in bar(f)
 bar([foo].0)
 bar([foo, x => x].1)
 //│ ╔══[COMPILATION ERROR] Cannot determine if 0 is a function.
-//│ ║  l.89: 	bar([foo].0)
+//│ ║  l.97: 	bar([foo].0)
 //│ ╙──      	         ^^
 //│ ═══[COMPILATION ERROR] Cannot determine if 0$__checkNotMethod is a function.
 //│ ═══[COMPILATION ERROR] Cannot determine if Error is a function.
 //│ ╔══[COMPILATION ERROR] Cannot determine if 1 is a function.
-//│ ║  l.90: 	bar([foo, x => x].1)
+//│ ║  l.98: 	bar([foo, x => x].1)
 //│ ╙──      	                 ^^
 //│ ═══[COMPILATION ERROR] Cannot determine if 1$__checkNotMethod is a function.
 //│ ═══[COMPILATION ERROR] Cannot determine if Error is a function.
@@ -111,7 +119,7 @@ bar([foo, x => x].(i))
 :ge
 [foo, x => x].(i)(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.112: 	[foo, x => x].(i)(0)
+//│ ║  l.120: 	[foo, x => x].(i)(0)
 //│ ╙──       	               ^
 
 
@@ -125,10 +133,10 @@ let foo = Foo()
 foo.("f")(0)
 foo.("h")(1)
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.125: 	foo.("f")(0)
+//│ ║  l.133: 	foo.("f")(0)
 //│ ╙──       	^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.126: 	foo.("h")(1)
+//│ ║  l.134: 	foo.("h")(1)
 //│ ╙──       	^^^^^^^^
 //│ = 0
 //│ foo = Foo()
@@ -290,7 +298,7 @@ y => x + y
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let lambda¹⁰, Function$¹⁰, tmp;
 //│ define lambda¹⁰ as fun lambda¹¹(y) {
-//│   return +⁰(x⁰, y)
+//│   return +⁰(x¹, y)
 //│ };
 //│ define Function$¹⁰ as class Function$¹¹ {
 //│   private val Function$$cap⁵;
@@ -388,7 +396,7 @@ foo.Foo#x
 :ge
 foo.f(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if f is a function object.
-//│ ║  l.389: 	foo.f(0)
+//│ ║  l.397: 	foo.f(0)
 //│ ╙──       	^^^^^
 //│ = 1
 
@@ -406,7 +414,7 @@ foo.Foo#f(0)
 :ge
 foo.x(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if x is a function object.
-//│ ║  l.407: 	foo.x(0)
+//│ ║  l.415: 	foo.x(0)
 //│ ╙──       	^^^^^
 
 
@@ -491,14 +499,14 @@ fun foo(x)(y) = x + y
 //│ };
 //│ define Function$¹² as class Function$¹³ {
 //│   private val Function$$cap⁶;
-//│   private val x¹;
+//│   private val x²;
 //│   constructor {
 //│     super⁰();
-//│     set x¹ = x;
+//│     set x² = x;
 //│     end
 //│   }
 //│   method call¹² = fun call¹³(y) {
-//│     return lambda$¹(x¹, y)
+//│     return lambda$¹(x², y)
 //│   }
 //│ };
 //│ define foo⁵ as fun foo⁶(x) { let tmp; set tmp = Function$$³(false, x); return tmp };

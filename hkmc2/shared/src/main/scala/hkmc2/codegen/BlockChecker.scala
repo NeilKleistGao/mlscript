@@ -35,17 +35,9 @@ class BlockChecker()(using DebugPrinter, State, Raise) extends BlockTraverser:
     case _ => ()
     super.applyBlock(b)
   
-  override def applyDefn(defn: Defn): Unit =
-    defn match
-    case cls: ClsLikeDefn =>
-      cls.paramsOpt.foreach:
-        _.paramSyms.foreach(checkSymbol(_, cls))
-    case _ =>
-    super.applyDefn(defn)
-  
-  override def applyLam(lam: Lambda): Unit =
-    lam.params.paramSyms.foreach(checkSymbol(_, lam))
-    super.applyLam(lam)
+  override def applyParamList(pl: ParamList): Unit =
+    pl.paramSyms.foreach(checkSymbol(_, pl))
+    super.applyParamList(pl)
   
 end BlockChecker
 
