@@ -115,7 +115,7 @@ class Printer(using Raise, ShowCfg, SymbolPrinter):
       doc"val ${print(tsym)} = ${print(rhs)}"
     case ClsLikeDefn(own, isym, sym, ctorSym, k, paramsOpt, auxParams, parentSym, methods,
         privateFields, publicFields, preCtor, ctor, mod, bufferable)
-    =>
+    => scope.nest.givenIn:
       val clsParams = paramsOpt.fold(Nil)(_.paramSyms)
       val auxClsParams = auxParams.flatMap(_.paramSyms)
       val ctorParams = (clsParams ++ auxClsParams).map(p => scope.allocateName(p))
