@@ -126,7 +126,7 @@ fun val2path(v) =
     let md = v.constructor.(Symbols.definitionMetadata)
     let clsName = md.0
     let paramNames = md.2
-    let classSym = Block.ClassSymbol(clsName, None)
+    let classSym = Block.ClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld)))
     let blocks = mapped.filter(_ is [_, _]).map(_ => _.0)
     let paths = mapped.map((m, _, _) => if m is [_, p] then p else m)

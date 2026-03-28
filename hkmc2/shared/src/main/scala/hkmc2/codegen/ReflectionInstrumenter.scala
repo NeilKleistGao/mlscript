@@ -435,9 +435,15 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   then call(printFun, Ls(symbolMapSym), false)(_ => rest)
                   else rest)))))
 
+      val entryFunDef =
+        val sym = BlockMemberSymbol("generate", Nil)
+        val params = PlainParamList(Nil)
+        val body = End() // TODO
+        FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(false)
+
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = companion.methods ++ helperMethods.flatten,
+        methods = entryFunDef :: helperMethods.flatten,
         ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
         publicFields = companion.publicFields
       )
