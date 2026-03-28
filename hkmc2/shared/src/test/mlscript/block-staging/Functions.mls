@@ -1,6 +1,5 @@
 :js
 :staging
-:noModuleCheck
 
 :fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
 :checkIR
@@ -9,8 +8,18 @@ staged module Rebinding with
     let x = 42
     x
 //│ ╔══[INTERNAL ERROR] [BlockChecker] Invalid IR: symbol x⁰ is bound more than once
-//│ ║  l.9: 	    let x = 42
+//│ ║  l.8: 	    let x = 42
 //│ ╙──     	        ^
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun lit() =
+//│ >   let x
+//│ >   x = 42
+//│ >   x
+//│ > Map(2) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'lit' => [Function: lit_gen]
+//│ > }
 
 val x = [1, 2, 3]
 staged module Expressions with
@@ -35,13 +44,6 @@ staged module Expressions with
       [1, 2] then 2
       [a, _] then 3
       else 0
-//│ > Map(2) {
-//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
-//│ >   'Int' => VirtualClassSymbol { name: 'Int' }
-//│ > }
-//│ x = [1, 2, 3]
-
-print(Expressions."cache$Expressions")
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun lit() = 1
@@ -83,6 +85,21 @@ print(Expressions."cache$Expressions")
 //│ >         else a = element0_
 //│ >         3
 //│ >     else 0
+//│ > Map(8) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'lit' => [Function: lit_gen],
+//│ >   'assign' => [Function: assign_gen],
+//│ >   'tup1' => [Function: tup1_gen],
+//│ >   'tup2' => [Function: tup2_gen],
+//│ >   'dynsel' => [Function: dynsel_gen],
+//│ >   'match1' => [Function: match1_gen],
+//│ >   'match2' => [Function: match2_gen]
+//│ > }
+//│ > Map(2) {
+//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
+//│ >   'Int' => VirtualClassSymbol { name: 'Int' }
+//│ > }
+//│ x = [1, 2, 3]
 
 class Outside(a)
 staged module ClassInstrumentation with
@@ -92,6 +109,20 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
+//│ > fun ctor_() =
+//│ >   class Inside(a, b)
+//│ >   class NoArg
+//│ > fun inst1() = new Outside(1)
+//│ > fun inst2() = new ClassInstrumentation.NoArg()
+//│ > fun app1() = Outside(1)
+//│ > fun app2() = ClassInstrumentation.Inside(1, 2)
+//│ > Map(5) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'inst1' => [Function: inst1_gen],
+//│ >   'inst2' => [Function: inst2_gen],
+//│ >   'app1' => [Function: app1_gen],
+//│ >   'app2' => [Function: app2_gen]
+//│ > }
 //│ > Map(4) {
 //│ >   [class NoArg] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'NoArg' ]
@@ -139,15 +170,6 @@ staged module ClassInstrumentation with
 //│ >   }
 //│ > }
 
-print(ClassInstrumentation.("cache$ClassInstrumentation"))
-//│ > fun ctor_() =
-//│ >   class Inside(a, b)
-//│ >   class NoArg
-//│ > fun inst1() = new Outside(1)
-//│ > fun inst2() = new ClassInstrumentation.NoArg()
-//│ > fun app1() = Outside(1)
-//│ > fun app2() = ClassInstrumentation.Inside(1, 2)
-
 module Nonstaged with
   fun f() = 1
 staged module Staged with
@@ -156,6 +178,19 @@ staged module Call with
   fun call() = 
     Nonstaged.f()
     Staged.f()
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = 1
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun call() =
+//│ >   __no__symbol__ = Nonstaged.f()
+//│ >   Staged.f()
+//│ > Map(2) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'call' => [Function: call_gen]
+//│ > }
 //│ > Map(2) {
 //│ >   [class Nonstaged] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Nonstaged' ]
@@ -180,19 +215,26 @@ staged module Call with
 //│ >   }
 //│ > }
 
-print(Call."cache$Call")
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call() =
-//│ >   __no__symbol__ = Nonstaged.f()
-//│ >   Staged.f()
-
 :ftc
 staged module Arguments with
   fun f(x) =
     x = 1
     x
   fun g(x)(y, z)() = z
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(x) =
+//│ >   x = 1
+//│ >   x
+//│ > fun g(x) =
+//│ >   let tmp
+//│ >   tmp = new Function_()
+//│ >   tmp
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'f' => [Function: f_gen],
+//│ >   'g' => [Function: g_gen]
+//│ > }
 //│ > Map(1) {
 //│ >   [class Function$1 extends Function] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
@@ -206,18 +248,6 @@ staged module Arguments with
 //│ >   }
 //│ > }
 
-// FIXME: printout is wrong, we need to point to the Function$ class without naming it directly...
-print(Arguments."cache$Arguments")
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x) =
-//│ >   x = 1
-//│ >   x
-//│ > fun g(x) =
-//│ >   let tmp
-//│ >   tmp = new Function_()
-//│ >   tmp
-
 staged module OtherBlocks with
   fun scope() =
     scope.locally of (
@@ -229,6 +259,24 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun scope() =
+//│ >   let a
+//│ >   a = 1
+//│ >   OtherBlocks.scope.locally(a)
+//│ > fun breakAndLabel() =
+//│ >   let scrut
+//│ >   scrut = 1
+//│ >   if scrut is
+//│ >     2 then 0
+//│ >     3 then 0
+//│ >     else 0
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'scope' => [Function: scope_gen],
+//│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
+//│ > }
 //│ > Map(1) {
 //│ >   [class OtherBlocks] {
 //│ >     'cache$OtherBlocks': FunCache { cache: [Map] },
@@ -246,23 +294,11 @@ staged module OtherBlocks with
 //│ >   }
 //│ > }
 
-print(OtherBlocks."cache$OtherBlocks")
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun scope() =
-//│ >   let a
-//│ >   a = 1
-//│ >   OtherBlocks.scope.locally(a)
-//│ > fun breakAndLabel() =
-//│ >   let scrut
-//│ >   scrut = 1
-//│ >   if scrut is
-//│ >     2 then 0
-//│ >     3 then 0
-//│ >     else 0
-
 staged module ClassDefs with
   class A
+//│ > fun ctor_() =
+//│ >   class A
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
 //│ >   [class A] { Symbol(mlscript.definitionMetadata): [ 'class', 'A' ] } => ClassSymbol {
 //│ >     name: 'A',
@@ -272,15 +308,19 @@ staged module ClassDefs with
 //│ >   }
 //│ > }
 
-print(ClassDefs."cache$ClassDefs")
-//│ > fun ctor_() =
-//│ >   class A
-
 // :sjs
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
+//│ > fun ctor_() =
+//│ >   class InnerClass() with 
+//│ >     fun f() =
+//│ >       let tmp
+//│ >       tmp = Arguments.f(1)
+//│ >       +(1, tmp)
+//│ >     fun g() = InnerClass.f()
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(2) {
 //│ >   [Function: InnerClass] {
 //│ >     class: [class InnerClass] { Symbol(mlscript.definitionMetadata): [Array] }
@@ -308,43 +348,30 @@ staged module ClassFunctions with
 //│ >   }
 //│ > }
 
-print(ClassFunctions."cache$ClassFunctions")
-//│ > fun ctor_() =
-//│ >   class InnerClass() with 
-//│ >     fun f() =
-//│ >       let tmp
-//│ >       tmp = Arguments.f(1)
-//│ >       +(1, tmp)
-//│ >     fun g() = InnerClass.f()
-
 // name collision
 class A()
 staged module A with
   fun f() = 1
-
-print(A."class"."cache$A")
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 // nested module
 module A with
   staged module B with
     fun f() = 1
-
-print(A.B."cache$B")
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 staged module Shadowing with
   fun f(x, x) = x
-
-:todo these symbols may be confused dueing shape propagation
-print(Shadowing."cache$Shadowing")
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x, x) = x
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :todo force enable :ftc to desugar Label and Break
 :ftc
@@ -355,18 +382,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.353: 	    let x = 1
+//│ ║  l.380: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.353: 	    let x = 1
+//│ ║  l.380: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.353: 	    let x = 1
+//│ ║  l.380: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.353: 	    let x = 1
+//│ ║  l.380: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -378,7 +405,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.378: 	  fun g() = {1 : 2}
+//│ ║  l.405: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -387,3 +414,24 @@ staged module Spread with
   fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module.
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() =
+//│ >   let x
+//│ >   let middleElements
+//│ >   let element0_
+//│ >   let scrut
+//│ >   let tmp
+//│ >   tmp = [1, 2]
+//│ >   scrut = [1, tmp]
+//│ >   if scrut is
+//│ >     [_] then
+//│ >       element0_ = Runtime.Tuple.get(scrut, 0)
+//│ >       middleElements = Runtime.Tuple.slice(scrut, 1, 0)
+//│ >       if element0_ is
+//│ >         1 then
+//│ >           x = middleElements
+//│ >           x
+//│ >         else 0
+//│ >     else 0
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }

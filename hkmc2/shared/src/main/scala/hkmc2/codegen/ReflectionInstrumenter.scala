@@ -410,12 +410,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         // val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
         // assign(options): options =>
-        // call(cachePath.selSN("toString"), Nil, false): str =>
-        // call(printFun, Ls(str), false): _ =>
-        // call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
-        if symbolMapUsed
-        then call(printFun, Ls(symbolMapSym), false)(_ => rest)
-        else rest
+          call(cachePath.selSN("toString"), Nil, false): str =>
+            call(printFun, Ls(str), false): _ =>
+              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
+                if symbolMapUsed
+                then call(printFun, Ls(symbolMapSym), false)(_ => rest)
+                else rest
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
