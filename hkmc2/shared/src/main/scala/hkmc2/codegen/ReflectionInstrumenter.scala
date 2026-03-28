@@ -118,6 +118,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
           case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
           case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+          // FIXME: hack to patch in staging for returning the object Unit.
+          case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
           case _ =>
             raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
             return End()

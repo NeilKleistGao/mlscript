@@ -248,7 +248,6 @@ staged module TestClass with
 //│ >   }
 //│ > }
 
-:fixme
 :noSanityCheck
 class C(val n)
 staged module TestIf with
@@ -259,11 +258,26 @@ staged module TestIf with
     else 
       y = 0
     y + 1
-//│ ═══[COMPILATION ERROR] Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: object:Unit
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'y'
-//│ ║  l.256: 	    let y
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.256: 	    let y
-//│ ╙──       	        ^
-//│ ═══[RUNTIME ERROR] ReferenceError: y is not defined
+//│ > fun f(x) =
+//│ >   let y
+//│ >   let tmp
+//│ >   if x is
+//│ >     C(n) then
+//│ >       y = x.n
+//│ >       tmp = Runtime.Unit
+//│ >       +(y, 1)
+//│ >     else y = 0
+//│ >     tmp = Runtime.Unit
+//│ >     1
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   [Function: C] {
+//│ >     class: [class C2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} }
+//│ > }
