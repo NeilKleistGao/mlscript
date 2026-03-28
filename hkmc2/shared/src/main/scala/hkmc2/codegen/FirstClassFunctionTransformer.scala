@@ -32,10 +32,12 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
       callDef :: Nil, Nil, Nil, Return(Call(Value.Ref(State.builtinOpsMap("super")), Nil)(false, false, false), true), End(), None, None)
 
   private def getParamList(l: BlockMemberSymbol): Option[ParamList] = funDefns.get(l) match
-    case Some(fd) => fd.params.headOption
+    case Some(fd) => fd.params.headOption.map(pl =>
+      ParamList(pl.flags, pl.params.map(p => Param(p.flags, VarSymbol(p.sym.id), p.sign, p.modulefulness)), pl.restParam))
     case _ => l.tsym.flatMap(getParamList)
 
-  private def getParamList(ts: TermSymbol): Option[ParamList] = ts.defn.flatMap(_.params.headOption)
+  private def getParamList(ts: TermSymbol): Option[ParamList] = ts.defn.flatMap(_.params.headOption).map(pl =>
+    ParamList(pl.flags, pl.params.map(p => Param(p.flags, VarSymbol(p.sym.id), p.sign, p.modulefulness)), pl.restParam))
 
   override def applyPath(p: Path)(k: Path => Block): Block = p match
     case ref @ Value.Ref(l: BlockMemberSymbol, disamb) => disamb match
