@@ -1,5 +1,6 @@
 :js
 :staging
+:noModuleCheck
 
 :fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
 :checkIR
@@ -8,7 +9,7 @@ staged module Rebinding with
     let x = 42
     x
 //│ ╔══[INTERNAL ERROR] [BlockChecker] Invalid IR: symbol x⁰ is bound more than once
-//│ ║  l.8: 	    let x = 42
+//│ ║  l.9: 	    let x = 42
 //│ ╙──     	        ^
 
 val x = [1, 2, 3]
@@ -40,11 +41,7 @@ staged module Expressions with
 //│ > }
 //│ x = [1, 2, 3]
 
-:e
 print(Expressions."cache$Expressions")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Expressions.
-//│ ║  l.44: 	print(Expressions."cache$Expressions")
-//│ ╙──      	      ^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun lit() = 1
@@ -142,11 +139,7 @@ staged module ClassInstrumentation with
 //│ >   }
 //│ > }
 
-:e
 print(ClassInstrumentation.("cache$ClassInstrumentation"))
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassInstrumentation.
-//│ ║  l.146: 	print(ClassInstrumentation.("cache$ClassInstrumentation"))
-//│ ╙──       	      ^^^^^^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class Inside(a, b)
 //│ >   class NoArg
@@ -187,11 +180,7 @@ staged module Call with
 //│ >   }
 //│ > }
 
-:e
 print(Call."cache$Call")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Call.
-//│ ║  l.191: 	print(Call."cache$Call")
-//│ ╙──       	      ^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
@@ -217,12 +206,8 @@ staged module Arguments with
 //│ >   }
 //│ > }
 
-// TODO: printout is wrong...
-:e
+// FIXME: printout is wrong, we need to point to the Function$ class without naming it directly...
 print(Arguments."cache$Arguments")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Arguments.
-//│ ║  l.222: 	print(Arguments."cache$Arguments")
-//│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
@@ -261,11 +246,7 @@ staged module OtherBlocks with
 //│ >   }
 //│ > }
 
-:e
 print(OtherBlocks."cache$OtherBlocks")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type OtherBlocks.
-//│ ║  l.265: 	print(OtherBlocks."cache$OtherBlocks")
-//│ ╙──       	      ^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun scope() =
@@ -291,11 +272,7 @@ staged module ClassDefs with
 //│ >   }
 //│ > }
 
-:e
 print(ClassDefs."cache$ClassDefs")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassDefs.
-//│ ║  l.295: 	print(ClassDefs."cache$ClassDefs")
-//│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class A
 
@@ -331,11 +308,7 @@ staged module ClassFunctions with
 //│ >   }
 //│ > }
 
-:e
 print(ClassFunctions."cache$ClassFunctions")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassFunctions.
-//│ ║  l.335: 	print(ClassFunctions."cache$ClassFunctions")
-//│ ╙──       	      ^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class InnerClass() with 
 //│ >     fun f() =
@@ -359,11 +332,7 @@ module A with
   staged module B with
     fun f() = 1
 
-:e
 print(A.B."cache$B")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful selection of type B.
-//│ ║  l.363: 	print(A.B."cache$B")
-//│ ╙──       	      ^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
@@ -373,9 +342,6 @@ staged module Shadowing with
 
 :todo these symbols may be confused dueing shape propagation
 print(Shadowing."cache$Shadowing")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Shadowing.
-//│ ║  l.375: 	print(Shadowing."cache$Shadowing")
-//│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x, x) = x
@@ -389,18 +355,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.387: 	    let x = 1
+//│ ║  l.353: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.387: 	    let x = 1
+//│ ║  l.353: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.387: 	    let x = 1
+//│ ║  l.353: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.387: 	    let x = 1
+//│ ║  l.353: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -412,7 +378,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.412: 	  fun g() = {1 : 2}
+//│ ║  l.378: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
