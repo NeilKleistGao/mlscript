@@ -406,34 +406,23 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         // val renderFun = State.runtimeSymbol.asPath.selSN("render")
         val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
-        val gens = methods.map { f =>
-          val genSymName = f.sym.nme + "_gen"
-          val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
-          (modSym.asPath.selSN(genSymName), params)
-        }
+        val gens = helperMethods.map(_(1))
 
         call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
-          def callAllGens(gens: Ls[(Path, Ls[ParamList])], k: Block): Block = gens match
-            case Nil => k
-            case (genPath, params) :: tail =>
-              def curryCall(funPath: Path, paramsLeft: Ls[ParamList], innerK: Block): Block =
-                paramsLeft match
-                  case Nil => innerK
-                  case pList :: Nil =>
-                    val args = pList.params.map(_ => dynVal)
-                    call(funPath, args, isMlsFun = true, symName = "tmp_gen_res")(_ => innerK)
-                  case pList :: xs =>
-                    val args = pList.params.map(_ => dynVal)
-                    call(funPath, args, isMlsFun = true, symName = "tmp_gen_curry")(res => curryCall(res, xs, innerK))
-              curryCall(genPath, params, callAllGens(tail, k))
-
-          callAllGens(gens, assign(options)(options =>
-            call(cachePath.selSN("toString"), Nil, false)(str =>
-              call(printFun, Ls(str), false)(_ =>
-                call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false)(_ =>
-                  if symbolMapUsed
-                  then call(printFun, Ls(symbolMapSym), false)(_ => rest)
-                  else rest)))))
+          def callGenCont(rest: Block) =
+            gens.foldRight(rest)((gen, rest) =>
+              val genPath = modSym.asPath.selSN(gen.sym.nme)
+              val params = gen.params.map(_.params.map(_ => dynVal))
+              params.foldRight((_: Path) => rest)
+                ((args, k) => call(_, args, true, "gen_call")(k))
+                (genPath)
+            )
+          callGenCont(call(cachePath.selSN("toString"), Nil, false)(str =>
+            call(printFun, Ls(str), false)(_ =>
+              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false)(_ =>
+                if symbolMapUsed
+                then call(printFun, Ls(symbolMapSym), false)(_ => rest)
+                else rest))))
 
       val entryFunDef =
         val sym = BlockMemberSymbol("generate", Nil)
