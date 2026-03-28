@@ -18,31 +18,31 @@ if x.isEmpty() then 0
 
 // :silent
 let x = liftMany([Lit(1), Lit(2)])
-let y = liftMany([Arr([Lit(1)], false), Arr([Lit(2)], false)])
+let y = liftMany([Arr([Lit(1)]), Arr([Lit(2)])])
 //│ x = {Lit(1),Lit(2)}
-//│ y = {Arr([Lit(1)], false),Arr([Lit(2)], false)}
+//│ y = {Arr([Lit(1)]),Arr([Lit(2)])}
 
 union(x, y)
-//│ = {Arr([Lit(1)], false),Arr([Lit(2)], false),Lit(1),Lit(2)}
+//│ = {Arr([Lit(1)]),Arr([Lit(2)]),Lit(1),Lit(2)}
 
-mkArr([x, y], false)
-//│ = {Arr([Lit(1), Arr([Lit(1)], false)], false),Arr([Lit(1), Arr([Lit(2)], false)], false),Arr([Lit(2), Arr([Lit(1)], false)], false),Arr([Lit(2), Arr([Lit(2)], false)], false)}
+mkArr([x, y])
+//│ = {Arr([Lit(1), Arr([Lit(1)])]),Arr([Lit(1), Arr([Lit(2)])]),Arr([Lit(2), Arr([Lit(1)])]),Arr([Lit(2), Arr([Lit(2)])])}
 
 
 [x, y]
-  .map((x, _, _) => x.underlying.values().toArray())
-//│ = [[Lit(1), Lit(2)], [Arr([Lit(1)], false), Arr([Lit(2)], false)]]
+  .map((x, _, _) => x.values())
+//│ = [[Lit(1), Lit(2)], [Arr([Lit(1)]), Arr([Lit(2)])]]
 
-let x = liftMany([Dyn(), Class(Symbol(""), [Lit(42)]), Arr([Lit(100), Lit(false), Lit(undefined)], false)])
+let x = liftMany([Dyn(), Class(Symbol(""), [Lit(42)]), Arr([Lit(100), Lit(false), Lit(undefined)])])
 let y = liftMany([Lit("a"), Lit(1)])
-//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)], false),Class(Symbol(""), [Lit(42)]),Dyn()}
+//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(Symbol(""), [Lit(42)]),Dyn()}
 //│ y = {Lit("a"),Lit(1)}
 
 selSet(x, y)
 //│ = {Dyn(),Lit(false)}
 
 let x = Class(Symbol("A"), [[Symbol("b"), Lit(1)], [Symbol("d"), Dyn()]])
-let x = Arr([Dyn(), Lit(1), x], false)
+let x = Arr([Dyn(), Lit(1), x])
 let x = Shape.sel(x, Lit(2))
 //│ x = [Class(Symbol("A"), [[Symbol("b"), Lit(1)], [Symbol("d"), Dyn()]])]
 
@@ -65,8 +65,8 @@ mkClass(sym, params)
 [liftMany([Lit(1), Dyn()]), liftMany([Lit(2), Lit("str")])]
 //│ = [{Dyn(),Lit(1)}, {Lit("str"),Lit(2)}]
 
-filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)], false)]), Tup(3, false))
-//│ = {Arr([Lit(1), Lit(2), Lit(3)], false)}
+filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)])]), Tup(3))
+//│ = {Arr([Lit(1), Lit(2), Lit(3)])}
 
 
 let x = mkLit(1)
