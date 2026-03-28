@@ -1,15 +1,11 @@
 :js
 :staging
 
-:fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
 :checkIR
 staged module Rebinding with
   fun lit() =
     let x = 42
     x
-//│ ╔══[INTERNAL ERROR] [BlockChecker] Invalid IR: symbol x⁰ is bound more than once
-//│ ║  l.8: 	    let x = 42
-//│ ╙──     	        ^
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun lit() =
@@ -382,18 +378,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.380: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.380: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.380: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.380: 	    let x = 1
+//│ ║  l.376: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -405,7 +401,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.405: 	  fun g() = {1 : 2}
+//│ ║  l.401: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
