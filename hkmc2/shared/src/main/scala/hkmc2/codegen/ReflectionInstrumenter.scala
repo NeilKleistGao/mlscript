@@ -437,7 +437,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = companion.methods ++ helperMethods.flatten,
+        methods = helperMethods.flatten,
         ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
         publicFields = companion.publicFields
       )
