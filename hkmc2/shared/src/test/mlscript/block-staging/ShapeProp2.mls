@@ -34,9 +34,12 @@ staged module Test with
   fun pyth(x, y) = NonStaged.sq(x) + NonStaged.sq(y)
   fun pyth2(x, y) = Staged.sq(x) + Staged.sq(y)
   fun test() =
-    f(2, 3)
-    fib(10)
+    let five = f(2, 3)
+    fib(five)
     pyth(3, 4)
+  fun test2(n) = 
+    pyth(n, 2) 
+    fib(n * 2)
 //│ > fun f(x, y) = +(x, y)
 //│ > fun fib(n) =
 //│ >   let n
@@ -56,9 +59,9 @@ staged module Test with
 //│ > fun pyth(x, y) =
 //│ >   let tmp4
 //│ >   let tmp5
-//│ >   tmp5 = NonStaged.sq(x)
-//│ >   tmp4 = NonStaged.sq(y)
-//│ >   +(tmp5, tmp4)
+//│ >   tmp4 = NonStaged.sq(x)
+//│ >   tmp5 = NonStaged.sq(y)
+//│ >   +(tmp4, tmp5)
 //│ > fun pyth2(x, y) =
 //│ >   let tmp6
 //│ >   let tmp7
@@ -66,70 +69,11 @@ staged module Test with
 //│ >   tmp7 = Staged.sq(y)
 //│ >   +(tmp6, tmp7)
 //│ > fun test() =
-//│ >   __no__symbol__ = Test.f_Lit2_Lit3(2, 3)
-//│ >   __no__symbol__ = Test.fib_Lit10(10)
+//│ >   let five
+//│ >   five = Test.f_Lit2_Lit3(2, 3)
+//│ >   __no__symbol__ = Test.fib_Lit5(five)
 //│ >   Test.pyth_Lit3_Lit4(3, 4)
 //│ > fun f_Lit2_Lit3(x, y) = 5
-//│ > fun fib_Lit10(n) =
-//│ >   let n
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   n = n
-//│ >   tmp = 9
-//│ >   tmp1 = Test.fib_Lit9(tmp)
-//│ >   tmp2 = 8
-//│ >   tmp3 = Test.fib_Lit8(tmp2)
-//│ >   55
-//│ > fun fib_Lit9(n) =
-//│ >   let n
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   n = n
-//│ >   tmp = 8
-//│ >   tmp1 = Test.fib_Lit8(tmp)
-//│ >   tmp2 = 7
-//│ >   tmp3 = Test.fib_Lit7(tmp2)
-//│ >   34
-//│ > fun fib_Lit8(n) =
-//│ >   let n
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   n = n
-//│ >   tmp = 7
-//│ >   tmp1 = Test.fib_Lit7(tmp)
-//│ >   tmp2 = 6
-//│ >   tmp3 = Test.fib_Lit6(tmp2)
-//│ >   21
-//│ > fun fib_Lit7(n) =
-//│ >   let n
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   n = n
-//│ >   tmp = 6
-//│ >   tmp1 = Test.fib_Lit6(tmp)
-//│ >   tmp2 = 5
-//│ >   tmp3 = Test.fib_Lit5(tmp2)
-//│ >   13
-//│ > fun fib_Lit6(n) =
-//│ >   let n
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   n = n
-//│ >   tmp = 5
-//│ >   tmp1 = Test.fib_Lit5(tmp)
-//│ >   tmp2 = 4
-//│ >   tmp3 = Test.fib_Lit4(tmp2)
-//│ >   8
 //│ > fun fib_Lit5(n) =
 //│ >   let n
 //│ >   let tmp
@@ -183,27 +127,40 @@ staged module Test with
 //│ > fun pyth_Lit3_Lit4(x, y) =
 //│ >   let tmp4
 //│ >   let tmp5
-//│ >   tmp5 = 9
-//│ >   tmp4 = 16
+//│ >   tmp4 = 9
+//│ >   tmp5 = 16
 //│ >   25
-//│ > Map(6) {
+//│ > fun test2(n) =
+//│ >   let tmp8
+//│ >   __no__symbol__ = Test.pyth_Dyn_Lit2(n, 2)
+//│ >   tmp8 = *(n, 2)
+//│ >   Test.fib(tmp8)
+//│ > fun pyth_Dyn_Lit2(x, y) =
+//│ >   let tmp4
+//│ >   let tmp5
+//│ >   tmp4 = NonStaged.sq(x)
+//│ >   tmp5 = 4
+//│ >   +(tmp4, tmp5)
+//│ > Map(7) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'fib' => [Function: fib_gen],
 //│ >   'pyth' => [Function: pyth_gen],
 //│ >   'pyth2' => [Function: pyth2_gen],
-//│ >   'test' => [Function: test_gen]
+//│ >   'test' => [Function: test_gen],
+//│ >   'test2' => [Function: test2_gen]
 //│ > }
 //│ > Map(3) {
 //│ >   [class Test] {
 //│ >     'cache$Test': FunCache { cache: [Map] },
-//│ >     'generatorMap$Test': Map(6) {
+//│ >     'generatorMap$Test': Map(7) {
 //│ >       'ctor$' => [Function: ctor$_gen],
 //│ >       'f' => [Function: f_gen],
 //│ >       'fib' => [Function: fib_gen],
 //│ >       'pyth' => [Function: pyth_gen],
 //│ >       'pyth2' => [Function: pyth2_gen],
-//│ >       'test' => [Function: test_gen]
+//│ >       'test' => [Function: test_gen],
+//│ >       'test2' => [Function: test2_gen]
 //│ >     }
 //│ >   } => ModuleSymbol {
 //│ >     name: 'Test',
