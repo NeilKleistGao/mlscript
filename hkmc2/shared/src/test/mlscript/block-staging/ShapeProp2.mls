@@ -2,22 +2,44 @@
 :staging
 :noFreeze
 
+:sjs
+module NonStaged with
+  fun sq(x) = x * x
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let NonStaged1;
+//│ (class NonStaged {
+//│   static {
+//│     NonStaged1 = this
+//│   }
+//│   constructor() {
+//│     runtime.Unit;
+//│   }
+//│   static sq(x) {
+//│     return x * x
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "NonStaged"]; 
+//│ });
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
 staged module Test with
   fun f(x, y) = x + y
   fun fib(n) = if n is 
     1 then 1
     2 then 1
     n then fib(n - 1) + fib(n - 2)
-  fun trig() = 
+  fun pyth(x, y) = NonStaged.sq(x) + NonStaged.sq(y)
+  fun entry() = 
     f(2, 3)
     fib(10)
+    pyth(3, 4)
 //│ > fun f(x, y) = +(x, y)
 //│ > fun fib(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
 //│ >   if n is
 //│ >     1 then 1
 //│ >     2 then 1
@@ -27,134 +49,149 @@ staged module Test with
 //│ >     tmp2 = -(n, 2)
 //│ >     tmp3 = Test.fib(tmp2)
 //│ >     +(tmp1, tmp3)
-//│ > fun trig() =
+//│ > fun pyth(x, y) =
+//│ >   let tmp4
+//│ >   let tmp5
+//│ >   tmp4 = NonStaged.sq(x)
+//│ >   tmp5 = NonStaged.sq(y)
+//│ >   +(tmp4, tmp5)
+//│ > fun entry() =
 //│ >   __no__symbol__ = Test.f_Lit2_Lit3(2, 3)
-//│ >   Test.fib_Lit10(10)
+//│ >   __no__symbol__ = Test.fib_Lit10(10)
+//│ >   Test.pyth_Lit3_Lit4(3, 4)
 //│ > fun f_Lit2_Lit3(x, y) = 5
 //│ > fun fib_Lit10(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 10
+//│ >   n = n
 //│ >   tmp = 9
 //│ >   tmp1 = Test.fib_Lit9(tmp)
 //│ >   tmp2 = 8
 //│ >   tmp3 = Test.fib_Lit8(tmp2)
 //│ >   55
 //│ > fun fib_Lit9(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 9
+//│ >   n = n
 //│ >   tmp = 8
 //│ >   tmp1 = Test.fib_Lit8(tmp)
 //│ >   tmp2 = 7
 //│ >   tmp3 = Test.fib_Lit7(tmp2)
 //│ >   34
 //│ > fun fib_Lit8(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 8
+//│ >   n = n
 //│ >   tmp = 7
 //│ >   tmp1 = Test.fib_Lit7(tmp)
 //│ >   tmp2 = 6
 //│ >   tmp3 = Test.fib_Lit6(tmp2)
 //│ >   21
 //│ > fun fib_Lit7(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 7
+//│ >   n = n
 //│ >   tmp = 6
 //│ >   tmp1 = Test.fib_Lit6(tmp)
 //│ >   tmp2 = 5
 //│ >   tmp3 = Test.fib_Lit5(tmp2)
 //│ >   13
 //│ > fun fib_Lit6(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 6
+//│ >   n = n
 //│ >   tmp = 5
 //│ >   tmp1 = Test.fib_Lit5(tmp)
 //│ >   tmp2 = 4
 //│ >   tmp3 = Test.fib_Lit4(tmp2)
 //│ >   8
 //│ > fun fib_Lit5(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 5
+//│ >   n = n
 //│ >   tmp = 4
 //│ >   tmp1 = Test.fib_Lit4(tmp)
 //│ >   tmp2 = 3
 //│ >   tmp3 = Test.fib_Lit3(tmp2)
 //│ >   5
 //│ > fun fib_Lit4(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 4
+//│ >   n = n
 //│ >   tmp = 3
 //│ >   tmp1 = Test.fib_Lit3(tmp)
 //│ >   tmp2 = 2
 //│ >   tmp3 = Test.fib_Lit2(tmp2)
 //│ >   3
 //│ > fun fib_Lit3(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
-//│ >   n = 3
+//│ >   n = n
 //│ >   tmp = 2
 //│ >   tmp1 = Test.fib_Lit2(tmp)
 //│ >   tmp2 = 1
 //│ >   tmp3 = Test.fib_Lit1(tmp2)
 //│ >   2
 //│ > fun fib_Lit2(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
 //│ >   1
 //│ > fun fib_Lit1(n) =
+//│ >   let n
 //│ >   let tmp
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   let tmp3
-//│ >   let n
 //│ >   1
-//│ > Map(4) {
+//│ > fun pyth_Lit3_Lit4(x, y) =
+//│ >   let tmp4
+//│ >   let tmp5
+//│ >   tmp4 = 9
+//│ >   tmp5 = 16
+//│ >   25
+//│ > Map(5) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'fib' => [Function: fib_gen],
-//│ >   'trig' => [Function: trig_gen]
+//│ >   'pyth' => [Function: pyth_gen],
+//│ >   'entry' => [Function: entry_gen]
 //│ > }
-//│ > Map(1) {
+//│ > Map(2) {
 //│ >   [class Test] {
 //│ >     'cache$Test': FunCache { cache: [Map] },
-//│ >     'generatorMap$Test': Map(4) {
+//│ >     'generatorMap$Test': Map(5) {
 //│ >       'ctor$' => [Function: ctor$_gen],
 //│ >       'f' => [Function: f_gen],
 //│ >       'fib' => [Function: fib_gen],
-//│ >       'trig' => [Function: trig_gen]
+//│ >       'pyth' => [Function: pyth_gen],
+//│ >       'entry' => [Function: entry_gen]
 //│ >     }
 //│ >   } => ModuleSymbol {
 //│ >     name: 'Test',
@@ -162,5 +199,11 @@ staged module Test with
 //│ >       'cache$Test': [FunCache],
 //│ >       'generatorMap$Test': [Map]
 //│ >     }
+//│ >   },
+//│ >   [class NonStaged] {
+//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'NonStaged' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'NonStaged',
+//│ >     value: [class NonStaged] { [Symbol(mlscript.definitionMetadata)]: [Array] }
 //│ >   }
 //│ > }

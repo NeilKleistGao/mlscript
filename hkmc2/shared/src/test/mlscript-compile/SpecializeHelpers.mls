@@ -28,6 +28,15 @@ class Ctx(val ctx: Map[String, ShapeSet]) with
 module Ctx with
   fun empty = Ctx(new Map())
 
+fun sov(v): ShapeSet = 
+  if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then 
+    mkLit(v)
+  else if Array.isArray(v) then
+    mkArr(v.map(sov))
+  else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
+    // TODO
+    undefined
+
 fun sop(ctx, p): ShapeSet = 
   if ctx.get(p) is Some(s) then s
   else if p is 
@@ -38,12 +47,9 @@ fun sop(ctx, p): ShapeSet =
     ValueRef(l) then mkDyn()
 
 fun sor(ctx, r) = if r is
-  Path and 
+  Path then
     let s = sop(ctx, r)
-    staticSet(s) then 
-      if val2path(valOfSet(s)) is [blk, res] then [blk, res, s] else throw Error("val2path failed")
-    else
-      [End(), r, s]
+    [End(), r, s]
   Instantiate(cls, args) then
     let sym = if cls is
       ValueRef(s) and s is ClassSymbol then s 
@@ -88,15 +94,19 @@ fun sor(ctx, r) = if r is
         let mapPropName = "generatorMap$" + name
         let cachePropName = "cache$" + name
         let genMap = value.(mapPropName)
-        let cache = value.(cachePropName)
-        // in staged module
-        !(genMap is undefined) then
+        not (genMap is undefined) then // in staged module
           let f = genMap.get(symb)
           let res = f(...argShapes)
           [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), res.0), args), res.1]
+        argShapes.every(staticSet) then // non staged but params known
+          let f = value.(symb)
+          let evaluated = f(...argShapes.map(valOfSet))
+          let evaluated_path = val2path(evaluated)
+          [evaluated_path.0, evaluated_path.1, sov(evaluated)]
       Select(ValueRef(symb), Symbol(f)) and sop(ctx, ValueRef(symb)) is Class(sym, params) then // class method call
         // TODO
-    else [End(), r, mkDyn()]
+    else 
+      [End(), r, mkDyn()]
 
       // [gen, true] and gen(...argShapes) is [shape, implSymb] then
       //   [End(), Call(ValueRef(implSymb), args), shape]
