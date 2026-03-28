@@ -3,6 +3,7 @@ import "./Shape.mls"
 import "./Option.mls"
 import "./ShapeSet.mls"
 import "./Predef.mls"
+import "./Runtime.mls"
 
 open Block
 open Shape
@@ -47,9 +48,11 @@ fun sop(ctx, p): ShapeSet =
     ValueRef(l) then mkDyn()
 
 fun sor(ctx, r) = if r is
-  Path then
+  Path and
     let s = sop(ctx, r)
-    [End(), r, s]
+    staticSet(s) and val2path(valOfSet(s)) is [blk, res] then [blk, res, s] 
+    else
+      [End(), r, s]
   Instantiate(cls, args) then
     let sym = if cls is
       ValueRef(s) and s is ClassSymbol then s 
@@ -94,11 +97,14 @@ fun sor(ctx, r) = if r is
         let mapPropName = "generatorMap$" + name
         let cachePropName = "cache$" + name
         let genMap = value.(mapPropName)
-        not (genMap is undefined) then // in staged module
-          let f = genMap.get(symb)
-          let res = f(...argShapes)
-          [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), res.0), args), res.1]
-        argShapes.every(staticSet) then // non staged but params known
+        not (genMap is undefined) and
+          let f = genMap.get(symb) 
+          not (f is Runtime.Unit) then // staged function
+            let res = f(...argShapes)
+            [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), res.0), args), res.1]
+          else
+            [End(), r, mkDyn()] // TODO 
+        argShapes.every(staticSet) then // non staged function but params known
           let f = value.(symb)
           let evaluated = f(...argShapes.map(valOfSet))
           let evaluated_path = val2path(evaluated)
@@ -107,37 +113,6 @@ fun sor(ctx, r) = if r is
         // TODO
     else 
       [End(), r, mkDyn()]
-
-      // [gen, true] and gen(...argShapes) is [shape, implSymb] then
-      //   [End(), Call(ValueRef(implSymb), args), shape]
-      // [undefined, false] and f is ValueRef(symb) and // means built in
-      //   let name = symb.name
-      //   args is
-      //     [x] and sop(ctx, x.value).values() is [Shape.Lit(l)] and name is
-      //       "!" then lit(not l)
-      //       "-" then lit(-l)
-      //       "+" then lit(+l)
-      //     [x, y] and sop(ctx, x.value).values() is [Shape.Lit(l1)] and sop(ctx, y.value).values() is [Shape.Lit(l2)] and name is
-      //       "+" then lit(l1 + l2)
-      //       "-" then lit(l1 - l2)
-      //       "*" then lit(l1 * l2)
-      //       "/" then lit(l1 / l2)
-      //       "%" then lit(l1 % l2)
-      //       "==" then lit(l1 == l2)
-      //       "!=" then lit(l1 != l2)
-      //       "<" then lit(l1 < l2)
-      //       "<=" then lit(l1 <= l2)
-      //       ">" then lit(l1 > l2)
-      //       ">=" then lit(l1 >= l2)
-      //       "===" then lit(l1 === l2)
-      //       "!==" then lit(l1 !== l2)
-      //       "&&" then lit(l1 && l2)
-      //       "||" then lit(l1 || l2)
-      // [funct, false] and argShapes.every((x, _, _) => staticSet(x)) then
-      //   let argVals = argShapes.map((s, _, _) => valOfSet(s))
-      //   // TODO
-      //   [End(), r, mkDyn()]
-      // else [End(), r, mkDyn()]
 
 fun prop(ctx, b) = if b is
     End then [b, mkBot()]
@@ -187,8 +162,6 @@ fun prop(ctx, b) = if b is
             else
               [Match(p, filteredArms.2, None, End()), filteredArms.1]
 
-// FIXME: implement proper mangling
-// percent encoding to create valid symbol name
 fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
   else
@@ -198,8 +171,6 @@ fun specializeName(funName, shapes) =
       .replaceAll("(", "").replaceAll(")", "")
       .replaceAll("\\", "").replaceAll("\"", "")
       .replaceAll(" ", "").replaceAll(",", "_")
-
-fun propStub(block, shapes) = [block, shapes]
 
 fun specialize(cache, funName, dflt, shapes) =
   // replace function symbol in block definition to new name
