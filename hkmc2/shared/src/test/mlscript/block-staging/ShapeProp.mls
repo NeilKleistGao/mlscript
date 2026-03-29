@@ -28,6 +28,8 @@ staged module Test with
   fun test2(n) = 
     pyth(n, 2) 
     fib(n * 2)
+//│ > fun ctor_() =
+//│ >   ()
 //│ > fun f(x, y) =
 //│ >   let tmp
 //│ >   let tmp1
@@ -190,6 +192,8 @@ staged module TestIf with
     else "wrong2"
   fun test() = 
     f(2)
+//│ > fun ctor_() =
+//│ >   ()
 //│ > fun f(x) =
 //│ >   let arg_C_0_
 //│ >   if x is
@@ -239,7 +243,8 @@ class D()
 staged module TestClass with
   fun f() = new C(2, 3)
   fun g() = C(D())
-//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("x")]), [])
+//│ > fun ctor_() =
+//│ >   ()
 //│ > fun f() = new C(2, 3)
 //│ > fun g() =
 //│ >   let tmp
@@ -272,21 +277,36 @@ staged module TestClass with
 class C(val n)
 staged module TestClass2 with
   fun f(c) = c
-  // fun test() = f(C(2)) // FIXME: this should be static as well
-  fun test2() = f(new C(1)) // FIXME 
-//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("n")]), [])
-//│ > Assign(Symbol("obj_1"), Instantiate(ValueRef(ClassSymbol("C", undefined, None, [])), [Arg(ValueLit(1))]), End())
+  fun test() = f(C(2)) // FIXME: this should be static as well
+  fun test2() = 
+    f(new C(1)) // FIXME 
+    f(new C(2))
+//│ > fun ctor_() =
+//│ >   ()
 //│ > fun f(c) = c
-//│ > fun test2() =
+//│ > fun test() =
 //│ >   let tmp
-//│ >   tmp = new C(1)
-//│ >   TestClass2.f_C_Lit1(tmp)
+//│ >   tmp = C(2)
+//│ >   TestClass2.f(tmp)
+//│ > fun test2() =
+//│ >   let tmp1
+//│ >   let tmp2
+//│ >   tmp1 = new C(1)
+//│ >   __no__symbol__ = TestClass2.f_C_Lit1(tmp1)
+//│ >   tmp2 = new C(2)
+//│ >   TestClass2.f_C_Lit2(tmp2)
 //│ > fun f_C_Lit1(c) =
+//│ >   let obj_1
 //│ >   obj_1 = new C(1)
 //│ >   obj_1
-//│ > Map(3) {
+//│ > fun f_C_Lit2(c) =
+//│ >   let obj_2
+//│ >   obj_2 = new C(2)
+//│ >   obj_2
+//│ > Map(4) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
+//│ >   'test' => [Function: test_gen],
 //│ >   'test2' => [Function: test2_gen]
 //│ > }
 //│ > Map(2) {
@@ -300,9 +320,10 @@ staged module TestClass2 with
 //│ >   },
 //│ >   [class TestClass2] {
 //│ >     'cache$TestClass2': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestClass2': Map(3) {
+//│ >     'generatorMap$TestClass2': Map(4) {
 //│ >       'ctor$' => [Function: ctor$_gen],
 //│ >       'f' => [Function: f_gen],
+//│ >       'test' => [Function: test_gen],
 //│ >       'test2' => [Function: test2_gen]
 //│ >     }
 //│ >   } => ModuleSymbol {
@@ -333,8 +354,8 @@ staged module TestIf with
     let c = new C(2)
     f(c)
     get("n", c)
-//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("n")]), [])
-//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("n")]), [])
+//│ > fun ctor_() =
+//│ >   ()
 //│ > fun f(x) =
 //│ >   let y
 //│ >   let tmp
@@ -413,15 +434,16 @@ staged module TestTupleMatching with
 //│     at Predef.pipeInto (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Predef.mjs:103:29)
 //│     at ShapeSet.selSet (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:268:19)
 //│     at SpecializeHelpers.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:184:25)
-//│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:343:63)
-//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:716:38)
-//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:774:40)
+//│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:342:63)
+//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:715:38)
+//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:773:40)
 //│     at file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:151:35
 
 class E(val x)
 staged module Test2 with
   fun f() = new E(1)
-//│ > ClassSymbol("E", fun E { class: class E }, Some([Symbol("x")]), [])
+//│ > fun ctor_() =
+//│ >   ()
 //│ > fun f() = new E(1)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
