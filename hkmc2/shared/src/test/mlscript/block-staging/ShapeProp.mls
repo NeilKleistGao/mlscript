@@ -4,6 +4,10 @@
 
 module NonStaged with
   fun sq(x) = x * x
+  fun fib(n) = if n is 
+    1 then 1
+    2 then 1
+    n then fib(n - 1) + fib(n - 2)
 
 module Staged with
   fun sq(x) = x * x
@@ -20,6 +24,7 @@ staged module Test with
     let five = f(2, 3)
     fib(five)
     pyth(3, 4)
+    NonStaged.fib(five) // this is fully partial evaluated unlike the staged counterpart :)
   fun test2(n) = 
     pyth(n, 2) 
     fib(n * 2)
@@ -60,7 +65,8 @@ staged module Test with
 //│ >   let five
 //│ >   five = Test.f_Lit2_Lit3(2, 3)
 //│ >   __no__symbol__ = Test.fib_Lit5(five)
-//│ >   Test.pyth_Lit3_Lit4(3, 4)
+//│ >   __no__symbol__ = Test.pyth_Lit3_Lit4(3, 4)
+//│ >   5
 //│ > fun f_Lit2_Lit3(x, y) =
 //│ >   let tmp
 //│ >   let tmp1
@@ -176,28 +182,42 @@ staged module Test with
 //│ >   }
 //│ > }
 
+class C(val x)
 staged module TestIf with
   fun f(x) = if x is
-    1 then "wrong1"
+    C(2) then "wrong1"
     2 then "correct"
-    3 then "wrong3"
-    else "wrong4"
+    else "wrong2"
   fun test() = 
     f(2)
 //│ > fun f(x) =
+//│ >   let arg_C_0_
 //│ >   if x is
-//│ >     1 then "wrong1"
+//│ >     C(x) then
+//│ >       arg_C_0_ = x.x
+//│ >       if arg_C_0_ is
+//│ >         2 then "wrong1"
+//│ >         else "wrong2"
 //│ >     2 then "correct"
-//│ >     3 then "wrong3"
-//│ >     else "wrong4"
+//│ >     else "wrong2"
 //│ > fun test() = TestIf.f_Lit2(2)
-//│ > fun f_Lit2(x) = "correct"
+//│ > fun f_Lit2(x) =
+//│ >   let arg_C_0_
+//│ >   "correct"
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'test' => [Function: test_gen]
 //│ > }
-//│ > Map(1) {
+//│ > Map(2) {
+//│ >   [Function: C] {
+//│ >     class: [class C] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
 //│ >   [class TestIf] {
 //│ >     'cache$TestIf': FunCache { cache: [Map] },
 //│ >     'generatorMap$TestIf': Map(3) {
@@ -219,6 +239,7 @@ class D()
 staged module TestClass with
   fun f() = new C(2, 3)
   fun g() = C(D())
+//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("x")]), [])
 //│ > fun f() = new C(2, 3)
 //│ > fun g() =
 //│ >   let tmp
@@ -231,7 +252,7 @@ staged module TestClass with
 //│ > }
 //│ > Map(2) {
 //│ >   [Function: C] {
-//│ >     class: [class C] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class C2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
@@ -248,16 +269,72 @@ staged module TestClass with
 //│ >   }
 //│ > }
 
+class C(val n)
+staged module TestClass2 with
+  fun f(c) = c
+  // fun test() = f(C(2)) // FIXME: this should be static as well
+  fun test2() = f(new C(1)) // FIXME 
+//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("n")]), [])
+//│ > Assign(Symbol("obj_1"), Instantiate(ValueRef(ClassSymbol("C", undefined, None, [])), [Arg(ValueLit(1))]), End())
+//│ > fun f(c) = c
+//│ > fun test2() =
+//│ >   let tmp
+//│ >   tmp = new C(1)
+//│ >   TestClass2.f_C_Lit1(tmp)
+//│ > fun f_C_Lit1(c) =
+//│ >   obj_1 = new C(1)
+//│ >   obj_1
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'f' => [Function: f_gen],
+//│ >   'test2' => [Function: test2_gen]
+//│ > }
+//│ > Map(2) {
+//│ >   [Function: C] {
+//│ >     class: [class C4] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class TestClass2] {
+//│ >     'cache$TestClass2': FunCache { cache: [Map] },
+//│ >     'generatorMap$TestClass2': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen],
+//│ >       'test2' => [Function: test2_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'TestClass2',
+//│ >     value: [class TestClass2] {
+//│ >       'cache$TestClass2': [FunCache],
+//│ >       'generatorMap$TestClass2': [Map]
+//│ >     }
+//│ >   }
+//│ > }
+
 :noSanityCheck
 class C(val n)
 staged module TestIf with
   fun f(x) =
     let y
-    if x is C then 
+    if x is C then
       y = x.n
     else 
       y = 0
     y + 1
+  fun get(n, c) = 
+    c.(n)
+  fun get2(n) = 
+    let c = new C(3)
+    c.(n)
+  fun test() =
+    let c = new C(2)
+    f(c)
+    get("n", c)
+//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("n")]), [])
+//│ > ClassSymbol("C", fun C { class: class C }, Some([Symbol("n")]), [])
 //│ > fun f(x) =
 //│ >   let y
 //│ >   let tmp
@@ -269,15 +346,91 @@ staged module TestIf with
 //│ >     else y = 0
 //│ >     tmp = Runtime.Unit
 //│ >     1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(2) {
+//│ > fun get(n, c) = c.(n)
+//│ > fun get2(n) =
+//│ >   let c
+//│ >   c = new C(3)
+//│ >   c.(n)
+//│ > fun test() =
+//│ >   let c
+//│ >   c = new C(2)
+//│ >   __no__symbol__ = TestIf.f_C_Lit2(c)
+//│ >   TestIf.get_Strn_C_Lit2("n", c)
+//│ > fun f_C_Lit2(x) =
+//│ >   let y
+//│ >   let tmp
+//│ >   y = x.n
+//│ >   tmp = Runtime.Unit
+//│ >   +(y, 1)
+//│ > fun get_Strn_C_Lit2(n, c) = c.(n)
+//│ > Map(5) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'f' => [Function: f_gen],
+//│ >   'get' => [Function: get_gen],
+//│ >   'get2' => [Function: get2_gen],
+//│ >   'test' => [Function: test_gen]
+//│ > }
+//│ > Map(3) {
 //│ >   [Function: C] {
-//│ >     class: [class C2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class C6] { [Symbol(mlscript.definitionMetadata)]: [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} }
+//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} },
+//│ >   [class TestIf2] {
+//│ >     'cache$TestIf': FunCache { cache: [Map] },
+//│ >     'generatorMap$TestIf': Map(5) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen],
+//│ >       'get' => [Function: get_gen],
+//│ >       'get2' => [Function: get2_gen],
+//│ >       'test' => [Function: test_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'TestIf',
+//│ >     value: [class TestIf2] {
+//│ >       'cache$TestIf': [FunCache],
+//│ >       'generatorMap$TestIf': [Map]
+//│ >     }
+//│ >   }
+//│ > }
+
+staged module TestTupleMatching with
+  fun len(x) = if x is
+    [a] then 1
+    [a, b] then 2
+    [a, b, c] then 3
+    else -1
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
+//│ ═══[RUNTIME ERROR] TypeError: s.hash is not a function
+//│     at lambda (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:133:33)
+//│     at Array.map (<anonymous>)
+//│     at liftMany (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:139:32)
+//│     at Predef.pipeInto (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Predef.mjs:103:29)
+//│     at ShapeSet.selSet (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:268:19)
+//│     at SpecializeHelpers.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:184:25)
+//│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:343:63)
+//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:716:38)
+//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:774:40)
+//│     at file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:151:35
+
+class E(val x)
+staged module Test2 with
+  fun f() = new E(1)
+//│ > ClassSymbol("E", fun E { class: class E }, Some([Symbol("x")]), [])
+//│ > fun f() = new E(1)
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [Function: E] {
+//│ >     class: [class E] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'E',
+//│ >     value: [Function: E] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
 //│ > }

@@ -97,7 +97,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then ???
+    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then value(...params.map(valOf))
     else throw Error("Unknown shape")
 
 fun valOfSet(s : ShapeSet) = 
@@ -123,14 +123,15 @@ fun val2path(v) =
     [fullBlock, Block.ValueRef(tupSym)]
   else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
     let md = v.constructor.(Symbols.definitionMetadata)
-    let clsName = md.0
+    let clsName = md.1
     let paramNames = md.2
     let classSym = Block.ClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld)))
-    let blocks = mapped.filter(_ is [_, _]).map(_ => _.0)
-    let paths = mapped.map((m, _, _) => if m is [_, p] then p else m)
+    let blocks = mapped.map(_.0)
+    let paths = mapped.map(_.1)
     let objSym = freshId("obj")
-    let objAssign = Block.Assign(objSym, Block.Instantiate(Block.ValueRef(classSym), paths.map((p, _, _) => Block.Arg(p))), Block.End())
+    let objAssign = Block.Assign(objSym, Block.Instantiate(Block.ValueRef(classSym), paths.map(Block.Arg(_))), Block.End())
     let fullBlock = foldl((b, acc) => Block.concat(b, acc))(objAssign, ...blocks)
+    print(fullBlock)
     [fullBlock, Block.ValueRef(objSym)]
   else [Block.End(), Block.ValueLit(42)]

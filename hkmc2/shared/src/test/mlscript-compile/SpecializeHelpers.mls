@@ -41,7 +41,8 @@ fun sov(v): ShapeSet =
 fun sop(ctx, p): ShapeSet = 
   if ctx.get(p) is Some(s) then s
   else if p is 
-    Select(qual, sym) then selSet(sop(ctx, qual), mkLit(sym.name))
+    Select(qual, sym) then 
+      selSet(sop(ctx, qual), mkLit(sym.name))
     DynSelect(qual, fld, _) then 
       selSet(sop(ctx, qual), sop(ctx, fld))
     ValueLit(lit) then mkLit(lit)
@@ -55,7 +56,8 @@ fun sor(ctx, r) = if r is
       [End(), r, s]
   Instantiate(cls, args) then
     let sym = if cls is
-      ValueRef(s) and s is ClassSymbol then s 
+      ValueRef(s) and s is ClassSymbol then 
+        s 
       Select(_, s) and s is ClassSymbol then s
       else throw Error("Instantiate with non-ClassSymbol in shape propagation: " + cls.toString())
     [End(), r, mkClass(sym, args.map(a => sop(ctx, a.value)))]
@@ -162,15 +164,27 @@ fun prop(ctx, b) = if b is
             else
               [Match(p, filteredArms.2, None, End()), filteredArms.1]
 
+// TODO: debug only; remove this
+fun propStub(ctx, body) = [body, mkDyn()]
+
+fun buildShapeName(s: Shape): Str =
+  if s is
+    Dyn then "Dyn"
+    Lit(lit) and lit is Str then "Str" + lit
+    Lit(lit) then "Lit" + lit.toString()
+    Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
+    Class(sym, params) then sym.name + "_" + params.map(buildShapeName).join("_")
+    else "Unk"
+
+fun buildShapeSetName(ss: ShapeSet): Str =
+  let vals = ss.values()
+  if vals.length == 1 then buildShapeName(vals.0)
+  else "Union_" + vals.map(buildShapeName).join("_") + "_end"
+
 fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
   else
-    funName + "_" + shapes.toString()
-      .replaceAll("{", "").replaceAll("}", "")
-      .replaceAll("[", "").replaceAll("]", "")
-      .replaceAll("(", "").replaceAll(")", "")
-      .replaceAll("\\", "").replaceAll("\"", "")
-      .replaceAll(" ", "").replaceAll(",", "_")
+    funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("__")
 
 fun specialize(cache, funName, dflt, shapes) =
   // replace function symbol in block definition to new name
