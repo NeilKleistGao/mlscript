@@ -107,9 +107,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
         transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
       // avoid name collision
-      case _: TempSymbol | _: NoSymbol =>
-        val name = scope.allocateOrGetName(sym)
-        blockCtor("Symbol", Ls(toValue(name)), symName)(k)
       case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
         blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap(toValue(sym.nme), _))
       case baseSym: BaseTypeSymbol =>
@@ -135,7 +132,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
             blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
-      case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+      case _: BuiltinSymbol =>
+        blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+      // TODO: figure out when to rebind variables
+      case _: TempSymbol | _: NoSymbol | _ =>
+        val name = scope.allocateOrGetName(sym)
+        blockCtor("Symbol", Ls(toValue(name)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block = xOpt match
     case S(x) => f(x)(optionSome(_)(k))

@@ -33,115 +33,47 @@ staged module Test with
 //│ > fun f(x, y) =
 //│ >   let tmp
 //│ >   let tmp1
-//│ >   tmp = +(x, y)
-//│ >   tmp1 = +(tmp, 1)
-//│ >   -(tmp1, 1)
-//│ > fun fib(n) =
+//│ >   tmp = x+y
+//│ >   tmp1 = tmp+1
+//│ >   tmp1-1
+//│ > fun fib(n1) =
 //│ >   let n
 //│ >   let tmp2
 //│ >   let tmp3
 //│ >   let tmp4
 //│ >   let tmp5
-//│ >   if n is
+//│ >   if n1 is
 //│ >     1 then 1
 //│ >     2 then 1
-//│ >     else n = n
-//│ >     tmp2 = -(n, 1)
+//│ >     else n = n1
+//│ >     tmp2 = n-1
 //│ >     tmp3 = Test.fib(tmp2)
-//│ >     tmp4 = -(n, 2)
+//│ >     tmp4 = n-2
 //│ >     tmp5 = Test.fib(tmp4)
-//│ >     +(tmp3, tmp5)
-//│ > fun pyth(x, y) =
+//│ >     tmp3+tmp5
+//│ > fun pyth(x1, y1) =
 //│ >   let tmp6
 //│ >   let tmp7
-//│ >   tmp6 = NonStaged.sq(x)
-//│ >   tmp7 = NonStaged.sq(y)
-//│ >   +(tmp6, tmp7)
-//│ > fun pyth2(x, y) =
+//│ >   tmp6 = NonStaged.sq(x1)
+//│ >   tmp7 = NonStaged.sq(y1)
+//│ >   tmp6+tmp7
+//│ > fun pyth2(x2, y2) =
 //│ >   let tmp8
 //│ >   let tmp9
-//│ >   tmp8 = Staged.sq(x)
-//│ >   tmp9 = Staged.sq(y)
-//│ >   +(tmp8, tmp9)
+//│ >   tmp8 = Staged.sq1(x2)
+//│ >   tmp9 = Staged.sq1(y2)
+//│ >   tmp8+tmp9
 //│ > fun test() =
 //│ >   let five
-//│ >   five = Test.f_Lit2_Lit3(2, 3)
-//│ >   __no__symbol__ = Test.fib_Lit5(five)
-//│ >   __no__symbol__ = 5
-//│ >   Test.pyth_Lit3_Lit4(3, 4)
-//│ > fun f_Lit2_Lit3(x, y) =
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   tmp = 5
-//│ >   tmp1 = 6
-//│ >   5
-//│ > fun fib_Lit5(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   n = 5
-//│ >   tmp2 = 4
-//│ >   tmp3 = Test.fib_Lit4(tmp2)
-//│ >   tmp4 = 3
-//│ >   tmp5 = Test.fib_Lit3(tmp4)
-//│ >   5
-//│ > fun fib_Lit4(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   n = 4
-//│ >   tmp2 = 3
-//│ >   tmp3 = Test.fib_Lit3(tmp2)
-//│ >   tmp4 = 2
-//│ >   tmp5 = Test.fib_Lit2(tmp4)
-//│ >   3
-//│ > fun fib_Lit3(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   n = 3
-//│ >   tmp2 = 2
-//│ >   tmp3 = Test.fib_Lit2(tmp2)
-//│ >   tmp4 = 1
-//│ >   tmp5 = Test.fib_Lit1(tmp4)
-//│ >   2
-//│ > fun fib_Lit2(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   1
-//│ > fun fib_Lit1(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   1
-//│ > fun pyth_Lit3_Lit4(x, y) =
-//│ >   let tmp6
-//│ >   let tmp7
-//│ >   tmp6 = 9
-//│ >   tmp7 = 16
-//│ >   25
-//│ > fun test2(n) =
+//│ >   five = Test.f1(2, 3)
+//│ >   __no__symbol__ = Test.fib(five)
+//│ >   __no__symbol__ = NonStaged.fib2(five)
+//│ >   Test.pyth1(3, 4)
+//│ > fun test2(n2) =
 //│ >   let tmp10
-//│ >   __no__symbol__ = Test.pyth_Dyn_Lit2(n, 2)
-//│ >   tmp10 = *(n, 2)
+//│ >   __no__symbol__ = Test.pyth1(n2, 2)
+//│ >   tmp10 = *(n2, 2)
 //│ >   Test.fib(tmp10)
-//│ > fun pyth_Dyn_Lit2(x, y) =
-//│ >   let tmp6
-//│ >   let tmp7
-//│ >   tmp6 = NonStaged.sq(x)
-//│ >   tmp7 = 4
-//│ >   +(tmp6, tmp7)
 //│ > Map(7) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
@@ -171,16 +103,16 @@ staged module Test with
 //│ >     }
 //│ >   },
 //│ >   [class NonStaged] {
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'NonStaged' ]
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'NonStaged' ]
 //│ >   } => ModuleSymbol {
 //│ >     name: 'NonStaged',
-//│ >     value: [class NonStaged] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     value: [class NonStaged] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   },
 //│ >   [class Staged] {
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'Staged' ]
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Staged' ]
 //│ >   } => ModuleSymbol {
 //│ >     name: 'Staged',
-//│ >     value: [class Staged] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     value: [class Staged] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   }
 //│ > }
 
@@ -197,17 +129,14 @@ staged module TestIf with
 //│ > fun f(x) =
 //│ >   let arg_C_0_
 //│ >   if x is
-//│ >     C(x) then
-//│ >       arg_C_0_ = x.x
+//│ >     C(x1) then
+//│ >       arg_C_0_ = x.x2
 //│ >       if arg_C_0_ is
 //│ >         2 then "wrong1"
 //│ >         else "wrong2"
 //│ >     2 then "correct"
 //│ >     else "wrong2"
-//│ > fun test() = TestIf.f_Lit2(2)
-//│ > fun f_Lit2(x) =
-//│ >   let arg_C_0_
-//│ >   "correct"
+//│ > fun test() = TestIf.f1(2)
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
@@ -215,7 +144,7 @@ staged module TestIf with
 //│ > }
 //│ > Map(2) {
 //│ >   [Function: C] {
-//│ >     class: [class C] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class C] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
@@ -257,7 +186,7 @@ staged module TestClass with
 //│ > }
 //│ > Map(2) {
 //│ >   [Function: C] {
-//│ >     class: [class C2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class C2] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
@@ -265,7 +194,7 @@ staged module TestClass with
 //│ >     auxParams: []
 //│ >   },
 //│ >   [Function: D] {
-//│ >     class: [class D] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class D] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'D',
 //│ >     value: [Function: D] { class: [Function] },
@@ -286,23 +215,13 @@ staged module TestClass2 with
 //│ > fun test() =
 //│ >   let tmp
 //│ >   tmp = C(2)
-//│ >   TestClass2.f_C_Lit2(tmp)
-//│ > fun f_C_Lit2(c) =
-//│ >   let obj_1
-//│ >   obj_1 = new C(2)
-//│ >   obj_1
+//│ >   TestClass2.f1(tmp)
 //│ > fun test2() =
 //│ >   let tmp1
 //│ >   let tmp2
 //│ >   tmp1 = new D(2)
 //│ >   tmp2 = new C(tmp1)
-//│ >   TestClass2.f_C_D_Lit2(tmp2)
-//│ > fun f_C_D_Lit2(c) =
-//│ >   let obj_2
-//│ >   let obj_3
-//│ >   obj_2 = new D(2)
-//│ >   obj_3 = new C(obj_2)
-//│ >   obj_3
+//│ >   TestClass2.f1(tmp2)
 //│ > Map(4) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
@@ -311,7 +230,7 @@ staged module TestClass2 with
 //│ > }
 //│ > Map(3) {
 //│ >   [Function: C] {
-//│ >     class: [class C4] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class C4] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
@@ -334,7 +253,7 @@ staged module TestClass2 with
 //│ >     }
 //│ >   },
 //│ >   [Function: D] {
-//│ >     class: [class D2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class D2] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'D',
 //│ >     value: [Function: D] { class: [Function] },
@@ -353,15 +272,6 @@ staged module TestIf with
     else 
       y = 0
     y + 1
-  fun get(n, c) = 
-    c.(n)
-  fun get2(n) = 
-    let c = new C(3)
-    c.(n)
-  fun test() =
-    let c = new C(2)
-    f(c)
-    get("n", c)
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
@@ -371,96 +281,19 @@ staged module TestIf with
 //│ >     C(n) then
 //│ >       y = x.n
 //│ >       tmp = Runtime.Unit
-//│ >       +(y, 1)
+//│ >       y+1
 //│ >     else y = 0
 //│ >     tmp = Runtime.Unit
 //│ >     1
-//│ > fun get(n, c) = c.(n)
-//│ > fun get2(n) =
-//│ >   let c
-//│ >   c = new C(3)
-//│ >   c.(n)
-//│ > fun test() =
-//│ >   let c
-//│ >   c = new C(2)
-//│ >   __no__symbol__ = TestIf.f_C_Lit2(c)
-//│ >   TestIf.get_Strn_C_Lit2("n", c)
-//│ > fun f_C_Lit2(x) =
-//│ >   let tmp
-//│ >   let y
-//│ >   y = x.n
-//│ >   tmp = Runtime.Unit
-//│ >   +(y, 1)
-//│ > fun get_Strn_C_Lit2(n, c) = c.(n)
-//│ > Map(5) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'get' => [Function: get_gen],
-//│ >   'get2' => [Function: get2_gen],
-//│ >   'test' => [Function: test_gen]
-//│ > }
-//│ > Map(3) {
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(2) {
 //│ >   [Function: C] {
-//│ >     class: [class C6] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     class: [class C6] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} },
-//│ >   [class TestIf2] {
-//│ >     'cache$TestIf': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestIf': Map(5) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen],
-//│ >       'get' => [Function: get_gen],
-//│ >       'get2' => [Function: get2_gen],
-//│ >       'test' => [Function: test_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'TestIf',
-//│ >     value: [class TestIf2] {
-//│ >       'cache$TestIf': [FunCache],
-//│ >       'generatorMap$TestIf': [Map]
-//│ >     }
-//│ >   }
-//│ > }
-
-staged module TestTupleMatching with
-  fun len(x) = if x is
-    [a] then 1
-    [a, b] then 2
-    [a, b, c] then 3
-    else -1
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] TypeError: s.hash is not a function
-//│     at lambda (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:133:33)
-//│     at Array.map (<anonymous>)
-//│     at liftMany (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:139:32)
-//│     at Predef.pipeInto (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Predef.mjs:103:29)
-//│     at ShapeSet.selSet (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:268:19)
-//│     at SpecializeHelpers.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:207:25)
-//│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:365:63)
-//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:756:38)
-//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:814:40)
-//│     at file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:151:35
-
-class E(val x)
-staged module Test2 with
-  fun f() = new E(1)
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = new E(1)
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(1) {
-//│ >   [Function: E] {
-//│ >     class: [class E] { [Symbol(mlscript.definitionMetadata)]: [Array] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'E',
-//│ >     value: [Function: E] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   }
+//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} }
 //│ > }
