@@ -4,6 +4,10 @@
 
 module NonStaged with
   fun sq(x) = x * x
+  fun fib(n) = if n is 
+    1 then 1
+    2 then 1
+    n then fib(n - 1) + fib(n - 2)
 
 module Staged with
   fun sq(x) = x * x
@@ -19,6 +23,7 @@ staged module Test with
   fun test() =
     let five = f(2, 3)
     fib(five)
+    NonStaged.fib(five)
     pyth(3, 4)
   fun test2(n) = 
     pyth(n, 2) 
@@ -28,114 +33,47 @@ staged module Test with
 //│ > fun f(x, y) =
 //│ >   let tmp
 //│ >   let tmp1
-//│ >   tmp = +(x, y)
-//│ >   tmp1 = +(tmp, 1)
-//│ >   -(tmp1, 1)
-//│ > fun fib(n) =
+//│ >   tmp = x+y
+//│ >   tmp1 = tmp+1
+//│ >   tmp1-1
+//│ > fun fib(n1) =
 //│ >   let n
 //│ >   let tmp2
 //│ >   let tmp3
 //│ >   let tmp4
 //│ >   let tmp5
-//│ >   if n is
+//│ >   if n1 is
 //│ >     1 then 1
 //│ >     2 then 1
-//│ >     else n = n
-//│ >     tmp2 = -(n, 1)
+//│ >     else n = n1
+//│ >     tmp2 = n-1
 //│ >     tmp3 = Test.fib(tmp2)
-//│ >     tmp4 = -(n, 2)
+//│ >     tmp4 = n-2
 //│ >     tmp5 = Test.fib(tmp4)
-//│ >     +(tmp3, tmp5)
-//│ > fun pyth(x, y) =
+//│ >     tmp3+tmp5
+//│ > fun pyth(x1, y1) =
 //│ >   let tmp6
 //│ >   let tmp7
-//│ >   tmp6 = NonStaged.sq(x)
-//│ >   tmp7 = NonStaged.sq(y)
-//│ >   +(tmp6, tmp7)
-//│ > fun pyth2(x, y) =
+//│ >   tmp6 = NonStaged.sq(x1)
+//│ >   tmp7 = NonStaged.sq(y1)
+//│ >   tmp6+tmp7
+//│ > fun pyth2(x2, y2) =
 //│ >   let tmp8
 //│ >   let tmp9
-//│ >   tmp8 = Staged.sq(x)
-//│ >   tmp9 = Staged.sq(y)
-//│ >   +(tmp8, tmp9)
+//│ >   tmp8 = Staged.sq1(x2)
+//│ >   tmp9 = Staged.sq1(y2)
+//│ >   tmp8+tmp9
 //│ > fun test() =
 //│ >   let five
-//│ >   five = Test.f_Lit2_Lit3(2, 3)
-//│ >   __no__symbol__ = Test.fib_Lit5(five)
-//│ >   Test.pyth_Lit3_Lit4(3, 4)
-//│ > fun f_Lit2_Lit3(x, y) =
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   tmp = 5
-//│ >   tmp1 = 6
-//│ >   5
-//│ > fun fib_Lit5(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   n = 5
-//│ >   tmp2 = 4
-//│ >   tmp3 = Test.fib_Lit4(tmp2)
-//│ >   tmp4 = 3
-//│ >   tmp5 = Test.fib_Lit3(tmp4)
-//│ >   5
-//│ > fun fib_Lit4(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   n = 4
-//│ >   tmp2 = 3
-//│ >   tmp3 = Test.fib_Lit3(tmp2)
-//│ >   tmp4 = 2
-//│ >   tmp5 = Test.fib_Lit2(tmp4)
-//│ >   3
-//│ > fun fib_Lit3(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   n = 3
-//│ >   tmp2 = 2
-//│ >   tmp3 = Test.fib_Lit2(tmp2)
-//│ >   tmp4 = 1
-//│ >   tmp5 = Test.fib_Lit1(tmp4)
-//│ >   2
-//│ > fun fib_Lit2(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   1
-//│ > fun fib_Lit1(n) =
-//│ >   let n
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let tmp5
-//│ >   1
-//│ > fun pyth_Lit3_Lit4(x, y) =
-//│ >   let tmp6
-//│ >   let tmp7
-//│ >   tmp6 = 9
-//│ >   tmp7 = 16
-//│ >   25
-//│ > fun test2(n) =
+//│ >   five = Test.f1(2, 3)
+//│ >   __no__symbol__ = Test.fib(five)
+//│ >   __no__symbol__ = NonStaged.fib2(five)
+//│ >   Test.pyth1(3, 4)
+//│ > fun test2(n2) =
 //│ >   let tmp10
-//│ >   __no__symbol__ = Test.pyth_Dyn_Lit2(n, 2)
-//│ >   tmp10 = *(n, 2)
+//│ >   __no__symbol__ = Test.pyth1(n2, 2)
+//│ >   tmp10 = *(n2, 2)
 //│ >   Test.fib(tmp10)
-//│ > fun pyth_Dyn_Lit2(x, y) =
-//│ >   let tmp6
-//│ >   let tmp7
-//│ >   tmp6 = NonStaged.sq(x)
-//│ >   tmp7 = 4
-//│ >   +(tmp6, tmp7)
 //│ > Map(7) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
@@ -178,30 +116,41 @@ staged module Test with
 //│ >   }
 //│ > }
 
+class C(val x)
 staged module TestIf with
   fun f(x) = if x is
-    1 then "wrong1"
+    C(2) then "wrong1"
     2 then "correct"
-    3 then "wrong3"
-    else "wrong4"
+    else "wrong2"
   fun test() = 
     f(2)
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
+//│ >   let arg_C_0_
 //│ >   if x is
-//│ >     1 then "wrong1"
+//│ >     C(x1) then
+//│ >       arg_C_0_ = x.x2
+//│ >       if arg_C_0_ is
+//│ >         2 then "wrong1"
+//│ >         else "wrong2"
 //│ >     2 then "correct"
-//│ >     3 then "wrong3"
-//│ >     else "wrong4"
-//│ > fun test() = TestIf.f_Lit2(2)
-//│ > fun f_Lit2(x) = "correct"
+//│ >     else "wrong2"
+//│ > fun test() = TestIf.f1(2)
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'test' => [Function: test_gen]
 //│ > }
-//│ > Map(1) {
+//│ > Map(2) {
+//│ >   [Function: C] {
+//│ >     class: [class C] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
 //│ >   [class TestIf] {
 //│ >     'cache$TestIf': FunCache { cache: [Map] },
 //│ >     'generatorMap$TestIf': Map(3) {
@@ -237,7 +186,7 @@ staged module TestClass with
 //│ > }
 //│ > Map(2) {
 //│ >   [Function: C] {
-//│ >     class: [class C] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >     class: [class C2] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
@@ -254,22 +203,97 @@ staged module TestClass with
 //│ >   }
 //│ > }
 
-:fixme
+class C(val n)
+class D(val n)
+staged module TestClass2 with
+  fun f(c) = c
+  fun test() = f(C(2)) // FIXME: this should be static as well
+  fun test2() = f(new C(new D(2)))
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(c) = c
+//│ > fun test() =
+//│ >   let tmp
+//│ >   tmp = C(2)
+//│ >   TestClass2.f1(tmp)
+//│ > fun test2() =
+//│ >   let tmp1
+//│ >   let tmp2
+//│ >   tmp1 = new D(2)
+//│ >   tmp2 = new C(tmp1)
+//│ >   TestClass2.f1(tmp2)
+//│ > Map(4) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'f' => [Function: f_gen],
+//│ >   'test' => [Function: test_gen],
+//│ >   'test2' => [Function: test2_gen]
+//│ > }
+//│ > Map(3) {
+//│ >   [Function: C] {
+//│ >     class: [class C4] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class TestClass2] {
+//│ >     'cache$TestClass2': FunCache { cache: [Map] },
+//│ >     'generatorMap$TestClass2': Map(4) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen],
+//│ >       'test' => [Function: test_gen],
+//│ >       'test2' => [Function: test2_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'TestClass2',
+//│ >     value: [class TestClass2] {
+//│ >       'cache$TestClass2': [FunCache],
+//│ >       'generatorMap$TestClass2': [Map]
+//│ >     }
+//│ >   },
+//│ >   [Function: D] {
+//│ >     class: [class D2] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'D',
+//│ >     value: [Function: D] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
 :noSanityCheck
 class C(val n)
 staged module TestIf with
   fun f(x) =
     let y
-    if x is C then 
+    if x is C then
       y = x.n
     else 
       y = 0
     y + 1
-//│ ═══[COMPILATION ERROR] Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: object:Unit
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'y'
-//│ ║  l.262: 	    let y
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.262: 	    let y
-//│ ╙──       	        ^
-//│ ═══[RUNTIME ERROR] ReferenceError: y is not defined
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(x) =
+//│ >   let tmp
+//│ >   let y
+//│ >   if x is
+//│ >     C(n) then
+//│ >       y = x.n
+//│ >       tmp = Runtime.Unit
+//│ >       y+1
+//│ >     else y = 0
+//│ >     tmp = Runtime.Unit
+//│ >     1
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   [Function: C] {
+//│ >     class: [class C6] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} }
+//│ > }

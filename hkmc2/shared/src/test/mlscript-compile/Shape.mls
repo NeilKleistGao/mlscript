@@ -25,11 +25,12 @@ fun show(s: Shape) =
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
-    [Class(sym, params), Lit(n)] and n is Str
-      and sym.paramsOpt is Some(args)
-      and args.indexOf(n) is
+    [Class(ClassSymbol(_, _, paramsOpt, auxParams), params), Lit(n)] and n is Str
+      and paramsOpt is Some(paramsSymb)
+      and paramsSymb.indexOf(n) is
         -1 then []
         i then [params.(i)]
+    [Class(ClassSymbol, p), Dyn] then [Dyn()]
     [Dyn, Lit(n)] and n is Str
       then [Dyn()]
     [Arr(shapes), Lit(n)] and n is Int
@@ -40,7 +41,7 @@ fun sel(s1: Shape, s2: Shape): Array[Shape] =
       then [Dyn()]
     [Dyn, Dyn]
       then [Dyn()]
-    else [] // TODO: return no possibility instead of err?
+    else throw Error ("sel error")
 
 fun static(s: Shape) = 
   if s is
