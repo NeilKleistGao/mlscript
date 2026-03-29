@@ -133,6 +133,6 @@ fun val2path(v, allocs) =
     let objSym = freshId("obj")
     allocs.push(objSym)
     let objAssign = Block.Assign(objSym, Block.Instantiate(Block.ValueRef(classSym), paths.map(Block.Arg(_))), Block.End())
-    let fullBlock = foldl((b, acc) => Block.concat(b, acc))(objAssign, ...blocks)
+    let fullBlock = fold((b, acc) => Block.concat(acc, b))(objAssign, ...blocks)
     [fullBlock, Block.ValueRef(objSym)]
   else [Block.End(), Block.ValueLit(42)]
