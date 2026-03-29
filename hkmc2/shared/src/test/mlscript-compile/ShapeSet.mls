@@ -113,7 +113,8 @@ fun freshId(prefix) =
   Block.Symbol(prefix + "_" + idCounter.toString())
 
 fun val2path(v) = 
-  if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then [Block.End(), Block.ValueLit(v)]
+  if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then 
+    [Block.End(), Block.ValueLit(v)]
   else if Array.isArray(v) then
     let mapped = v.map(val2path)
     let blocks = mapped.map(_.0)
@@ -126,7 +127,7 @@ fun val2path(v) =
     let md = v.constructor.(Symbols.definitionMetadata)
     let clsName = md.0
     let paramNames = md.2
-    let classSym = Block.ClassSymbol(clsName, None)
+    let classSym = Block.ClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld)))
     let blocks = mapped.filter(_ is [_, _]).map(_ => _.0)
     let paths = mapped.map((m, _, _) => if m is [_, p] then p else m)

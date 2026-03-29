@@ -2,14 +2,38 @@
 :staging
 :noFreeze
 
+:sjs
+module NonStaged with
+  fun sq(x) = x * x
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let NonStaged1;
+//│ (class NonStaged {
+//│   static {
+//│     NonStaged1 = this
+//│   }
+//│   constructor() {
+//│     runtime.Unit;
+//│   }
+//│   static sq(x) {
+//│     return x * x
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "NonStaged"]; 
+//│ });
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+module Staged with
+  fun sq(x) = x * x
+
 staged module Test with
   fun f(x, y) = x + y
   fun fib(n) = if n is 
     1 then 1
     2 then 1
     n then fib(n - 1) + fib(n - 2)
-  fun trig() = 
+  fun pyth(x, y) = NonStaged.sq(x) + NonStaged.sq(y)
+  fun pyth2(x, y) = Staged.sq(x) + Staged.sq(y)
+  fun test() =
     f(2, 3)
     fib(10)
-
 

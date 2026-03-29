@@ -1,6 +1,26 @@
 :js
 :staging
 
+
+:fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
+:checkIR
+staged module Expressions with
+  fun lit() =
+    let x = 42
+    x
+//│ ╔══[INTERNAL ERROR] [BlockChecker] Invalid IR: symbol x⁰ is bound more than once
+//│ ║  l.9: 	    let x = 42
+//│ ╙──     	        ^
+//│ > fun lit() =
+//│ >   let x
+//│ >   x = 42
+//│ >   42
+//│ > Map(2) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'lit' => [Function: lit_gen]
+//│ > }
+
+
 staged module Expressions with
   fun lit(x) = x + x
   fun assign() =
@@ -47,10 +67,10 @@ staged module Expressions with
 //│ >   scrut = 9
 //│ >   3
 //│ > fun match2() =
+//│ >   let element0_
 //│ >   let x
 //│ >   let a
 //│ >   let element1_
-//│ >   let element0_
 //│ >   x = [1, 2, 3]
 //│ >   0
 //│ > Map(8) {
@@ -77,14 +97,14 @@ staged module ClassInstrumentation with
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
 //│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:224)
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
 //│ ═══[RUNTIME ERROR] TypeError: f1 is not a function
 //│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:338:43)
 //│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:566:37)
 //│     at SpecializeHelpers.specialize (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:880:39)
-//│     at ClassInstrumentation.app2_gen (REPL17:1:10699)
-//│     at <static_initializer> (REPL17:1:2386)
-//│     at REPL17:1:10884
+//│     at ClassInstrumentation.app2_gen (REPL20:1:10699)
+//│     at <static_initializer> (REPL20:1:2386)
+//│     at REPL20:1:10884
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│     at REPLServer.defaultEval (node:repl:593:22)
 //│     at bound (node:domain:433:15)
@@ -101,14 +121,14 @@ staged module CallSubst with
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:224)
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
 //│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'get')
 //│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:337:48)
 //│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:610:38)
 //│     at SpecializeHelpers.specialize (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:880:39)
-//│     at CallSubst.call_gen (REPL20:1:6277)
-//│     at <static_initializer> (REPL20:1:3644)
-//│     at REPL20:1:6429
+//│     at CallSubst.call_gen (REPL23:1:6277)
+//│     at <static_initializer> (REPL23:1:3644)
+//│     at REPL23:1:6429
 //│     at ContextifyScript.runInThisContext (node:vm:137:12)
 //│     at REPLServer.defaultEval (node:repl:593:22)
 //│     at bound (node:domain:433:15)
@@ -117,7 +137,7 @@ staged module CallSubst with
 :e
 print(CallSubst."cache$CallSubst")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type CallSubst.
-//│ ║  l.118: 	print(CallSubst."cache$CallSubst")
+//│ ║  l.138: 	print(CallSubst."cache$CallSubst")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun call() =
 //│ >   __no__symbol__ = Nonstaged.f()
@@ -130,7 +150,7 @@ staged module Arguments with
     x
   fun g(x)(y, z)() = z
 //│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:224)
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
 //│ ═══[RUNTIME ERROR] Error: Not implemented
 //│     at get notImplementedError (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Predef.mjs:287:39)
 //│     at ShapeSet.valOf (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:299:21)
@@ -140,8 +160,8 @@ staged module Arguments with
 //│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:620:40)
 //│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:596:36)
 //│     at SpecializeHelpers.specialize (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:880:39)
-//│     at Arguments.g_gen (REPL26:1:6129)
-//│     at <static_initializer> (REPL26:1:2540)
+//│     at Arguments.g_gen (REPL29:1:6129)
+//│     at <static_initializer> (REPL29:1:2540)
 
 staged module OtherBlocks with
   fun scope() =
@@ -194,7 +214,7 @@ staged module ClassDefs with
 :e
 print(ClassDefs."cache$ClassDefs")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassDefs.
-//│ ║  l.195: 	print(ClassDefs."cache$ClassDefs")
+//│ ║  l.215: 	print(ClassDefs."cache$ClassDefs")
 //│ ╙──       	      ^^^^^^^^^
 //│ > 
 
@@ -230,7 +250,7 @@ staged module Shadowing with
 :todo these symbols may be confused dueing shape propagation
 print(Shadowing."cache$Shadowing")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Shadowing.
-//│ ║  l.231: 	print(Shadowing."cache$Shadowing")
+//│ ║  l.251: 	print(Shadowing."cache$Shadowing")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun f(x, x) = x
 
@@ -243,7 +263,7 @@ staged module M with
 :e
 M."generatorMap$M"
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.244: 	M."generatorMap$M"
+//│ ║  l.264: 	M."generatorMap$M"
 //│ ╙──       	^
 //│ = Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen}
 
@@ -256,18 +276,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.254: 	    let x = 1
+//│ ║  l.274: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.254: 	    let x = 1
+//│ ║  l.274: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.254: 	    let x = 1
+//│ ║  l.274: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.254: 	    let x = 1
+//│ ║  l.274: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: x is not defined
 
@@ -279,7 +299,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.279: 	  fun g() = {1 : 2}
+//│ ║  l.299: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: match error
 
@@ -289,11 +309,11 @@ staged module Spread with
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module.
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
 //│ > fun f() =
-//│ >   let middleElements
-//│ >   let element0_
 //│ >   let scrut
 //│ >   let tmp
 //│ >   let x
+//│ >   let middleElements
+//│ >   let element0_
 //│ >   tmp = [1, 2]
 //│ >   scrut = [1, tmp]
 //│ >   0
@@ -309,8 +329,8 @@ staged
 //│ FAILURE: Unexpected parse error
 //│ FAILURE LOCATION: parseRuleImpl (Parser.scala:513)
 //│ ╔══[PARSE ERROR] Expected expression after modifier keyword 'staged'; found end of input instead
-//│ ║  l.308: 	staged 
+//│ ║  l.328: 	staged 
 //│ ╙──       	       ^
 //│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:224)
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.

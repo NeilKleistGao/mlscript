@@ -62,7 +62,11 @@ class CompileTestRunner
           paths = new MLsCompiler.Paths:
             val preludeFile = mainTestDir / "mlscript" / "decls" / "Prelude.mls"
             val runtimeFile = mainTestDir / "mlscript-compile" / "Runtime.mjs"
-            val termFile = mainTestDir / "mlscript-compile" / "Term.mjs",
+            val termFile = mainTestDir / "mlscript-compile" / "Term.mjs"
+            val blockFile = mainTestDir / "mlscript-compile" / "Block.mjs"
+            val optionFile = mainTestDir / "mlscript-compile" / "Option.mjs"
+            val shapeSetFile = mainTestDir / "mlscript-compile" / "ShapeSet.mjs"
+            val specializeHelpersFile = mainTestDir / "mlscript-compile" / "SpecializeHelpers.mjs",
           mkRaise = report.mkRaise
         )
         compiler.compileModule(file)
