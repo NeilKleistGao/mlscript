@@ -13,6 +13,7 @@ import semantics.*
 import semantics.Elaborator.{State, Ctx, ctx}
 
 import syntax.{Literal, Tree}
+import hkmc2.syntax.Tree.Ident
 
 // it should be possible to cache some common constructions (End, Option) into the context
 // this avoids having to rebuild the same shapes everytime they are needed
@@ -400,10 +401,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
               Define(ValDefn(generatorMapTsym, generatorMapSym, map), rest)
 
-      // TODO: remove this. only for testing
-      def debugCont(rest: Block) =
-        val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
-        // val renderFun = State.runtimeSymbol.asPath.selSN("render")
+      def genOutputBody(psym: VarSymbol) =
         val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
         val gens = methods.map { f =>
@@ -427,24 +425,19 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                     call(funPath, args, isMlsFun = true, symName = "tmp_gen_curry")(res => curryCall(res, xs, innerK))
               curryCall(genPath, params, callAllGens(tail, k))
 
-          callAllGens(gens, assign(options)(options =>
-            call(cachePath.selSN("toString"), Nil, false)(str =>
-              call(printFun, Ls(str), false)(_ =>
-                call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false)(_ =>
-                  if symbolMapUsed
-                  then call(printFun, Ls(symbolMapSym), false)(_ => rest)
-                  else rest)))))
+          callAllGens(gens, call(cachePath.selSN("dump"), Nil, false)(mthds => 
+            call(blockMod("codegen"), toValue(modSym.nme) :: mthds :: psym.asPath :: Nil, true, "tmp")(_ => End())))
 
       val entryFunDef =
         val sym = BlockMemberSymbol("generate", Nil)
-        val params = PlainParamList(Nil)
-        val body = End() // TODO
-        FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(false)
+        val psym = VarSymbol(Ident("path"))
+        val params = PlainParamList(Param.simple(psym) :: Nil)
+        FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(psym))(false)
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
         methods = entryFunDef :: helperMethods.flatten,
-        ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
+        ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(End()))),
         publicFields = companion.publicFields
       )
       val newClsLikeDefn = defn.copy(companion = S(newCompanion))
