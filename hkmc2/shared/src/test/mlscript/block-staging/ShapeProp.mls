@@ -279,15 +279,18 @@ class D(val n)
 staged module TestClass2 with
   fun f(c) = c
   fun test() = f(C(2)) // FIXME: this should be static as well
-  fun test2() = 
-    f(new C(new D(2)))
+  fun test2() = f(new C(new D(2)))
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(c) = c
 //│ > fun test() =
 //│ >   let tmp
 //│ >   tmp = C(2)
-//│ >   TestClass2.f(tmp)
+//│ >   TestClass2.f_C_Lit2(tmp)
+//│ > fun f_C_Lit2(c) =
+//│ >   let obj_1
+//│ >   obj_1 = new C(2)
+//│ >   obj_1
 //│ > fun test2() =
 //│ >   let tmp1
 //│ >   let tmp2
@@ -295,11 +298,11 @@ staged module TestClass2 with
 //│ >   tmp2 = new C(tmp1)
 //│ >   TestClass2.f_C_D_Lit2(tmp2)
 //│ > fun f_C_D_Lit2(c) =
-//│ >   let obj_1
 //│ >   let obj_2
-//│ >   obj_2 = new C(obj_1)
-//│ >   obj_1 = new D(2)
-//│ >   obj_2
+//│ >   let obj_3
+//│ >   obj_3 = new C(obj_2)
+//│ >   obj_2 = new D(2)
+//│ >   obj_3
 //│ > Map(4) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
@@ -440,8 +443,8 @@ staged module TestTupleMatching with
 //│     at ShapeSet.selSet (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:268:19)
 //│     at SpecializeHelpers.sop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:207:25)
 //│     at SpecializeHelpers.sor (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:365:63)
-//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:745:38)
-//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:803:40)
+//│     at SpecializeHelpers.prop (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:780:38)
+//│     at lambda1 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:838:40)
 //│     at file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:151:35
 
 class E(val x)

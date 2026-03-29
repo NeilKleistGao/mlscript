@@ -60,12 +60,12 @@ fun sor(ctx, r) = if r is
     else
       [End(), r, s]
   Instantiate(cls, args) then
-    let sym = if cls is
-      ValueRef(s) and s is ClassSymbol then 
-        s 
-      Select(_, s) and s is ClassSymbol then s
+    let clsSymb = if cls is
+      ValueRef(symb) and symb is ClassSymbol then 
+        symb
+      Select(_, symb) and symb is ClassSymbol then symb
       else throw Error("Instantiate with non-ClassSymbol in shape propagation: " + cls.toString())
-    [End(), r, mkClass(sym, args.map(a => sop(ctx, a.value)))]
+    [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args) then 
     fun lit(l) = [End(), ValueLit(l), mkLit(l)]
@@ -77,6 +77,8 @@ fun sor(ctx, r) = if r is
           [End(), recovered, sop(ctx, recovered)]
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
         throw Error("runtime.Tuple.slice not handled in shape propagation") // TODO
+      ValueRef(clsSymb) and clsSymb is ClassSymbol then
+        [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
       ValueRef(symb) and  // built-in or top-level
         let name = symb.name
         args is
@@ -116,6 +118,9 @@ fun sor(ctx, r) = if r is
           let evaluated = f(...argShapes.map(valOfSet))
           let evaluated_path = val2path(evaluated, ctx.allocs)
           [evaluated_path.0, evaluated_path.1, sov(evaluated)]
+      Select(ValueRef(ClassSymbol(name, value, paramsOpt, auxParams)), Symbol(symb)) then
+        // TODO 
+        [End(), r, mkDyn()]
       Select(ValueRef(symb), Symbol(f)) and sop(ctx, ValueRef(symb)) is Class(sym, params) then // class method call
         // TODO
     else 
