@@ -100,8 +100,8 @@ fun sor(ctx, r) = if r is
             ">=" then lit(l1 >= l2)
             "===" then lit(l1 === l2)
             "!==" then lit(l1 !== l2)
-            "&&" then lit(l1 && l2)
-            "||" then lit(l1 || l2)
+            // "&&" then lit(l1 && l2)
+            // "||" then lit(l1 || l2)
       Select(ValueRef(ModuleSymbol(name, value)), Symbol(symb)) and
         let mapPropName = "generatorMap$" + name
         let cachePropName = "cache$" + name
@@ -177,7 +177,9 @@ fun prop(ctx, b) = if b is
               [Match(p, filteredArms.2, None, End()), filteredArms.1]
 
 // TODO: debug only; remove this
-fun propStub(ctx, body) = [body, mkDyn()]
+fun propStub(ctx, body) = 
+  console.log("Calling the propStub now which performs no shape propagation")
+  [body, mkDyn()]
 
 fun buildShapeName(s: Shape): Str =
   if s is
