@@ -275,13 +275,12 @@ staged module TestClass with
 //│ > }
 
 class C(val n)
+class D(val n)
 staged module TestClass2 with
   fun f(c) = c
   fun test() = f(C(2)) // FIXME: this should be static as well
   fun test2() = 
-    f(new C(2))
-    f(new C(3))
-    f(new C(4))
+    f(new C(new D(2)))
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(c) = c
@@ -292,32 +291,22 @@ staged module TestClass2 with
 //│ > fun test2() =
 //│ >   let tmp1
 //│ >   let tmp2
-//│ >   let tmp3
-//│ >   tmp1 = new C(2)
-//│ >   __no__symbol__ = TestClass2.f_C_Lit2(tmp1)
-//│ >   tmp2 = new C(3)
-//│ >   __no__symbol__ = TestClass2.f_C_Lit3(tmp2)
-//│ >   tmp3 = new C(4)
-//│ >   TestClass2.f_C_Lit4(tmp3)
-//│ > fun f_C_Lit2(c) =
+//│ >   tmp1 = new D(2)
+//│ >   tmp2 = new C(tmp1)
+//│ >   TestClass2.f_C_D_Lit2(tmp2)
+//│ > fun f_C_D_Lit2(c) =
 //│ >   let obj_1
-//│ >   obj_1 = new C(2)
-//│ >   obj_1
-//│ > fun f_C_Lit3(c) =
 //│ >   let obj_2
-//│ >   obj_2 = new C(3)
+//│ >   obj_2 = new C(obj_1)
+//│ >   obj_1 = new D(2)
 //│ >   obj_2
-//│ > fun f_C_Lit4(c) =
-//│ >   let obj_3
-//│ >   obj_3 = new C(4)
-//│ >   obj_3
 //│ > Map(4) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'test' => [Function: test_gen],
 //│ >   'test2' => [Function: test2_gen]
 //│ > }
-//│ > Map(2) {
+//│ > Map(3) {
 //│ >   [Function: C] {
 //│ >     class: [class C4] { [Symbol(mlscript.definitionMetadata)]: [Array] }
 //│ >   } => ClassSymbol {
@@ -340,6 +329,14 @@ staged module TestClass2 with
 //│ >       'cache$TestClass2': [FunCache],
 //│ >       'generatorMap$TestClass2': [Map]
 //│ >     }
+//│ >   },
+//│ >   [Function: D] {
+//│ >     class: [class D2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'D',
+//│ >     value: [Function: D] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
 //│ >   }
 //│ > }
 
@@ -365,8 +362,8 @@ staged module TestIf with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
-//│ >   let y
 //│ >   let tmp
+//│ >   let y
 //│ >   if x is
 //│ >     C(n) then
 //│ >       y = x.n
@@ -386,8 +383,8 @@ staged module TestIf with
 //│ >   __no__symbol__ = TestIf.f_C_Lit2(c)
 //│ >   TestIf.get_Strn_C_Lit2("n", c)
 //│ > fun f_C_Lit2(x) =
-//│ >   let y
 //│ >   let tmp
+//│ >   let y
 //│ >   y = x.n
 //│ >   tmp = Runtime.Unit
 //│ >   +(y, 1)
