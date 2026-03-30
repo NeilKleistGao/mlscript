@@ -189,7 +189,8 @@ staged module TestIf2 with
       y = 0
     y + 1
   fun test() = f(C(2))
-  fun test2() = f(0)
+  fun test2(dyn) = f(C(dyn))
+  fun test3() = f(0)
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
@@ -206,13 +207,24 @@ staged module TestIf2 with
 //│ >       1
 //│ > fun test() = 3
 //│ > fun f_C_Lit2(x) = 3
-//│ > fun test2() = 1
+//│ > fun test2(dyn) =
+//│ >   let tmp2
+//│ >   tmp2 = C(dyn)
+//│ >   TestIf2.f_C_Dyn(tmp2)
+//│ > fun f_C_Dyn(x) =
+//│ >   let tmp
+//│ >   let y
+//│ >   y = x.n
+//│ >   tmp = Runtime.Unit
+//│ >   y + 1
+//│ > fun test3() = 1
 //│ > fun f_Lit0(x) = 1
-//│ > Map(4) {
+//│ > Map(5) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'test' => [Function: test_gen],
-//│ >   'test2' => [Function: test2_gen]
+//│ >   'test2' => [Function: test2_gen],
+//│ >   'test3' => [Function: test3_gen]
 //│ > }
 //│ > Map(3) {
 //│ >   [Function: C] {
@@ -226,11 +238,12 @@ staged module TestIf2 with
 //│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} },
 //│ >   [class TestIf2] {
 //│ >     'cache$TestIf2': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestIf2': Map(4) {
+//│ >     'generatorMap$TestIf2': Map(5) {
 //│ >       'ctor$' => [Function: ctor$_gen],
 //│ >       'f' => [Function: f_gen],
 //│ >       'test' => [Function: test_gen],
-//│ >       'test2' => [Function: test2_gen]
+//│ >       'test2' => [Function: test2_gen],
+//│ >       'test3' => [Function: test3_gen]
 //│ >     }
 //│ >   } => ModuleSymbol {
 //│ >     name: 'TestIf2',
@@ -381,9 +394,9 @@ staged module TailRecursion with
 //│ >   if n is
 //│ >     0 then acc
 //│ >     else 
-//│ >       tmp = n - 1
-//│ >       tmp1 = acc + n
-//│ >       TailRecursion.sum(tmp, tmp1)
+//│ >       tmp1 = n - 1
+//│ >       tmp = acc + n
+//│ >       TailRecursion.sum(tmp1, tmp)
 //│ > fun test() = 15
 //│ > fun sum_Lit5_Lit0(n, acc) = 15
 //│ > fun sum_Lit4_Lit5(n, acc) = 15
@@ -426,9 +439,9 @@ staged module TestTupleConstruct with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun first(x) =
-//│ >   let a
 //│ >   let element1_
 //│ >   let element0_
+//│ >   let a
 //│ >   if x is
 //│ >     [_, _] then
 //│ >       element0_ = x.(0)
@@ -437,9 +450,9 @@ staged module TestTupleConstruct with
 //│ >       a
 //│ >     else 0
 //│ > fun second(x1) =
+//│ >   let b
 //│ >   let element1_1
 //│ >   let element0_1
-//│ >   let b
 //│ >   if x1 is
 //│ >     [_, _] then
 //│ >       element0_1 = x1.(0)
@@ -448,18 +461,18 @@ staged module TestTupleConstruct with
 //│ >       b
 //│ >     else 0
 //│ > fun test(y) =
+//│ >   let t
 //│ >   let tmp
 //│ >   let tmp1
-//│ >   let t
 //│ >   t = [10, y]
 //│ >   tmp = TestTupleConstruct.first_Arr_Lit10_Dyn_end(t)
 //│ >   tmp1 = TestTupleConstruct.second_Arr_Lit10_Dyn_end(t)
 //│ >   tmp + tmp1
 //│ > fun first_Arr_Lit10_Dyn_end(x) = 10
 //│ > fun second_Arr_Lit10_Dyn_end(x1) =
+//│ >   let b
 //│ >   let element1_1
 //│ >   let element0_1
-//│ >   let b
 //│ >   element0_1 = x1.(0)
 //│ >   element1_1 = x1.(1)
 //│ >   b = element1_1
