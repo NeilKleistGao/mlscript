@@ -1,0 +1,50 @@
+:js
+:staging
+
+staged module TempVariable with
+  fun f() = 
+    let x
+    let x
+    x
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() =
+//│ >   let x
+//│ >   let x1
+//│ >   x1
+
+staged module DupeFunctionName with
+  fun f() = 1
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = 1
+
+class C(val x)
+
+staged module NoSymbol with
+  fun f(g) =
+    g()
+    g()
+    ()
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(g) =
+//│ >   __no__symbol__ = g()
+//│ >   __no__symbol__ = g()
+//│ >   Runtime.Unit
+
+staged module Selection with
+  fun f(x) =
+    x.call()
+    C(1).x is Bool
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(x) =
+//│ >   let tmp
+//│ >   let scrut
+//│ >   __no__symbol__ = x.call()
+//│ >   tmp = C(1)
+//│ >   scrut = tmp.x
+//│ >   if scrut is
+//│ >     Bool then true
+//│ >     else false
