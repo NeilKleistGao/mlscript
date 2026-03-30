@@ -1,11 +1,13 @@
 :js
 :staging
 :noModuleCheck
+:shapeProp
 
-import "../../mlscript-compile/Shape.mls"
+import "../../mlscript-compile/ShapeSet.mls"
 
-open Shape
+open ShapeSet
 
+// :sjs
 staged module M with  
   fun f(x) =
     let y = x * 2
@@ -19,11 +21,11 @@ staged module M with
 //│ >   y
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
-M.f_gen(Dyn())
-//│ = [Symbol("f_Dyn_28_29"), [[Dyn()]]]
+M.f_gen(mkDyn())
+//│ = [Symbol("f"), {Dyn()}]
 
-M.f_gen(Lit(2))
-//│ = [Symbol("f_Lit_282_29"), [[Lit(2)]]]
+M.f_gen(mkLit(2))
+//│ = [Symbol("f_Lit2"), {Lit(4)}]
 
 print(M."cache$M")
 //│ > fun ctor_() =
@@ -32,11 +34,7 @@ print(M."cache$M")
 //│ >   let y
 //│ >   y = *(x, 2)
 //│ >   y
-//│ > fun f_Dyn_28_29(x) =
+//│ > fun f_Lit2(x) =
 //│ >   let y
-//│ >   y = *(x, 2)
-//│ >   y
-//│ > fun f_Lit_282_29(x) =
-//│ >   let y
-//│ >   y = *(x, 2)
-//│ >   y
+//│ >   y = 4
+//│ >   4

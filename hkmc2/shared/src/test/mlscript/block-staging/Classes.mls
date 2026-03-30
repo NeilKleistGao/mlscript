@@ -8,13 +8,13 @@ class C with
   fun call(x) = x + 1
 staged module M with
   fun f(x) = x.C#call(10)
-//│ > fun ctor__() =
+//│ > fun ctor_() =
 //│ >   ()
-//│ > fun f_{Dyn_28_29}(x) = x.call(10)
+//│ > fun f(x) = x.call(10)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 staged class A(val a)
-//│ > fun ctor__{Dyn_28_29}_2c{Dyn_28_29}(a) =
+//│ > fun ctor_(a) =
 //│ >   set A1.a = a
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
@@ -30,7 +30,7 @@ staged class A(val a)
 
 staged module C with
   class I
-//│ > fun ctor__() =
+//│ > fun ctor_() =
 //│ >   class I
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
@@ -46,9 +46,9 @@ staged module C with
 class C
 staged module M with
   fun f() = C
-//│ > fun ctor__() =
+//│ > fun ctor_() =
 //│ >   ()
-//│ > fun f_() = C
+//│ > fun f() = C
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
 //│ >   [class C4] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ClassSymbol {
@@ -62,9 +62,9 @@ staged module M with
 // :sir
 staged class C with
   fun f() = 1
-//│ > fun ctor__{Dyn_28_29}_2c() =
+//│ > fun ctor_() =
 //│ >   ()
-//│ > fun f_{Dyn_28_29}_2c() = 1
+//│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :e
@@ -78,9 +78,9 @@ staged class B(val x) with
 staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
-//│ > fun ctor__{Dyn_28_29}_2c{Dyn_28_29}(x) =
+//│ > fun ctor_(x) =
 //│ >   set B1.x = x
-//│ > fun f_{Dyn_28_29}_2c{Dyn_28_29}(y) = +(B1.x, y)
+//│ > fun f(y) = B1.x + y
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
 //│ >   [Function: B] {
@@ -92,11 +92,11 @@ staged class D(val x) extends B(x+1) with
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor__{Dyn_28_29}_2c{Dyn_28_29}(x1) =
+//│ > fun ctor_(x1) =
 //│ >   let tmp
-//│ >   tmp = +(x1, 1)
+//│ >   tmp = x1 + 1
 //│ >   super(tmp)
-//│ > fun f_{Dyn_28_29}_2c() = 42
+//│ > fun f() = 42
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: B] {
@@ -131,9 +131,9 @@ staged module M with
   fun f() =
     Unstaged;
     Staged
-//│ > fun ctor__{Dyn_28_29}_2c{Dyn_28_29}(x) =
+//│ > fun ctor_(x) =
 //│ >   set Staged1.x = x
-//│ > fun inner_{Dyn_28_29}_2c() = 1
+//│ > fun inner() = 1
 //│ > Map(2) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'inner' => [Function: inner_gen]
@@ -151,9 +151,9 @@ staged module M with
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor__() =
+//│ > fun ctor_() =
 //│ >   ()
-//│ > fun f_() = ,(Unstaged, Staged1)
+//│ > fun f() = ,(Unstaged, Staged1)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: Staged] {

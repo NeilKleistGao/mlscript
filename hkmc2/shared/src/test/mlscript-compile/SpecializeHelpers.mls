@@ -100,8 +100,8 @@ fun sor(ctx, r) = if r is
             ">=" then lit(l1 >= l2)
             "===" then lit(l1 === l2)
             "!==" then lit(l1 !== l2)
-            // "&&" then lit(l1 && l2)
-            // "||" then lit(l1 || l2)
+            "&&" then lit(l1 && l2)
+            "||" then lit(l1 || l2)
       Select(ValueRef(ModuleSymbol(name, value)), Symbol(symb)) and
         let mapPropName = "generatorMap$" + name
         let cachePropName = "cache$" + name
@@ -178,7 +178,7 @@ fun prop(ctx, b) = if b is
 
 // TODO: debug only; remove this
 fun propStub(ctx, body) = 
-  console.log("Calling the propStub now which performs no shape propagation")
+  // console.log("Calling the propStub now which performs no shape propagation")
   [body, mkDyn()]
 
 fun buildShapeName(s: Shape): Str =
@@ -221,5 +221,3 @@ class FunCache(val cache: Map[String, [FunDefn, ShapeSet]]) with
   // NOTE: this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
   fun setFun(k, v) = cache.set(k, v); v
   fun toString() = cache.values().map((d, _, _) => showDefn(d.0)).toArray().join("\n")
-
-  
