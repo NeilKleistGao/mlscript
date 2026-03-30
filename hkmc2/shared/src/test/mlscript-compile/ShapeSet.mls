@@ -28,12 +28,7 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 
   fun toString() = "{" ~ shapeset.keys().toArray().toSorted().toString() ~ "}"
 
-  fun isDyn() =
-    shapeset.size == 1 and values().0 is Dyn
-
-  fun isDynArr() =
-    if shapeset.size == 1 and values().0 is Arr(shapes) then shapes.every(s => s is Dyn) else false
-
+  fun isDyn() = shapeset.size == 1 and values().0 is Dyn
 
 module ShapeSet with
   fun empty = ShapeSet(new Map)
@@ -43,7 +38,10 @@ fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 fun liftMany(arr: Array[Shape]) = 
   ShapeSet(new Map(arr.map(s => [s.hash(), s])))
 
-fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
+fun union(s1: ShapeSet, s2: ShapeSet) = 
+  if s1.isDyn() then s1
+  else if s2.isDyn() then s2
+  else ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
 
 fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.shapeset.entries().toArray()).flat()))
 
