@@ -62,7 +62,8 @@ staged module Expressions with
 //│ >     Bool then 1
 //│ >     8 then 2
 //│ >     Int then 3
-//│ >     else 0
+//│ >     else
+//│ >       0
 //│ > fun match2() =
 //│ >   let element1_
 //│ >   let element0_
@@ -76,11 +77,14 @@ staged module Expressions with
 //│ >         1 then
 //│ >           if element1_ is
 //│ >             2 then 2
-//│ >             else a = element0_
-//│ >             3
-//│ >         else a = element0_
-//│ >         3
-//│ >     else 0
+//│ >             else
+//│ >               a = element0_
+//│ >               3
+//│ >         else
+//│ >           a = element0_
+//│ >           3
+//│ >     else
+//│ >       0
 //│ > Map(8) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'lit' => [Function: lit_gen],
@@ -222,7 +226,7 @@ staged module Arguments with
 //│ > fun f(x) =
 //│ >   x = 1
 //│ >   x
-//│ > fun g(x) =
+//│ > fun g(x1) =
 //│ >   let tmp
 //│ >   tmp = new Function_()
 //│ >   tmp
@@ -267,7 +271,8 @@ staged module OtherBlocks with
 //│ >   if scrut is
 //│ >     2 then 0
 //│ >     3 then 0
-//│ >     else 0
+//│ >     else
+//│ >       0
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'scope' => [Function: scope_gen],
@@ -344,6 +349,15 @@ staged module ClassFunctions with
 //│ >   }
 //│ > }
 
+:todo
+staged module RetUnit with
+  fun f() = ()
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = Runtime.Unit
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }
+
 // name collision
 class A()
 staged module A with
@@ -366,11 +380,11 @@ staged module Shadowing with
   fun f(x, x) = x
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun f(x, x) = x
+//│ > fun f(x1, x) = x
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
-:todo force enable :ftc to desugar Label and Break
-:ftc
+// TODO: force enable :ftc to desugar Label and Break
+:todo
 staged module M with
   fun f() = 
     let x = 1
@@ -378,18 +392,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.376: 	    let x = 1
+//│ ║  l.390: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.376: 	    let x = 1
+//│ ║  l.390: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.376: 	    let x = 1
+//│ ║  l.390: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.376: 	    let x = 1
+//│ ║  l.390: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -401,7 +415,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.401: 	  fun g() = {1 : 2}
+//│ ║  l.415: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -413,11 +427,11 @@ staged module Spread with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() =
-//│ >   let x
 //│ >   let middleElements
 //│ >   let element0_
 //│ >   let scrut
 //│ >   let tmp
+//│ >   let x
 //│ >   tmp = [1, 2]
 //│ >   scrut = [1, tmp]
 //│ >   if scrut is
@@ -428,6 +442,8 @@ staged module Spread with
 //│ >         1 then
 //│ >           x = middleElements
 //│ >           x
-//│ >         else 0
-//│ >     else 0
+//│ >         else
+//│ >           0
+//│ >     else
+//│ >       0
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }

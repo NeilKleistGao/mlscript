@@ -84,7 +84,7 @@ class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicField
 
 class Block with
   constructor
-    Match(val scrut: Path, val arms: Array[[Case, Block]], val dflt: Opt[Block], val rest: Block)
+    Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
     Return(val res: Result, val implct: Bool)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
@@ -111,6 +111,7 @@ fun showLiteral(l: Literal) =
 
 fun showSymbol(s: Symbol) = if s.name is
   "runtime" then "Runtime"
+  // FIXME: this is a hack for local symbols, and will fail if global symbols contain them, like the generated classes of :ftc.
   else s.name.replaceAll("$", "_")
 
 fun showPath(p: Path): Str =
@@ -140,7 +141,7 @@ fun showCase(c) =
     Lit(l) then showLiteral(l)
     Cls(cls, p) then showSymbol(cls) +
       if isPrimitiveType(cls) then ""
-        else showParamsOpt(cls.paramsOpt)
+        else showParamsOpt(cls.paramsOpt) // it seems we only need the arity, printing the paramter names is unnecessary
     Tup(len) then "[" + Array(len).fill("_").join(", ") + "]"
     _ then "<unknown case>"
 
@@ -166,10 +167,10 @@ fun showDefn(d: Defn): Str =
     ClsLikeDefn(sym, methods, _) then
       "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams).join("")
         + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
-    // TODO: used to represent assignments in constructors, which still need some adjustment
+    // TODO: used to represent assignments in constructors, which still need some adjustments
     ValDefn(owner, sym, rhs) then
-      (if owner is Some(owner) then showSymbol(owner) else "")
-        + "." + showSymbol(sym) + " = " + showPath(rhs)
+      "set " + (if owner is Some(owner) then showSymbol(owner) + "." else "")
+        + showSymbol(sym) + " = " + showPath(rhs)
     _ then "<unknown defn: " + d.toString() + " >"
 
 fun showBlock(b) =
@@ -183,7 +184,7 @@ fun showBlock(b) =
     Match(scrut, arms, dflt, rest) then
       "if " + showPath(scrut) + " is"
       + indent("\n" + arms.map(showArm).join("\n"))
-      + indent(if dflt is Some(db) then "\nelse " + showBlock(db) else "") 
+      + indent(if dflt is Some(db) then "\nelse" + indent("\n" + showBlock(db)) else "") 
       + showRestBlock(rest)
     Scoped(symbols, rest) then
       // initialize symbols

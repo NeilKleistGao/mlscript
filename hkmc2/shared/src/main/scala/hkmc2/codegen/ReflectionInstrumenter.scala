@@ -118,6 +118,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
           case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
           case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+          // FIXME: hack to patch in staging for returning the object Unit.
+          case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)    
           case _ =>
             raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
             return End()
@@ -133,7 +135,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
             blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
-      case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+      case _: TempSymbol | _: NoSymbol | _: VarSymbol =>
+        val name = scope.allocateOrGetName(sym)
+        blockCtor("Symbol", Ls(toValue(name)), symName)(k)
+      // FIXME: there may be more types of symbols that need to be renamed during staging
+      case _: BuiltinSymbol | _ =>
+        blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block = xOpt match
     case S(x) => f(x)(optionSome(_)(k))
