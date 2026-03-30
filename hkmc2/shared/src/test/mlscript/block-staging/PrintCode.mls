@@ -80,3 +80,65 @@ printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)),
 //│ >   else
 //│ >     x
 
+printCode(Define(ValDefn(Some(bSym), Symbol("x"), ValueLit(1)), End()))
+//│ > set B.x = 1
+
+printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
+//│ > set a = 1
+
+printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(bSym, ValueRef(bSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
+//│ > if x is
+//│ >   1 then 2
+//│ >   B then 3
+//│ >   else
+//│ >     x
+
+printCode(Scoped([Symbol("y")], Match(
+    ValueLit(1), 
+    [Arm(Lit(1), Return(ValueLit(1), false))], 
+    Some(Return(ValueLit(1), false)), 
+    Return(ValueRef(Symbol("y")), false))))
+//│ > let y
+//│ > if 1 is
+//│ >   1 then 1
+//│ >   else
+//│ >     1
+//│ > y
+
+printCode(Scoped([Symbol("y")],  Match(
+    ValueLit(1), 
+    [Arm(Lit(1), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))], 
+    Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))), 
+    End())))
+//│ > let y
+//│ > if 1 is
+//│ >   1 then
+//│ >     y = 1
+//│ >     y
+//│ >   else
+//│ >     y = 2
+//│ >     y
+
+printCode(Scoped([Symbol("y")], Match(
+    ValueLit(1), 
+    [Arm(Lit(1), Match(
+        ValueLit(2),
+        [Arm(Lit(2), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))],
+        Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))),
+        End()
+    ))], 
+    Some(Assign(Symbol("y"), ValueLit(3), Return(ValueRef(Symbol("y")), false))), 
+    End())))
+//│ > let y
+//│ > if 1 is
+//│ >   1 then
+//│ >     if 2 is
+//│ >       2 then
+//│ >         y = 1
+//│ >         y
+//│ >       else
+//│ >         y = 2
+//│ >         y
+//│ >   else
+//│ >     y = 3
+//│ >     y
