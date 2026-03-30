@@ -25,7 +25,7 @@ fun specializeName(funName, shapes) =
     ).join("")
 fun propStub(block, shapes) = [block, shapes]
 
-fun specialize(cache, funName, dflt, shapes) =
+fun specialize(cache, funName, dflt, shapes, useStub) =
   // replace function symbol in block definition to new name
   let newName = specializeName(funName, shapes)
   // console.log(cache.getFun(newName))
@@ -34,7 +34,8 @@ fun specialize(cache, funName, dflt, shapes) =
     None then
       let defn = dflt()
       if defn is FunDefn(Symbol(_), ps, _) then
-        let res = propStub(defn, shapes)
+        let propFun = if useStub then propStub else propStub
+        let res = propFun(defn, shapes)
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, res.0.body), res.1])
         [entry.0.sym, entry.1]
 
