@@ -1,7 +1,22 @@
 :js
 :staging
 
-let x = [1, 2, 3]
+:fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
+:checkIR
+staged module Expressions with
+  fun lit() =
+    let x = 42
+    x
+//│ ╔══[INTERNAL ERROR] [BlockChecker] Invalid IR: symbol x⁰ is bound more than once
+//│ ║  l.8: 	    let x = 42
+//│ ╙──     	        ^
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun lit() =
+//│ >   let x
+//│ >   x = 42
+//│ >   x
+
 staged module Expressions with
   fun lit() = 1
   fun assign() =
@@ -24,6 +39,22 @@ staged module Expressions with
       [1, 2] then 2
       [a, _] then 3
       else 0
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:515)
+//│ ╔══[COMPILATION ERROR] Name not found: x
+//│ ║  l.27: 	  fun tup2() = [1, x]
+//│ ╙──      	                   ^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: subterm (Elaborator.scala:515)
+//│ ╔══[COMPILATION ERROR] Name not found: x
+//│ ║  l.37: 	    if x is
+//│ ╙──      	       ^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: transformBlock (ReflectionInstrumenter.scala:304)
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Throw(Lit(StrLit(This code cannot be run as its compilation yielded an error.)))
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: transformBlock (ReflectionInstrumenter.scala:304)
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Throw(Lit(StrLit(This code cannot be run as its compilation yielded an error.)))
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun lit() = 1
@@ -34,38 +65,19 @@ staged module Expressions with
 //│ >   y = x
 //│ >   y
 //│ > fun tup1() = [1, 2]
-//│ > fun tup2() = [1, x1]
-//│ > fun dynsel() =
-//│ >   let tmp
-//│ >   tmp = [1]
-//│ >   tmp.(0)
-//│ > fun match1() =
-//│ >   let scrut
-//│ >   scrut = 9
-//│ >   if scrut is
-//│ >     Bool then 1
-//│ >     8 then 2
-//│ >     Int then 3
-//│ >     else 0
-//│ > fun match2() =
-//│ >   let element1_
-//│ >   let element0_
-//│ >   let a
-//│ >   if x1 is
-//│ >     [] then 1
-//│ >     [_, _] then
-//│ >       element0_ = Runtime.Tuple.get(x1, 0)
-//│ >       element1_ = Runtime.Tuple.get(x1, 1)
-//│ >       if element0_ is
-//│ >         1 then
-//│ >           if element1_ is
-//│ >             2 then 2
-//│ >             else a = element0_
-//│ >             3
-//│ >         else a = element0_
-//│ >         3
-//│ >     else 0
-//│ x = [1, 2, 3]
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:222)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│     at Runtime.checkCall (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:608:41)
+//│     at <static_initializer> (REPL15:1:608)
+//│     at REPL15:1:9995
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:600:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:935:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
 
 class Outside(a)
 staged module ClassInstrumentation with
@@ -206,22 +218,22 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.216: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.216: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.216: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.216: 	    let x = 1
 //│ ╙──       	        ^
 //│ > fun ctor_() =
 //│ >   ()
-//│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
+//│ ═══[RUNTIME ERROR] ReferenceError: x is not defined
 
 // TODO: force enable :ftc to desugar Label and Break
 staged module M with
@@ -247,7 +259,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
-//│ ║  l.247: 	  fun g() = {1 : 2}
+//│ ║  l.259: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > fun ctor_() =
 //│ >   x = C(1)
