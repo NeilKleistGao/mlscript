@@ -72,7 +72,7 @@ class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicField
 
 class Block with
   constructor
-    Match(val scrut: Path, val arms: Array[[Case, Block]], val dflt: Opt[Block], val rest: Block)
+    Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
     Return(val res: Result, val implct: Bool)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
@@ -154,7 +154,7 @@ fun showDefn(d: Defn): Str =
     ClsLikeDefn(sym, methods, _) then
       "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt)
         + if methods is [] then "" else " with \n  " + indent(methods.map(showDefn).join("\n"))
-    _ then "<unknown defn>"
+    _ then "<unknown defn>" + d
 
 fun showBlock(b) =
   if b is
@@ -167,7 +167,7 @@ fun showBlock(b) =
     Match(scrut, arms, dflt, rest) then
       "if " + showPath(scrut) + " is"
       + indent("\n" + arms.map(showArm).join("\n"))
-      + indent(if dflt is Some(db) then "\nelse " + showBlock(db) else "") 
+      + indent(if dflt is Some(db) then "\nelse " + indent(showBlock(db)) else "") 
       + showRestBlock(rest)
     Scoped(symbols, rest) then
       // initialize symbols

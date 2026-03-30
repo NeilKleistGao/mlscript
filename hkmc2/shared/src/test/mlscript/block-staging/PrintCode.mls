@@ -67,3 +67,31 @@ printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), 
 //│ > x = 4.2
 //│ > x
 
+printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(1), Match(
+    ValueRef(Symbol("x")), 
+    [Arm(Lit(1), Return(ValueLit(1), false))], 
+    Some(Return(ValueLit(1), false)), 
+    Return(ValueRef(Symbol("y")), false)))))
+//│ > let x
+//│ > let y
+//│ > x = 1
+//│ > if x is
+//│ >   1 then 1
+//│ >   else 1
+//│ > y
+
+
+printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(1), Match(
+    ValueRef(Symbol("x")), 
+    [Arm(Lit(1), Return(ValueLit(1), false))], 
+    Some(Assign(Symbol("y"), ValueLit(1), Return(ValueLit(1), false))), 
+    Return(ValueRef(Symbol("y")), false)))))
+//│ > let x
+//│ > let y
+//│ > x = 1
+//│ > if x is
+//│ >   1 then 1
+//│ >   else y = 1
+//│ >     1
+//│ > y
+
