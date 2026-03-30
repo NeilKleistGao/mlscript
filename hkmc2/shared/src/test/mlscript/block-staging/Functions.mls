@@ -383,27 +383,26 @@ staged module Shadowing with
 //│ > fun f(x1, x) = x
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
-// TODO: force enable :ftc to desugar Label and Break
 :todo
-staged module M with
+staged module Continue with
   fun f() = 
     let x = 1
     while x == 1 do
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.390: 	    let x = 1
+//│ ║  l.389: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.390: 	    let x = 1
+//│ ║  l.389: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.390: 	    let x = 1
+//│ ║  l.389: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.390: 	    let x = 1
+//│ ║  l.389: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
 
@@ -415,7 +414,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.415: 	  fun g() = {1 : 2}
+//│ ║  l.414: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
