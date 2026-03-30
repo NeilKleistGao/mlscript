@@ -190,7 +190,7 @@ fun showBlock(b) =
     Match(scrut, arms, dflt, rest) then
       "if " + showPath(scrut) + " is"
       + indent("\n" + arms.map(showArm).join("\n"))
-      + indent(if dflt is Some(db) then "\nelse " + showBlock(db) else "") 
+      + indent(if dflt is Some(db) then "\nelse" + indent("\n" + showBlock(db)) else "") 
       + showRestBlock(rest)
     Scoped(symbols, rest) then
       symbols.map(showSymbol).map("let " + _).join("\n") + showRestBlock(rest)

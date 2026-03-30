@@ -107,6 +107,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     sym match
       case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
         transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
+      case t: TermSymbol if t.defn.exists(_.sym.asTrm.isDefined) && (t.k is syntax.Fun) =>
+        blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
       // avoid name collision
       case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
         blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap(toValue(sym.nme), _))
