@@ -8,7 +8,7 @@ import "../mlscript-compile/Option.mls"
 open ShapeSet
 open Shape { Lit, Arr, Class, Dyn }
 open Option
-open Block { Tup }
+open Block { Tup, ClassSymbol, Symbol }
 
 let x = mkBot()
 //│ x = {}
@@ -16,7 +16,6 @@ let x = mkBot()
 if x.isEmpty() then 0
 //│ = 0
 
-// :silent
 let x = liftMany([Lit(1), Lit(2)])
 let y = liftMany([Arr([Lit(1)]), Arr([Lit(2)])])
 //│ x = {Lit(1),Lit(2)}
@@ -28,46 +27,22 @@ union(x, y)
 mkArr([x, y])
 //│ = {Arr([Lit(1), Arr([Lit(1)])]),Arr([Lit(1), Arr([Lit(2)])]),Arr([Lit(2), Arr([Lit(1)])]),Arr([Lit(2), Arr([Lit(2)])])}
 
+class C(val a)
+val clsSym = ClassSymbol("C", C, Some([Symbol("a")]), [])
+//│ clsSym = ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), [])
 
-[x, y]
-  .map((x, _, _) => x.values())
-//│ = [[Lit(1), Lit(2)], [Arr([Lit(1)]), Arr([Lit(2)])]]
-
-let x = liftMany([Dyn(), Class(Symbol(""), [Lit(42)]), Arr([Lit(100), Lit(false), Lit(undefined)])])
-let y = liftMany([Lit("a"), Lit(1)])
-//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(Symbol(""), [Lit(42)]),Dyn()}
+let x = liftMany([Class(clsSym, [Lit(42)]), Arr([Lit(1), Lit("a")])])
+let y = liftMany([Lit(1), Lit("a")])
+selSet(x, y)
+//│ = {Lit("a"),Lit(42)}
+//│ x = {Arr([Lit(1), Lit("a")]),Class(ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), []), [Lit(42)])}
 //│ y = {Lit("a"),Lit(1)}
 
-selSet(x, y)
-//│ = {Dyn(),Lit(false)}
-
-let x = Class(Symbol("A"), [[Symbol("b"), Lit(1)], [Symbol("d"), Dyn()]])
-let x = Arr([Dyn(), Lit(1), x])
-let x = Shape.sel(x, Lit(2))
-//│ x = [Class(Symbol("A"), [[Symbol("b"), Lit(1)], [Symbol("d"), Dyn()]])]
-
-
-val sym = Symbol("C")
-val params = [
-  mkLit(null),
-  liftMany([Lit(2), Lit(4)]),
-  liftMany([Class(Symbol("A"), [Dyn()]), Class(Symbol("B"), [Dyn()])])
-]
-mkClass(sym, params)
-//│ = {Class(Symbol("C"), [Lit(null), Lit(2), Class(Symbol("A"), [Dyn()])]),Class(Symbol("C"), [Lit(null), Lit(2), Class(Symbol("B"), [Dyn()])]),Class(Symbol("C"), [Lit(null), Lit(4), Class(Symbol("A"), [Dyn()])]),Class(Symbol("C"), [Lit(null), Lit(4), Class(Symbol("B"), [Dyn()])])}
-//│ params = [
-//│   {Lit(null)},
-//│   {Lit(2),Lit(4)},
-//│   {Class(Symbol("A"), [Dyn()]),Class(Symbol("B"), [Dyn()])}
-//│ ]
-//│ sym = Symbol("C")
-
-[liftMany([Lit(1), Dyn()]), liftMany([Lit(2), Lit("str")])]
-//│ = [{Dyn(),Lit(1)}, {Lit("str"),Lit(2)}]
+mkClass(clsSym, [mkLit(1)])
+//│ = {Class(ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), []), [Lit(1)])}
 
 filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)])]), Tup(3))
 //│ = {Arr([Lit(1), Lit(2), Lit(3)])}
-
 
 let x = mkLit(1)
 let y = Block.Cls(Block.Symbol("Bool"), 0)

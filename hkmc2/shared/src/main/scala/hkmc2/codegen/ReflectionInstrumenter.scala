@@ -132,12 +132,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
             blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
-      case _: BuiltinSymbol =>
-        blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
       // TODO: figure out when to rebind variables
-      case _: TempSymbol | _: NoSymbol | _ =>
+      case _: TempSymbol | _: NoSymbol | _: VarSymbol =>
         val name = scope.allocateOrGetName(sym)
         blockCtor("Symbol", Ls(toValue(name)), symName)(k)
+      case _: BuiltinSymbol | _ =>
+        blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block = xOpt match
     case S(x) => f(x)(optionSome(_)(k))
