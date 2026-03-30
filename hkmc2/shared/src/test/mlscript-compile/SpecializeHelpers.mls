@@ -214,7 +214,9 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
         let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         if staticSet(res.1) do
-          bodyWithScoped = Return(val2path(valOfSet(res.1), mut []).1, false)
+          let allocs = mut []
+          let v2p = val2path(valOfSet(res.1), allocs)
+          bodyWithScoped = wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, bodyWithScoped), res.1])
         [entry.0.sym, entry.1]
 

@@ -180,17 +180,17 @@ staged module TestIf with
 :noSanityCheck
 class C(val n)
 staged module TestIf2 with
-  fun f2(x) =
+  fun f(x) =
     let y
     if x is C then
       y = x.n
     else
       y = 0
     y + 1
-  fun test() = f2(C(2))
+  fun test() = f(C(2))
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun f2(x) =
+//│ > fun f(x) =
 //│ >   let y
 //│ >   let tmp
 //│ >   if x is
@@ -205,8 +205,8 @@ staged module TestIf2 with
 //│ > fun test() =
 //│ >   let tmp1
 //│ >   tmp1 = C(2)
-//│ >   TestIf2.f2_C_Lit2(tmp1)
-//│ > fun f2_C_Lit2(x) =
+//│ >   TestIf2.f_C_Lit2(tmp1)
+//│ > fun f_C_Lit2(x) =
 //│ >   let y
 //│ >   let tmp
 //│ >   y = 2
@@ -214,7 +214,7 @@ staged module TestIf2 with
 //│ >   3
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f2' => [Function: f2_gen],
+//│ >   'f' => [Function: f_gen],
 //│ >   'test' => [Function: test_gen]
 //│ > }
 //│ > Map(3) {
@@ -231,7 +231,7 @@ staged module TestIf2 with
 //│ >     'cache$TestIf2': FunCache { cache: [Map] },
 //│ >     'generatorMap$TestIf2': Map(3) {
 //│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f2' => [Function: f2_gen],
+//│ >       'f' => [Function: f_gen],
 //│ >       'test' => [Function: test_gen]
 //│ >     }
 //│ >   } => ModuleSymbol {
@@ -252,11 +252,31 @@ staged module TestClass with
   fun test() = id(C(D()))
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun f() = obj_2
-//│ > fun g() = obj_4
+//│ > fun f() =
+//│ >   let obj_1
+//│ >   let obj_2
+//│ >   obj_1 = new D()
+//│ >   obj_2 = new C(obj_1)
+//│ >   obj_2
+//│ > fun g() =
+//│ >   let obj_3
+//│ >   let obj_4
+//│ >   obj_3 = new D()
+//│ >   obj_4 = new C(obj_3)
+//│ >   obj_4
 //│ > fun id(x1) = x1
-//│ > fun test() = obj_10
-//│ > fun id_C_D_(x1) = obj_8
+//│ > fun test() =
+//│ >   let obj_9
+//│ >   let obj_10
+//│ >   obj_9 = new D()
+//│ >   obj_10 = new C(obj_9)
+//│ >   obj_10
+//│ > fun id_C_D_(x1) =
+//│ >   let obj_7
+//│ >   let obj_8
+//│ >   obj_7 = new D()
+//│ >   obj_8 = new C(obj_7)
+//│ >   obj_8
 //│ > Map(5) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
