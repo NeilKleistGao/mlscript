@@ -228,15 +228,8 @@ staged module M with
     let x = 1
     while x == 1 do
       set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.228: 	    let x = 1
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.228: 	    let x = 1
-//│ ╙──       	        ^
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:tmp, tmp:scrut),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),Some(End()),End()))),End()).
+//│  Try enabling :ftc.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
 //│ ║  l.228: 	    let x = 1
 //│ ║         	        ^
@@ -245,7 +238,23 @@ staged module M with
 //│ ╙──       	        ^
 //│ > fun ctor_() =
 //│ >   ()
-//│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+
+:todo
+:ftc
+staged module NestedFunDefn with
+  fun f() = 
+    fun g() = 1
+    g()
+  fun g(x, y) = x || y
+//│ ═══[COMPILATION ERROR] Cannot determine if short_or is a function object.
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = g()
+//│ > fun g(x, y) =
+//│ >   let tmp
+//│ >   tmp = Function__(false, y)
+//│ >   Runtime.short_or(x, tmp)
 
 // TODO: force enable :ftc to desugar Label and Break
 staged module M with
@@ -271,7 +280,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
-//│ ║  l.271: 	  fun g() = {1 : 2}
+//│ ║  l.280: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > fun ctor_() =
 //│ >   x = C(1)
