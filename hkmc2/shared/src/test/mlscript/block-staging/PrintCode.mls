@@ -67,31 +67,51 @@ printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), 
 //│ > x = 4.2
 //│ > x
 
-printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(1), Match(
-    ValueRef(Symbol("x")), 
+printCode(Scoped([Symbol("y")], Match(
+    ValueLit(1), 
     [Arm(Lit(1), Return(ValueLit(1), false))], 
     Some(Return(ValueLit(1), false)), 
-    Return(ValueRef(Symbol("y")), false)))))
-//│ > let x
+    Return(ValueRef(Symbol("y")), false))))
 //│ > let y
-//│ > x = 1
-//│ > if x is
+//│ > if 1 is
 //│ >   1 then 1
 //│ >   else 1
 //│ > y
 
-
-printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(1), Match(
-    ValueRef(Symbol("x")), 
-    [Arm(Lit(1), Return(ValueLit(1), false))], 
-    Some(Assign(Symbol("y"), ValueLit(1), Return(ValueLit(1), false))), 
-    Return(ValueRef(Symbol("y")), false)))))
-//│ > let x
+printCode(Scoped([Symbol("y")],  Match(
+    ValueLit(1), 
+    [Arm(Lit(1), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))], 
+    Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))), 
+    End())))
 //│ > let y
-//│ > x = 1
-//│ > if x is
-//│ >   1 then 1
-//│ >   else y = 1
-//│ >     1
-//│ > y
+//│ > if 1 is
+//│ >   1 then
+//│ >     y = 1
+//│ >     y
+//│ >   else 
+//│ >     y = 2
+//│ >     y
 
+printCode(Scoped([Symbol("y")], Match(
+    ValueLit(1), 
+    [Arm(Lit(1), Match(
+        ValueLit(2),
+        [Arm(Lit(2), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))],
+        Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))),
+        End()
+    ))], 
+    Some(Assign(Symbol("y"), ValueLit(3), Return(ValueRef(Symbol("y")), false))), 
+    End())))
+//│ > let y
+//│ > if 1 is
+//│ >   1 then
+//│ >     if 2 is
+//│ >       2 then
+//│ >         y = 1
+//│ >         y
+//│ >       else 
+//│ >         y = 2
+//│ >         y
+//│ >   else 
+//│ >     y = 3
+//│ >     y
