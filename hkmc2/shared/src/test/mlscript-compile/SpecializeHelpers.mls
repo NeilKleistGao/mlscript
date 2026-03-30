@@ -178,7 +178,7 @@ fun prop(ctx, b) = if b is
 
 // TODO: debug only; remove this
 fun propStub(ctx, body) = 
-  console.log("Calling the propStub now which performs no shape propagation")
+  console.log("[SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation")
   [body, mkDyn()]
 
 fun buildShapeName(s: Shape): Str =
@@ -210,9 +210,11 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
         let ctx = Ctx.empty
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), shapes.(i).(j))))
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
-        let propFun = if useStub then propStub else propStub
+        let propFun = if useStub then propStub else prop
         let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
+        if staticSet(res.1) do
+          bodyWithScoped = val2path(valOfSet(res.1))
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, bodyWithScoped), res.1])
         [entry.0.sym, entry.1]
 
