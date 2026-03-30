@@ -318,3 +318,54 @@ staged module TestClass with
 //│ >     }
 //│ >   }
 //│ > }
+
+staged module TestTupleMatching with
+  fun count(x) = if x
+    is [_] then "one"
+    is [_, _] then "two"
+    is [_, _, _] then "three"
+    else "more than three"
+  fun test() = count([1, 2])
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun count(x) =
+//│ >   let element2_
+//│ >   let element1_
+//│ >   let element0_
+//│ >   if x is
+//│ >     [_] then
+//│ >       element0_ = x.(0)
+//│ >       "one"
+//│ >     [_, _] then
+//│ >       element0_ = x.(0)
+//│ >       element1_ = x.(1)
+//│ >       "two"
+//│ >     [_, _, _] then
+//│ >       element0_ = x.(0)
+//│ >       element1_ = x.(1)
+//│ >       element2_ = x.(2)
+//│ >       "three"
+//│ >     else "more than three"
+//│ > fun test() = "two"
+//│ > fun count_Arr_Lit1_Lit2_end(x) = "two"
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'count' => [Function: count_gen],
+//│ >   'test' => [Function: test_gen]
+//│ > }
+//│ > Map(1) {
+//│ >   [class TestTupleMatching] {
+//│ >     'cache$TestTupleMatching': FunCache { cache: [Map] },
+//│ >     'generatorMap$TestTupleMatching': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'count' => [Function: count_gen],
+//│ >       'test' => [Function: test_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'TestTupleMatching',
+//│ >     value: [class TestTupleMatching] {
+//│ >       'cache$TestTupleMatching': [FunCache],
+//│ >       'generatorMap$TestTupleMatching': [Map]
+//│ >     }
+//│ >   }
+//│ > }
