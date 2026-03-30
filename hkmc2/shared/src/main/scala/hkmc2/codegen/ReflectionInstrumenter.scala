@@ -298,14 +298,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
         tuple(symsStaged): tup =>
           transformBlock(body): (body, ctx) =>
             blockCtor("Scoped", Ls(tup, body))(b => Scoped(syms, k(b, ctx)))
-    case Label(labelSymbol, loop, body, rest) =>
-      transformSymbol(labelSymbol): labelSymbol =>
-        transformBlock(body): (body, ctx) =>
-          transformBlock(rest)(using ctx): (rest, ctx) =>
-            blockCtor("Label", Ls(labelSymbol, toValue(loop), body, rest))(k(_, ctx))
-    case Break(labelSymbol) =>
-      transformSymbol(labelSymbol): labelSymbol =>
-        blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
+    case _: Label | _: Break | Define(_: FunDefn, _) =>
+      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}.\n Try enabling :ftc." -> N :: Nil))
+      End()
     case _ =>
       raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}" -> N :: Nil))
       End()
