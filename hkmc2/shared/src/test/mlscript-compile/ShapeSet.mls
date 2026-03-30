@@ -42,8 +42,6 @@ fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 
 fun liftMany(arr: Array[Shape]) = ShapeSet(new Map(arr.map(s => [s.hash(), s])))
 
-// combining ShapeSets together
-
 fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
 
 fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.shapeset.entries().toArray()).flat()))
@@ -99,7 +97,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(sym, params) then ???
+    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then value(...params.map(valOf))
     else throw Error("Unknown shape")
 
 fun valOfSet(s : ShapeSet) = 
@@ -112,27 +110,29 @@ fun freshId(prefix) =
   set idCounter = idCounter + 1
   Block.Symbol(prefix + "_" + idCounter.toString())
 
-fun val2path(v) = 
+fun val2path(v, allocs) = 
   if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then 
     [Block.End(), Block.ValueLit(v)]
   else if Array.isArray(v) then
-    let mapped = v.map(val2path)
+    let mapped = v.map(val2path(_, allocs))
     let blocks = mapped.map(_.0)
-    let paths = mapped.map(_.0) 
+    let paths = mapped.map(_.1) 
     let tupSym = freshId("tup")
+    allocs.push(tupSym)
     let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
     let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
   else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
     let md = v.constructor.(Symbols.definitionMetadata)
-    let clsName = md.0
+    let clsName = md.1
     let paramNames = md.2
     let classSym = Block.ClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ClassSymbol
-    let mapped = paramNames.map((fld, _, _) => val2path(v.(fld)))
-    let blocks = mapped.filter(_ is [_, _]).map(_ => _.0)
-    let paths = mapped.map((m, _, _) => if m is [_, p] then p else m)
+    let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs))
+    let blocks = mapped.map(_.0)
+    let paths = mapped.map(_.1)
     let objSym = freshId("obj")
-    let objAssign = Block.Assign(objSym, Block.Instantiate(Block.ValueRef(classSym), paths.map((p, _, _) => Block.Arg(p))), Block.End())
-    let fullBlock = foldl((b, acc) => Block.concat(b, acc))(objAssign, ...blocks)
+    allocs.push(objSym)
+    let objAssign = Block.Assign(objSym, Block.Instantiate(Block.ValueRef(classSym), paths.map(Block.Arg(_))), Block.End())
+    let fullBlock = fold((b, acc) => Block.concat(acc, b))(objAssign, ...blocks)
     [fullBlock, Block.ValueRef(objSym)]
   else [Block.End(), Block.ValueLit(42)]

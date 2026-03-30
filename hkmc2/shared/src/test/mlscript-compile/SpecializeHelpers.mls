@@ -3,6 +3,7 @@ import "./Shape.mls"
 import "./Option.mls"
 import "./ShapeSet.mls"
 import "./Predef.mls"
+import "./Runtime.mls"
 
 open Block
 open Shape
@@ -12,12 +13,17 @@ open ShapeSet
 
 module SpecializeHelpers with ...
 
-class Ctx(val ctx: Map[String, ShapeSet]) with
+fun wrapScoped(symbols, block) =
+  if symbols.length == 0 then block
+  else if block is Scoped(oldSymbols, rest) then Scoped([...symbols, ...oldSymbols], rest)
+  else Scoped(symbols, block)
+
+class Ctx(val ctx: Map[String, ShapeSet], val allocs: Array[Block.Symbol]) with
   fun get(path) =
     let ps = showPath(path)
     if ctx.has(ps) then Some(ctx.get(ps))
     else None
-  fun clone = Ctx(new Map(ctx))
+  fun clone = Ctx(new Map(ctx), allocs)
   fun add(path, ss) =
     let ps = showPath(path)
     if ctx.has(ps) then
@@ -26,7 +32,7 @@ class Ctx(val ctx: Map[String, ShapeSet]) with
       ctx.set(ps, ss)
     this
 module Ctx with
-  fun empty = Ctx(new Map())
+  fun empty = Ctx(new Map(), mut [])
 
 fun sov(v): ShapeSet = 
   if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then 
@@ -40,22 +46,26 @@ fun sov(v): ShapeSet =
 fun sop(ctx, p): ShapeSet = 
   if ctx.get(p) is Some(s) then s
   else if p is 
-    Select(qual, sym) then selSet(sop(ctx, qual), mkLit(sym.name))
+    Select(qual, sym) then 
+      selSet(sop(ctx, qual), mkLit(sym.name))
     DynSelect(qual, fld, _) then 
       selSet(sop(ctx, qual), sop(ctx, fld))
     ValueLit(lit) then mkLit(lit)
     ValueRef(l) then mkDyn()
 
 fun sor(ctx, r) = if r is
-  Path then
+  Path and
     let s = sop(ctx, r)
-    [End(), r, s]
+    staticSet(s) and val2path(valOfSet(s), ctx.allocs) is [blk, res] then [blk, res, s] 
+    else
+      [End(), r, s]
   Instantiate(cls, args) then
-    let sym = if cls is
-      ValueRef(s) and s is ClassSymbol then s 
-      Select(_, s) and s is ClassSymbol then s
+    let clsSymb = if cls is
+      ValueRef(symb) and symb is ClassSymbol then 
+        symb
+      Select(_, symb) and symb is ClassSymbol then symb
       else throw Error("Instantiate with non-ClassSymbol in shape propagation: " + cls.toString())
-    [End(), r, mkClass(sym, args.map(a => sop(ctx, a.value)))]
+    [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args) then 
     fun lit(l) = [End(), ValueLit(l), mkLit(l)]
@@ -67,6 +77,8 @@ fun sor(ctx, r) = if r is
           [End(), recovered, sop(ctx, recovered)]
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
         throw Error("runtime.Tuple.slice not handled in shape propagation") // TODO
+      ValueRef(clsSymb) and clsSymb is ClassSymbol then
+        [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
       ValueRef(symb) and  // built-in or top-level
         let name = symb.name
         args is
@@ -88,56 +100,31 @@ fun sor(ctx, r) = if r is
             ">=" then lit(l1 >= l2)
             "===" then lit(l1 === l2)
             "!==" then lit(l1 !== l2)
-            "&&" then lit(l1 && l2)
-            "||" then lit(l1 || l2)
+            // "&&" then lit(l1 && l2)
+            // "||" then lit(l1 || l2)
       Select(ValueRef(ModuleSymbol(name, value)), Symbol(symb)) and
         let mapPropName = "generatorMap$" + name
         let cachePropName = "cache$" + name
         let genMap = value.(mapPropName)
-        not (genMap is undefined) then // in staged module
-          let f = genMap.get(symb)
-          let res = f(...argShapes)
-          [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), res.0), args), res.1]
-        argShapes.every(staticSet) then // non staged but params known
+        not (genMap is undefined) and
+          let f = genMap.get(symb) 
+          not (f is Runtime.Unit) then // staged function
+            let res = f(...argShapes)
+            [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), res.0), args), res.1]
+          else
+            [End(), r, mkDyn()] // TODO 
+        argShapes.every(staticSet) then // non staged function but params known
           let f = value.(symb)
           let evaluated = f(...argShapes.map(valOfSet))
-          let evaluated_path = val2path(evaluated)
+          let evaluated_path = val2path(evaluated, ctx.allocs)
           [evaluated_path.0, evaluated_path.1, sov(evaluated)]
+      Select(ValueRef(ClassSymbol(name, value, paramsOpt, auxParams)), Symbol(symb)) then
+        // TODO 
+        [End(), r, mkDyn()]
       Select(ValueRef(symb), Symbol(f)) and sop(ctx, ValueRef(symb)) is Class(sym, params) then // class method call
         // TODO
     else 
       [End(), r, mkDyn()]
-
-      // [gen, true] and gen(...argShapes) is [shape, implSymb] then
-      //   [End(), Call(ValueRef(implSymb), args), shape]
-      // [undefined, false] and f is ValueRef(symb) and // means built in
-      //   let name = symb.name
-      //   args is
-      //     [x] and sop(ctx, x.value).values() is [Shape.Lit(l)] and name is
-      //       "!" then lit(not l)
-      //       "-" then lit(-l)
-      //       "+" then lit(+l)
-      //     [x, y] and sop(ctx, x.value).values() is [Shape.Lit(l1)] and sop(ctx, y.value).values() is [Shape.Lit(l2)] and name is
-      //       "+" then lit(l1 + l2)
-      //       "-" then lit(l1 - l2)
-      //       "*" then lit(l1 * l2)
-      //       "/" then lit(l1 / l2)
-      //       "%" then lit(l1 % l2)
-      //       "==" then lit(l1 == l2)
-      //       "!=" then lit(l1 != l2)
-      //       "<" then lit(l1 < l2)
-      //       "<=" then lit(l1 <= l2)
-      //       ">" then lit(l1 > l2)
-      //       ">=" then lit(l1 >= l2)
-      //       "===" then lit(l1 === l2)
-      //       "!==" then lit(l1 !== l2)
-      //       "&&" then lit(l1 && l2)
-      //       "||" then lit(l1 || l2)
-      // [funct, false] and argShapes.every((x, _, _) => staticSet(x)) then
-      //   let argVals = argShapes.map((s, _, _) => valOfSet(s))
-      //   // TODO
-      //   [End(), r, mkDyn()]
-      // else [End(), r, mkDyn()]
 
 fun prop(ctx, b) = if b is
     End then [b, mkBot()]
@@ -145,8 +132,10 @@ fun prop(ctx, b) = if b is
       [concat(blk, Return(r1, implct)), s1]
     Scoped(symbols, rest) then
       symbols.forEach((x, _, _) => ctx.add(ValueRef(x), mkBot()))
-      let res = prop(ctx, rest)
-      [Scoped(symbols, res.0), res.1]
+      let newAllocs = mut []
+      let newCtx = Ctx(new Map(ctx.ctx), newAllocs)
+      let res = prop(newCtx, rest)
+      [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
     Assign(x, r, b) and 
       sor(ctx, r) is [blk, r1, s1] then 
         if prop(ctx.add(ValueRef(x), s1), b) is [b2, s2] then
@@ -187,19 +176,29 @@ fun prop(ctx, b) = if b is
             else
               [Match(p, filteredArms.2, None, End()), filteredArms.1]
 
-// FIXME: implement proper mangling
-// percent encoding to create valid symbol name
+// TODO: debug only; remove this
+fun propStub(ctx, body) = 
+  console.log("Calling the propStub now which performs no shape propagation")
+  [body, mkDyn()]
+
+fun buildShapeName(s: Shape): Str =
+  if s is
+    Dyn then "Dyn"
+    Lit(lit) and lit is Str then "Str" + lit
+    Lit(lit) then "Lit" + lit.toString()
+    Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
+    Class(sym, params) then sym.name + "_" + params.map(buildShapeName).join("_")
+    else "Unk"
+
+fun buildShapeSetName(ss: ShapeSet): Str =
+  let vals = ss.values()
+  if vals.length == 1 then buildShapeName(vals.0)
+  else "Union_" + vals.map(buildShapeName).join("_") + "_end"
+
 fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
   else
-    funName + "_" + shapes.toString()
-      .replaceAll("{", "").replaceAll("}", "")
-      .replaceAll("[", "").replaceAll("]", "")
-      .replaceAll("(", "").replaceAll(")", "")
-      .replaceAll("\\", "").replaceAll("\"", "")
-      .replaceAll(" ", "").replaceAll(",", "_")
-
-fun propStub(block, shapes) = [block, shapes]
+    funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("__")
 
 fun specialize(cache, funName, dflt, shapes) =
   // replace function symbol in block definition to new name
@@ -213,7 +212,8 @@ fun specialize(cache, funName, dflt, shapes) =
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), shapes.(i).(j))))
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
         let res = prop(ctx, body)
-        let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, res.0), res.1])
+        let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
+        let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, bodyWithScoped), res.1])
         [entry.0.sym, entry.1]
 
 class FunCache(val cache: Map[String, [FunDefn, ShapeSet]]) with

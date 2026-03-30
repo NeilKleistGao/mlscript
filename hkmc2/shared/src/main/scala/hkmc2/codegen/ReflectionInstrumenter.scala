@@ -108,9 +108,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
         transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
       // avoid name collision
-      case _: TempSymbol | _: NoSymbol =>
-        val name = scope.allocateOrGetName(sym)
-        blockCtor("Symbol", Ls(toValue(name)), symName)(k)
       case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
         blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap(toValue(sym.nme), _))
       case baseSym: BaseTypeSymbol =>
@@ -119,6 +116,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
           case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
           case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+          // FIXME: hack to patch in staging for returning the object Unit.
+          case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
           case _ =>
             raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
             return End()
@@ -134,7 +133,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
             blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
-      case _ => blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+      case _: BuiltinSymbol =>
+        blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
+      // TODO: figure out when to rebind variables
+      case _: TempSymbol | _: NoSymbol | _ =>
+        val name = scope.allocateOrGetName(sym)
+        blockCtor("Symbol", Ls(toValue(name)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block = xOpt match
     case S(x) => f(x)(optionSome(_)(k))
@@ -404,28 +408,18 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       def genOutputBody(psym: VarSymbol) =
         val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
-        val gens = methods.map { f =>
-          val genSymName = f.sym.nme + "_gen"
-          val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: f.params else f.params
-          (modSym.asPath.selSN(genSymName), params)
-        }
+        val gens = helperMethods.map(_(1))
 
         call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
-          def callAllGens(gens: Ls[(Path, Ls[ParamList])], k: Block): Block = gens match
-            case Nil => k
-            case (genPath, params) :: tail =>
-              def curryCall(funPath: Path, paramsLeft: Ls[ParamList], innerK: Block): Block =
-                paramsLeft match
-                  case Nil => innerK
-                  case pList :: Nil =>
-                    val args = pList.params.map(_ => dynVal)
-                    call(funPath, args, isMlsFun = true, symName = "tmp_gen_res")(_ => innerK)
-                  case pList :: xs =>
-                    val args = pList.params.map(_ => dynVal)
-                    call(funPath, args, isMlsFun = true, symName = "tmp_gen_curry")(res => curryCall(res, xs, innerK))
-              curryCall(genPath, params, callAllGens(tail, k))
-
-          callAllGens(gens, call(cachePath.selSN("dump"), Nil, false)(mthds => 
+          def callGenCont(rest: Block) =
+            gens.foldRight(rest)((gen, rest) =>
+              val genPath = modSym.asPath.selSN(gen.sym.nme)
+              val params = gen.params.map(_.params.map(_ => dynVal))
+              params.foldRight((_: Path) => rest)
+                ((args, k) => call(_, args, true, "gen_call")(k))
+                (genPath)
+            )
+          callGenCont(call(cachePath.selSN("dump"), Nil, false)(mthds => 
             call(blockMod("codegen"), toValue(modSym.nme) :: mthds :: psym.asPath :: Nil, true, "tmp")(_ => End())))
 
       val entryFunDef =
