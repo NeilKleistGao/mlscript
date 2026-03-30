@@ -112,6 +112,7 @@ fun sor(ctx, r) = if r is
             let res = f(...argShapes)
             [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), res.0), args), res.1]
           else
+            print("Hi")
             [End(), r, mkDyn()] // TODO 
         argShapes.every(staticSet) then // non staged function but params known
           let f = value.(symb)
@@ -214,7 +215,7 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
         let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         if staticSet(res.1) do
-          bodyWithScoped = val2path(valOfSet(res.1))
+          bodyWithScoped = Return(val2path(valOfSet(res.1), mut []).1, false)
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, bodyWithScoped), res.1])
         [entry.0.sym, entry.1]
 
