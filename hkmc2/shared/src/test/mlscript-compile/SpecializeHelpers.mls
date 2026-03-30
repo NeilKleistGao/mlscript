@@ -100,8 +100,8 @@ fun sor(ctx, r) = if r is
             ">=" then lit(l1 >= l2)
             "===" then lit(l1 === l2)
             "!==" then lit(l1 !== l2)
-            // "&&" then lit(l1 && l2)
-            // "||" then lit(l1 || l2)
+            "&&" then lit(l1 && l2)
+            "||" then lit(l1 || l2)
       Select(ValueRef(ModuleSymbol(name, value)), Symbol(symb)) and
         let mapPropName = "generatorMap$" + name
         let cachePropName = "cache$" + name
@@ -178,7 +178,7 @@ fun prop(ctx, b) = if b is
 
 // TODO: debug only; remove this
 fun propStub(ctx, body) = 
-  console.log("Calling the propStub now which performs no shape propagation")
+  // console.log("Calling the propStub now which performs no shape propagation")
   [body, mkDyn()]
 
 fun buildShapeName(s: Shape): Str =
@@ -197,10 +197,9 @@ fun buildShapeSetName(ss: ShapeSet): Str =
 
 fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
-  else
-    funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("__")
+  else funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("__")
 
-fun specialize(cache, funName, dflt, shapes) =
+fun specialize(cache, funName, dflt, shapes, useStub) =
   // replace function symbol in block definition to new name
   let newName = specializeName(funName, shapes)
   if cache.getFun(newName) is
@@ -211,7 +210,8 @@ fun specialize(cache, funName, dflt, shapes) =
         let ctx = Ctx.empty
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), shapes.(i).(j))))
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
-        let res = prop(ctx, body)
+        let propFun = if useStub then propStub else prop
+        let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, bodyWithScoped), res.1])
         [entry.0.sym, entry.1]
@@ -221,6 +221,6 @@ class FunCache(val cache: Map[String, [FunDefn, ShapeSet]]) with
   // NOTE: this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
   fun setFun(k, v) = cache.set(k, v); v
   fun toString() = cache.values().map((d, _, _) => showDefn(d.0)).toArray().join("\n")
-  fun dump() = cache.values().map((d, _, _) => d.0).toArray()
+  fun dump() = cache.values().map(_.0).toArray()
 
   

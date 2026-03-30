@@ -14,7 +14,7 @@ class Shape extends CachedHash with
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape])
-    Class(val sym: ClassSymbol, val params: Array[Shape])
+    Class(val sym: ClassSymbol, val params: Array[Shape]) // track the auxParams as well?
 
 fun show(s: Shape) =
   if s is
@@ -25,23 +25,22 @@ fun show(s: Shape) =
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
-    [Class(ClassSymbol(_, _, paramsOpt, auxParams), params), Lit(n)] and n is Str
-      and paramsOpt is Some(paramsSymb)
-      and paramsSymb.indexOf(n) is
+    [Class(ClassSymbol(_, _, paramsOpt, auxParams), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
+      paramsSymb.map(_.name).indexOf(n) is
         -1 then []
-        i then [params.(i)]
+        n then [params.(n)]
     [Class(ClassSymbol, p), Dyn] then [Dyn()]
-    [Dyn, Lit(n)] and n is Str
-      then [Dyn()]
-    [Arr(shapes), Lit(n)] and n is Int
-      then [shapes.(n)]
+    [Dyn, Lit(n)] and 
+      n is Str then [Dyn()]
+      n is Int then [Dyn()]
+      else throw Error("Unknown selection")
+    [Arr(shapes), Lit(n)] and n is Int and 
+      n < shapes.length then [shapes.(n)]
+      else throw Error("Array out of bound")
     [Arr(shapes), Dyn] then
       shapes
-    [Dyn, Lit(n)] and n is Int
-      then [Dyn()]
-    [Dyn, Dyn]
-      then [Dyn()]
-    else throw Error ("sel error")
+    [Dyn, Dyn] then [Dyn()]
+    else []
 
 fun static(s: Shape) = 
   if s is
@@ -54,10 +53,10 @@ open Block { Case }
 
 fun silh(p: Case): Shape = if p is
   Block.Lit(l) then Lit(l)
-  Block.Cls(sym, path) then
-    val size = if sym.args is Some(i) then i else 0
-    Class(sym, Array(size).fill(Dyn))
-  Block.Tup(n) then Arr(Array(n).fill(Dyn))
+  Block.Cls(clsSymb, path) then
+    let paramsSize = if clsSymb.paramsOpt is Some(params) then params.length else 0
+    Class(clsSymb, Array(paramsSize).fill(Dyn()))
+  Block.Tup(n) then Arr(Array(n).fill(Dyn()))
 
 // TODO: use Option instead, since all of them return at most one shape
 fun filter(s: Shape, p: Case): Array[Shape] =
