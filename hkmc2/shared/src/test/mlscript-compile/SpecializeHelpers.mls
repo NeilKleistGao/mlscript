@@ -157,8 +157,7 @@ fun prop(ctx, b) = if b is
           else prop(ctx, concat(if dflt is Some(d) then d else End(), restBlock))
         1 and
           filteredArms.0.isEmpty() then 
-            let newRest = prop(ctx, restBlock)
-            [concat(filteredArms.2.0.body, newRest.0), union(filteredArms.1, newRest.1)]
+            [filteredArms.2.0.body, filteredArms.1]
           dflt is 
             Some(d) then
               let branchCtx = ctx.clone
@@ -213,7 +212,6 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
         let propFun = if useStub then propStub else prop
         let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
-        // print(res.1)
         if staticSet(res.1) do
           let allocs = mut []
           let v2p = val2path(valOfSet(res.1), allocs)
