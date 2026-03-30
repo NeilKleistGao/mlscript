@@ -1,0 +1,102 @@
+:js
+:staging
+
+staged module Variables with
+  fun f(x, x) = 
+    let x
+    let x
+    x
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(x2, x3) =
+//│ >   let x
+//│ >   let x1
+//│ >   x1
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+
+staged module DupeFunctionName with
+  fun f() = 1
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = 1
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+
+class C(val x)
+
+staged module NoSymbol with
+  fun f(g) =
+    g()
+    g()
+    ()
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(g) =
+//│ >   __no__symbol__ = g()
+//│ >   __no__symbol__ = g()
+//│ >   Runtime.Unit
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }
+
+staged module Selection with
+  fun f(x) =
+    x.call()
+    C(1).x is Bool
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f(x) =
+//│ >   let scrut
+//│ >   let tmp
+//│ >   __no__symbol__ = x.call()
+//│ >   tmp = C(1)
+//│ >   scrut = tmp.x
+//│ >   if scrut is
+//│ >     Bool then true
+//│ >     else false
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   [Function: C] {
+//│ >     class: [class C] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' }
+//│ > }
+
+staged module DupeClass with
+  class C(val y)
+  fun f() = C(1).y
+//│ > fun ctor_() =
+//│ >   class C(y)
+//│ > fun f() =
+//│ >   let tmp
+//│ >   tmp = DupeClass.C(1)
+//│ >   tmp.y
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   [Function: C] {
+//│ >     class: [class C2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class DupeClass] {
+//│ >     C: [Function: C] { class: [Function] },
+//│ >     'cache$DupeClass': FunCache { cache: [Map] },
+//│ >     'generatorMap$DupeClass': Map(2) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'DupeClass',
+//│ >     value: [class DupeClass] {
+//│ >       C: [Function],
+//│ >       'cache$DupeClass': [FunCache],
+//│ >       'generatorMap$DupeClass': [Map]
+//│ >     }
+//│ >   }
+//│ > }

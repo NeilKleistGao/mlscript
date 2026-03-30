@@ -1,15 +1,11 @@
 :js
 :staging
 
-
-:fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
 :checkIR
-staged module Expressions with
+staged module Rebinding with
   fun lit() =
     let x = 42
     x
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun lit() =
@@ -20,9 +16,8 @@ staged module Expressions with
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'lit' => [Function: lit_gen]
 //│ > }
-//│ FAILURE: Unexpected lack of error to fix
 
-
+val x = [1, 2, 3]
 staged module Expressions with
   fun lit(x) = x + x
   fun assign() =
@@ -48,14 +43,6 @@ staged module Expressions with
       [1, 2] then 2
       [a, _] then 3
       else 0
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun lit(x) = x + x
@@ -118,33 +105,39 @@ staged module Expressions with
 //│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
 //│ >   'Int' => VirtualClassSymbol { name: 'Int' }
 //│ > }
+//│ x = [1, 2, 3]
 
 class Outside(a)
 staged module ClassInstrumentation with
   class Inside(a, b)
   class NoArg
   fun inst1() = Outside(1)
+  fun app2() = Inside(1, 2) 
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2) 
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: blockOrRcd (Elaborator.scala:976)
+//│ ╔══[COMPILATION ERROR] Multiple definitions of symbol 'app2'
+//│ ╟── defined here
+//│ ║  l.115: 	  fun app2() = Inside(1, 2) 
+//│ ║         	  ^^^^^^^^^^^^^^^^^^^^^^^^^
+//│ ╟── defined here
+//│ ║  l.118: 	  fun app2() = Inside(1, 2) 
+//│ ╙──       	  ^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class Inside(a, b)
 //│ >   class NoArg
 //│ > fun inst1() = Outside(1)
+//│ > fun app2() = ClassInstrumentation.Inside(1, 2)
 //│ > fun inst2() = new ClassInstrumentation.NoArg()
 //│ > fun app1() = Outside(1)
-//│ > fun app2() = ClassInstrumentation.Inside(1, 2)
 //│ > Map(5) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'inst1' => [Function: inst1_gen],
+//│ >   'app2' => [Function: app2_gen],
 //│ >   'inst2' => [Function: inst2_gen],
-//│ >   'app1' => [Function: app1_gen],
-//│ >   'app2' => [Function: app2_gen]
+//│ >   'app1' => [Function: app1_gen]
 //│ > }
 //│ > Map(4) {
 //│ >   [class NoArg] {
@@ -178,9 +171,9 @@ staged module ClassInstrumentation with
 //│ >     'generatorMap$ClassInstrumentation': Map(5) {
 //│ >       'ctor$' => [Function: ctor$_gen],
 //│ >       'inst1' => [Function: inst1_gen],
+//│ >       'app2' => [Function: app2_gen],
 //│ >       'inst2' => [Function: inst2_gen],
-//│ >       'app1' => [Function: app1_gen],
-//│ >       'app2' => [Function: app2_gen]
+//│ >       'app1' => [Function: app1_gen]
 //│ >     }
 //│ >   } => ModuleSymbol {
 //│ >     name: 'ClassInstrumentation',
@@ -197,18 +190,14 @@ module Nonstaged with
   fun f() = 1
 staged module Staged with
   fun f() = 1
-staged module CallSubst with
+staged module Call with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call() =
@@ -244,14 +233,10 @@ staged module CallSubst with
 
 :e
 print(CallSubst."cache$CallSubst")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type CallSubst.
-//│ ║  l.246: 	print(CallSubst."cache$CallSubst")
+//│ ╔══[COMPILATION ERROR] Name not found: CallSubst
+//│ ║  l.235: 	print(CallSubst."cache$CallSubst")
 //│ ╙──       	      ^^^^^^^^^
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call() =
-//│ >   __no__symbol__ = Nonstaged.f()
-//│ >   Staged.f()
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
 :ftc
 staged module Arguments with
@@ -259,9 +244,6 @@ staged module Arguments with
     x = 1
     x
   fun g(x)(y, z)() = z
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
@@ -300,9 +282,6 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun scope() =
@@ -338,10 +317,8 @@ staged module OtherBlocks with
 //│ >   }
 //│ > }
 
-
 staged module ClassDefs with
   class A
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   class A
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
@@ -357,7 +334,7 @@ staged module ClassDefs with
 :e
 print(ClassDefs."cache$ClassDefs")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type ClassDefs.
-//│ ║  l.358: 	print(ClassDefs."cache$ClassDefs")
+//│ ║  l.335: 	print(ClassDefs."cache$ClassDefs")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   class A
@@ -367,7 +344,6 @@ staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   class InnerClass() with 
 //│ >     fun f() =
@@ -410,8 +386,6 @@ staged module ClassFunctions with
 class A()
 staged module A with
   fun f() = 1
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
@@ -421,8 +395,6 @@ staged module A with
 module A with
   staged module B with
     fun f() = 1
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
@@ -430,8 +402,6 @@ module A with
 
 staged module Shadowing with
   fun f(x, x) = x
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x1, x) = x
@@ -440,7 +410,7 @@ staged module Shadowing with
 :todo these symbols may be confused dueing shape propagation
 print(Shadowing."cache$Shadowing")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Shadowing.
-//│ ║  l.441: 	print(Shadowing."cache$Shadowing")
+//│ ║  l.411: 	print(Shadowing."cache$Shadowing")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -449,8 +419,6 @@ print(Shadowing."cache$Shadowing")
 // testing generatorMap
 staged module M with
   fun f() = 1
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
@@ -459,7 +427,7 @@ staged module M with
 :e
 M."generatorMap$M"
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.460: 	M."generatorMap$M"
+//│ ║  l.428: 	M."generatorMap$M"
 //│ ╙──       	^
 //│ = Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen}
 
@@ -470,23 +438,15 @@ staged module M with
     let x = 1
     while x == 1 do
       set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(Set(tmp:scrut, tmp:tmp),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),Some(End()),End()))),End()).
+//│  Try enabling :ftc.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.470: 	    let x = 1
+//│ ║  l.438: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.470: 	    let x = 1
+//│ ║  l.438: 	    let x = 1
 //│ ╙──       	        ^
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.470: 	    let x = 1
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.470: 	    let x = 1
-//│ ╙──       	        ^
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ ═══[RUNTIME ERROR] ReferenceError: x is not defined
+//│ ═══[RUNTIME ERROR] Error: match error
 
 :e
 class C(val a)
@@ -496,9 +456,8 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.496: 	  fun g() = {1 : 2}
+//│ ║  l.456: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ ═══[RUNTIME ERROR] Error: match error
 
 :todo
@@ -506,8 +465,6 @@ staged module Spread with
   fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module.
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() =
@@ -533,8 +490,6 @@ staged module Spread with
 :todo
 staged module RetUnit with
   fun f() = ()
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = Runtime.Unit
@@ -559,11 +514,7 @@ module ClassInstrumentation with
 //│     end
 //│   }
 //│ };
-//│ define ClassInstrumentation⁰ as class ClassInstrumentation¹ {
-//│   constructor {
-//│     runtime⁰.Unit⁰
-//│   }
-//│ }
+//│ define ClassInstrumentation⁰ as class ClassInstrumentation¹
 //│ module ClassInstrumentation² {
 //│   constructor {
 //│     define Inside⁰ as class Inside²(a, b) {

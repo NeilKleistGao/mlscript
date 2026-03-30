@@ -2,15 +2,16 @@
 :staging
 :noFreeze
 :shapeProp
+:shapeProp
 
 module NonStaged with
+  fun sq(x) = x * x
+module Staged with
   fun sq(x) = x * x
   fun fib(n) = if n is 
     1 then 1
     2 then 1
     n then fib(n - 1) + fib(n - 2)
-module Staged with
-  fun sq(x) = x * x
 
 staged module Test with
   fun f(x, y) = x + y + 1 - 1
@@ -23,7 +24,7 @@ staged module Test with
   fun test() =
     let five = f(2, 3)
     fib(five)
-    NonStaged.fib(five)
+    Staged.fib(five)
     pyth(3, 4)
   fun test2(n) = 
     pyth(n, 2) 

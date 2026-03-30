@@ -116,7 +116,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
           case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
           case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
           // FIXME: hack to patch in staging for returning the object Unit.
-          case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
+          case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)    
           case _ =>
             raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
             return End()
@@ -132,10 +132,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
                   blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
             blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
-      // TODO: figure out when to rebind variables
       case _: TempSymbol | _: NoSymbol | _: VarSymbol =>
         val name = scope.allocateOrGetName(sym)
         blockCtor("Symbol", Ls(toValue(name)), symName)(k)
+      // FIXME: there may be more types of symbols that need to be renamed during staging
       case _: BuiltinSymbol | _ =>
         blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
@@ -298,14 +298,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
         tuple(symsStaged): tup =>
           transformBlock(body): (body, ctx) =>
             blockCtor("Scoped", Ls(tup, body))(b => Scoped(syms, k(b, ctx)))
-    case Label(labelSymbol, loop, body, rest) =>
-      transformSymbol(labelSymbol): labelSymbol =>
-        transformBlock(body): (body, ctx) =>
-          transformBlock(rest)(using ctx): (rest, ctx) =>
-            blockCtor("Label", Ls(labelSymbol, toValue(loop), body, rest))(k(_, ctx))
-    case Break(labelSymbol) =>
-      transformSymbol(labelSymbol): labelSymbol =>
-        blockCtor("Break", Ls(labelSymbol))(k(_, ctx))
+    case _: Label | _: Break | Define(_: FunDefn, _) =>
+      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}.\n Try enabling :ftc." -> N :: Nil))
+      End()
     case _ =>
       raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}" -> N :: Nil))
       End()
@@ -365,10 +360,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
         val genSymName = f.sym.nme + "_gen"
         val sym = BlockMemberSymbol(genSymName, Nil, false)
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
-        
-        val params = (if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: Nil else Nil) ::: f.params.map { pl =>
-          PlainParamList(pl.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
-        }
+
+        // refresh parameters
+        val funParams = f.params.map(ps => PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme))))))
+        val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
         val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
           tuple(tups): args =>
             call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args, toValue(!config.shapeProp))): res =>

@@ -5,7 +5,6 @@ staged module M with
   class C with
     fun f() = 1
     fun g() = f()
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   class C with 
 //│ >     fun f() = 1
@@ -29,36 +28,35 @@ staged module D with
   class E
   fun f() =
     A.f()
-    B.f()
+    B.f is Bool
   fun matching() =
     1 is Int
     1 is C
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   class E
 //│ > fun f() =
+//│ >   let scrut
 //│ >   __no__symbol__ = A.f()
-//│ >   B.f()
+//│ >   scrut = B.f
+//│ >   if scrut is
+//│ >     Bool then true
+//│ >     else false
 //│ > fun matching() =
 //│ >   let tmp
-//│ >   let scrut
 //│ >   let scrut1
-//│ >   scrut = 1
-//│ >   if scrut is
+//│ >   let scrut2
+//│ >   scrut1 = 1
+//│ >   if scrut1 is
 //│ >     Int then
 //│ >       tmp = true
 //│ >     else 
 //│ >       tmp = false
-//│ >   scrut1 = 1
-//│ >   if scrut1 is
+//│ >   scrut2 = 1
+//│ >   if scrut2 is
 //│ >     C(a, b) then true
 //│ >     else false
 //│ > Map(3) {
@@ -66,7 +64,7 @@ staged module D with
 //│ >   'f' => [Function: f_gen],
 //│ >   'matching' => [Function: matching_gen]
 //│ > }
-//│ > Map(5) {
+//│ > Map(6) {
 //│ >   [class E] { [Symbol(mlscript.definitionMetadata)]: [ 'class', 'E' ] } => ClassSymbol {
 //│ >     name: 'E',
 //│ >     value: [class E] { [Symbol(mlscript.definitionMetadata)]: [Array] },
@@ -92,6 +90,7 @@ staged module D with
 //│ >     name: 'B',
 //│ >     value: [class B] { [Symbol(mlscript.definitionMetadata)]: [Array] }
 //│ >   },
+//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
 //│ >   'Int' => VirtualClassSymbol { name: 'Int' },
 //│ >   [Function: C] {
 //│ >     class: [class C1] { [Symbol(mlscript.definitionMetadata)]: [Array] }
@@ -113,8 +112,6 @@ staged module M with
     A.B.C
     A.B.C(1)
     E
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   class E
 //│ > fun f() =
@@ -180,10 +177,8 @@ staged module M with
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.181: 	  fun g()() = 1
+//│ ║  l.178: 	  fun g()() = 1
 //│ ╙──       	  ^^^^^^^^^^^^^
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun g()() = 1
@@ -193,9 +188,6 @@ staged module M with
 staged module M with
   fun f() = x => x
   fun g()() = 1
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
-//│ > [SpecializeHelpers.mls]: calling the propStub now which performs no shape propagation
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() =
@@ -233,3 +225,11 @@ staged module M with
 //│ >     auxParams: []
 //│ >   }
 //│ > }
+
+staged module RetUnit with
+  fun f() = ()
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = Runtime.Unit
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }

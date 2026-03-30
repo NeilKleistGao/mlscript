@@ -62,20 +62,15 @@ selSet(arrSp, mkLit(1))
 selSet(mkDyn(), mkLit(5))
 //│ = {Dyn()}
 
-let a = Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"]), [], undefined), [Lit(42), Lit("c")])
+let a = Class(ClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")])
 let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)])])
 selSet(x, liftMany([Lit("a"), Lit(2)]))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 6
-//│ ║  l.65: 	let a = Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"]), [], undefined), [Lit(42), Lit("c")])
-//│ ╙──      	                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ = {Dyn(),Lit(undefined)}
 //│ a = Class(
-//│   ClassSymbol("A", undefined, undefined, Some(["a", "b"])),
+//│   ClassSymbol("A", undefined, Some(["a", "b"]), []),
 //│   [Lit(42), Lit("c")]
 //│ )
-//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"])), [Lit(42), Lit("c")]),Dyn()}
+//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")]),Dyn()}
 
 selSet(lift(Arr([Dyn(), Lit(1), a])), mkLit(1))
 //│ = {Lit(1)}
@@ -83,18 +78,8 @@ selSet(lift(Arr([Dyn(), Lit(1), a])), mkLit(1))
 // union
 
 let x = liftMany([Lit(1), Lit(2)])
-let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
+let y = liftMany([Arr([Lit(2)]), Lit(1), Arr([Lit(1)])])
 union(x, y) 
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.86: 	let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
-//│ ╙──      	                     ^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.86: 	let y = liftMany([Arr([Lit(2)], false), Lit(1), Arr([Lit(1)], false)])
-//│ ╙──      	                                                   ^^^^^^^^^^^^^^^^^
 //│ = {Arr([Lit(1)]),Arr([Lit(2)]),Lit(1),Lit(2)}
 //│ x = {Lit(1),Lit(2)}
 //│ y = {Arr([Lit(1)]),Arr([Lit(2)]),Lit(1)}
@@ -105,20 +90,10 @@ filterSet(mkDyn(), Block.Lit("a"))
 //│ = {Lit("a")}
 
 filterSet(mkDyn(), Block.Tup(2))
-//│ = {Arr([fun Dyn { class: class Dyn }, fun Dyn { class: class Dyn }])}
+//│ = {Arr([Dyn(), Dyn()])}
 
-let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.110: 	let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
-//│ ╙──       	                                                   ^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.110: 	let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()], true), Arr([Lit(1), Lit(2), Lit(3)], false), a])
-//│ ╙──       	                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"])), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
+let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()]), Arr([Lit(1), Lit(2), Lit(3)]), a])
+//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
@@ -128,7 +103,7 @@ filterSet(filterShapes, Block.Lit(1))
 assert(filterSet(filterShapes, Block.Lit(2)).isEmpty())
 
 filterSet(filterShapes, Block.Cls(Symbol("A"), undefined))
-//│ = {Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"])), [Lit(42), Lit("c")])}
+//│ = {Class(ClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")])}
 
 filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
 //│ = {Lit(1)}
@@ -142,202 +117,37 @@ filterSet(filterShapes, Tup(4))
 assert(filterSet(filterShapes, Tup(0)).isEmpty())
 
 open Block
+open SpecializeHelpers { Ctx, sop, sor, prop }
 
 // Ctx
 
 let ctx = Ctx.empty
 let x = ValueRef(Symbol("x"))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.148: 	let ctx = Ctx.empty
-//│ ╙──       	          ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ ctx = undefined
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = x⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:tmp -> tmp4, tmp:tmp -> tmp69, tmp:tmp -> tmp70, tmp:tmp -> tmp71, tmp:tmp -> tmp72, tmp:block$res -> block$res8, tmp:tmp -> tmp5, tmp:block$res -> block$res23, tmp:tmp -> tmp73, tmp:runtime -> runtime, tmp:definitionMetadata -> definitionMetadata, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:block$res -> block$res9, tmp:Block -> Block, tmp:tmp -> tmp6, tmp:ShapeSet -> ShapeSet, tmp:SpecializeHelpers -> SpecializeHelpers, tmp:option -> option, tmp:scrut -> scrut1, tmp:block$res -> block$res24, tmp:tmp -> tmp74, tmp:tmp -> tmp75, tmp:block$res -> block$res10, tmp:tmp -> tmp7, tmp:tmp -> tmp8, tmp:tmp -> tmp9, tmp:block$res -> block$res25, tmp:tmp -> tmp10, tmp:tmp -> tmp76, tmp:tmp -> tmp11, tmp:tmp -> tmp77, tmp:tmp -> tmp12, tmp:tmp -> tmp13, tmp:block$res -> block$res11, tmp:block$res -> block$res26, tmp:tmp -> tmp14, tmp:tmp -> tmp78, tmp:tmp -> tmp79, tmp:block$res -> block$res12, tmp:tmp -> tmp15, tmp:block$res -> block$res27, tmp:tmp -> tmp80, arrSp -> arrSp, tmp:block$res -> block$res28, tmp:tmp -> tmp81, tmp:block$res -> block$res13, tmp:tmp -> tmp16, tmp:tmp -> tmp17, tmp:tmp -> tmp18, tmp:scrut -> scrut2, tmp:block$res -> block$res14, tmp:tmp -> tmp19, tmp:block$res -> block$res29, tmp:tmp -> tmp82, tmp:tmp -> tmp83, tmp:block$res -> block$res30, tmp:block$res -> block$res15, ctx -> ctx, tmp:tmp -> tmp20, tmp:block$res -> block$res31, member:CachedHash -> CachedHash, tmp:block$res -> block$res16, tmp:tmp -> tmp21, tmp:tmp -> tmp22, a -> a, member:Option -> Option, member:Shape -> Shape, x -> x, member:SpecializeHelpers -> SpecializeHelpers1, member:ShapeSet -> ShapeSet1, tmp:block$res -> block$res17, tmp:tmp -> tmp23, tmp:tmp -> tmp24, tmp:tmp -> tmp25, tmp:tmp -> tmp26, tmp:tmp -> tmp27, tmp:tmp -> tmp28, tmp:tmp -> tmp29, tmp:tmp -> tmp30, tmp:tmp -> tmp31, tmp:tmp -> tmp32, tmp:tmp -> tmp33, member:Predef -> Predef, tmp:tmp -> tmp34, tmp:tmp -> tmp35, tmp:tmp -> tmp36, tmp:tmp -> tmp37, tmp:tmp -> tmp38, tmp:tmp -> tmp39, member:Block -> Block1, tmp:tmp -> tmp40, tmp:block$res -> block$res18, tmp:tmp -> tmp41, tmp:tmp -> tmp42, tmp:tmp -> tmp43, tmp:tmp -> tmp44, tmp:tmp -> tmp45, tmp:tmp -> tmp46, x -> x1, y -> y, member:Runtime -> Runtime, tmp:block$res -> block$res19, tmp:tmp -> tmp47, tmp:tmp -> tmp48, tmp:tmp -> tmp49, tmp:tmp -> tmp50, tmp:tmp -> tmp51, tmp:tmp -> tmp52, tmp:tmp -> tmp53, tmp:tmp -> tmp54, tmp:tmp -> tmp55, tmp:tmp -> tmp56, tmp:tmp -> tmp57, tmp:block$res -> block$res, tmp:block$res -> block$res1, tmp:block$res -> block$res20, tmp:tmp -> tmp58, tmp:block$res -> block$res2, tmp:tmp -> tmp59, tmp:block$res -> block$res3, tmp:block$res -> block$res21, tmp:block$res -> block$res4, tmp:tmp -> tmp60, tmp:tmp -> tmp61, filterShapes -> filterShapes, tmp:block$res -> block$res5, tmp:tmp -> tmp, tmp:tmp -> tmp1, tmp:block$res -> block$res6, tmp:tmp -> tmp2, tmp:tmp -> tmp3, tmp:block$res -> block$res22, tmp:tmp -> tmp62, tmp:tmp -> tmp63, tmp:tmp -> tmp64, tmp:tmp -> tmp65, tmp:scrut -> scrut, tmp:tmp -> tmp66, tmp:tmp -> tmp67, tmp:block$res -> block$res7, tmp:tmp -> tmp68)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.149: 	let x = ValueRef(Symbol("x"))
-//│ ╙──       	    ^
-//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ClassSymbol("A", undefined, undefined, Some(["a", "b"])), [Lit(42), Lit("c")]),Dyn()}
+//│ ctx = Ctx(Map(0) {}, [])
+//│ x = ValueRef(Symbol("x"))
 
 ctx.add(x, mkLit(1))
 ctx.get(x)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = x⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:tmp -> tmp4, tmp:tmp -> tmp69, tmp:tmp -> tmp70, tmp:tmp -> tmp71, tmp:tmp -> tmp72, tmp:block$res -> block$res8, tmp:tmp -> tmp5, tmp:block$res -> block$res23, tmp:tmp -> tmp73, tmp:runtime -> runtime, tmp:definitionMetadata -> definitionMetadata, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:block$res -> block$res9, tmp:Block -> Block, tmp:tmp -> tmp6, tmp:ShapeSet -> ShapeSet, tmp:SpecializeHelpers -> SpecializeHelpers, tmp:option -> option, tmp:scrut -> scrut1, tmp:block$res -> block$res24, tmp:tmp -> tmp74, tmp:tmp -> tmp75, tmp:block$res -> block$res10, tmp:tmp -> tmp7, tmp:tmp -> tmp8, tmp:tmp -> tmp9, tmp:block$res -> block$res25, tmp:tmp -> tmp10, tmp:tmp -> tmp76, tmp:tmp -> tmp11, tmp:tmp -> tmp77, tmp:tmp -> tmp12, tmp:tmp -> tmp13, tmp:block$res -> block$res11, tmp:block$res -> block$res26, tmp:tmp -> tmp14, tmp:tmp -> tmp78, tmp:tmp -> tmp79, tmp:block$res -> block$res12, tmp:tmp -> tmp15, tmp:block$res -> block$res27, tmp:tmp -> tmp80, arrSp -> arrSp, tmp:block$res -> block$res28, tmp:tmp -> tmp81, tmp:block$res -> block$res13, tmp:tmp -> tmp16, tmp:tmp -> tmp17, tmp:tmp -> tmp18, tmp:scrut -> scrut2, tmp:block$res -> block$res14, tmp:tmp -> tmp19, tmp:block$res -> block$res29, tmp:tmp -> tmp82, tmp:tmp -> tmp83, tmp:block$res -> block$res30, tmp:block$res -> block$res15, ctx -> ctx, tmp:tmp -> tmp20, tmp:block$res -> block$res31, member:CachedHash -> CachedHash, tmp:block$res -> block$res16, tmp:tmp -> tmp21, tmp:tmp -> tmp22, a -> a, member:Option -> Option, tmp:block$res -> block$res32, tmp:tmp -> tmp84, member:Shape -> Shape, x -> x, member:SpecializeHelpers -> SpecializeHelpers1, member:ShapeSet -> ShapeSet1, tmp:block$res -> block$res17, tmp:tmp -> tmp23, tmp:tmp -> tmp24, tmp:tmp -> tmp25, tmp:tmp -> tmp26, tmp:tmp -> tmp27, tmp:tmp -> tmp28, tmp:tmp -> tmp29, tmp:tmp -> tmp30, tmp:tmp -> tmp31, tmp:tmp -> tmp32, tmp:tmp -> tmp33, member:Predef -> Predef, tmp:tmp -> tmp34, tmp:tmp -> tmp35, tmp:tmp -> tmp36, tmp:tmp -> tmp37, tmp:tmp -> tmp38, tmp:tmp -> tmp39, member:Block -> Block1, tmp:tmp -> tmp40, tmp:block$res -> block$res18, tmp:tmp -> tmp41, tmp:tmp -> tmp42, tmp:tmp -> tmp43, tmp:tmp -> tmp44, tmp:tmp -> tmp45, tmp:tmp -> tmp46, x -> x1, y -> y, member:Runtime -> Runtime, tmp:block$res -> block$res19, tmp:tmp -> tmp47, tmp:tmp -> tmp48, tmp:tmp -> tmp49, tmp:tmp -> tmp50, tmp:tmp -> tmp51, tmp:tmp -> tmp52, tmp:tmp -> tmp53, tmp:tmp -> tmp54, tmp:tmp -> tmp55, tmp:tmp -> tmp56, tmp:tmp -> tmp57, tmp:block$res -> block$res, tmp:block$res -> block$res1, tmp:block$res -> block$res20, tmp:tmp -> tmp58, tmp:block$res -> block$res2, tmp:tmp -> tmp59, tmp:block$res -> block$res3, tmp:block$res -> block$res21, tmp:block$res -> block$res4, tmp:tmp -> tmp60, tmp:tmp -> tmp61, filterShapes -> filterShapes, tmp:block$res -> block$res5, tmp:tmp -> tmp, tmp:tmp -> tmp1, tmp:block$res -> block$res6, tmp:tmp -> tmp2, tmp:tmp -> tmp3, tmp:block$res -> block$res22, tmp:tmp -> tmp62, tmp:tmp -> tmp63, tmp:tmp -> tmp64, tmp:tmp -> tmp65, tmp:scrut -> scrut, tmp:tmp -> tmp66, tmp:tmp -> tmp67, tmp:block$res -> block$res7, tmp:tmp -> tmp68)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.179: 	ctx.add(x, mkLit(1))
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.149: 	let x = ValueRef(Symbol("x"))
-//│ ╙──       	    ^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = x⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:tmp -> tmp4, tmp:tmp -> tmp69, tmp:tmp -> tmp70, tmp:tmp -> tmp71, tmp:tmp -> tmp72, tmp:block$res -> block$res8, tmp:tmp -> tmp5, tmp:block$res -> block$res23, tmp:tmp -> tmp73, tmp:runtime -> runtime, tmp:definitionMetadata -> definitionMetadata, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:block$res -> block$res9, tmp:Block -> Block, tmp:tmp -> tmp6, tmp:ShapeSet -> ShapeSet, tmp:SpecializeHelpers -> SpecializeHelpers, tmp:option -> option, tmp:scrut -> scrut1, tmp:block$res -> block$res24, tmp:tmp -> tmp74, tmp:tmp -> tmp75, tmp:block$res -> block$res10, tmp:tmp -> tmp7, tmp:tmp -> tmp8, tmp:tmp -> tmp9, tmp:block$res -> block$res25, tmp:tmp -> tmp10, tmp:tmp -> tmp76, tmp:tmp -> tmp11, tmp:tmp -> tmp77, tmp:tmp -> tmp12, tmp:tmp -> tmp13, tmp:block$res -> block$res11, tmp:block$res -> block$res26, tmp:tmp -> tmp14, tmp:tmp -> tmp78, tmp:tmp -> tmp79, tmp:block$res -> block$res12, tmp:tmp -> tmp15, tmp:block$res -> block$res27, tmp:tmp -> tmp80, arrSp -> arrSp, tmp:block$res -> block$res28, tmp:tmp -> tmp81, tmp:block$res -> block$res13, tmp:tmp -> tmp16, tmp:tmp -> tmp17, tmp:tmp -> tmp18, tmp:scrut -> scrut2, tmp:block$res -> block$res14, tmp:tmp -> tmp19, tmp:block$res -> block$res29, tmp:tmp -> tmp82, tmp:tmp -> tmp83, tmp:block$res -> block$res30, tmp:block$res -> block$res15, ctx -> ctx, tmp:tmp -> tmp20, tmp:block$res -> block$res31, member:CachedHash -> CachedHash, tmp:block$res -> block$res16, tmp:tmp -> tmp21, tmp:tmp -> tmp22, a -> a, member:Option -> Option, tmp:block$res -> block$res32, tmp:tmp -> tmp84, member:Shape -> Shape, x -> x, member:SpecializeHelpers -> SpecializeHelpers1, member:ShapeSet -> ShapeSet1, tmp:block$res -> block$res17, tmp:tmp -> tmp23, tmp:tmp -> tmp24, tmp:tmp -> tmp25, tmp:tmp -> tmp26, tmp:tmp -> tmp27, tmp:tmp -> tmp28, tmp:tmp -> tmp29, tmp:tmp -> tmp30, tmp:tmp -> tmp31, tmp:tmp -> tmp32, tmp:tmp -> tmp33, member:Predef -> Predef, tmp:tmp -> tmp34, tmp:tmp -> tmp35, tmp:tmp -> tmp36, tmp:tmp -> tmp37, tmp:tmp -> tmp38, tmp:tmp -> tmp39, member:Block -> Block1, tmp:tmp -> tmp40, tmp:block$res -> block$res18, tmp:tmp -> tmp41, tmp:tmp -> tmp42, tmp:tmp -> tmp43, tmp:tmp -> tmp44, tmp:tmp -> tmp45, tmp:tmp -> tmp46, x -> x1, y -> y, member:Runtime -> Runtime, tmp:block$res -> block$res19, tmp:tmp -> tmp47, tmp:tmp -> tmp48, tmp:tmp -> tmp49, tmp:tmp -> tmp50, tmp:tmp -> tmp51, tmp:tmp -> tmp52, tmp:tmp -> tmp53, tmp:tmp -> tmp54, tmp:tmp -> tmp55, tmp:tmp -> tmp56, tmp:tmp -> tmp57, tmp:block$res -> block$res, tmp:block$res -> block$res1, tmp:block$res -> block$res20, tmp:tmp -> tmp58, tmp:block$res -> block$res2, tmp:tmp -> tmp59, tmp:block$res -> block$res3, tmp:block$res -> block$res21, tmp:block$res -> block$res4, tmp:tmp -> tmp60, tmp:tmp -> tmp61, filterShapes -> filterShapes, tmp:block$res -> block$res5, tmp:tmp -> tmp, tmp:tmp -> tmp1, tmp:block$res -> block$res6, tmp:tmp -> tmp2, tmp:tmp -> tmp3, tmp:block$res -> block$res22, tmp:tmp -> tmp62, tmp:tmp -> tmp63, tmp:tmp -> tmp64, tmp:tmp -> tmp65, tmp:scrut -> scrut, tmp:tmp -> tmp66, tmp:tmp -> tmp67, tmp:block$res -> block$res7, tmp:tmp -> tmp68)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.180: 	ctx.get(x)
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.149: 	let x = ValueRef(Symbol("x"))
-//│ ╙──       	    ^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'add')
-//│     at REPL111:1:68
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:613:22)
+//│ = Some({Lit(1)})
 
 ctx.add(x, mkLit(2))
 ctx.get(x)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = x⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:tmp -> tmp4, tmp:tmp -> tmp69, tmp:tmp -> tmp70, tmp:tmp -> tmp71, tmp:tmp -> tmp72, tmp:block$res -> block$res8, tmp:tmp -> tmp5, tmp:block$res -> block$res23, tmp:tmp -> tmp73, tmp:runtime -> runtime, tmp:definitionMetadata -> definitionMetadata, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:block$res -> block$res9, tmp:Block -> Block, tmp:tmp -> tmp6, tmp:ShapeSet -> ShapeSet, tmp:SpecializeHelpers -> SpecializeHelpers, tmp:option -> option, tmp:scrut -> scrut1, tmp:block$res -> block$res24, tmp:tmp -> tmp74, tmp:tmp -> tmp75, tmp:block$res -> block$res10, tmp:tmp -> tmp7, tmp:tmp -> tmp8, tmp:tmp -> tmp9, tmp:block$res -> block$res25, tmp:tmp -> tmp10, tmp:tmp -> tmp76, tmp:tmp -> tmp11, tmp:tmp -> tmp77, tmp:tmp -> tmp12, tmp:tmp -> tmp13, tmp:block$res -> block$res11, tmp:block$res -> block$res26, tmp:tmp -> tmp14, tmp:tmp -> tmp78, tmp:tmp -> tmp79, tmp:block$res -> block$res12, tmp:tmp -> tmp15, tmp:block$res -> block$res27, tmp:tmp -> tmp80, arrSp -> arrSp, tmp:block$res -> block$res28, tmp:tmp -> tmp81, tmp:block$res -> block$res13, tmp:tmp -> tmp16, tmp:tmp -> tmp17, tmp:tmp -> tmp18, tmp:scrut -> scrut2, tmp:block$res -> block$res14, tmp:tmp -> tmp19, tmp:block$res -> block$res29, tmp:tmp -> tmp82, tmp:tmp -> tmp83, tmp:block$res -> block$res30, tmp:block$res -> block$res15, ctx -> ctx, tmp:tmp -> tmp20, tmp:block$res -> block$res31, member:CachedHash -> CachedHash, tmp:block$res -> block$res16, tmp:tmp -> tmp21, tmp:tmp -> tmp22, a -> a, member:Option -> Option, tmp:block$res -> block$res32, tmp:tmp -> tmp84, member:Shape -> Shape, x -> x, tmp:block$res -> block$res33, member:SpecializeHelpers -> SpecializeHelpers1, tmp:tmp -> tmp85, member:ShapeSet -> ShapeSet1, tmp:block$res -> block$res17, tmp:tmp -> tmp23, tmp:tmp -> tmp24, tmp:tmp -> tmp25, tmp:tmp -> tmp26, tmp:tmp -> tmp27, tmp:tmp -> tmp28, tmp:tmp -> tmp29, tmp:tmp -> tmp30, tmp:tmp -> tmp31, tmp:tmp -> tmp32, tmp:tmp -> tmp33, member:Predef -> Predef, tmp:tmp -> tmp34, tmp:tmp -> tmp35, tmp:tmp -> tmp36, tmp:tmp -> tmp37, tmp:tmp -> tmp38, tmp:tmp -> tmp39, member:Block -> Block1, tmp:tmp -> tmp40, tmp:block$res -> block$res18, tmp:tmp -> tmp41, tmp:tmp -> tmp42, tmp:tmp -> tmp43, tmp:tmp -> tmp44, tmp:tmp -> tmp45, tmp:tmp -> tmp46, x -> x1, y -> y, member:Runtime -> Runtime, tmp:block$res -> block$res19, tmp:tmp -> tmp47, tmp:tmp -> tmp48, tmp:tmp -> tmp49, tmp:tmp -> tmp50, tmp:tmp -> tmp51, tmp:tmp -> tmp52, tmp:tmp -> tmp53, tmp:tmp -> tmp54, tmp:tmp -> tmp55, tmp:tmp -> tmp56, tmp:tmp -> tmp57, tmp:block$res -> block$res, tmp:block$res -> block$res1, tmp:block$res -> block$res20, tmp:tmp -> tmp58, tmp:block$res -> block$res2, tmp:tmp -> tmp59, tmp:block$res -> block$res3, tmp:block$res -> block$res21, tmp:block$res -> block$res4, tmp:tmp -> tmp60, tmp:tmp -> tmp61, filterShapes -> filterShapes, tmp:block$res -> block$res5, tmp:tmp -> tmp, tmp:tmp -> tmp1, tmp:block$res -> block$res6, tmp:tmp -> tmp2, tmp:tmp -> tmp3, tmp:block$res -> block$res22, tmp:tmp -> tmp62, tmp:tmp -> tmp63, tmp:tmp -> tmp64, tmp:tmp -> tmp65, tmp:scrut -> scrut, tmp:tmp -> tmp66, tmp:tmp -> tmp67, tmp:block$res -> block$res7, tmp:tmp -> tmp68)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.235: 	ctx.add(x, mkLit(2))
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.149: 	let x = ValueRef(Symbol("x"))
-//│ ╙──       	    ^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = x⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:tmp -> tmp4, tmp:tmp -> tmp69, tmp:tmp -> tmp70, tmp:tmp -> tmp71, tmp:tmp -> tmp72, tmp:block$res -> block$res8, tmp:tmp -> tmp5, tmp:block$res -> block$res23, tmp:tmp -> tmp73, tmp:runtime -> runtime, tmp:definitionMetadata -> definitionMetadata, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:block$res -> block$res9, tmp:Block -> Block, tmp:tmp -> tmp6, tmp:ShapeSet -> ShapeSet, tmp:SpecializeHelpers -> SpecializeHelpers, tmp:option -> option, tmp:scrut -> scrut1, tmp:block$res -> block$res24, tmp:tmp -> tmp74, tmp:tmp -> tmp75, tmp:block$res -> block$res10, tmp:tmp -> tmp7, tmp:tmp -> tmp8, tmp:tmp -> tmp9, tmp:block$res -> block$res25, tmp:tmp -> tmp10, tmp:tmp -> tmp76, tmp:tmp -> tmp11, tmp:tmp -> tmp77, tmp:tmp -> tmp12, tmp:tmp -> tmp13, tmp:block$res -> block$res11, tmp:block$res -> block$res26, tmp:tmp -> tmp14, tmp:tmp -> tmp78, tmp:tmp -> tmp79, tmp:block$res -> block$res12, tmp:tmp -> tmp15, tmp:block$res -> block$res27, tmp:tmp -> tmp80, arrSp -> arrSp, tmp:block$res -> block$res28, tmp:tmp -> tmp81, tmp:block$res -> block$res13, tmp:tmp -> tmp16, tmp:tmp -> tmp17, tmp:tmp -> tmp18, tmp:scrut -> scrut2, tmp:block$res -> block$res14, tmp:tmp -> tmp19, tmp:block$res -> block$res29, tmp:tmp -> tmp82, tmp:tmp -> tmp83, tmp:block$res -> block$res30, tmp:block$res -> block$res15, ctx -> ctx, tmp:tmp -> tmp20, tmp:block$res -> block$res31, member:CachedHash -> CachedHash, tmp:block$res -> block$res16, tmp:tmp -> tmp21, tmp:tmp -> tmp22, a -> a, member:Option -> Option, tmp:block$res -> block$res32, tmp:tmp -> tmp84, member:Shape -> Shape, x -> x, tmp:block$res -> block$res33, member:SpecializeHelpers -> SpecializeHelpers1, tmp:tmp -> tmp85, member:ShapeSet -> ShapeSet1, tmp:block$res -> block$res17, tmp:tmp -> tmp23, tmp:tmp -> tmp24, tmp:tmp -> tmp25, tmp:tmp -> tmp26, tmp:tmp -> tmp27, tmp:tmp -> tmp28, tmp:tmp -> tmp29, tmp:tmp -> tmp30, tmp:tmp -> tmp31, tmp:tmp -> tmp32, tmp:tmp -> tmp33, member:Predef -> Predef, tmp:tmp -> tmp34, tmp:tmp -> tmp35, tmp:tmp -> tmp36, tmp:tmp -> tmp37, tmp:tmp -> tmp38, tmp:tmp -> tmp39, member:Block -> Block1, tmp:tmp -> tmp40, tmp:block$res -> block$res18, tmp:tmp -> tmp41, tmp:tmp -> tmp42, tmp:tmp -> tmp43, tmp:tmp -> tmp44, tmp:tmp -> tmp45, tmp:tmp -> tmp46, x -> x1, y -> y, member:Runtime -> Runtime, tmp:block$res -> block$res19, tmp:tmp -> tmp47, tmp:tmp -> tmp48, tmp:tmp -> tmp49, tmp:tmp -> tmp50, tmp:tmp -> tmp51, tmp:tmp -> tmp52, tmp:tmp -> tmp53, tmp:tmp -> tmp54, tmp:tmp -> tmp55, tmp:tmp -> tmp56, tmp:tmp -> tmp57, tmp:block$res -> block$res, tmp:block$res -> block$res1, tmp:block$res -> block$res20, tmp:tmp -> tmp58, tmp:block$res -> block$res2, tmp:tmp -> tmp59, tmp:block$res -> block$res3, tmp:block$res -> block$res21, tmp:block$res -> block$res4, tmp:tmp -> tmp60, tmp:tmp -> tmp61, filterShapes -> filterShapes, tmp:block$res -> block$res5, tmp:tmp -> tmp, tmp:tmp -> tmp1, tmp:block$res -> block$res6, tmp:tmp -> tmp2, tmp:tmp -> tmp3, tmp:block$res -> block$res22, tmp:tmp -> tmp62, tmp:tmp -> tmp63, tmp:tmp -> tmp64, tmp:tmp -> tmp65, tmp:scrut -> scrut, tmp:tmp -> tmp66, tmp:tmp -> tmp67, tmp:block$res -> block$res7, tmp:tmp -> tmp68)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.236: 	ctx.get(x)
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.149: 	let x = ValueRef(Symbol("x"))
-//│ ╙──       	    ^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'add')
-//│     at REPL114:1:68
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:613:22)
+//│ = Some({Lit(1),Lit(2)})
 
 let y = ValueRef(Symbol("y"))
 ctx.add(y, mkLit("a"))
 ctx.get(y)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'add')
-//│     at REPL117:1:176
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:613:22)
+//│ = Some({Lit("a")})
 //│ y = ValueRef(Symbol("y"))
 
 let ctx2 = ctx.clone
 ctx2.add(y, mkLit("b"))
 ctx2.get(y)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'clone')
-//│     at REPL121:1:44
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:613:22)
-//│ ctx2 = undefined
+//│ = Some({Lit("a"),Lit("b")})
+//│ ctx2 = Ctx(Map(2) {"x" => {Lit(1),Lit(2)}, "y" => {Lit("a"),Lit("b")}}, [])
 
 ctx.get(y)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'get')
-//│     at REPL125:1:42
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:613:22)
+//│ = Some({Lit("a")})
 
 
 // DefCtx
@@ -349,273 +159,97 @@ ctx.get(y)
 // sop
 
 sop(Ctx.empty, ValueLit(42))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sop
-//│ ║  l.351: 	sop(Ctx.empty, ValueLit(42))
-//│ ╙──       	^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.351: 	sop(Ctx.empty, ValueLit(42))
-//│ ╙──       	    ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ = {Lit(42)}
 
 sop(Ctx.empty, ValueLit(false))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sop
-//│ ║  l.366: 	sop(Ctx.empty, ValueLit(false))
-//│ ╙──       	^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.366: 	sop(Ctx.empty, ValueLit(false))
-//│ ╙──       	    ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ = {Lit(false)}
 
 sop(Ctx.empty.add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sop
-//│ ║  l.381: 	sop(Ctx.empty.add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
-//│ ╙──       	^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.381: 	sop(Ctx.empty.add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
-//│ ╙──       	    ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ = {}
 
 
 val x = Symbol("x")
-val C = ClassSymbol("C", Some(["a"]))
+val C = ClassSymbol("C", undefined, Some(["a"]), [])
 val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
 let ctx = Ctx.empty
 ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.400: 	let ctx = Ctx.empty
-//│ ╙──       	          ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sop
-//│ ║  l.402: 	sop(ctx, selPath)
-//│ ╙──       	^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.398: 	val C = ClassSymbol("C", Some(["a"]))
-//│ ╙──       	                   ^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ C = ClassSymbol("C", Some(["a"]), undefined, undefined)
-//│ ctx = undefined
+//│ = {}
+//│ C = ClassSymbol("C", undefined, Some(["a"]), [])
+//│ ctx = Ctx(
+//│   Map(1) {
+//│     "x" => {Class(ClassSymbol("C", undefined, Some(["a"]), []), [Lit("pass")])}
+//│   },
+//│   []
+//│ )
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
 //│ x = Symbol("x")
 
 // sor 
 
-val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
-sor(DefCtx.empty, Ctx.empty, tup)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sor
-//│ ║  l.429: 	sor(DefCtx.empty, Ctx.empty, tup)
-//│ ╙──       	^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
-//│ ║  l.429: 	sor(DefCtx.empty, Ctx.empty, tup)
-//│ ╙──       	    ^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.429: 	sor(DefCtx.empty, Ctx.empty, tup)
-//│ ╙──       	                  ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.428: 	val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
-//│ ╙──       	                    ^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.428: 	val tup = Tuple([Arg(None, ValueLit(1)), Arg(None, ValueLit(true))])
-//│ ╙──       	                                            ^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ tup = Tuple([Arg(None), Arg(None)])
+val tup = Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))])
+sor(Ctx.empty, tup)
+//│ = [
+//│   End(),
+//│   Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))]),
+//│   {Arr([Lit(1), Lit(true)])}
+//│ ]
+//│ tup = Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))])
 
-let c = ClassSymbol("C", Some([Symbol("p")]))
-let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
-sor(DefCtx.empty, Ctx.empty, inst)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sor
-//│ ║  l.462: 	sor(DefCtx.empty, Ctx.empty, inst)
-//│ ╙──       	^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
-//│ ║  l.462: 	sor(DefCtx.empty, Ctx.empty, inst)
-//│ ╙──       	    ^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.462: 	sor(DefCtx.empty, Ctx.empty, inst)
-//│ ╙──       	                  ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.460: 	let c = ClassSymbol("C", Some([Symbol("p")]))
-//│ ╙──       	                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.461: 	let inst = Instantiate(ValueRef(c), [Arg(None, ValueLit(123))])
-//│ ╙──       	                                        ^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ c = ClassSymbol("C", Some([Symbol("p")]), undefined, undefined)
+let c = ClassSymbol("C", undefined, Some([Symbol("p")]), [])
+let inst = Instantiate(ValueRef(c), [Arg(ValueLit(123))])
+sor(Ctx.empty, inst)
+//│ = [
+//│   End(),
+//│   Instantiate(
+//│     ValueRef(ClassSymbol("C", undefined, Some([Symbol("p")]), [])),
+//│     [Arg(ValueLit(123))]
+//│   ),
+//│   {Class(ClassSymbol("C", undefined, Some([Symbol("p")]), []), [Lit(123)])}
+//│ ]
+//│ c = ClassSymbol("C", undefined, Some([Symbol("p")]), [])
 //│ inst = Instantiate(
-//│   ValueRef(ClassSymbol("C", Some([Symbol("p")]), undefined, undefined)),
-//│   [Arg(None)]
+//│   ValueRef(ClassSymbol("C", undefined, Some([Symbol("p")]), [])),
+//│   [Arg(ValueLit(123))]
 //│ )
 
 fun testBinOp(op, v1, v2) =
-  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
+  let args = [Arg(ValueLit(v1)), Arg(ValueLit(v2))]
   let c = Call(ValueRef(Symbol(op)), args)
-  let def = DefCtx.empty
-  def.add(ValueRef(Symbol("+")), undefined, false)
-  def.add(ValueRef(Symbol("==")), undefined, false)
-  def.add(ValueRef(Symbol("===")), undefined, false)
-  def.add(ValueRef(Symbol("&&")), undefined, false)
-  sor(def, Ctx.empty, c).1.lit
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
-//│ ║  l.500: 	  let def = DefCtx.empty
-//│ ╙──       	            ^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sor
-//│ ║  l.505: 	  sor(def, Ctx.empty, c).1.lit
-//│ ╙──       	  ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.505: 	  sor(def, Ctx.empty, c).1.lit
-//│ ╙──       	           ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.498: 	  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
-//│ ╙──       	                 ^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.498: 	  let args = [Arg(None, ValueLit(v1)), Arg(None, ValueLit(v2))]
-//│ ╙──       	                                          ^^^^^^^^^^^^^^^^^^^^
+  sor(Ctx.empty, c).1.lit
 
 :expect 12
 testBinOp("+", 10, 2)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:266)
-//│ ═══[RUNTIME ERROR] Expected: '12', got: 'undefined'
+//│ = 12
 
 :expect true
 testBinOp("==", 10, 10) 
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:266)
-//│ ═══[RUNTIME ERROR] Expected: 'true', got: 'undefined'
+//│ = true
 
 :expect false 
 testBinOp("===", 10, "10") 
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:266)
-//│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
+//│ = false
 
 :expect false
 testBinOp("&&", true, false)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:266)
-//│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
+//│ = false
 
 fun testUnaryOp(op, v) =
-  let args = [Arg(None, ValueLit(v))]
+  let args = [Arg(ValueLit(v))]
   let c = Call(ValueRef(Symbol(op)), args)
-  let def = DefCtx.empty
-  def.add(ValueRef(Symbol("-")), undefined, false)
-  def.add(ValueRef(Symbol("!")), undefined, false)
-  def.add(ValueRef(Symbol("~")), undefined, false)
-  sor(def, Ctx.empty, c).1.lit
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
-//│ ║  l.571: 	  let def = DefCtx.empty
-//│ ╙──       	            ^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sor
-//│ ║  l.575: 	  sor(def, Ctx.empty, c).1.lit
-//│ ╙──       	  ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.575: 	  sor(def, Ctx.empty, c).1.lit
-//│ ╙──       	           ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.569: 	  let args = [Arg(None, ValueLit(v))]
-//│ ╙──       	                 ^^^^^^^^^^^^^^^^^^^
+  sor(Ctx.empty, c).1.lit
 
 :expect -10
 testUnaryOp("-", 10)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:266)
-//│ ═══[RUNTIME ERROR] Expected: '-10', got: 'undefined'
+//│ = -10
 
 :expect false
 testUnaryOp("!", true)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processTerm (JSBackendDiffMaker.scala:266)
-//│ ═══[RUNTIME ERROR] Expected: 'false', got: 'undefined'
+//│ = false
 
 :re
-testUnaryOp("~", 10)  
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-
+testUnaryOp("~", 10)
+//│ ═══[RUNTIME ERROR] Error: Access to required field 'lit' yielded 'undefined'
 
 // prop
 
@@ -631,95 +265,49 @@ let plus = ValueRef(Symbol("+"))
 // let x
 // x = 1 + 1
 // x + 1
-let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
-prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: prop
-//│ ║  l.635: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
-//│ ║  l.635: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	     ^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.635: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	                   ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Cache
-//│ ║  l.635: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	                              ^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.634: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
-//│ ╙──       	                                             ^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.634: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
-//│ ╙──       	                                                                     ^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.634: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
-//│ ╙──       	                                                                                                                  ^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.634: 	let c = Scoped([x], Assign(x, Call(plus, [Arg(None, ValueLit(1)), Arg(None, ValueLit(1))]), Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueLit(1))]), false)))
-//│ ╙──       	                                                                                                                                          ^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+let c = Scoped([x], Assign(x, Call(plus, [Arg(ValueLit(1)), Arg(ValueLit(1))]), Return(Call(plus, [Arg(ValueRef(x)), Arg(ValueLit(1))]), false)))
+prop(Ctx.empty, c)
+//│ = [
+//│   Scoped(
+//│     [Symbol("x")],
+//│     Assign(Symbol("x"), ValueLit(2), Return(ValueLit(3), false))
+//│   ),
+//│   {Lit(3)}
+//│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
 //│   Assign(
 //│     Symbol("x"),
-//│     Call(ValueRef(Symbol("+")), [Arg(None), Arg(None)]),
-//│     Return(Call(ValueRef(Symbol("+")), [Arg(None), Arg(None)]), false)
+//│     Call(ValueRef(Symbol("+")), [Arg(ValueLit(1)), Arg(ValueLit(1))]),
+//│     Return(
+//│       Call(
+//│         ValueRef(Symbol("+")),
+//│         [Arg(ValueRef(Symbol("x"))), Arg(ValueLit(1))]
+//│       ),
+//│       false
+//│     )
 //│   )
 //│ )
 
 let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
-prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: prop
-//│ ║  l.689: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
-//│ ║  l.689: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	     ^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.689: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	                   ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Cache
-//│ ║  l.689: 	prop(DefCtx.empty, Ctx.empty, Cache.empty, c)
-//│ ╙──       	                              ^^^^^
+prop(Ctx.empty, c)
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.688: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
+//│ ║  l.292: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
 //│ ╙──       	                                                                                  ^^^^^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.688: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
+//│ ║  l.292: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
 //│ ╙──       	                                                                                                                                                                                                                                                        ^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ = [
+//│   Scoped(
+//│     [Symbol("x")],
+//│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3), false))
+//│   ),
+//│   {Lit(3)}
+//│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
 //│   Assign(
@@ -756,123 +344,57 @@ fun f_gen(args) =
 val fSym = Symbol("f")
 val M = ValueRef(Symbol("M"))
 val fPath = Select(M, fSym)
-val defs = DefCtx.empty.add(fPath, f_gen, true)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: DefCtx
-//│ ║  l.759: 	val defs = DefCtx.empty.add(fPath, f_gen, true)
-//│ ╙──       	           ^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ M = ValueRef(Symbol("M"))
-//│ defs = undefined
 //│ fPath = Select(ValueRef(Symbol("M")), Symbol("f"))
 //│ fSym = Symbol("f")
 
-val callF = Call(fPath, [Arg(None, ValueLit(12))])
-sor(defs, Ctx.empty, callF)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: sor
-//│ ║  l.774: 	sor(defs, Ctx.empty, callF)
-//│ ╙──       	^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.774: 	sor(defs, Ctx.empty, callF)
-//│ ╙──       	          ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.773: 	val callF = Call(fPath, [Arg(None, ValueLit(12))])
-//│ ╙──       	                            ^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(None)])
+val callF = Call(fPath, [Arg(ValueLit(12))])
+sor(Ctx.empty, callF)
+//│ = [
+//│   End(),
+//│   Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(ValueLit(12))]),
+//│   {Dyn()}
+//│ ]
+//│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(ValueLit(12))])
 
 val ctxXY = Ctx.empty
   .add(ValueRef(x), mkLit(10))
   .add(ValueRef(y), mkLit(32))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.795: 	val ctxXY = Ctx.empty
-//│ ╙──       	            ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ ctxXY = undefined
+//│ ctxXY = Ctx(Map(2) {"x" => {Lit(10)}, "y" => {Lit(32)}}, [])
 
 // x + y
-val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
+val blockAdd = Return(Call(plus, [Arg(ValueRef(x)), Arg(ValueRef(y))]), false)
 printCode(blockAdd)
-prop(defs, ctxXY, Cache.empty, blockAdd)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: prop
-//│ ║  l.811: 	prop(defs, ctxXY, Cache.empty, blockAdd)
-//│ ╙──       	^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Cache
-//│ ║  l.811: 	prop(defs, ctxXY, Cache.empty, blockAdd)
-//│ ╙──       	                  ^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.809: 	val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
-//│ ╙──       	                                     ^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 2
-//│ ║  l.809: 	val blockAdd = Return(Call(plus, [Arg(None, ValueRef(x)), Arg(None, ValueRef(y))]), false)
-//│ ╙──       	                                                             ^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] Error: match error
-//│     at Block.showPath (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:637:38)
-//│     at showArg (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:641:18)
-//│     at Array.map (<anonymous>)
-//│     at Block.showArgs (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:645:33)
-//│     at Block.showResult (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:659:20)
-//│     at Block.showBlock (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:854:20)
-//│     at Block.show (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:925:20)
-//│     at Block.printCode (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/Block.mjs:932:17)
-//│     at REPL213:1:436
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│ blockAdd = Return(Call(ValueRef(Symbol("+")), [Arg(None), Arg(None)]), false)
+prop(ctxXY, blockAdd)
+//│ > x + y
+//│ = [Return(ValueLit(42), false), {Lit(42)}]
+//│ blockAdd = Return(
+//│   Call(
+//│     ValueRef(Symbol("+")),
+//│     [Arg(ValueRef(Symbol("x"))), Arg(ValueRef(Symbol("y")))]
+//│   ),
+//│   false
+//│ )
 
 val blockBranch = Scoped([z], Match(ValueLit(1), [Arm(Lit(1), Assign(z, ValueLit(1), End())), Arm(Lit(2), Assign(z, ValueLit(2), End()))], Some(Assign(z, ValueLit(3), End())), Return(ValueRef(z), false)))
 printCode(blockBranch)
-prop(defs, Ctx.empty, Cache.empty, blockBranch)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: prop
-//│ ║  l.849: 	prop(defs, Ctx.empty, Cache.empty, blockBranch)
-//│ ╙──       	^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.849: 	prop(defs, Ctx.empty, Cache.empty, blockBranch)
-//│ ╙──       	           ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Cache
-//│ ║  l.849: 	prop(defs, Ctx.empty, Cache.empty, blockBranch)
-//│ ╙──       	                      ^^^^^
+prop(Ctx.empty, blockBranch)
 //│ > let z
 //│ > if 1 is
 //│ >   1 then
 //│ >     z = 1
 //│ >   2 then
 //│ >     z = 2
-//│ >   else z = 3
+//│ >   else 
+//│ >     z = 3
 //│ > z
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ = [
+//│   Scoped(
+//│     [Symbol("z")],
+//│     Assign(Symbol("z"), ValueLit(1), Return(ValueLit(1), false))
+//│   ),
+//│   {Lit(1)}
+//│ ]
 //│ blockBranch = Scoped(
 //│   [Symbol("z")],
 //│   Match(
@@ -888,22 +410,7 @@ prop(defs, Ctx.empty, Cache.empty, blockBranch)
 
 val earlyRetBlock = Scoped([x, y], Assign(x, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Return(ValueLit(10), false)), Arm(Lit(false), Assign(y, ValueLit(20), End()))], End(), Return(ValueRef(y), false))))
 printCode(earlyRetBlock)
-prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: prop
-//│ ║  l.891: 	prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
-//│ ╙──       	^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.891: 	prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
-//│ ╙──       	           ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Cache
-//│ ║  l.891: 	prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
-//│ ╙──       	                      ^^^^^
+prop(Ctx.empty, earlyRetBlock)
 //│ > let x
 //│ > let y
 //│ > x = false
@@ -912,9 +419,17 @@ prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
 //│ >   false then
 //│ >     y = 20
 //│ > y
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ = [
+//│   Scoped(
+//│     [Symbol("x"), Symbol("y")],
+//│     Assign(
+//│       Symbol("x"),
+//│       ValueLit(false),
+//│       Assign(Symbol("y"), ValueLit(20), Return(ValueLit(20), false))
+//│     )
+//│   ),
+//│   {Lit(20)}
+//│ ]
 //│ earlyRetBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
 //│   Assign(
@@ -942,29 +457,7 @@ prop(defs, Ctx.empty, Cache.empty, earlyRetBlock)
 //   else return 3
 // return 4
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1), false))], Some(Return(ValueLit(2), false)), End()))], Some(Return(ValueLit(3), false)), Return(ValueLit(4), false)))))
-let c = Cache.empty
-val res = prop(defs, Ctx.empty, c, nestedBlock)
-c.add("f", mkDyn(), res.0, res.1)
-c.printImps()
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Cache
-//│ ║  l.945: 	let c = Cache.empty
-//│ ╙──       	        ^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: prop
-//│ ║  l.946: 	val res = prop(defs, Ctx.empty, c, nestedBlock)
-//│ ╙──       	          ^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: subterm (Elaborator.scala:517)
-//│ ╔══[COMPILATION ERROR] Name not found: Ctx
-//│ ║  l.946: 	val res = prop(defs, Ctx.empty, c, nestedBlock)
-//│ ╙──       	                     ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
-//│ c = undefined
+val res = prop(Ctx.empty, nestedBlock)
 //│ nestedBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
 //│   Assign(
@@ -992,37 +485,17 @@ c.printImps()
 //│     )
 //│   )
 //│ )
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = member:res⁰
-//│     _2 = class hkmc2.semantics.BlockMemberSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:tmp -> tmp69, tmp:tmp -> tmp70, tmp:tmp -> tmp71, tmp:tmp -> tmp72, tmp:block$res -> block$res23, tmp:tmp -> tmp73, tmp:runtime -> runtime, tmp:definitionMetadata -> definitionMetadata, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:ShapeSet -> ShapeSet, tmp:SpecializeHelpers -> SpecializeHelpers, tmp:option -> option, tmp:scrut -> scrut1, tmp:block$res -> block$res24, tmp:tmp -> tmp74, tmp:tmp -> tmp75, tmp:block$res -> block$res25, tmp:tmp -> tmp76, tmp:tmp -> tmp77, tmp:block$res -> block$res26, tmp:tmp -> tmp78, tmp:tmp -> tmp79, tmp:block$res -> block$res54, tmp:tmp -> tmp125, tmp:tmp -> tmp126, tmp:block$res -> block$res27, tmp:tmp -> tmp127, tmp:tmp -> tmp80, tmp:tmp -> tmp128, tmp:tmp -> tmp129, tmp:tmp -> tmp130, tmp:tmp -> tmp131, tmp:tmp -> tmp132, tmp:tmp -> tmp133, tmp:tmp -> tmp134, tmp:block$res -> block$res28, tmp:tmp -> tmp135, tmp:tmp -> tmp81, tmp:tmp -> tmp136, tmp:tmp -> tmp137, tmp:tmp -> tmp138, tmp:tmp -> tmp139, tmp:tmp -> tmp140, tmp:tmp -> tmp141, tmp:tmp -> tmp142, tmp:tmp -> tmp143, tmp:tmp -> tmp144, tmp:tmp -> tmp145, tmp:scrut -> scrut2, tmp:tmp -> tmp146, tmp:tmp -> tmp147, tmp:block$res -> block$res29, tmp:tmp -> tmp148, tmp:tmp -> tmp82, tmp:tmp -> tmp149, tmp:tmp -> tmp83, tmp:tmp -> tmp150, tmp:tmp -> tmp151, tmp:tmp -> tmp152, tmp:block$res -> block$res30, tmp:tmp -> tmp153, tmp:tmp -> tmp154, ctx -> ctx, tmp:tmp -> tmp155, tmp:tmp -> tmp156, member:f_gen -> f_gen, tmp:block$res -> block$res31, member:CachedHash -> CachedHash, tmp:block$res -> block$res55, member:Option -> Option, tmp:block$res -> block$res32, member:defs -> defs, tmp:tmp -> tmp84, member:fPath -> fPath, member:M -> M, member:Shape -> Shape, member:fSym -> fSym, tmp:block$res -> block$res33, member:SpecializeHelpers -> SpecializeHelpers1, tmp:tmp -> tmp85, y -> y1, member:ShapeSet -> ShapeSet1, tmp:block$res -> block$res34, tmp:tmp -> tmp86, tmp:tmp -> tmp87, tmp:block$res -> block$res56, ctx2 -> ctx2, tmp:tmp -> tmp157, tmp:tmp -> tmp158, tmp:tmp -> tmp159, tmp:tmp -> tmp160, member:callF -> callF, tmp:block$res -> block$res35, tmp:selRes -> selRes, tmp:tmp -> tmp88, member:Predef -> Predef, tmp:block$res -> block$res36, member:Block -> Block1, tmp:block$res -> block$res57, tmp:tmp -> tmp161, tmp:tmp -> tmp162, tmp:tmp -> tmp163, tmp:block$res -> block$res37, tmp:tmp -> tmp164, member:ctxXY -> ctxXY, tmp:block$res -> block$res38, tmp:block$res -> block$res58, member:blockAdd -> blockAdd, tmp:block$res -> block$res39, member:selPath -> selPath, member:C -> C, member:x -> x2, member:Runtime -> Runtime, tmp:block$res -> block$res59, tmp:tmp -> tmp165, tmp:tmp -> tmp166, tmp:tmp -> tmp167, tmp:tmp -> tmp168, ctx -> ctx1, tmp:tmp -> tmp169, tmp:tmp -> tmp170, tmp:tmp -> tmp171, member:blockBranch -> blockBranch, tmp:block$res -> block$res, tmp:block$res -> block$res1, tmp:block$res -> block$res40, tmp:tmp -> tmp89, tmp:block$res -> block$res2, tmp:tmp -> tmp90, tmp:tmp -> tmp91, tmp:tmp -> tmp92, tmp:tmp -> tmp93, tmp:tmp -> tmp94, tmp:block$res -> block$res3, tmp:tmp -> tmp95, member:tup -> tup, tmp:block$res -> block$res4, tmp:block$res -> block$res5, tmp:tmp -> tmp, tmp:tmp -> tmp1, tmp:block$res -> block$res41, tmp:block$res -> block$res6, tmp:tmp -> tmp96, tmp:tmp -> tmp2, tmp:tmp -> tmp97, tmp:tmp -> tmp3, tmp:tmp -> tmp98, tmp:tmp -> tmp99, tmp:tmp -> tmp100, tmp:tmp -> tmp101, c -> c, tmp:scrut -> scrut, tmp:block$res -> block$res60, tmp:tmp -> tmp172, tmp:block$res -> block$res7, tmp:tmp -> tmp173, tmp:tmp -> tmp4, tmp:tmp -> tmp174, inst -> inst, tmp:tmp -> tmp175, tmp:tmp -> tmp176, tmp:tmp -> tmp177, tmp:tmp -> tmp178, tmp:tmp -> tmp179, tmp:tmp -> tmp180, tmp:block$res -> block$res8, tmp:tmp -> tmp181, tmp:tmp -> tmp5, tmp:tmp -> tmp182, tmp:tmp -> tmp183, tmp:tmp -> tmp184, tmp:tmp -> tmp185, tmp:tmp -> tmp186, tmp:tmp -> tmp187, tmp:tmp -> tmp188, tmp:block$res -> block$res9, tmp:block$res -> block$res42, tmp:tmp -> tmp189, tmp:tmp -> tmp6, tmp:tmp -> tmp102, tmp:tmp -> tmp190, tmp:tmp -> tmp103, tmp:tmp -> tmp191, tmp:tmp -> tmp104, tmp:tmp -> tmp192, tmp:tmp -> tmp105, tmp:tmp -> tmp106, member:earlyRetBlock -> earlyRetBlock, tmp:tmp -> tmp107, tmp:tmp -> tmp108, member:testBinOp -> testBinOp, tmp:block$res -> block$res10, tmp:tmp -> tmp7, tmp:tmp -> tmp8, tmp:tmp -> tmp9, tmp:tmp -> tmp10, tmp:tmp -> tmp11, tmp:tmp -> tmp12, tmp:tmp -> tmp13, tmp:block$res -> block$res11, tmp:tmp -> tmp14, tmp:block$res -> block$res12, tmp:tmp -> tmp15, arrSp -> arrSp, tmp:block$res -> block$res13, tmp:block$res -> block$res61, tmp:tmp -> tmp16, tmp:tmp -> tmp193, tmp:tmp -> tmp17, tmp:tmp -> tmp194, tmp:tmp -> tmp18, tmp:tmp -> tmp195, tmp:tmp -> tmp196, tmp:tmp -> tmp197, tmp:tmp -> tmp198, tmp:tmp -> tmp199, tmp:tmp -> tmp200, tmp:tmp -> tmp201, tmp:block$res -> block$res14, tmp:tmp -> tmp202, tmp:tmp -> tmp19, tmp:tmp -> tmp203, tmp:tmp -> tmp204, tmp:tmp -> tmp205, tmp:tmp -> tmp206, tmp:tmp -> tmp207, tmp:block$res -> block$res43, tmp:tmp -> tmp208, tmp:tmp -> tmp209, tmp:block$res -> block$res15, tmp:tmp -> tmp210, tmp:tmp -> tmp20, tmp:tmp -> tmp211, member:nestedBlock -> nestedBlock, tmp:block$res -> block$res44, tmp:block$res -> block$res16, tmp:tmp -> tmp21, tmp:tmp -> tmp22, tmp:block$res -> block$res45, a -> a, tmp:block$res -> block$res46, tmp:block$res -> block$res47, member:testUnaryOp -> testUnaryOp, x -> x, tmp:block$res -> block$res17, tmp:tmp -> tmp23, tmp:tmp -> tmp24, tmp:tmp -> tmp25, tmp:tmp -> tmp26, tmp:tmp -> tmp27, tmp:tmp -> tmp28, tmp:tmp -> tmp29, tmp:tmp -> tmp30, tmp:tmp -> tmp31, c -> c3, tmp:tmp -> tmp32, tmp:tmp -> tmp33, tmp:tmp -> tmp34, tmp:tmp -> tmp35, tmp:tmp -> tmp36, tmp:tmp -> tmp37, tmp:tmp -> tmp38, tmp:tmp -> tmp39, tmp:tmp -> tmp40, tmp:block$res -> block$res48, tmp:block$res -> block$res62, tmp:tmp -> tmp212, tmp:block$res -> block$res49, tmp:tmp -> tmp213, tmp:tmp -> tmp214, tmp:tmp -> tmp215, tmp:tmp -> tmp216, tmp:block$res -> block$res50, tmp:tmp -> tmp217, tmp:tmp -> tmp218, tmp:block$res -> block$res18, tmp:tmp -> tmp219, tmp:tmp -> tmp41, tmp:tmp -> tmp220, tmp:tmp -> tmp42, tmp:block$res -> block$res51, tmp:tmp -> tmp221, tmp:tmp -> tmp43, tmp:tmp -> tmp222, tmp:tmp -> tmp44, x -> x3, tmp:tmp -> tmp223, tmp:tmp -> tmp45, tmp:tmp -> tmp224, tmp:tmp -> tmp46, tmp:tmp -> tmp225, y -> y2, tmp:tmp -> tmp226, x -> x1, tmp:tmp -> tmp227, tmp:tmp -> tmp228, z -> z, tmp:tmp -> tmp229, tmp:tmp -> tmp230, tmp:tmp -> tmp231, plus -> plus, tmp:tmp -> tmp232, tmp:tmp -> tmp233, y -> y, tmp:tmp -> tmp234, tmp:tmp -> tmp235, tmp:tmp -> tmp236, tmp:tmp -> tmp237, tmp:block$res -> block$res52, tmp:tmp -> tmp238, tmp:tmp -> tmp109, c -> c1, tmp:block$res -> block$res19, tmp:tmp -> tmp47, tmp:tmp -> tmp48, tmp:tmp -> tmp49, tmp:tmp -> tmp50, tmp:tmp -> tmp51, tmp:tmp -> tmp52, tmp:tmp -> tmp53, tmp:tmp -> tmp54, tmp:tmp -> tmp55, tmp:tmp -> tmp56, tmp:tmp -> tmp57, tmp:block$res -> block$res20, tmp:tmp -> tmp58, tmp:tmp -> tmp59, tmp:block$res -> block$res53, tmp:tmp -> tmp110, tmp:tmp -> tmp111, tmp:tmp -> tmp112, tmp:block$res -> block$res21, tmp:tmp -> tmp113, tmp:tmp -> tmp60, tmp:tmp -> tmp114, tmp:tmp -> tmp61, tmp:tmp -> tmp115, tmp:tmp -> tmp116, filterShapes -> filterShapes, tmp:tmp -> tmp117, tmp:tmp -> tmp118, tmp:tmp -> tmp119, tmp:tmp -> tmp120, tmp:tmp -> tmp121, tmp:tmp -> tmp122, tmp:tmp -> tmp123, tmp:tmp -> tmp124, c -> c2, tmp:block$res -> block$res22, tmp:tmp -> tmp62, tmp:tmp -> tmp63, tmp:tmp -> tmp64, tmp:tmp -> tmp65, tmp:tmp -> tmp66, tmp:tmp -> tmp67, tmp:tmp -> tmp68)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'res'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.946: 	val res = prop(defs, Ctx.empty, c, nestedBlock)
-//│ ╙──       	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] ReferenceError: res is not defined
-//│     at REPL229:1:42
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:613:22)
+//│ res = [
+//│   Scoped(
+//│     [Symbol("x"), Symbol("y")],
+//│     Assign(
+//│       Symbol("x"),
+//│       ValueLit(true),
+//│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2), false))
+//│     )
+//│   ),
+//│   {Lit(2),Lit(4)}
+//│ ]
 
 val2path(1, mut [])
 //│ = [End(), ValueLit(1)]
@@ -1051,23 +524,19 @@ val2path(TestClass(1, 2), mut [])
 //│   ValueRef(Symbol("obj_2"))
 //│ ]
 
-
-val2path(TestClass(1, [1,2]))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 1
-//│ ║  l.1055: 	val2path(TestClass(1, [1,2]))
-//│ ╙──        	        ^^^^^^^^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:227)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'push')
-//│     at ShapeSet.val2path (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:384:33)
-//│     at lambda7 (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:419:39)
-//│     at Array.map (<anonymous>)
-//│     at ShapeSet.val2path (file:///Users/sinchunyeung/Documents/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:421:59)
-//│     at REPL240:1:168
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:593:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:922:10)
+val2path(TestClass(1, [1,2]), mut [])
+//│ = [
+//│   Assign(
+//│     Symbol("tup_3"),
+//│     Tuple([Arg(ValueLit(1)), Arg(ValueLit(2))]),
+//│     Assign(
+//│       Symbol("obj_4"),
+//│       Instantiate(
+//│         ValueRef(ClassSymbol("TestClass", undefined, None, [])),
+//│         [Arg(ValueLit(1)), Arg(ValueRef(Symbol("tup_3")))]
+//│       ),
+//│       End()
+//│     )
+//│   ),
+//│   ValueRef(Symbol("obj_4"))
+//│ ]
