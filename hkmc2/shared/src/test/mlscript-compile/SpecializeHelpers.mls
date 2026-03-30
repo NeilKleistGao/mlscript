@@ -199,7 +199,7 @@ fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
   else funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("__")
 
-fun specialize(cache, funName, dflt, shapes) =
+fun specialize(cache, funName, dflt, shapes, useStub) =
   // replace function symbol in block definition to new name
   let newName = specializeName(funName, shapes)
   if cache.getFun(newName) is
@@ -210,7 +210,8 @@ fun specialize(cache, funName, dflt, shapes) =
         let ctx = Ctx.empty
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), shapes.(i).(j))))
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
-        let res = prop(ctx, body)
+        let propFun = if useStub then propStub else prop
+        let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, bodyWithScoped), res.1])
         [entry.0.sym, entry.1]

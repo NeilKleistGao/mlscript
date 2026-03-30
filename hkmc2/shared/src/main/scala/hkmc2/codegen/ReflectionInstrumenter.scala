@@ -47,7 +47,7 @@ def toValue(lit: Str | Int | BigDecimal | Bool): Value =
   Value.Lit(l)
 
 // transform Block to Block IR so that it can be instrumented in mlscript
-class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(SymbolSubst.Id):
+class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTransformer(SymbolSubst.Id):
   // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
   val scope = Scope.empty(Scope.Cfg.default)
   val defnMap = HashMap[Symbol, ClsLikeDefn | ClsLikeBody]()
@@ -116,7 +116,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
           case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
           // FIXME: hack to patch in staging for returning the object Unit.
-          case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
+          case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)    
           case _ =>
             raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
             return End()
@@ -132,10 +132,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _))
           case _: ModuleOrObjectSymbol =>
             blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _))
-      // TODO: figure out when to rebind variables
       case _: TempSymbol | _: NoSymbol | _: VarSymbol =>
         val name = scope.allocateOrGetName(sym)
         blockCtor("Symbol", Ls(toValue(name)), symName)(k)
+      // FIXME: there may be more types of symbols that need to be renamed during staging
       case _: BuiltinSymbol | _ =>
         blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
@@ -365,13 +365,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val genSymName = f.sym.nme + "_gen"
         val sym = BlockMemberSymbol(genSymName, Nil, false)
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
-        
-        val params = (if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: Nil else Nil) ::: f.params.map { pl =>
-          PlainParamList(pl.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
-        }
+
+        // refresh parameters
+        val funParams = f.params.map(ps => PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme))))))
+        val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
         val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
           tuple(tups): args =>
-            call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
+            call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args, toValue(!config.shapeProp))): res =>
               Return(res, false)
         FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false)
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false)
