@@ -53,7 +53,8 @@ staged module D with
 //│ >   if scrut1 is
 //│ >     Int then
 //│ >       tmp = true
-//│ >     else tmp = false
+//│ >     else 
+//│ >       tmp = false
 //│ >   scrut2 = 1
 //│ >   if scrut2 is
 //│ >     C(a, b) then true
@@ -176,7 +177,7 @@ staged module M with
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.177: 	  fun g()() = 1
+//│ ║  l.178: 	  fun g()() = 1
 //│ ╙──       	  ^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
@@ -228,5 +229,8 @@ staged module M with
 :todo creating symbols for objects
 staged module RetUnit with
   fun f() = ()
-//│ ═══[COMPILATION ERROR] Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: object:Unit
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = Runtime.Unit
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }
