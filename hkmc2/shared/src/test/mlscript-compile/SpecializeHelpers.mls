@@ -111,8 +111,7 @@ fun sor(ctx, r) = if r is
           not (f is Runtime.Unit) then // staged function
             let res = f(...argShapes)
             [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), res.0), args), res.1]
-          else
-            [End(), r, mkDyn()] // TODO 
+          else [End(), r, mkDyn()]
         argShapes.every(staticSet) then // non staged function but params known
           let f = value.(symb)
           let evaluated = f(...argShapes.map(valOfSet))

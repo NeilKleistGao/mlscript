@@ -24,11 +24,11 @@ staged module Test with
   fun test() =
     let four = f(2, 2)
     let three = fib(four)
-    Staged.fib(three) // fib(5) 
-    pyth(three, 4)
+    let two = Staged.fib(three)
+    pyth(two, 4)
   fun test2(n) = 
-    pyth(n, 2) 
-    fib(n * 2)
+    let dyn = pyth(n, 2) 
+    fib(dyn * 2)
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x, y) =
@@ -65,17 +65,18 @@ staged module Test with
 //│ >   tmp8 = Staged.sq(x2)
 //│ >   tmp9 = Staged.sq(y2)
 //│ >   tmp8 + tmp9
-//│ > fun test() = 25
+//│ > fun test() = 20
 //│ > fun f_Lit2_Lit2(x, y) = 4
 //│ > fun fib_Lit4(n1) = 3
 //│ > fun fib_Lit3(n1) = 2
 //│ > fun fib_Lit2(n1) = 1
 //│ > fun fib_Lit1(n1) = 1
-//│ > fun pyth_Lit3_Lit4(x1, y1) = 25
+//│ > fun pyth_Lit2_Lit4(x1, y1) = 20
 //│ > fun test2(n2) =
 //│ >   let tmp10
-//│ >   __no__symbol__ = Test.pyth_Dyn_Lit2(n2, 2)
-//│ >   tmp10 = *(n2, 2)
+//│ >   let dyn
+//│ >   dyn = Test.pyth_Dyn_Lit2(n2, 2)
+//│ >   tmp10 = *(dyn, 2)
 //│ >   Test.fib(tmp10)
 //│ > fun pyth_Dyn_Lit2(x1, y1) =
 //│ >   let tmp6
@@ -363,6 +364,176 @@ staged module TestTupleMatching with
 //│ >     value: [class TestTupleMatching] {
 //│ >       'cache$TestTupleMatching': [FunCache],
 //│ >       'generatorMap$TestTupleMatching': [Map]
+//│ >     }
+//│ >   }
+//│ > }
+
+staged module TailRecursion with
+  fun sum(n, acc) = if n is
+    0 then acc
+    _ then sum(n - 1, acc + n)
+  fun test() = sum(5, 0)
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun sum(n, acc) =
+//│ >   let tmp
+//│ >   let tmp1
+//│ >   if n is
+//│ >     0 then acc
+//│ >     else 
+//│ >       tmp = n - 1
+//│ >       tmp1 = acc + n
+//│ >       TailRecursion.sum(tmp, tmp1)
+//│ > fun test() = 15
+//│ > fun sum_Lit5_Lit0(n, acc) = 15
+//│ > fun sum_Lit4_Lit5(n, acc) = 15
+//│ > fun sum_Lit3_Lit9(n, acc) = 15
+//│ > fun sum_Lit2_Lit12(n, acc) = 15
+//│ > fun sum_Lit1_Lit14(n, acc) = 15
+//│ > fun sum_Lit0_Lit15(n, acc) = 15
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'sum' => [Function: sum_gen],
+//│ >   'test' => [Function: test_gen]
+//│ > }
+//│ > Map(1) {
+//│ >   [class TailRecursion] {
+//│ >     'cache$TailRecursion': FunCache { cache: [Map] },
+//│ >     'generatorMap$TailRecursion': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'sum' => [Function: sum_gen],
+//│ >       'test' => [Function: test_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'TailRecursion',
+//│ >     value: [class TailRecursion] {
+//│ >       'cache$TailRecursion': [FunCache],
+//│ >       'generatorMap$TailRecursion': [Map]
+//│ >     }
+//│ >   }
+//│ > }
+
+staged module TestTupleConstruct with
+  fun first(x) = if x is
+    [a, _] then a
+    else 0
+  fun second(x) = if x is
+    [_, b] then b
+    else 0
+  fun test(y) = 
+    let t = [10, y]
+    first(t) + second(t)
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun first(x) =
+//│ >   let a
+//│ >   let element1_
+//│ >   let element0_
+//│ >   if x is
+//│ >     [_, _] then
+//│ >       element0_ = x.(0)
+//│ >       element1_ = x.(1)
+//│ >       a = element0_
+//│ >       a
+//│ >     else 0
+//│ > fun second(x1) =
+//│ >   let element1_1
+//│ >   let element0_1
+//│ >   let b
+//│ >   if x1 is
+//│ >     [_, _] then
+//│ >       element0_1 = x1.(0)
+//│ >       element1_1 = x1.(1)
+//│ >       b = element1_1
+//│ >       b
+//│ >     else 0
+//│ > fun test(y) =
+//│ >   let tmp
+//│ >   let tmp1
+//│ >   let t
+//│ >   t = [10, y]
+//│ >   tmp = TestTupleConstruct.first_Arr_Lit10_Dyn_end(t)
+//│ >   tmp1 = TestTupleConstruct.second_Arr_Lit10_Dyn_end(t)
+//│ >   tmp + tmp1
+//│ > fun first_Arr_Lit10_Dyn_end(x) = 10
+//│ > fun second_Arr_Lit10_Dyn_end(x1) =
+//│ >   let element1_1
+//│ >   let element0_1
+//│ >   let b
+//│ >   element0_1 = x1.(0)
+//│ >   element1_1 = x1.(1)
+//│ >   b = element1_1
+//│ >   b
+//│ > Map(4) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'first' => [Function: first_gen],
+//│ >   'second' => [Function: second_gen],
+//│ >   'test' => [Function: test_gen]
+//│ > }
+//│ > Map(1) {
+//│ >   [class TestTupleConstruct] {
+//│ >     'cache$TestTupleConstruct': FunCache { cache: [Map] },
+//│ >     'generatorMap$TestTupleConstruct': Map(4) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'first' => [Function: first_gen],
+//│ >       'second' => [Function: second_gen],
+//│ >       'test' => [Function: test_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'TestTupleConstruct',
+//│ >     value: [class TestTupleConstruct] {
+//│ >       'cache$TestTupleConstruct': [FunCache],
+//│ >       'generatorMap$TestTupleConstruct': [Map]
+//│ >     }
+//│ >   }
+//│ > }
+
+:noSanityCheck
+class Box(val value)
+staged module TestPartialObject with
+  fun get_val(b) = b.value
+  fun test_dyn(dyn_val) = get_val(Box(dyn_val)) + get_val(Box(5))
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun get_val(b) = b.value
+//│ > fun test_dyn(dyn_val) =
+//│ >   let tmp
+//│ >   let tmp1
+//│ >   let tmp2
+//│ >   let tmp3
+//│ >   tmp = Box(dyn_val)
+//│ >   tmp1 = TestPartialObject.get_val_Box_Dyn(tmp)
+//│ >   tmp2 = Box(5)
+//│ >   tmp3 = TestPartialObject.get_val_Box_Lit5(tmp2)
+//│ >   tmp1 + tmp3
+//│ > fun get_val_Box_Dyn(b) = b.value
+//│ > fun get_val_Box_Lit5(b) = 5
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'get_val' => [Function: get_val_gen],
+//│ >   'test_dyn' => [Function: test_dyn_gen]
+//│ > }
+//│ > Map(2) {
+//│ >   [Function: Box] {
+//│ >     class: [class Box] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'Box',
+//│ >     value: [Function: Box] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class TestPartialObject] {
+//│ >     'cache$TestPartialObject': FunCache { cache: [Map] },
+//│ >     'generatorMap$TestPartialObject': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'get_val' => [Function: get_val_gen],
+//│ >       'test_dyn' => [Function: test_dyn_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'TestPartialObject',
+//│ >     value: [class TestPartialObject] {
+//│ >       'cache$TestPartialObject': [FunCache],
+//│ >       'generatorMap$TestPartialObject': [Map]
 //│ >     }
 //│ >   }
 //│ > }
