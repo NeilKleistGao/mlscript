@@ -100,8 +100,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
     // retain names to built-in functions or function definitions
     case t: TermSymbol if t.defn.exists(_.k == syntax.Fun) =>
       blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
-    case _: BuiltinSymbol =>
-      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
     case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
       blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(k)
     case baseSym: BaseTypeSymbol =>
@@ -109,6 +107,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
       val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
         case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
         case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+        // FIXME: hack to patch in staging for returning the object Unit.
+        case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
         case _ =>
           raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
           return End()
@@ -124,9 +124,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
                 blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
         case _: ModuleOrObjectSymbol =>
           blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
-    case _ =>
+    case _: TempSymbol | _: NoSymbol | _: VarSymbol =>
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)
+    // FIXME: there may be more types of symbols that need to be renamed during staging
+    case _: BuiltinSymbol | _ =>
+      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block = xOpt match
     case S(x) => f(x)(optionSome(_)(k))
@@ -276,6 +279,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
               optionNone(): none => // TODO: handle companion object
                 blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
                   blockCtor("Define", Ls(cls, p))(k(_, ctx))
+    case Define(v: ValDefn, rest) =>
+      // TODO: only allow ValDefn inside ctors
+      transformBlock(rest): p =>
+        transformOption(v.tsym.owner, transformSymbol(_, N, "test")): owner =>
+          transformSymbol(v.sym): sym =>
+            transformPath(v.rhs): rhs =>
+              blockCtor("ValDefn", Ls(owner, sym, rhs)): v =>
+                blockCtor("Define", Ls(v, p))(k(_, ctx))
     case End(_) => ruleEnd()(k(_, ctx))
     case Match(p, ks, dflt, rest) =>
       transformPath(p): x =>

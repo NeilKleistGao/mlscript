@@ -31,17 +31,11 @@ printCode(DynSelect(ValueRef(Symbol("p")), ValueRef(Symbol("field")), false))
 //│ > p.x
 //│ > p.(field)
 
+:silent
 class A(val x)(y)
 class B
 let aSym = ClassSymbol("A", A, Some([Symbol("x")]), [Symbol("y")])
 let bSym = ClassSymbol("B", B, None, None)
-//│ aSym = ClassSymbol(
-//│   "A",
-//│   fun A { class: class A },
-//│   Some([Symbol("x")]),
-//│   [Symbol("y")]
-//│ )
-//│ bSym = ClassSymbol("B", class B, None, None)
 
 printCode(Call(ValueRef(Symbol("f")), [Arg(ValueLit(3))]))
 printCode(Instantiate(ValueRef(aSym), [Arg(ValueLit(0))]))
@@ -66,6 +60,30 @@ printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), 
 //│ > let y
 //│ > x = 4.2
 //│ > x
+
+printCode(Define(ValDefn(Some(aSym), Symbol("x"), ValueLit(1)), End()))
+//│ > set A.x = 1
+
+printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
+//│ > set a = 1
+
+printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(aSym, ValueRef(aSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
+//│ > if x is
+//│ >   1 then 2
+//│ >   A(x) then 3
+//│ >   else x
+
+printCode(Define(ValDefn(Some(aSym), Symbol("x"), ValueLit(1)), End()))
+//│ > set A.x = 1
+
+printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
+//│ > set a = 1
+
+printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(aSym, ValueRef(aSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
+//│ > if x is
+//│ >   1 then 2
+//│ >   A(x) then 3
+//│ >   else x
 
 printCode(Scoped([Symbol("y")], Match(
     ValueLit(1), 

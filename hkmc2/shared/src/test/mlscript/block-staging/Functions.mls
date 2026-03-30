@@ -1,6 +1,22 @@
 :js
 :staging
 
+:fixme // TODO: fix IR rebinding issue (each symbol should be bound at most once)
+:checkIR
+staged module Expressions with
+  fun lit() =
+    let x = 42
+    x
+//│ ╔══[INTERNAL ERROR] [BlockChecker] Invalid IR: symbol x⁰ is bound more than once
+//│ ║  l.8: 	    let x = 42
+//│ ╙──     	        ^
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun lit() =
+//│ >   let x
+//│ >   x = 42
+//│ >   x
+
 let x = [1, 2, 3]
 staged module Expressions with
   fun lit() = 1
@@ -48,9 +64,9 @@ staged module Expressions with
 //│ >     Int then 3
 //│ >     else 0
 //│ > fun match2() =
+//│ >   let a
 //│ >   let element1_
 //│ >   let element0_
-//│ >   let a
 //│ >   if x1 is
 //│ >     [] then 1
 //│ >     [_, _] then
@@ -180,6 +196,13 @@ staged module ClassFunctions with
 //│ >       +(1, tmp)
 //│ >     fun g() = InnerClass.f()
 
+:todo
+staged module RetUnit with
+  fun f() = ()
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = Runtime.Unit
+
 // name collision
 class A()
 staged module A with
@@ -196,7 +219,6 @@ module A with
 //│ >   ()
 //│ > fun f() = 1
 
-
 // TODO: force enable :ftc to desugar Label and Break
 :todo
 staged module M with
@@ -206,18 +228,18 @@ staged module M with
       set x = x + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Continue(label:lbl)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.226: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.226: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'tmp'
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.226: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.226: 	    let x = 1
 //│ ╙──       	        ^
 //│ > fun ctor_() =
 //│ >   ()
@@ -247,7 +269,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
-//│ ║  l.247: 	  fun g() = {1 : 2}
+//│ ║  l.269: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > fun ctor_() =
 //│ >   x = C(1)
