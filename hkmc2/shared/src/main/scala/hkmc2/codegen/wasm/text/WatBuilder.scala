@@ -556,9 +556,13 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
       singletonInfoFor(l) match
         case S(info) => singletonGlobalGet(info)
         case N =>
-          ctx.getFunc(l) match
-            case S(funcIdx) => ref.func(funcIdx, RefType(ctx.getFuncInfo_!(l).typeIdx, nullable = false))
-            case N => getVar(l, r.toLoc)
+          if disamb.exists(_.isInstanceOf[ClassSymbol]) then
+            errExpr:
+              Ls(msg"Plain class references are not supported in Wasm; instantiate the class instead." -> r.toLoc)
+          else
+            ctx.getFunc(l) match
+              case S(funcIdx) => ref.func(funcIdx, RefType(ctx.getFuncInfo_!(l).typeIdx, nullable = false))
+              case N => getVar(l, r.toLoc)
 
     case Call(Value.Ref(l: BuiltinSymbol, _), lhs :: rhs :: Nil) if !l.functionLike =>
       if l.binary then
