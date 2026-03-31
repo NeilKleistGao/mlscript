@@ -416,8 +416,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
                 ((args, k) => call(_, args, true, "gen_call")(k))
                 (genPath)
             )
-          callGenCont(call(cachePath.selSN("dump"), Nil, false)(mthds => 
-            call(blockMod("codegen"), toValue(modSym.nme) :: mthds :: psym.asPath :: Nil, true, "tmp")(_ => End())))
+          callGenCont(call(blockMod("codegen"), toValue(modSym.nme) :: cachePath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
 
       val entryFunDef =
         val sym = BlockMemberSymbol("generate", Nil)

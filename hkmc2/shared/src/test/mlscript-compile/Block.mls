@@ -217,9 +217,11 @@ fun printCode(x) =
 
 fun printModule(name, methods) = print("module " + name + " with" + indent("\n" + methods.map(showDefn).join("\n")))
 
-fun codegen(name, methods, file) =
+fun codegen(name, cache, file) =
+  let methods = cache.dump()
+  let ctorBody = cache.getFun("ctor$").value.0.body
   let fullpath = path.join of process.cwd(), file
-  let code = "module " + name + " with" + indent("\n" + methods.map(showDefn).join("\n"))
+  let code = "module " + name + " with" + indent("\n" + showBlock(ctorBody) + "\n" + methods.map(showDefn).join("\n"))
   if not fs.existsSync(fullpath) do
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
