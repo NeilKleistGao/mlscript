@@ -437,17 +437,20 @@ prop(Ctx.empty, earlyRetBlock)
 //│   )
 //│ )
 
-// let x = true
-// let y = false
-// if x is
-//   true then 
-//     if y is
-//       true then return 1
-//       else return 2
-//   else return 3
-// return 4
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1), false))], Some(Return(ValueLit(2), false)), End()))], Some(Return(ValueLit(3), false)), Return(ValueLit(4), false)))))
+printCode(nestedBlock)
 val res = prop(Ctx.empty, nestedBlock)
+//│ > let x
+//│ > let y
+//│ > x = true
+//│ > y = false
+//│ > if x is
+//│ >   true then
+//│ >     if y is
+//│ >       true then 1
+//│ >       else 2
+//│ >   else 3
+//│ > 4
 //│ nestedBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
 //│   Assign(
@@ -484,7 +487,7 @@ val res = prop(Ctx.empty, nestedBlock)
 //│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2), false))
 //│     )
 //│   ),
-//│   {Lit(2),Lit(4)}
+//│   {Lit(2)}
 //│ ]
 
 val2path(1, mut [])
