@@ -108,20 +108,47 @@ module A with
 staged module M with
   class E
   fun f() = 
-    D.E
-    A.B.C
-    A.B.C(1)
+    let x = D.E
+    x = A.B.C
+    A.B.C(2)
     E
 //│ > fun ctor_() =
 //│ >   class E
 //│ > fun f() =
-//│ >   __no__symbol__ = A.B.C(1)
+//│ >   let x
+//│ >   x = D.E1
+//│ >   x = A.B.C
+//│ >   __no__symbol__ = A.B.C(2)
 //│ >   M.E
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(5) {
+//│ > Map(7) {
 //│ >   [class E1] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ClassSymbol {
 //│ >     name: 'E',
 //│ >     value: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class D] {
+//│ >     E: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     'cache$D': FunCache { cache: [Map] },
+//│ >     'generatorMap$D': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'f' => [Function: f_gen],
+//│ >       'matching' => [Function: matching_gen]
+//│ >     },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'D' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'D',
+//│ >     value: [class D] {
+//│ >       E: [Function],
+//│ >       'cache$D': [FunCache],
+//│ >       'generatorMap$D': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ClassSymbol {
+//│ >     name: 'E1',
+//│ >     value: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
 //│ >   },
@@ -177,7 +204,7 @@ staged module M with
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.178: 	  fun g()() = 1
+//│ ║  l.205: 	  fun g()() = 1
 //│ ╙──       	  ^^^^^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
