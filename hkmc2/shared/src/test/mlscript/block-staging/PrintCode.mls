@@ -51,7 +51,7 @@ printCode(f)
 printCode(ClsLikeDefn(aSym, [f], None))
 printCode(ClsLikeDefn(bSym, [], None))
 //│ > fun f(x) = 1
-//│ > class A(x) with 
+//│ > class A(x) with
 //│ >   fun f(x) = 1
 //│ > class B
 
@@ -65,19 +65,7 @@ printCode(Define(ValDefn(Some(aSym), Symbol("x"), ValueLit(1)), End()))
 //│ > set A.x = 1
 
 printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
-//│ > set a = 1
-
-printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(aSym, ValueRef(aSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
-//│ > if x is
-//│ >   1 then 2
-//│ >   A(x) then 3
-//│ >   else x
-
-printCode(Define(ValDefn(Some(aSym), Symbol("x"), ValueLit(1)), End()))
-//│ > set A.x = 1
-
-printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
-//│ > set a = 1
+//│ > val a = 1
 
 printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(aSym, ValueRef(aSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
 //│ > if x is
@@ -106,7 +94,7 @@ printCode(Scoped([Symbol("y")],  Match(
 //│ >   1 then
 //│ >     y = 1
 //│ >     y
-//│ >   else 
+//│ >   else
 //│ >     y = 2
 //│ >     y
 
@@ -127,9 +115,9 @@ printCode(Scoped([Symbol("y")], Match(
 //│ >       2 then
 //│ >         y = 1
 //│ >         y
-//│ >       else 
+//│ >       else
 //│ >         y = 2
 //│ >         y
-//│ >   else 
+//│ >   else
 //│ >     y = 3
 //│ >     y
