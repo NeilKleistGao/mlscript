@@ -96,7 +96,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then value(...params.map(valOf))
+    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then new value(...params.map(valOf))
     else throw Error("Unknown shape")
 
 fun valOfSet(s : ShapeSet) = 
@@ -122,9 +122,9 @@ fun val2path(v, allocs) =
     let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
   else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
-    let md = v.constructor.(Symbols.definitionMetadata)
-    let clsName = md.1
-    let paramNames = md.2
+    let meta = v.constructor.(Symbols.definitionMetadata)
+    let clsName = meta.1
+    let paramNames = meta.2
     let classSym = Block.ClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs))
     let blocks = mapped.map(_.0)

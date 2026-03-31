@@ -256,11 +256,14 @@ staged module TestIf2 with
 
 class C(val x)
 class D()
+module NonStagedStaticClass with
+  fun f() = C(D())
 staged module TestClass with
   fun f() = new C(D())
-  fun g() = C(D())
+  fun g() = C(new D())
   fun id(x) = x
-  fun test() = id(C(D()))
+  fun test() = id(f())
+  fun test2() = NonStagedStaticClass.f() 
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f() =
@@ -288,14 +291,21 @@ staged module TestClass with
 //│ >   obj_7 = new D()
 //│ >   obj_8 = new C(obj_7)
 //│ >   obj_8
-//│ > Map(5) {
+//│ > fun test2() =
+//│ >   let obj_13
+//│ >   let obj_14
+//│ >   obj_13 = new D()
+//│ >   obj_14 = new C(obj_13)
+//│ >   obj_14
+//│ > Map(6) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
 //│ >   'g' => [Function: g_gen],
 //│ >   'id' => [Function: id_gen],
-//│ >   'test' => [Function: test_gen]
+//│ >   'test' => [Function: test_gen],
+//│ >   'test2' => [Function: test2_gen]
 //│ > }
-//│ > Map(3) {
+//│ > Map(4) {
 //│ >   [Function: D] {
 //│ >     class: [class D] { [Symbol(mlscript.definitionMetadata)]: [Array] }
 //│ >   } => ClassSymbol {
@@ -314,18 +324,27 @@ staged module TestClass with
 //│ >   },
 //│ >   [class TestClass] {
 //│ >     'cache$TestClass': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestClass': Map(5) {
+//│ >     'generatorMap$TestClass': Map(6) {
 //│ >       'ctor$' => [Function: ctor$_gen],
 //│ >       'f' => [Function: f_gen],
 //│ >       'g' => [Function: g_gen],
 //│ >       'id' => [Function: id_gen],
-//│ >       'test' => [Function: test_gen]
+//│ >       'test' => [Function: test_gen],
+//│ >       'test2' => [Function: test2_gen]
 //│ >     }
 //│ >   } => ModuleSymbol {
 //│ >     name: 'TestClass',
 //│ >     value: [class TestClass] {
 //│ >       'cache$TestClass': [FunCache],
 //│ >       'generatorMap$TestClass': [Map]
+//│ >     }
+//│ >   },
+//│ >   [class NonStagedStaticClass] {
+//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'NonStagedStaticClass' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'NonStagedStaticClass',
+//│ >     value: [class NonStagedStaticClass] {
+//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
 //│ >     }
 //│ >   }
 //│ > }
@@ -394,9 +413,9 @@ staged module TailRecursion with
 //│ >   if n is
 //│ >     0 then acc
 //│ >     else 
-//│ >       tmp1 = n - 1
-//│ >       tmp = acc + n
-//│ >       TailRecursion.sum(tmp1, tmp)
+//│ >       tmp = n - 1
+//│ >       tmp1 = acc + n
+//│ >       TailRecursion.sum(tmp, tmp1)
 //│ > fun test() = 15
 //│ > fun sum_Lit5_Lit0(n, acc) = 15
 //│ > fun sum_Lit4_Lit5(n, acc) = 15
@@ -439,9 +458,9 @@ staged module TestTupleConstruct with
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun first(x) =
+//│ >   let a
 //│ >   let element1_
 //│ >   let element0_
-//│ >   let a
 //│ >   if x is
 //│ >     [_, _] then
 //│ >       element0_ = x.(0)
@@ -461,9 +480,9 @@ staged module TestTupleConstruct with
 //│ >       b
 //│ >     else 0
 //│ > fun test(y) =
-//│ >   let t
 //│ >   let tmp
 //│ >   let tmp1
+//│ >   let t
 //│ >   t = [10, y]
 //│ >   tmp = TestTupleConstruct.first_Arr_Lit10_Dyn_end(t)
 //│ >   tmp1 = TestTupleConstruct.second_Arr_Lit10_Dyn_end(t)
