@@ -60,9 +60,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
   def tuple(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
-  def ctor(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
-
   // isMlsFun is probably always true?
   def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
@@ -73,9 +70,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
   def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    ctor(blockMod(name), args, symName)(k)
+    call(blockMod(name), args, true, symName)(k)
   def optionSome(arg: ArgWrappable, symName: Str = "tmp")(k: Path => Block): Block =
-    ctor(optionMod("Some"), Ls(arg), symName)(k)
+    call(optionMod("Some"), Ls(arg), true, symName)(k)
   def optionNone(symName: Str = "tmp")(k: Path => Block): Block =
     assign(optionMod("None"), symName)(k)
 
@@ -124,7 +121,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
                 blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
         case _: ModuleOrObjectSymbol =>
           blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
-    case _: TempSymbol | _: NoSymbol | _: VarSymbol =>
+    case _: NoSymbol =>
+      blockCtor("NoSymbol", Nil, symName)(k)
+    case _: TempSymbol | _: VarSymbol =>
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)
     // FIXME: there may be more types of symbols that need to be renamed during staging

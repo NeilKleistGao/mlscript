@@ -21,6 +21,7 @@ class Symbol(val name: Str)
 class VirtualClassSymbol(val name: Str) extends Symbol(name)
 class ClassSymbol(val name: Str, val value, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList]) extends Symbol(name)
 class ModuleSymbol(val name: Str, val value) extends Symbol(name)
+class NoSymbol() extends Symbol("$no_symbol$")
 class Arm(val cse: Case, val body: Block)
 
 fun isPrimitiveType(sym: Symbol) = 
@@ -165,7 +166,8 @@ fun showDefn(d: Defn): Str =
 fun showBlock(b) =
   if b is
     Assign(lhs, rhs, rest) then
-      showSymbol(lhs) + " = " + showResult(rhs) + showRestBlock(rest)
+      (if lhs is NoSymbol then "" else showSymbol(lhs) + " = ")
+        + showResult(rhs) + showRestBlock(rest)
     Define(d, rest) then
       showDefn(d) + showRestBlock(rest)
     Return(res, _) then
