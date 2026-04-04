@@ -343,7 +343,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
       val rest = transformFunDefn(f)(using Context(new HashMap()))((block, _) => Return(block, false))
       (Scoped(Set(argSyms*), rest))
 
-    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false)
+    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false, f.configOverride)
 
   override def applyBlock(b: Block): Block = b match
     // TODO: assume staged classes have no companion module
@@ -386,9 +386,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
           tuple(tups): args =>
             call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args, toValue(!config.shapeProp))): res =>
               Return(res, false)
-        FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false)
+        FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
 
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
       val (helperMethods, cacheEntries, generatorEntries) = (ctorFun :: methods).map(f =>
         val staged = stageMethod(f)
         val stagedPath = modSym.asPath.selSN(staged.sym.nme)
@@ -412,13 +412,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
           tuple(cacheTups): tup =>
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
               assign(Instantiate(false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
-                Define(ValDefn(cacheTsym, cacheSym, funCache), rest)
+                Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
 
       def generatorMapDecl(rest: Block) =
         generatorEntries.collectApply: defs =>
           tuple(defs): tup =>
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              Define(ValDefn(generatorMapTsym, generatorMapSym, map), rest)
+              Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
 
       // TODO: remove this. only for testing
       def debugCont(rest: Block) =
@@ -440,7 +440,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
         ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
         publicFields = companion.publicFields
       )
-      val newClsLikeDefn = defn.copy(companion = S(newCompanion))
+      val newClsLikeDefn = defn.copy(companion = S(newCompanion))(defn.configOverride)
       Define(newClsLikeDefn, applyBlock(rest))
     case b => super.applyBlock(b)
 
