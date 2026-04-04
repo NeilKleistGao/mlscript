@@ -16,7 +16,7 @@ type ShapeSet = ShapeSet.ShapeSet
 module ShapeSet with...
 
 class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
-  fun keys() = [...shapeset.keys()].toSorted()
+  fun keys() = shapeset.keys().toArray().toSorted()
 
   fun values() = shapeset.values().toArray()
 
@@ -26,7 +26,7 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 
   fun flatMap(f) = liftMany(values().flatMap(f))
 
-  fun toString() = "{" ~ shapeset.keys().toArray().toSorted().toString() ~ "}"
+  fun toString() = "{" ~ keys().toSorted().toString() ~ "}"
 
   fun isDyn() = shapeset.size == 1 and values().0 is Dyn
 
