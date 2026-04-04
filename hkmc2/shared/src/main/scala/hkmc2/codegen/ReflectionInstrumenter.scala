@@ -115,7 +115,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
     def checkMap(key: Path, p: Path, ctx: Context) =
       symbolMapUsed = true
       blockCall("checkMap", Ls(symbolMapSym, key, p))(cachedK(_, ctx))
-    println((sym, stagingCtx))
     stagingCtx.getCache(sym).map(cachedK(_, stagingCtx)).getOrElse:
       sym match
         case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
