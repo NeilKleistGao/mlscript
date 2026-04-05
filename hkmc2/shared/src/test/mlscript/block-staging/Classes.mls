@@ -15,13 +15,13 @@ staged module M with
 
 staged class A(val a)
 //│ > fun ctor_(a) =
-//│ >   set A1.a = a
+//│ >   set A.a = a
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
 //│ >   [Function: A] {
 //│ >     class: [class A] { 'cache$A': [FunCache], 'generatorMap$A': [Map] }
 //│ >   } => ClassSymbol {
-//│ >     name: 'A1',
+//│ >     name: 'A',
 //│ >     value: [Function: A] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
@@ -79,22 +79,22 @@ staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
 //│ > fun ctor_(x) =
-//│ >   set B1.x = x
-//│ > fun f(y) = B1.x + y
+//│ >   set B.x = x
+//│ > fun f(y) = +(B.x, y)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
 //│ >   [Function: B] {
 //│ >     class: [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] }
 //│ >   } => ClassSymbol {
-//│ >     name: 'B1',
+//│ >     name: 'B',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor_(x1) =
+//│ > fun ctor_(x) =
 //│ >   let tmp
-//│ >   tmp = x1 + 1
+//│ >   tmp = +(x, 1)
 //│ >   super(tmp)
 //│ > fun f() = 42
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
@@ -106,7 +106,7 @@ staged class D(val x) extends B(x+1) with
 //│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
 //│ >     }
 //│ >   } => ClassSymbol {
-//│ >     name: 'B1',
+//│ >     name: 'B',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
@@ -117,7 +117,7 @@ staged class D(val x) extends B(x+1) with
 //│ >       'generatorMap$D': [Map]
 //│ >     }
 //│ >   } => ClassSymbol {
-//│ >     name: 'D1',
+//│ >     name: 'D',
 //│ >     value: [Function: D] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
@@ -132,7 +132,7 @@ staged module M with
     Unstaged;
     Staged
 //│ > fun ctor_(x) =
-//│ >   set Staged1.x = x
+//│ >   set Staged.x = x
 //│ > fun inner() = 1
 //│ > Map(2) {
 //│ >   'ctor$' => [Function: ctor$_gen],
@@ -145,7 +145,7 @@ staged module M with
 //│ >       'generatorMap$Staged': [Map]
 //│ >     }
 //│ >   } => ClassSymbol {
-//│ >     name: 'Staged1',
+//│ >     name: 'Staged',
 //│ >     value: [Function: Staged] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
@@ -153,7 +153,7 @@ staged module M with
 //│ > }
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun f() = ,(Unstaged, Staged1)
+//│ > fun f() = ,(Unstaged, Staged)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: Staged] {
@@ -163,7 +163,7 @@ staged module M with
 //│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
 //│ >     }
 //│ >   } => ClassSymbol {
-//│ >     name: 'Staged1',
+//│ >     name: 'Staged',
 //│ >     value: [Function: Staged] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []

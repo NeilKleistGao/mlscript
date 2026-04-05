@@ -239,7 +239,7 @@ staged module Arguments with
 //│ > fun f(x) =
 //│ >   x = 1
 //│ >   x
-//│ > fun g(x1) =
+//│ > fun g(x) =
 //│ >   let tmp
 //│ >   tmp = new Function_()
 //│ >   tmp
@@ -371,6 +371,13 @@ staged module ClassFunctions with
 //│ >   }
 //│ > }
 
+:todo
+staged module RetUnit with
+  fun f() = ()
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun f() = Runtime.Unit
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 // name collision
 class A()
@@ -394,7 +401,7 @@ staged module Shadowing with
   fun f(x, x) = x
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun f(x1, x) = x
+//│ > fun f(x, x) = x
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :todo these symbols may be confused dueing shape propagation
@@ -404,39 +411,34 @@ print(Shadowing."cache$Shadowing")
 //│ ╙──       	      ^^^^^^^^^
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun f(x1, x) = x
-
-// testing generatorMap
-staged module M with
-  fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = 1
+//│ > fun f(x, x) = x
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
-:e
-M."generatorMap$M"
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.418: 	M."generatorMap$M"
-//│ ╙──       	^
-//│ = Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen}
-
-:todo force enable :ftc to desugar Label and Break
-:ftc
-staged module M with
+:todo
+staged module Continue with
   fun f() = 
     let x = 1
     while x == 1 do
       set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(Set(tmp:scrut, tmp:tmp),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),Some(End()),End()))),End()).
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:tmp, tmp:scrut),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
 //│  Try enabling :ftc.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.428: 	    let x = 1
+//│ ║  l.385: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.428: 	    let x = 1
+//│ ║  l.385: 	    let x = 1
 //│ ╙──       	        ^
-//│ ═══[RUNTIME ERROR] Error: match error
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+
+:todo
+:ftc
+staged module NestedFunDefn with
+  fun f() = 
+    fun g() = 1
+    g()
+  fun g(x, y) = x || y
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Unreachable(Rest of abortive match)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 :e
 class C(val a)
@@ -446,7 +448,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.446: 	  fun g() = {1 : 2}
+//│ ║  l.413: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: match error
 
