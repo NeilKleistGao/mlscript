@@ -138,14 +138,44 @@ fun sor(ctx, r) = if r is
           let clsName = actualClass.(Symbols.definitionMetadata).1
           let genMapName = "generatorMap$" + clsName
           actualClass.(genMapName) != undefined
-        fun split(pss) = 
-          foldl((acc, s) => if s is
-            Class(ClassSymbol(sym, v), params) and isStaged(v) then [union(acc.0, lift(s)), acc.1]
-            else [acc.0, union(acc.1, mkDyn())]
-          )([mkBot(), mkBot()], ...pss.values())
+        fun fsplit(pss) = 
+          let knownMap = new Map()
+          let unkShape = foldl((acc, s) => if s is
+            Class(sym, params) and isStaged(sym.value) then
+              if knownMap.has(sym) then knownMap.set(sym, union(knownMap.get(sym), lift(s)))
+              else knownMap.set(sym, lift(s))
+              acc
+            else union(acc, mkDyn())
+          )(mkBot(), ...pss.values())
+          [knownMap, unkShape]
         let pss = sop(ctx, ValueRef(symb))
-        // TODO: finish
-        [End(), r, mkDyn()] // Basic fallback for method calls until deep pattern matching is built
+        let splitted = fsplit(pss)
+        let knownMap = splitted.0
+        let unkShape = splitted.1
+        let outSym = Symbol("__tmp__")
+        ctx.allocs.push(outSym)
+        
+        let armsRet = [...knownMap.entries()].map(entry =>
+          let C_i = entry.0
+          let ss_i = entry.1
+          let genMapName = "generatorMap$" + C_i.name
+          let genMap = getActualClass(C_i.value).(genMapName)
+          let f_gen = genMap.get(f)
+          let generated = f_gen(ss_i)(...argShapes)
+          let retSym = generated.0
+          let retShape = generated.1
+          [Arm(Cls(C_i, ValueRef(symb)), Assign(outSym, Call(Select(ValueRef(symb), retSym), args), End())), retShape]
+        )
+        
+        let armsAcc = armsRet.map(x => x.0)
+        let totalStagedRetShape = foldl((acc, x) => union(acc, x.1))(mkBot(), ...armsRet)
+        let dfltRet = if unkShape.isEmpty() then [None, totalStagedRetShape] else
+          [Some(Assign(outSym, Call(Select(ValueRef(symb), Symbol(f)), args), End())), union(totalStagedRetShape, mkDyn())]
+        
+        let dflt = dfltRet.0
+        let totalRetShape = dfltRet.1
+          
+        [Match(ValueRef(symb), armsAcc, dflt, End()), ValueRef(outSym), totalRetShape]
     else 
       [End(), r, mkDyn()]
 
@@ -231,7 +261,13 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
       let defn = dflt()
       defn is FunDefn(Symbol(_), ps, body) then
         let ctx = Ctx.empty
-        ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), shapes.(i).(j))))
+        let isMethod = shapes.length > ps.length // TODO: clean up
+        let paramShapes = if isMethod then shapes.slice(1) else shapes
+        ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
+        if isMethod do
+          let clsSymb = shapes.(0).(0).values().0.sym
+          // print(newName, "shapes", shapes.(0).(0))
+          // ctx.add(ValueRef(clsSymb), shapes.(0).(0))
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
         let propFun = if useStub then propStub else prop
         let res = propFun(ctx, body)

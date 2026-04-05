@@ -341,8 +341,22 @@ val fPath = Select(M, fSym)
 val callF = Call(fPath, [Arg(ValueLit(12))])
 sor(Ctx.empty, callF)
 //│ = [
-//│   End(),
-//│   Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(ValueLit(12))]),
+//│   Match(
+//│     ValueRef(Symbol("M")),
+//│     [],
+//│     Some(
+//│       Assign(
+//│         Symbol("hi"),
+//│         Call(
+//│           Select(ValueRef(Symbol("M")), Symbol("f")),
+//│           [Arg(ValueLit(12))]
+//│         ),
+//│         End()
+//│       )
+//│     ),
+//│     End()
+//│   ),
+//│   ValueRef(Symbol("hi")),
 //│   {Dyn()}
 //│ ]
 //│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(ValueLit(12))])

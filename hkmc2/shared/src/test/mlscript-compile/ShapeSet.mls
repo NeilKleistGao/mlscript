@@ -91,7 +91,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then new value(...params.map(valOf))
+    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then new! value(...params.map(valOf))
     else throw Error("Unknown shape")
 
 fun valOfSet(s : ShapeSet) = 

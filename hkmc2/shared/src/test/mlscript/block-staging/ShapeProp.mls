@@ -5,12 +5,52 @@
 
 module NonStaged with
   fun sq(x) = x * x
-module Staged with
+staged module Staged with
   fun sq(x) = x * x
   fun fib(n) = if n is 
     1 then 1
     2 then 1
     n then fib(n - 1) + fib(n - 2)
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun sq(x) = *(x, x)
+//│ > fun fib(n1) =
+//│ >   let n
+//│ >   let tmp
+//│ >   let tmp1
+//│ >   let tmp2
+//│ >   let tmp3
+//│ >   if n1 is
+//│ >     1 then 1
+//│ >     2 then 1
+//│ >     else 
+//│ >       n = n1
+//│ >       tmp = n - 1
+//│ >       tmp1 = Staged.fib(tmp)
+//│ >       tmp2 = n - 2
+//│ >       tmp3 = Staged.fib(tmp2)
+//│ >       tmp1 + tmp3
+//│ > Map(3) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'sq' => [Function: sq_gen],
+//│ >   'fib' => [Function: fib_gen]
+//│ > }
+//│ > Map(1) {
+//│ >   [class Staged] {
+//│ >     'cache$Staged': FunCache { cache: [Map] },
+//│ >     'generatorMap$Staged': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'sq' => [Function: sq_gen],
+//│ >       'fib' => [Function: fib_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'Staged',
+//│ >     value: [class Staged] {
+//│ >       'cache$Staged': [FunCache],
+//│ >       'generatorMap$Staged': [Map]
+//│ >     }
+//│ >   }
+//│ > }
 
 staged module Test with
   fun f(x, y) = x + y + 1 - 1
@@ -72,8 +112,8 @@ staged module Test with
 //│ > fun fib_Lit1(n1) = 1
 //│ > fun pyth_Lit2_Lit4(x1, y1) = 20
 //│ > fun test2(n2) =
-//│ >   let tmp10
 //│ >   let dyn
+//│ >   let tmp10
 //│ >   dyn = Test.pyth_Dyn_Lit2(n2, 2)
 //│ >   tmp10 = *(dyn, 2)
 //│ >   Test.fib(tmp10)
@@ -118,35 +158,50 @@ staged module Test with
 //│ >     value: [class NonStaged] { [Symbol(mlscript.definitionMetadata)]: [Array] }
 //│ >   },
 //│ >   [class Staged] {
+//│ >     'cache$Staged': FunCache { cache: [Map] },
+//│ >     'generatorMap$Staged': Map(3) {
+//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >       'sq' => [Function: sq_gen],
+//│ >       'fib' => [Function: fib_gen]
+//│ >     },
 //│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'Staged' ]
 //│ >   } => ModuleSymbol {
 //│ >     name: 'Staged',
-//│ >     value: [class Staged] { [Symbol(mlscript.definitionMetadata)]: [Array] }
+//│ >     value: [class Staged] {
+//│ >       'cache$Staged': [FunCache],
+//│ >       'generatorMap$Staged': [Map],
+//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
+//│ >     }
 //│ >   }
 //│ > }
 
+
 class C(val x)
+
 staged module TestIf with
   fun f(x) = if x is
-    C(2) then "wrong1"
-    2 then "correct"
-    else "wrong2"
+    C(2) then "correct"
+    else "wrong"
   fun test() = 
-    f(2)
+    f(new C(2))
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun f(x) =
 //│ >   let arg_C_0_
 //│ >   if x is
-//│ >     C(x1) then
+//│ >     C then
 //│ >       arg_C_0_ = x.x
 //│ >       if arg_C_0_ is
-//│ >         2 then "wrong1"
-//│ >         else "wrong2"
-//│ >     2 then "correct"
-//│ >     else "wrong2"
-//│ > fun test() = "correct"
-//│ > fun f_Lit2(x) = "correct"
+//│ >         2 then "correct"
+//│ >         else "wrong"
+//│ >     else "wrong"
+//│ > fun test() =
+//│ >   let tmp
+//│ >   tmp = new C(2)
+//│ >   TestIf.f_C_Lit2(tmp)
+//│ > fun f_C_Lit2(x) =
+//│ >   let arg_C_0_
+//│ >   arg_C_0_ = x.x
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'f' => [Function: f_gen],
@@ -196,7 +251,7 @@ staged module TestIf2 with
 //│ >   let tmp
 //│ >   let y
 //│ >   if x is
-//│ >     C(n) then
+//│ >     C then
 //│ >       y = x.n
 //│ >       tmp = Runtime.Unit
 //│ >       y + 1
@@ -434,9 +489,9 @@ staged module TestTuple with
 //│ >       b
 //│ >     else 0
 //│ > fun test(y) =
-//│ >   let t
 //│ >   let tmp
 //│ >   let tmp1
+//│ >   let t
 //│ >   t = [10, y]
 //│ >   tmp = TestTuple.first_Arr_Lit10_Dyn_end(t)
 //│ >   tmp1 = TestTuple.second_Arr_Lit10_Dyn_end(t)
@@ -476,10 +531,8 @@ staged module TestTuple with
 
 staged class L1() with
   fun call(x) = x + 2
-staged class L2() with
-  fun call(x) = x
-staged class L3() with
-  fun call(x) = x * 2
+//│ > ctor$ shapes {Dyn()}
+//│ > call shapes {Dyn()}
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun call(x) = x + 2
@@ -487,16 +540,26 @@ staged class L3() with
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'call' => [Function: call_gen]
 //│ > }
+
+
+staged class L2() with
+  fun call(x) = x
+staged class L3() with
+  fun call(x) = x * 2
+//│ > ctor$ shapes {Dyn()}
+//│ > call shapes {Dyn()}
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun call(x1) = x1
+//│ > fun call(x) = x
 //│ > Map(2) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'call' => [Function: call_gen]
 //│ > }
+//│ > ctor$ shapes {Dyn()}
+//│ > call shapes {Dyn()}
 //│ > fun ctor_() =
 //│ >   ()
-//│ > fun call(x2) = *(x2, 2)
+//│ > fun call(x1) = *(x1, 2)
 //│ > Map(2) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'call' => [Function: call_gen]
@@ -505,20 +568,30 @@ staged class L3() with
 staged module M with
   fun twice(f, x) = f.call(f.call(x))
   fun foo(b) = twice(new L1(), 5)
+//│ > call_L1___Lit5 shapes {Class(ClassSymbol("L1", fun L1 { class: class L1 { cache$L1: fun ctor_() =
+//│ >   ()
+//│ > fun call(x) = x + 2, generatorMap$L1: Map(2) {"ctor$" => fun ctor$_gen, "call" => fun call_gen} } }, Some([]), []), [])}
+//│ > call_L1___Lit7 shapes {Class(ClassSymbol("L1", fun L1 { class: class L1 { cache$L1: fun ctor_() =
+//│ >   ()
+//│ > fun call(x) = x + 2, generatorMap$L1: Map(2) {"ctor$" => fun ctor$_gen, "call" => fun call_gen} } }, Some([]), []), [])}
 //│ > fun ctor_() =
 //│ >   ()
 //│ > fun twice(f, x) =
 //│ >   let tmp
-//│ >   tmp = f.call(x)
-//│ >   f.call(tmp)
-//│ > fun foo(b) =
-//│ >   let tmp1
-//│ >   tmp1 = new L1()
-//│ >   M.twice_L1__Lit5(tmp1, 5)
-//│ > fun twice_L1__Lit5(f, x) =
-//│ >   let tmp
-//│ >   tmp = f.call(x)
-//│ >   f.call(tmp)
+//│ >   let __tmp__
+//│ >   let __tmp__
+//│ >   if f is
+//│ >     
+//│ >     else 
+//│ >       __tmp__ = f.call(x)
+//│ >   tmp = __tmp__
+//│ >   if f is
+//│ >     
+//│ >     else 
+//│ >       __tmp__ = f.call(tmp)
+//│ >   __tmp__
+//│ > fun foo(b) = 9
+//│ > fun twice_L1__Lit5(f, x) = 9
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'twice' => [Function: twice_gen],
@@ -547,5 +620,58 @@ staged module M with
 //│ >   } => ModuleSymbol {
 //│ >     name: 'M',
 //│ >     value: [class M] { 'cache$M': [FunCache], 'generatorMap$M': [Map] }
+//│ >   }
+//│ > }
+
+staged class F(val x) with
+  fun f(y) = this.x + y
+//│ > ctor$ shapes {Dyn()}
+//│ > f shapes {Dyn()}
+//│ > fun ctor_(x) =
+//│ >   set F1.x = x
+//│ > fun f(y) = F1.x + y
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [Function: F] {
+//│ >     class: [class F] { 'cache$F': [FunCache], 'generatorMap$F': [Map] }
+//│ >   } => ClassSymbol {
+//│ >     name: 'F1',
+//│ >     value: [Function: F] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
+staged module M with
+  fun test() = (new F(1)).f(2)
+//│ > f_F_Lit1__Lit2 shapes {Class(ClassSymbol("F", fun F { class: class F { cache$F: fun ctor_(x) =
+//│ >   set F1.x = x
+//│ > fun f(y) = F1.x + y, generatorMap$F: Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen} } }, Some([Symbol("x")]), []), [Lit(1)])}
+//│ > fun ctor_() =
+//│ >   ()
+//│ > fun test() =
+//│ >   let tmp
+//│ >   let __tmp__
+//│ >   tmp = new F(1)
+//│ >   if tmp is
+//│ >     F then
+//│ >       __tmp__ = tmp.f_F_Lit1__Lit2(2)
+//│ >   __tmp__
+//│ > Map(2) {
+//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   'test' => [Function: test_gen]
+//│ > }
+//│ > Map(1) {
+//│ >   [Function: F] {
+//│ >     class: [class F] {
+//│ >       'cache$F': [FunCache],
+//│ >       'generatorMap$F': [Map],
+//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
+//│ >     }
+//│ >   } => ClassSymbol {
+//│ >     name: 'F',
+//│ >     value: [Function: F] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
 //│ >   }
 //│ > }
