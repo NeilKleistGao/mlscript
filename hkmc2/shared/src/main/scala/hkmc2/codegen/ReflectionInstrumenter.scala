@@ -146,11 +146,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
                     blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _, ctx))
             case _: ModuleOrObjectSymbol =>
               blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _, stagingCtx))
-        case _: TempSymbol | _: NoSymbol | _: VarSymbol =>
-          val name = scope.allocateOrGetName(sym)
-          blockCtor("Symbol", Ls(toValue(name)), symName)(cachedK(_, stagingCtx))
         // FIXME: there may be more types of symbols that need to be renamed during staging
-        case _: BuiltinSymbol | _ =>
+        case _: BuiltinSymbol | _: VarSymbol | _ =>
           blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(cachedK(_, stagingCtx))
 
   def transformOption[A](xOpt: Opt[A], f: A => ((Path, Context) => Block) => Block)(using Context)(k: (Path, Context) => Block): Block = xOpt match
@@ -315,11 +312,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
       End()
 
   def transformFunDefn(f: FunDefn)(using Context)(k: (Path, Context) => Block): Block =
-    transformBlock(f.body): (body, ctx) =>
-      if f.params.length > 1 then
-        raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
-      // maintain parameter names in instrumented code
-      transformParams(f.params): (paramList, ctx) =>
+    // maintain parameter names in instrumented code
+    transformParams(f.params): (paramList, ctx) =>
+      transformBlock(f.body)(using ctx): (body, ctx) =>
+        if f.params.length > 1 then
+          raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
         transformSymbol(f.sym)(using ctx): (sym, ctx) =>
           blockCtor("FunDefn", Ls(sym, paramList, body))(k(_, ctx))
 
