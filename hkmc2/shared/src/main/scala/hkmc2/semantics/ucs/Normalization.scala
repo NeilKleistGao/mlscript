@@ -354,10 +354,10 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
       // Collect consequents that are shared in more than one branch.
       given labels: Labels = createLabelsForDuplicatedBranches(normalized)
       lazy val rootBreakLabel = new LabelSymbol(N, "split_root$")
-      lazy val breakRoot = (r: Result) => Assign(l, r, Break(rootBreakLabel))
+      lazy val breakRoot = if (k is Ret) || (k is Thrw) then k else (r: Result) => Assign(l, r, Break(rootBreakLabel))
       lazy val assignResult = (r: Result) =>
         form match
-        case IfLikeForm.ReturningIf => Assign(l, r, End())
+        case IfLikeForm.ReturningIf => if (k is Ret) || (k is Thrw) then k(r) else Assign(l, r, End())
         case IfLikeForm.ImperativeIf => Assign.discard(r, End())
         case IfLikeForm.While => Assign(State.noSymbol, r, loopCont)
       // NOTE: `shouldRewriteWhile` is not the same as `config.rewriteWhileLoops`
@@ -457,7 +457,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
             val loopEnd: Path =
               Select(Value.Ref(State.runtimeSymbol), Tree.Ident("LoopEnd"))(S(State.loopEndSymbol))
             val blk = blockBuilder
-              .define(FunDefn(N, f, tSym, PlainParamList(Nil) :: Nil, Begin(body, Return(loopEnd, false)))(forceTailRec = false))
+              .define(FunDefn(N, f, tSym, PlainParamList(Nil) :: Nil, Begin(body, Return(loopEnd, false)))(forceTailRec = false, configOverride = N))
               .assign(loopResult, Call(Value.Ref(f, S(tSym)), Nil)(true, true, false))
             if summon[LoweringCtx].mayRet then
               blk
