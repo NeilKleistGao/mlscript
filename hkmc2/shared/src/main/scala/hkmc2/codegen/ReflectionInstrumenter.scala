@@ -82,8 +82,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
   // linking functions defined in MLscipt
 
   def fnPrintCode(p: Path)(k: Block): Block =
+    val printCodeFun = blockMod("Printer").selSN("class").selSN("default").selSN("printCode")
     // discard result, we only care about side effect
-    blockCall("printCode", Ls(p))(_ => k)
+    call(printCodeFun, Ls(p))(_ => k)
 
   def fnConcat(p1: Path, p2: Path, symName: String = "concat")(k: Path => Block): Block =
     blockCall("concat", Ls(p1, p2), symName)(k)
