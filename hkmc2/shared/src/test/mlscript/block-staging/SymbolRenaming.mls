@@ -1,13 +1,12 @@
 :js
 :staging
 
-staged module Variables with
-  fun f(x, x) = 
+staged module TempVariable with
+  fun f(x, x) =
     let x
     let x
     x
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f(x, x) =
 //│ >   let x
 //│ >   let x
@@ -16,36 +15,21 @@ staged module Variables with
 
 staged module DupeFunctionName with
   fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 class C(val x)
 
-staged module NoSymbol with
-  fun f(g) =
-    g()
-    g()
-    ()
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(g) =
-//│ >   __no__symbol__ = g()
-//│ >   __no__symbol__ = g()
-//│ >   Runtime.Unit
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-
 staged module Selection with
   fun f(x) =
     x.call()
     C(1).x is Bool
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f(x) =
 //│ >   let tmp
 //│ >   let scrut
-//│ >   __no__symbol__ = x.call()
+//│ >   x.call()
 //│ >   tmp = C(1)
 //│ >   scrut = tmp.x
 //│ >   if scrut is
@@ -55,7 +39,7 @@ staged module Selection with
 //│ > Map(2) {
 //│ >   [Function: C] {
 //│ >     class: [class C] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
@@ -77,7 +61,7 @@ staged module DupeClass with
 //│ > Map(2) {
 //│ >   [Function: C] {
 //│ >     class: [class C2] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },

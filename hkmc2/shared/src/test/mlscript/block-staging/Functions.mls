@@ -6,8 +6,7 @@ staged module Rebinding with
   fun lit() =
     let x = 42
     x
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun lit() =
 //│ >   let x
 //│ >   x = 42
@@ -40,8 +39,7 @@ staged module Expressions with
       [1, 2] then 2
       [a, _] then 3
       else 0
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun lit() = 1
 //│ > fun assign() =
 //│ >   let x
@@ -76,10 +74,10 @@ staged module Expressions with
 //│ >         1 then
 //│ >           if element1_ is
 //│ >             2 then 2
-//│ >             else 
+//│ >             else
 //│ >               a = element0_
 //│ >               3
-//│ >         else 
+//│ >         else
 //│ >           a = element0_
 //│ >           3
 //│ >     else 0
@@ -111,7 +109,7 @@ staged module ClassInstrumentation with
 //│ >   class Inside(a, b)
 //│ >   class NoArg
 //│ > fun inst1() = new Outside(1)
-//│ > fun inst2() = new ClassInstrumentation.NoArg()
+//│ > fun inst2() = new ClassInstrumentation.NoArg
 //│ > fun app1() = Outside(1)
 //│ > fun app2() = ClassInstrumentation.Inside(1, 2)
 //│ > Map(5) {
@@ -124,7 +122,7 @@ staged module ClassInstrumentation with
 //│ > Map(4) {
 //│ >   [class NoArg] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'NoArg' ]
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'NoArg',
 //│ >     value: [class NoArg] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     paramsOpt: None {},
@@ -132,7 +130,7 @@ staged module ClassInstrumentation with
 //│ >   },
 //│ >   [Function: Inside] {
 //│ >     class: [class Inside] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'Inside',
 //│ >     value: [Function: Inside] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
@@ -140,7 +138,7 @@ staged module ClassInstrumentation with
 //│ >   },
 //│ >   [Function: Outside] {
 //│ >     class: [class Outside] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'Outside',
 //│ >     value: [Function: Outside] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
@@ -172,18 +170,16 @@ module Nonstaged with
   fun f() = 1
 staged module Staged with
   fun f() = 1
-staged module Call with
+staged module CallSubst with
   fun call() = 
     Nonstaged.f()
     Staged.f()
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun call() =
-//│ >   __no__symbol__ = Nonstaged.f()
+//│ >   Nonstaged.f()
 //│ >   Staged.f()
 //│ > Map(2) {
 //│ >   'ctor$' => [Function: ctor$_gen],
@@ -219,14 +215,13 @@ staged module Arguments with
     x = 1
     x
   fun g(x)(y, z)() = z
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f(x) =
 //│ >   x = 1
 //│ >   x
 //│ > fun g(x) =
 //│ >   let tmp
-//│ >   tmp = new Function_()
+//│ >   tmp = new Function_
 //│ >   tmp
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
@@ -236,7 +231,7 @@ staged module Arguments with
 //│ > Map(1) {
 //│ >   [class Function$1 extends Function] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'Function$',
 //│ >     value: [class Function$1 extends Function] {
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
@@ -257,8 +252,7 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun scope() =
 //│ >   let a
 //│ >   a = 1
@@ -298,7 +292,7 @@ staged module ClassDefs with
 //│ >   class A
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
-//│ >   [class A] { Symbol(mlscript.definitionMetadata): [ 'class', 'A' ] } => ClassSymbol {
+//│ >   [class A] { Symbol(mlscript.definitionMetadata): [ 'class', 'A' ] } => ConcreteClassSymbol {
 //│ >     name: 'A',
 //│ >     value: [class A] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     paramsOpt: None {},
@@ -306,13 +300,29 @@ staged module ClassDefs with
 //│ >   }
 //│ > }
 
-// :sjs
+:todo ValDefn in class
+staged module ValClass with
+  class A(val a)
+//│ > fun ctor_() =
+//│ >   class A(a)
+//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
+//│ > Map(1) {
+//│ >   [Function: A] {
+//│ >     class: [class A1] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'A',
+//│ >     value: [Function: A] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
 //│ > fun ctor_() =
-//│ >   class InnerClass() with 
+//│ >   class InnerClass() with
 //│ >     fun f() =
 //│ >       let tmp
 //│ >       tmp = Arguments.f(1)
@@ -322,7 +332,7 @@ staged module ClassFunctions with
 //│ > Map(2) {
 //│ >   [Function: InnerClass] {
 //│ >     class: [class InnerClass] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'InnerClass',
 //│ >     value: [Function: InnerClass] { class: [Function] },
 //│ >     paramsOpt: Some { value: [] },
@@ -349,8 +359,7 @@ staged module ClassFunctions with
 :todo
 staged module RetUnit with
   fun f() = ()
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = Runtime.Unit
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
@@ -358,8 +367,7 @@ staged module RetUnit with
 class A()
 staged module A with
   fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
@@ -367,15 +375,13 @@ staged module A with
 module A with
   staged module B with
     fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 staged module Shadowing with
   fun f(x, x) = x
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f(x, x) = x
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
@@ -385,24 +391,34 @@ staged module Continue with
     let x = 1
     while x == 1 do
       set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:tmp, tmp:scrut),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:scrut, tmp:tmp),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
 //│  Try enabling :ftc.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.385: 	    let x = 1
+//│ ║  l.391: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.385: 	    let x = 1
+//│ ║  l.391: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 :todo
 :ftc
 staged module NestedFunDefn with
-  fun f() = 
+  fun f() =
     fun g() = 1
     g()
   fun g(x, y) = x || y
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Unreachable(Rest of abortive match)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+
+:todo force enable :ftc to desugar Label and Break
+staged module M with
+  fun f() = if 1 is
+    0 then 1 + 1 + 1
+    1 then 1 + 1 + 1
+    else 1 + 1 + 1
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:split_root$,false,Label(label:split_1$,false,Assign(tmp:scrut,Lit(IntLit(1)),Match(Ref(tmp:scrut,None),List((Lit(IntLit(0)),Break(label:split_1$)), (Lit(IntLit(1)),Break(label:split_1$))),Some(Break(label:split_1$)),End())),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Lit(IntLit(1))), Arg(None,Lit(IntLit(1))))),Return(Call(Ref(builtin:+,None),List(Arg(None,Ref(tmp:tmp,None)), Arg(None,Lit(IntLit(1))))),false))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
+//│  Try enabling :ftc.
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 :e
@@ -413,7 +429,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.413: 	  fun g() = {1 : 2}
+//│ ║  l.429: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -422,8 +438,7 @@ staged module Spread with
   fun f() = if [1, ..[1, 2]] is [1, ...x] then x else 0
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module.
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() =
 //│ >   let middleElements
 //│ >   let element0_
