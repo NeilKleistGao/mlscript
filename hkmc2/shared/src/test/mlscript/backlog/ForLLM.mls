@@ -3,5 +3,120 @@
 // Instruction for agent: for each test case you solve, move it to its own test file outside of the `backlog` folder
 
 
-// (all test cases have been fixed and moved to their own files)
+// ——— ——— ———
 
+let { x = 0, y = 0 }
+//│ x = 0
+//│ y = 0
+
+// Works:
+if false then 0
+else
+  set { x = 1, y = 1 }
+
+// Does not work:
+:fixme
+if false then 0
+else set { x = 1, y = 1 }
+//│ ╔══[PARSE ERROR] Unexpected comma here
+//│ ║  l.20: 	else set { x = 1, y = 1 }
+//│ ╙──      	                ^
+
+// ——— ——— ———
+// From backlog/UCS.mls
+
+:fixme
+while
+    let arrMatches = true
+    arrMatches
+  do
+    print(arrMatches)
+//│ ╔══[COMPILATION ERROR] Unexpected infix use of keyword 'do' here
+//│ ║  l.30: 	    let arrMatches = true
+//│ ║        	        ^^^^^^^^^^^^^^^^^
+//│ ║  l.31: 	    arrMatches
+//│ ║        	^^^^^^^^^^^^^^
+//│ ║  l.32: 	  do
+//│ ║        	^^^^
+//│ ║  l.33: 	    print(arrMatches)
+//│ ╙──      	^^^^^^^^^^^^^^^^^^^^^
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// ——— ——— ———
+// From backlog/UCS.mls
+
+let arrMatches = ()
+//│ arrMatches = ()
+
+// * Note: produces a match error
+:fixme
+if
+  arrMatches !== null
+  do
+    ()
+//│ ╔══[COMPILATION ERROR] Unrecognized term split (null)
+//│ ║  l.54: 	  arrMatches !== null
+//│ ╙──      	                 ^^^^
+//│ ═══[RUNTIME ERROR] Error: match error
+
+// * This one works:
+if
+  arrMatches !== null do
+    ()
+
+// ——— ——— ———
+// From backlog/UCS.mls
+
+// Works
+if
+  true and
+  true do
+    print("ok")
+//│ > ok
+
+// Works
+if
+  true and
+  false do
+    print("ok")
+
+// Works
+if
+  true and
+    true do
+      print("ok")
+//│ > ok
+
+// Should work?
+:fixme
+if
+  true
+  and
+  true do
+    print("ok")
+//│ ╔══[PARSE ERROR] Expected start of expression in this position; found new line instead
+//│ ║  l.94: 	  and
+//│ ║        	     ^
+//│ ║  l.95: 	  true do
+//│ ╙──      	^^
+//│ ╔══[COMPILATION ERROR] Unrecognized term split (‹erroneous syntax›)
+//│ ║  l.94: 	  and
+//│ ║        	     ^
+//│ ║  l.95: 	  true do
+//│ ╙──      	^^
+//│ > ok
+
+// ——— ——— ———
+// From backlog/UCS.mls
+
+class Some(val v)
+
+:fixme
+Some(1) is
+  Some of [process, rest] do "hi"
+//│ ╔══[COMPILATION ERROR] Unrecognized pattern (infix operator 'do').
+//│ ║  l.116: 	  Some of [process, rest] do "hi"
+//│ ╙──       	          ^^^^^^^^^^^^^^^^^^^^^^^
+//│ = true
+
+// ——— ——— ———
