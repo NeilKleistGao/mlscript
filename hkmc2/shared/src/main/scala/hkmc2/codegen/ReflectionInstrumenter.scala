@@ -31,7 +31,6 @@ extension [A, B](ls: Iterable[(A => B) => B])
             k(head :: tail)
     )(f)
 
-
 extension [A](xs: Ls[Context => ((A, Context) => Block) => Block])
   def chainContext(using ctx: Context)(k: (Ls[A], Context) => Block): Block = 
     xs.foldRight((ctx: Context) => (k: (Ls[A], Context) => Block) => k(Nil, ctx))((head, tail) =>
@@ -67,16 +66,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
 
   // helpers for constructing Block
 
-  def assign(using State)(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
+  def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
     // TODO: skip assignment if res: Path?
     val sym = new TempSymbol(N, symName)
     Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
 
-  def tuple(using State)(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
+  def tuple(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Tuple(false, elems.map(asArg)), symName)(k)
   
   def ctor(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-      assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
+    assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
 
   def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
@@ -118,7 +117,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
     stagingCtx.getCache(sym).map(cachedK(_, stagingCtx)).getOrElse:
       sym match
         case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
-          transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(cachedK)
+          // no need to perform caching for redirecting call
+          transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
         // avoid name collision
         case _: TempSymbol =>
           val name = scope.allocateOrGetName(sym)
