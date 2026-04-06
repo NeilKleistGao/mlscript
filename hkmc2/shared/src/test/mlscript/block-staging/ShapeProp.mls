@@ -1,56 +1,18 @@
 :js
 :staging
 :noFreeze
-:shapeProp
 
+import "../../mlscript-compile/ShapeSet.mls"
+open ShapeSet
 module NonStaged with
   fun sq(x) = x * x
+
 staged module Staged with
   fun sq(x) = x * x
   fun fib(n) = if n is 
     1 then 1
     2 then 1
     n then fib(n - 1) + fib(n - 2)
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun sq(x) = *(x, x)
-//│ > fun fib(n1) =
-//│ >   let n
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   if n1 is
-//│ >     1 then 1
-//│ >     2 then 1
-//│ >     else 
-//│ >       n = n1
-//│ >       tmp = n - 1
-//│ >       tmp1 = Staged.fib(tmp)
-//│ >       tmp2 = n - 2
-//│ >       tmp3 = Staged.fib(tmp2)
-//│ >       tmp1 + tmp3
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'sq' => [Function: sq_gen],
-//│ >   'fib' => [Function: fib_gen]
-//│ > }
-//│ > Map(1) {
-//│ >   [class Staged] {
-//│ >     'cache$Staged': FunCache { cache: [Map] },
-//│ >     'generatorMap$Staged': Map(3) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'sq' => [Function: sq_gen],
-//│ >       'fib' => [Function: fib_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Staged',
-//│ >     value: [class Staged] {
-//│ >       'cache$Staged': [FunCache],
-//│ >       'generatorMap$Staged': [Map]
-//│ >     }
-//│ >   }
-//│ > }
 
 staged module Test with
   fun f(x, y) = x + y + 1 - 1
@@ -68,169 +30,89 @@ staged module Test with
   fun test2(n) = 
     let dyn = pyth(n, 2) 
     fib(dyn * 2)
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x, y) =
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   tmp = x + y
-//│ >   tmp1 = tmp + 1
-//│ >   tmp1 - 1
-//│ > fun fib(n1) =
+
+Test.test_gen()
+Test.test2_gen(mkDyn())
+print(Test."cache$Test")
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'Test' does not contain member 'test_gen'
+//│ ║  l.34: 	Test.test_gen()
+//│ ╙──      	    ^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'Test' does not contain member 'test2_gen'
+//│ ║  l.35: 	Test.test2_gen(mkDyn())
+//│ ╙──      	    ^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: traverse (Resolver.scala:349)
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Test.
+//│ ║  l.36: 	print(Test."cache$Test")
+//│ ╙──      	      ^^^^
+//│ > fun test() = 20
+//│ > fun f_Lit2_Lit2(x, y) = 4
+//│ > fun fib_Lit4(n) = 3
+//│ > fun fib_Lit3(n) = 2
+//│ > fun fib_Lit2(n) = 1
+//│ > fun fib_Lit1(n) = 1
+//│ > fun pyth_Lit2_Lit4(x, y) = 20
+//│ > fun test2(n) =
+//│ >   let dyn
+//│ >   let tmp10
+//│ >   dyn = Test.pyth_Dyn_Lit2(n, 2)
+//│ >   tmp10 = *(dyn, 2)
+//│ >   Test.fib(tmp10)
+//│ > fun pyth_Dyn_Lit2(x, y) =
+//│ >   let tmp6
+//│ >   let tmp7
+//│ >   tmp6 = NonStaged.sq(x)
+//│ >   tmp7 = 4
+//│ >   tmp6 + tmp7
+//│ > fun fib(n) =
 //│ >   let tmp2
 //│ >   let tmp3
 //│ >   let tmp4
-//│ >   let tmp5
 //│ >   let n
-//│ >   if n1 is
+//│ >   let tmp5
+//│ >   if n is
 //│ >     1 then 1
 //│ >     2 then 1
 //│ >     else 
-//│ >       n = n1
-//│ >       tmp2 = n - 1
-//│ >       tmp3 = Test.fib(tmp2)
-//│ >       tmp4 = n - 2
-//│ >       tmp5 = Test.fib(tmp4)
-//│ >       tmp3 + tmp5
-//│ > fun pyth(x1, y1) =
-//│ >   let tmp6
-//│ >   let tmp7
-//│ >   tmp6 = NonStaged.sq(x1)
-//│ >   tmp7 = NonStaged.sq(y1)
-//│ >   tmp6 + tmp7
-//│ > fun pyth2(x2, y2) =
-//│ >   let tmp8
-//│ >   let tmp9
-//│ >   tmp8 = Staged.sq(x2)
-//│ >   tmp9 = Staged.sq(y2)
-//│ >   tmp8 + tmp9
-//│ > fun test() = 20
-//│ > fun f_Lit2_Lit2(x, y) = 4
-//│ > fun fib_Lit4(n1) = 3
-//│ > fun fib_Lit3(n1) = 2
-//│ > fun fib_Lit2(n1) = 1
-//│ > fun fib_Lit1(n1) = 1
-//│ > fun pyth_Lit2_Lit4(x1, y1) = 20
-//│ > fun test2(n2) =
-//│ >   let dyn
-//│ >   let tmp10
-//│ >   dyn = Test.pyth_Dyn_Lit2(n2, 2)
-//│ >   tmp10 = *(dyn, 2)
-//│ >   Test.fib(tmp10)
-//│ > fun pyth_Dyn_Lit2(x1, y1) =
-//│ >   let tmp6
-//│ >   let tmp7
-//│ >   tmp6 = NonStaged.sq(x1)
-//│ >   tmp7 = 4
-//│ >   tmp6 + tmp7
-//│ > Map(7) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'fib' => [Function: fib_gen],
-//│ >   'pyth' => [Function: pyth_gen],
-//│ >   'pyth2' => [Function: pyth2_gen],
-//│ >   'test' => [Function: test_gen],
-//│ >   'test2' => [Function: test2_gen]
-//│ > }
-//│ > Map(3) {
-//│ >   [class Test] {
-//│ >     'cache$Test': FunCache { cache: [Map] },
-//│ >     'generatorMap$Test': Map(7) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen],
-//│ >       'fib' => [Function: fib_gen],
-//│ >       'pyth' => [Function: pyth_gen],
-//│ >       'pyth2' => [Function: pyth2_gen],
-//│ >       'test' => [Function: test_gen],
-//│ >       'test2' => [Function: test2_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Test',
-//│ >     value: [class Test] {
-//│ >       'cache$Test': [FunCache],
-//│ >       'generatorMap$Test': [Map]
-//│ >     }
-//│ >   },
-//│ >   [class NonStaged] {
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'NonStaged' ]
-//│ >   } => ModuleSymbol {
-//│ >     name: 'NonStaged',
-//│ >     value: [class NonStaged] { [Symbol(mlscript.definitionMetadata)]: [Array] }
-//│ >   },
-//│ >   [class Staged] {
-//│ >     'cache$Staged': FunCache { cache: [Map] },
-//│ >     'generatorMap$Staged': Map(3) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'sq' => [Function: sq_gen],
-//│ >       'fib' => [Function: fib_gen]
-//│ >     },
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'Staged' ]
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Staged',
-//│ >     value: [class Staged] {
-//│ >       'cache$Staged': [FunCache],
-//│ >       'generatorMap$Staged': [Map],
-//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
-//│ >     }
-//│ >   }
-//│ > }
-
+//│ >       n = n
+//│ >       tmp5 = n - 1
+//│ >       tmp2 = Test.fib(tmp5)
+//│ >       tmp3 = n - 2
+//│ >       tmp4 = Test.fib(tmp3)
+//│ >       tmp2 + tmp4
 
 class C(val x)
 
 staged module TestIf with
   fun f(x) = if x is
-    C(2) then "correct"
-    else "wrong"
+    C(2) then "C(2)"
+    C then "C"
+    else "else"
   fun test() = 
-    f(new C(2))
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x) =
-//│ >   let arg_C_0_
-//│ >   if x is
-//│ >     C then
-//│ >       arg_C_0_ = x.x
-//│ >       if arg_C_0_ is
-//│ >         2 then "correct"
-//│ >         else "wrong"
-//│ >     else "wrong"
-//│ > fun test() =
-//│ >   let tmp
-//│ >   tmp = new C(2)
-//│ >   TestIf.f_C_Lit2(tmp)
-//│ > fun f_C_Lit2(x) =
-//│ >   let arg_C_0_
-//│ >   arg_C_0_ = x.x
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'test' => [Function: test_gen]
-//│ > }
-//│ > Map(2) {
-//│ >   [Function: C] {
-//│ >     class: [class C] { [Symbol(mlscript.definitionMetadata)]: [Array] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'C',
-//│ >     value: [Function: C] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   [class TestIf] {
-//│ >     'cache$TestIf': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestIf': Map(3) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen],
-//│ >       'test' => [Function: test_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'TestIf',
-//│ >     value: [class TestIf] {
-//│ >       'cache$TestIf': [FunCache],
-//│ >       'generatorMap$TestIf': [Map]
-//│ >     }
-//│ >   }
-//│ > }
+    f(C(2))
+    f(C(3))
+    f(2)
+
+TestIf.test_gen()
+print(TestIf."cache$TestIf")
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'TestIf' does not contain member 'test_gen'
+//│ ║  l.100: 	TestIf.test_gen()
+//│ ╙──       	      ^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: traverse (Resolver.scala:349)
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestIf.
+//│ ║  l.101: 	print(TestIf."cache$TestIf")
+//│ ╙──       	      ^^^^^^
+//│ > fun test() = "else"
+//│ > fun f_C_Lit2(x) = "C(2)"
+//│ > fun f_C_Lit3(x) = "C"
+//│ > fun f_Lit2(x) = "else"
 
 :noSanityCheck
 class C(val n)
@@ -245,20 +127,31 @@ staged module TestIf2 with
   fun test() = f(C(2))
   fun test2(dyn) = f(C(dyn))
   fun test3() = f(0)
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x) =
-//│ >   let tmp
-//│ >   let y
-//│ >   if x is
-//│ >     C then
-//│ >       y = x.n
-//│ >       tmp = Runtime.Unit
-//│ >       y + 1
-//│ >     else 
-//│ >       y = 0
-//│ >       tmp = Runtime.Unit
-//│ >       1
+
+TestIf2.test_gen()
+TestIf2.test2_gen(mkDyn())
+TestIf2.test3_gen()
+print(TestIf2."cache$TestIf2")
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'TestIf2' does not contain member 'test_gen'
+//│ ║  l.131: 	TestIf2.test_gen()
+//│ ╙──       	       ^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'TestIf2' does not contain member 'test2_gen'
+//│ ║  l.132: 	TestIf2.test2_gen(mkDyn())
+//│ ╙──       	       ^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'TestIf2' does not contain member 'test3_gen'
+//│ ║  l.133: 	TestIf2.test3_gen()
+//│ ╙──       	       ^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: traverse (Resolver.scala:349)
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestIf2.
+//│ ║  l.134: 	print(TestIf2."cache$TestIf2")
+//│ ╙──       	      ^^^^^^^
 //│ > fun test() = 3
 //│ > fun f_C_Lit2(x) = 3
 //│ > fun test2(dyn) =
@@ -273,186 +166,6 @@ staged module TestIf2 with
 //│ >   y + 1
 //│ > fun test3() = 1
 //│ > fun f_Lit0(x) = 1
-//│ > Map(5) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'test' => [Function: test_gen],
-//│ >   'test2' => [Function: test2_gen],
-//│ >   'test3' => [Function: test3_gen]
-//│ > }
-//│ > Map(3) {
-//│ >   [Function: C] {
-//│ >     class: [class C2] { [Symbol(mlscript.definitionMetadata)]: [Array] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'C',
-//│ >     value: [Function: C] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} },
-//│ >   [class TestIf2] {
-//│ >     'cache$TestIf2': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestIf2': Map(5) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen],
-//│ >       'test' => [Function: test_gen],
-//│ >       'test2' => [Function: test2_gen],
-//│ >       'test3' => [Function: test3_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'TestIf2',
-//│ >     value: [class TestIf2] {
-//│ >       'cache$TestIf2': [FunCache],
-//│ >       'generatorMap$TestIf2': [Map]
-//│ >     }
-//│ >   }
-//│ > }
-
-class C(val x)
-class D()
-module NonStagedStaticClass with
-  fun f() = C(D())
-staged module TestClass with
-  fun f() = new C(D())
-  fun g() = C(new D())
-  fun id(x) = x
-  fun test() = id(f())
-  fun test2() = NonStagedStaticClass.f() 
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() =
-//│ >   let obj_1
-//│ >   let obj_2
-//│ >   obj_1 = new D()
-//│ >   obj_2 = new C(obj_1)
-//│ >   obj_2
-//│ > fun g() =
-//│ >   let obj_3
-//│ >   let obj_4
-//│ >   obj_3 = new D()
-//│ >   obj_4 = new C(obj_3)
-//│ >   obj_4
-//│ > fun id(x1) = x1
-//│ > fun test() =
-//│ >   let obj_9
-//│ >   let obj_10
-//│ >   obj_9 = new D()
-//│ >   obj_10 = new C(obj_9)
-//│ >   obj_10
-//│ > fun id_C_D_(x1) =
-//│ >   let obj_7
-//│ >   let obj_8
-//│ >   obj_7 = new D()
-//│ >   obj_8 = new C(obj_7)
-//│ >   obj_8
-//│ > fun test2() =
-//│ >   let obj_13
-//│ >   let obj_14
-//│ >   obj_13 = new D()
-//│ >   obj_14 = new C(obj_13)
-//│ >   obj_14
-//│ > Map(6) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'g' => [Function: g_gen],
-//│ >   'id' => [Function: id_gen],
-//│ >   'test' => [Function: test_gen],
-//│ >   'test2' => [Function: test2_gen]
-//│ > }
-//│ > Map(4) {
-//│ >   [Function: D] {
-//│ >     class: [class D] { [Symbol(mlscript.definitionMetadata)]: [Array] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'D',
-//│ >     value: [Function: D] { class: [Function] },
-//│ >     paramsOpt: Some { value: [] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   [Function: C] {
-//│ >     class: [class C4] { [Symbol(mlscript.definitionMetadata)]: [Array] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'C',
-//│ >     value: [Function: C] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   [class TestClass] {
-//│ >     'cache$TestClass': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestClass': Map(6) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen],
-//│ >       'g' => [Function: g_gen],
-//│ >       'id' => [Function: id_gen],
-//│ >       'test' => [Function: test_gen],
-//│ >       'test2' => [Function: test2_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'TestClass',
-//│ >     value: [class TestClass] {
-//│ >       'cache$TestClass': [FunCache],
-//│ >       'generatorMap$TestClass': [Map]
-//│ >     }
-//│ >   },
-//│ >   [class NonStagedStaticClass] {
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'NonStagedStaticClass' ]
-//│ >   } => ModuleSymbol {
-//│ >     name: 'NonStagedStaticClass',
-//│ >     value: [class NonStagedStaticClass] {
-//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
-//│ >     }
-//│ >   }
-//│ > }
-
-staged module TestTupleMatching with
-  fun count(x) = if x
-    is [_] then "one"
-    is [_, _] then "two"
-    is [_, _, _] then "three"
-    else "more than three"
-  fun test() = count([1, 2])
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun count(x) =
-//│ >   let element2_
-//│ >   let element1_
-//│ >   let element0_
-//│ >   if x is
-//│ >     [_] then
-//│ >       element0_ = x.(0)
-//│ >       "one"
-//│ >     [_, _] then
-//│ >       element0_ = x.(0)
-//│ >       element1_ = x.(1)
-//│ >       "two"
-//│ >     [_, _, _] then
-//│ >       element0_ = x.(0)
-//│ >       element1_ = x.(1)
-//│ >       element2_ = x.(2)
-//│ >       "three"
-//│ >     else "more than three"
-//│ > fun test() = "two"
-//│ > fun count_Arr_Lit1_Lit2_end(x) = "two"
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'count' => [Function: count_gen],
-//│ >   'test' => [Function: test_gen]
-//│ > }
-//│ > Map(1) {
-//│ >   [class TestTupleMatching] {
-//│ >     'cache$TestTupleMatching': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestTupleMatching': Map(3) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'count' => [Function: count_gen],
-//│ >       'test' => [Function: test_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'TestTupleMatching',
-//│ >     value: [class TestTupleMatching] {
-//│ >       'cache$TestTupleMatching': [FunCache],
-//│ >       'generatorMap$TestTupleMatching': [Map]
-//│ >     }
-//│ >   }
-//│ > }
 
 staged module TestTuple with
   fun first(x) = if x is
@@ -464,30 +177,19 @@ staged module TestTuple with
   fun test(y) = 
     let t = [10, y]
     first(t) + second(t)
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun first(x) =
-//│ >   let a
-//│ >   let element1_
-//│ >   let element0_
-//│ >   if x is
-//│ >     [_, _] then
-//│ >       element0_ = x.(0)
-//│ >       element1_ = x.(1)
-//│ >       a = element0_
-//│ >       a
-//│ >     else 0
-//│ > fun second(x1) =
-//│ >   let element1_1
-//│ >   let element0_1
-//│ >   let b
-//│ >   if x1 is
-//│ >     [_, _] then
-//│ >       element0_1 = x1.(0)
-//│ >       element1_1 = x1.(1)
-//│ >       b = element1_1
-//│ >       b
-//│ >     else 0
+
+TestTuple.test_gen(mkDyn())
+print(TestTuple."cache$TestTuple")
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'TestTuple' does not contain member 'test_gen'
+//│ ║  l.181: 	TestTuple.test_gen(mkDyn())
+//│ ╙──       	         ^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: traverse (Resolver.scala:349)
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestTuple.
+//│ ║  l.182: 	print(TestTuple."cache$TestTuple")
+//│ ╙──       	      ^^^^^^^^^
 //│ > fun test(y) =
 //│ >   let tmp
 //│ >   let tmp1
@@ -497,181 +199,115 @@ staged module TestTuple with
 //│ >   tmp1 = TestTuple.second_Arr_Lit10_Dyn_end(t)
 //│ >   tmp + tmp1
 //│ > fun first_Arr_Lit10_Dyn_end(x) = 10
-//│ > fun second_Arr_Lit10_Dyn_end(x1) =
+//│ > fun second_Arr_Lit10_Dyn_end(x) =
+//│ >   let b
 //│ >   let element1_1
 //│ >   let element0_1
-//│ >   let b
-//│ >   element0_1 = x1.(0)
-//│ >   element1_1 = x1.(1)
+//│ >   element0_1 = x.(0)
+//│ >   element1_1 = x.(1)
 //│ >   b = element1_1
 //│ >   b
-//│ > Map(4) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'first' => [Function: first_gen],
-//│ >   'second' => [Function: second_gen],
-//│ >   'test' => [Function: test_gen]
-//│ > }
-//│ > Map(1) {
-//│ >   [class TestTuple] {
-//│ >     'cache$TestTuple': FunCache { cache: [Map] },
-//│ >     'generatorMap$TestTuple': Map(4) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'first' => [Function: first_gen],
-//│ >       'second' => [Function: second_gen],
-//│ >       'test' => [Function: test_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'TestTuple',
-//│ >     value: [class TestTuple] {
-//│ >       'cache$TestTuple': [FunCache],
-//│ >       'generatorMap$TestTuple': [Map]
-//│ >     }
-//│ >   }
-//│ > }
 
 staged class L1() with
   fun call(x) = x + 2
-//│ > ctor$ shapes {Dyn()}
-//│ > call shapes {Dyn()}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call(x) = x + 2
-//│ > Map(2) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'call' => [Function: call_gen]
-//│ > }
-
-
 staged class L2() with
   fun call(x) = x
 staged class L3() with
   fun call(x) = x * 2
-//│ > ctor$ shapes {Dyn()}
-//│ > call shapes {Dyn()}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call(x) = x
-//│ > Map(2) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'call' => [Function: call_gen]
-//│ > }
-//│ > ctor$ shapes {Dyn()}
-//│ > call shapes {Dyn()}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun call(x1) = *(x1, 2)
-//│ > Map(2) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'call' => [Function: call_gen]
-//│ > }
 
 staged module M with
   fun twice(f, x) = f.call(f.call(x))
-  fun foo(b) = twice(new L1(), 5)
-//│ > call_L1___Lit5 shapes {Class(ClassSymbol("L1", fun L1 { class: class L1 { cache$L1: fun ctor_() =
-//│ >   ()
-//│ > fun call(x) = x + 2, generatorMap$L1: Map(2) {"ctor$" => fun ctor$_gen, "call" => fun call_gen} } }, Some([]), []), [])}
-//│ > call_L1___Lit7 shapes {Class(ClassSymbol("L1", fun L1 { class: class L1 { cache$L1: fun ctor_() =
-//│ >   ()
-//│ > fun call(x) = x + 2, generatorMap$L1: Map(2) {"ctor$" => fun ctor$_gen, "call" => fun call_gen} } }, Some([]), []), [])}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun twice(f, x) =
-//│ >   let tmp
-//│ >   let __tmp__
-//│ >   let __tmp__
-//│ >   if f is
-//│ >     
-//│ >     else 
-//│ >       __tmp__ = f.call(x)
-//│ >   tmp = __tmp__
-//│ >   if f is
-//│ >     
-//│ >     else 
-//│ >       __tmp__ = f.call(tmp)
-//│ >   __tmp__
-//│ > fun foo(b) = 9
-//│ > fun twice_L1__Lit5(f, x) = 9
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'twice' => [Function: twice_gen],
-//│ >   'foo' => [Function: foo_gen]
-//│ > }
-//│ > Map(2) {
-//│ >   [Function: L1] {
-//│ >     class: [class L1] {
-//│ >       'cache$L1': [FunCache],
-//│ >       'generatorMap$L1': [Map],
-//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
-//│ >     }
-//│ >   } => ClassSymbol {
-//│ >     name: 'L1',
-//│ >     value: [Function: L1] { class: [Function] },
-//│ >     paramsOpt: Some { value: [] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   [class M] {
-//│ >     'cache$M': FunCache { cache: [Map] },
-//│ >     'generatorMap$M': Map(3) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'twice' => [Function: twice_gen],
-//│ >       'foo' => [Function: foo_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'M',
-//│ >     value: [class M] { 'cache$M': [FunCache], 'generatorMap$M': [Map] }
-//│ >   }
-//│ > }
+  fun pick(x, y, b) = if b then x else y
+  fun foo(b) = 
+    let y = twice(new L1(), 5)
+    let m = pick(new L2(), new L3(), b)
+    twice(m, 5) + y
 
-staged class F(val x) with
-  fun f(y) = this.x + y
-//│ > ctor$ shapes {Dyn()}
-//│ > f shapes {Dyn()}
-//│ > fun ctor_(x) =
-//│ >   set F1.x = x
-//│ > fun f(y) = F1.x + y
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(1) {
-//│ >   [Function: F] {
-//│ >     class: [class F] { 'cache$F': [FunCache], 'generatorMap$F': [Map] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'F1',
-//│ >     value: [Function: F] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   }
-//│ > }
+M.foo_gen(mkDyn())
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'foo_gen'
+//│ ║  l.226: 	M.foo_gen(mkDyn())
+//│ ╙──       	 ^^^^^^^^
+//│ = ["foo", {Dyn()}]
 
-staged module M with
-  fun test() = (new F(1)).f(2)
-//│ > f_F_Lit1__Lit2 shapes {Class(ClassSymbol("F", fun F { class: class F { cache$F: fun ctor_(x) =
-//│ >   set F1.x = x
-//│ > fun f(y) = F1.x + y, generatorMap$F: Map(2) {"ctor$" => fun ctor$_gen, "f" => fun f_gen} } }, Some([Symbol("x")]), []), [Lit(1)])}
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun test() =
+print(M."cache$M")
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: traverse (Resolver.scala:349)
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
+//│ ║  l.234: 	print(M."cache$M")
+//│ ╙──       	      ^
+//│ > fun foo(b) =
+//│ >   let y
+//│ >   let tmp1
+//│ >   let tmp2
+//│ >   let tmp3
+//│ >   let m
+//│ >   let tmp4
+//│ >   tmp1 = new L1()
+//│ >   y = M.twice_L1_Lit5(tmp1, 5)
+//│ >   tmp2 = new L2()
+//│ >   tmp3 = new L3()
+//│ >   m = M.pick_L2_L3_Dyn(tmp2, tmp3, b)
+//│ >   tmp4 = M.twice_Union_L2_L3_end_Lit5(m, 5)
+//│ >   tmp4 + y
+//│ > fun twice_L1_Lit5(f, x) = 9
+//│ > fun call_L1_Lit5(recv, arg0) = 7
+//│ > fun call_L1_Lit7(recv, arg0) = 9
+//│ > fun pick_L2_L3_Dyn(x, y, b) =
+//│ >   let obj_1
+//│ >   let obj_2
+//│ >   if b is
+//│ >     true then
+//│ >       obj_1 = new L2()
+//│ >       obj_1
+//│ >     else 
+//│ >       obj_2 = new L3()
+//│ >       obj_2
+//│ > fun twice_Union_L2_L3_end_Lit5(f, x) =
 //│ >   let tmp
-//│ >   let __tmp__
-//│ >   tmp = new F(1)
-//│ >   if tmp is
-//│ >     F then
-//│ >       __tmp__ = tmp.f_F_Lit1__Lit2(2)
-//│ >   __tmp__
-//│ > Map(2) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'test' => [Function: test_gen]
-//│ > }
-//│ > Map(1) {
-//│ >   [Function: F] {
-//│ >     class: [class F] {
-//│ >       'cache$F': [FunCache],
-//│ >       'generatorMap$F': [Map],
-//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
-//│ >     }
-//│ >   } => ClassSymbol {
-//│ >     name: 'F',
-//│ >     value: [Function: F] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   }
-//│ > }
+//│ >   tmp = call_Union_L2_L3_end_Lit5(f, x)
+//│ >   call_Union_L2_L3_end_Union_Lit5_Lit10_end(f, tmp)
+//│ > fun call_Union_L2_L3_end_Lit5(recv, arg0) =
+//│ >   if recv is
+//│ >     L2 then recv.call_L2__Lit5(arg0)
+//│ >     L3 then recv.call_L3__Lit5(arg0)
+//│ > fun call_Union_L2_L3_end_Union_Lit5_Lit10_end(recv, arg0) =
+//│ >   if recv is
+//│ >     L2 then recv.call_L2__Union_Lit5_Lit10_end(arg0)
+//│ >     L3 then recv.call_L3__Union_Lit5_Lit10_end(arg0)
+
+print(L2.class."cache$L2")
+print(L3.class."cache$L3")
+//│ > fun call_L2__Lit5(x) = 5
+//│ > fun call_L2__Union_Lit5_Lit10_end(x) = x
+//│ > fun call_L3__Lit5(x) = 10
+//│ > fun call_L3__Union_Lit5_Lit10_end(x) = *(x, 2)
+
+staged class A(val x: Int) with
+  fun f(y: Int) = this.x + y
+staged class B(val x: Int) with
+  fun f(y: A) = y.f(this.x)
+
+staged module TestThis with
+  fun test() = B(2).f(A(2))
+
+TestThis.test_gen()
+print(TestThis."cache$TestThis")
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+//│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test_gen'
+//│ ║  l.295: 	TestThis.test_gen()
+//│ ╙──       	        ^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: traverse (Resolver.scala:349)
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestThis.
+//│ ║  l.296: 	print(TestThis."cache$TestThis")
+//│ ╙──       	      ^^^^^^^^
+//│ > fun test() = 4
+//│ > fun f_B_Lit2_A_Lit2(recv, arg0) = 4
+
+:todo
+staged class D(val x) extends B(x+1) with
+  val y = 1
+  fun f() = 42

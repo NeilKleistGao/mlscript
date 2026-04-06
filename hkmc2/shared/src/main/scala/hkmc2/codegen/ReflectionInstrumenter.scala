@@ -396,11 +396,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
 
       // initialize cache for the module
       def cacheDecl(rest: Block) =
-        cacheEntries.collectApply: cacheTups =>
-          tuple(cacheTups): tup =>
-            this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              assign(Instantiate(false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
-                Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
+        this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): map =>
+          assign(Instantiate(false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
+            Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
 
       def generatorMapDecl(rest: Block) =
         generatorEntries.collectApply: defs =>
@@ -408,24 +406,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
               Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
 
-      // TODO: remove this. only for testing
-      def debugCont(rest: Block) =
-        val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
-        // val renderFun = State.runtimeSymbol.asPath.selSN("render")
-        // val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
-
-        // assign(options): options =>
-          call(cachePath.selSN("toString"), Nil, false): str =>
-            call(printFun, Ls(str), false): _ =>
-              call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
-                if symbolMapUsed
-                then call(printFun, Ls(symbolMapSym), false)(_ => rest)
-                else rest
-
       // used for staging classes inside modules
       val newCompanion = companion.copy(
         methods = helperMethods.flatten,
-        ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
+        ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(End()))),
         publicFields = companion.publicFields
       )
       val newClsLikeDefn = defn.copy(companion = S(newCompanion))(defn.configOverride)
