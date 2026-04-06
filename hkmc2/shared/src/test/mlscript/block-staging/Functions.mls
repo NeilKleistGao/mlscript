@@ -8,7 +8,7 @@ staged module Rebinding with
     x
 //│ > fun ctor_() = ()
 //│ > fun lit() =
-//│ >   let x
+//│ >   let {x}
 //│ >   x = 42
 //│ >   x
 //│ > Map(2) {
@@ -42,19 +42,18 @@ staged module Expressions with
 //│ > fun ctor_() = ()
 //│ > fun lit() = 1
 //│ > fun assign() =
-//│ >   let x
-//│ >   let y
+//│ >   let {x, y}
 //│ >   x = 42
 //│ >   y = x
 //│ >   y
 //│ > fun tup1() = [1, 2]
 //│ > fun tup2() = [1, x]
 //│ > fun dynsel() =
-//│ >   let tmp
+//│ >   let {tmp}
 //│ >   tmp = [1]
 //│ >   tmp.(0)
 //│ > fun match1() =
-//│ >   let scrut
+//│ >   let {scrut}
 //│ >   scrut = 9
 //│ >   if scrut is
 //│ >     Bool then 1
@@ -62,9 +61,7 @@ staged module Expressions with
 //│ >     Int then 3
 //│ >     else 0
 //│ > fun match2() =
-//│ >   let element1_
-//│ >   let element0_
-//│ >   let a
+//│ >   let {element1_, element0_, a}
 //│ >   if x is
 //│ >     [] then 1
 //│ >     [_, _] then
@@ -220,7 +217,7 @@ staged module Arguments with
 //│ >   x = 1
 //│ >   x
 //│ > fun g(x) =
-//│ >   let tmp
+//│ >   let {tmp}
 //│ >   tmp = new Function_
 //│ >   tmp
 //│ > Map(3) {
@@ -254,11 +251,11 @@ staged module OtherBlocks with
       else 0
 //│ > fun ctor_() = ()
 //│ > fun scope() =
-//│ >   let a
+//│ >   let {a}
 //│ >   a = 1
 //│ >   OtherBlocks.scope.locally(a)
 //│ > fun breakAndLabel() =
-//│ >   let scrut
+//│ >   let {scrut}
 //│ >   scrut = 1
 //│ >   if scrut is
 //│ >     2 then 0
@@ -324,9 +321,9 @@ staged module ClassFunctions with
 //│ > fun ctor_() =
 //│ >   class InnerClass() with
 //│ >     fun f() =
-//│ >       let tmp
+//│ >       let {tmp}
 //│ >       tmp = Arguments.f(1)
-//│ >       +(1, tmp)
+//│ >       1 + tmp
 //│ >     fun g() = InnerClass.f()
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(2) {
@@ -391,13 +388,13 @@ staged module Continue with
     let x = 1
     while x == 1 do
       set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:scrut, tmp:tmp),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:tmp, tmp:scrut),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
 //│  Try enabling :ftc.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.391: 	    let x = 1
+//│ ║  l.388: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.391: 	    let x = 1
+//│ ║  l.388: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -415,10 +412,10 @@ staged module NestedFunDefn with
 staged module M with
   fun f() = if 1 is
 //│ ╔══[PARSE ERROR] Expected start of expression in this position; found end of input instead
-//│ ║  l.416: 	  fun f() = if 1 is
+//│ ║  l.413: 	  fun f() = if 1 is
 //│ ╙──       	                   ^
 //│ ╔══[COMPILATION ERROR] Unrecognized pattern split (‹erroneous syntax›).
-//│ ║  l.416: 	  fun f() = if 1 is
+//│ ║  l.413: 	  fun f() = if 1 is
 //│ ╙──       	                   ^
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Throw(Lit(StrLit(This code cannot be run as its compilation yielded an error.)))
 //│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
@@ -427,9 +424,9 @@ staged module M with
     1 then 1 + 1 + 1
     else 1 + 1 + 1
 //│ ╔══[COMPILATION ERROR] Unexpected infix use of keyword 'then' here
-//│ ║  l.426: 	    0 then 1 + 1 + 1
+//│ ║  l.423: 	    0 then 1 + 1 + 1
 //│ ║         	    ^^^^^^^^^^^^^^^^
-//│ ║  l.427: 	    1 then 1 + 1 + 1
+//│ ║  l.424: 	    1 then 1 + 1 + 1
 //│ ╙──       	^^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
@@ -441,7 +438,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.441: 	  fun g() = {1 : 2}
+//│ ║  l.438: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -452,11 +449,7 @@ staged module Spread with
 //│ ═══[COMPILATION ERROR] Spread parameters are not supported in staged module: Tup(1,true)
 //│ > fun ctor_() = ()
 //│ > fun f() =
-//│ >   let element0_
-//│ >   let scrut
-//│ >   let tmp
-//│ >   let x
-//│ >   let middleElements
+//│ >   let {middleElements, element0_, scrut, tmp, x}
 //│ >   tmp = [1, 2]
 //│ >   scrut = [1, tmp]
 //│ >   if scrut is
