@@ -118,7 +118,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
           transformParamsOpt(paramsOpt): paramsOpt =>
             auxParams.map(ps => transformParamList(ps)).collectApply: auxParams =>
               tuple(auxParams): auxParams =>
-                blockCtor("ClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
+                blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(k)
         case _: ModuleOrObjectSymbol =>
           blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
     case _: NoSymbol =>
@@ -126,6 +126,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
     case _: TempSymbol | _: VarSymbol =>
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)
+    // preserve names to builtin symbols
+    case _: BuiltinSymbol =>
+      blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
     // FIXME: there may be more types of symbols that need to be renamed during staging
     case _ =>
       blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
@@ -281,7 +284,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
     case Define(v: ValDefn, rest) =>
       // TODO: only allow ValDefn inside ctors
       transformBlock(rest): p =>
-        transformOption(v.tsym.owner, transformSymbol(_, N, "test")): owner =>
+        transformOption(v.tsym.owner, transformSymbol(_)): owner =>
           transformSymbol(v.sym): sym =>
             transformPath(v.rhs): rhs =>
               blockCtor("ValDefn", Ls(owner, sym, rhs)): v =>

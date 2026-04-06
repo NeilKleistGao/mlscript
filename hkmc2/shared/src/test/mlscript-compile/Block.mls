@@ -19,8 +19,9 @@ type ParamList = Array[Symbol]
 
 class Symbol(val name: Str)
 // this is so that we're able to retrieve information about the class from the symbol
-class VirtualClassSymbol(val name: Str) extends Symbol(name)
-class ClassSymbol(val name: Str, val value, val paramsOpt: Option[ParamList], val auxParams: Array[ParamList]) extends Symbol(name)
+class ClassSymbol(val name: Str) extends Symbol(name)
+class VirtualClassSymbol(val name: Str) extends ClassSymbol(name)
+class ConcreteClassSymbol(val name: Str, val value, val paramsOpt: Opt[ParamList], val auxParams: Array[ParamList]) extends ClassSymbol(name)
 class ModuleSymbol(val name: Str, val value) extends Symbol(name)
 class NoSymbol() extends Symbol("$no_symbol$")
 class Arm(val cse: Case, val body: Block)
@@ -67,8 +68,8 @@ class Path extends Result with
 
 class Defn with 
   constructor 
-    ValDefn(val tsym: Opt[Symbol], val sym: Symbol, val rhs: Path)
-    ClsLikeDefn(val sym: ClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
+    ValDefn(val owner: Opt[Symbol], val sym: Symbol, val rhs: Path)
+    ClsLikeDefn(val sym: ConcreteClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
     FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
 class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicFields: Array[[Symbol, Symbol]]) // unused
@@ -110,9 +111,8 @@ fun showPath(p: Path): Str =
     // avoids needing to import the runtime module
     Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
     Select(qual, name) then showPath(qual) + "." + showSymbol(name)
-    DynSelect(qual, fld, arrayIdx) then
-      if arrayIdx then showPath(qual) + ".[" + showPath(fld) + "]"
-      else showPath(qual) + ".(" + showPath(fld) + ")"
+    DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
+    DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
     ValueRef(l) then showSymbol(l)
     ValueLit(lit) then showLiteral(lit)
 
