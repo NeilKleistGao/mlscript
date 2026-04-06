@@ -12,7 +12,7 @@ staged module Expressions with
 //│ ╙──     	        ^
 //│ > fun ctor_() = ()
 //│ > fun lit() =
-//│ >   let x
+//│ >   let {x}
 //│ >   x = 42
 //│ >   x
 
@@ -42,19 +42,18 @@ staged module Expressions with
 //│ > fun ctor_() = ()
 //│ > fun lit() = 1
 //│ > fun assign() =
-//│ >   let x
-//│ >   let y
+//│ >   let {x, y}
 //│ >   x = 42
 //│ >   y = x
 //│ >   y
 //│ > fun tup1() = [1, 2]
 //│ > fun tup2() = [1, x1]
 //│ > fun dynsel() =
-//│ >   let tmp
+//│ >   let {tmp}
 //│ >   tmp = [1]
 //│ >   tmp.(0)
 //│ > fun match1() =
-//│ >   let scrut
+//│ >   let {scrut}
 //│ >   scrut = 9
 //│ >   if scrut is
 //│ >     Bool then 1
@@ -62,9 +61,7 @@ staged module Expressions with
 //│ >     Int then 3
 //│ >     else 0
 //│ > fun match2() =
-//│ >   let a
-//│ >   let element1_
-//│ >   let element0_
+//│ >   let {a, element1_, element0_}
 //│ >   if x1 is
 //│ >     [] then 1
 //│ >     [_, _] then
@@ -126,7 +123,7 @@ staged module Arguments with
 //│ >   x = 1
 //│ >   x
 //│ > fun g(x) =
-//│ >   let tmp
+//│ >   let {tmp}
 //│ >   tmp = new Function_
 //│ >   tmp
 
@@ -143,11 +140,11 @@ staged module OtherBlocks with
       else 0
 //│ > fun ctor_() = ()
 //│ > fun scope() =
-//│ >   let a
+//│ >   let {a}
 //│ >   a = 1
 //│ >   OtherBlocks.scope.locally(a)
 //│ > fun breakAndLabel() =
-//│ >   let scrut
+//│ >   let {scrut}
 //│ >   scrut = 1
 //│ >   if scrut is
 //│ >     2 then 0
@@ -173,9 +170,9 @@ staged module ClassFunctions with
 //│ > fun ctor_() =
 //│ >   class InnerClass() with
 //│ >     fun f() =
-//│ >       let tmp
+//│ >       let {tmp}
 //│ >       tmp = Arguments.f_gen(1)
-//│ >       +(1, tmp)
+//│ >       1 + tmp
 //│ >     fun g() = InnerClass.f()
 
 :todo
@@ -204,13 +201,13 @@ staged module M with
     let x = 1
     while x == 1 do
       set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:tmp, tmp:scrut),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),Some(End()),End()))),End()).
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:tmp, tmp:scrut),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
 //│  Try enabling :ftc.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.201: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.204: 	    let x = 1
+//│ ║  l.201: 	    let x = 1
 //│ ╙──       	        ^
 //│ > fun ctor_() = ()
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
@@ -222,13 +219,10 @@ staged module NestedFunDefn with
     fun g() = 1
     g()
   fun g(x, y) = x || y
-//│ ═══[COMPILATION ERROR] Cannot determine if short_or is a function object.
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Unreachable(Rest of abortive match)
 //│ > fun ctor_() = ()
 //│ > fun f() = g()
-//│ > fun g(x, y) =
-//│ >   let tmp
-//│ >   tmp = Function__(false, y)
-//│ >   Runtime.short_or(x, tmp)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 // TODO: force enable :ftc to desugar Label and Break
 staged module M with
@@ -238,7 +232,7 @@ staged module M with
     else 2
 //│ > fun ctor_() = ()
 //│ > fun f() =
-//│ >   let scrut
+//│ >   let {scrut}
 //│ >   scrut = 1
 //│ >   if scrut is
 //│ >     0 then 2
@@ -253,7 +247,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: Record(false,List(RcdArg(Some(Lit(IntLit(1))),Lit(IntLit(2)))))
-//│ ║  l.253: 	  fun g() = {1 : 2}
+//│ ║  l.247: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > fun ctor_() =
 //│ >   x = C(1)
