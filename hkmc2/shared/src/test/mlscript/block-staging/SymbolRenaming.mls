@@ -20,13 +20,26 @@ staged module DupeFunctionName with
 
 class C(val x)
 
+staged module NoSymbol with
+  fun f(g) =
+    g()
+    g()
+    ()
+//│ > fun ctor_() = ()
+//│ > fun f(g) =
+//│ >   g()
+//│ >   g()
+//│ >   ()
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }
+
 staged module Selection with
   fun f(x) =
     x.call()
     C(1).x is Bool
 //│ > fun ctor_() = ()
 //│ > fun f(x) =
-//│ >   let {tmp, scrut}
+//│ >   let {scrut, tmp}
 //│ >   x.call()
 //│ >   tmp = C(1)
 //│ >   scrut = tmp.x

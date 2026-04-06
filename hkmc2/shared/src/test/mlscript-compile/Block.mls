@@ -72,7 +72,7 @@ class Result extends CachedHash with
 
 class Path extends Result with
   constructor
-    Select(val qual: Path, val name: Str)
+    Select(val qual: Path, val name: Symbol)
     DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool) // is arrayIdx used?
     ValueRef(val l: Symbol)
     ValueLit(val lit: Literal)
@@ -121,7 +121,7 @@ fun showPath(p: Path): Str =
   if p is
     // avoids needing to import the runtime module
     Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
-    Select(qual, name) then showPath(qual) + "." + name
+    Select(qual, name) then showPath(qual) + "." + showSymbol(name)
     DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
     DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
     ValueRef(l) then showSymbol(l)

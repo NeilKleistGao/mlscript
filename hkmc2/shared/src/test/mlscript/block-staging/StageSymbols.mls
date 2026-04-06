@@ -113,12 +113,12 @@ staged module M with
 //│ >   class E
 //│ > fun f() =
 //│ >   let {x}
-//│ >   x = D.E
+//│ >   x = D.E1
 //│ >   x = A.B.C
 //│ >   A.B.C(2)
 //│ >   M.E
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(4) {
+//│ > Map(7) {
 //│ >   [class E1] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
 //│ >     name: 'E',
 //│ >     value: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
@@ -143,6 +143,12 @@ staged module M with
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
 //│ >     }
 //│ >   },
+//│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
+//│ >     name: 'E1',
+//│ >     value: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   },
 //│ >   [class A2] {
 //│ >     B: [class B2] {
 //│ >       C: [Function],
@@ -155,6 +161,24 @@ staged module M with
 //│ >       B: [Function],
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
 //│ >     }
+//│ >   },
+//│ >   [class B2] {
+//│ >     C: [Function: C] { class: [Function] },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'B' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'B',
+//│ >     value: [class B2] {
+//│ >       C: [Function],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [Function: C] {
+//│ >     class: [class C3] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
 //│ >   },
 //│ >   [class M2] {
 //│ >     E: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
@@ -177,7 +201,7 @@ staged module M with
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.178: 	  fun g()() = 1
+//│ ║  l.202: 	  fun g()() = 1
 //│ ╙──       	  ^^^^^^^^^^^^^
 //│ > fun ctor_() = ()
 //│ > fun g()() = 1
@@ -230,3 +254,11 @@ let x = M."f_instr"().body.rest.rhs.cls.l.value
 let y = M."g_instr"().body.rest.rhs.cls.l.value
 //│ x = class Function$
 //│ y = class Function$
+
+:todo creating symbols for objects
+staged module RetUnit with
+  fun f() = ()
+//│ > fun ctor_() = ()
+//│ > fun f() = ()
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }

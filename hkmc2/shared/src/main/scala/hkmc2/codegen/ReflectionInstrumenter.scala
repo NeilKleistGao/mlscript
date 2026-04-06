@@ -133,6 +133,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
           val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
             case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
             case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+            // FIXME: hack to patch in staging for returning the object Unit.
+            case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)    
             case _ =>
               raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
               return End()
@@ -196,7 +198,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
           blockCtor("ValueLit", Ls(l), "lit")(k(_, ctx))
         case s @ Select(p, Tree.Ident(name)) =>
           transformPath(p): (x, ctx) =>
-            blockCtor("Select", Ls(x, toValue(name)))(k(_, ctx))
+            s.symbol match
+              case S(sym) => transformSymbol(sym, S(s))(using ctx)((sym, ctx) => blockCtor("Select", Ls(x, sym), "sel")(k(_, ctx)))
+              case N => blockCtor("Symbol", Ls(toValue(name)))(sym => blockCtor("Select", Ls(x, sym), "sel")(k(_, ctx)))
         case DynSelect(qual, fld, arrayIdx) =>
           transformPath(qual): (x, ctx) =>
             transformPath(fld)(using ctx): (y, ctx) =>
