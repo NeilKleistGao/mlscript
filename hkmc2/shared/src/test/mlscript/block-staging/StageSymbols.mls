@@ -6,12 +6,12 @@ staged module M with
     fun f() = 1
     fun g() = f()
 //│ > fun ctor_() =
-//│ >   class C with 
+//│ >   class C with
 //│ >     fun f() = 1
 //│ >     fun g() = C.f()
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
-//│ >   [class C] { [Symbol(mlscript.definitionMetadata)]: [ 'class', 'C' ] } => ClassSymbol {
+//│ >   [class C] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [class C] { [Symbol(mlscript.definitionMetadata)]: [Array] },
 //│ >     paramsOpt: None {},
@@ -32,28 +32,25 @@ staged module D with
   fun matching() =
     1 is Int
     1 is C
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > fun ctor_() =
 //│ >   class E
 //│ > fun f() =
-//│ >   let scrut
-//│ >   __no__symbol__ = A.f()
+//│ >   let {scrut}
+//│ >   A.f()
 //│ >   scrut = B.f
 //│ >   if scrut is
 //│ >     Bool then true
 //│ >     else false
 //│ > fun matching() =
-//│ >   let tmp
-//│ >   let scrut1
-//│ >   let scrut2
+//│ >   let {tmp, scrut1, scrut2}
 //│ >   scrut1 = 1
 //│ >   if scrut1 is
 //│ >     Int then
 //│ >       tmp = true
-//│ >     else 
+//│ >     else
 //│ >       tmp = false
 //│ >   scrut2 = 1
 //│ >   if scrut2 is
@@ -65,7 +62,7 @@ staged module D with
 //│ >   'matching' => [Function: matching_gen]
 //│ > }
 //│ > Map(6) {
-//│ >   [class E] { [Symbol(mlscript.definitionMetadata)]: [ 'class', 'E' ] } => ClassSymbol {
+//│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
 //│ >     name: 'E',
 //│ >     value: [class E] { [Symbol(mlscript.definitionMetadata)]: [Array] },
 //│ >     paramsOpt: None {},
@@ -93,8 +90,8 @@ staged module D with
 //│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
 //│ >   'Int' => VirtualClassSymbol { name: 'Int' },
 //│ >   [Function: C] {
-//│ >     class: [class C1] { [Symbol(mlscript.definitionMetadata)]: [Array] }
-//│ >   } => ClassSymbol {
+//│ >     class: [class C1] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
@@ -115,14 +112,14 @@ staged module M with
 //│ > fun ctor_() =
 //│ >   class E
 //│ > fun f() =
-//│ >   let x
-//│ >   x = D.E
+//│ >   let {x}
+//│ >   x = D.E1
 //│ >   x = A.B.C
-//│ >   __no__symbol__ = A.B.C(2)
+//│ >   A.B.C(2)
 //│ >   M.E
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(4) {
-//│ >   [class E1] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ClassSymbol {
+//│ > Map(7) {
+//│ >   [class E1] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
 //│ >     name: 'E',
 //│ >     value: [class E1] { [Symbol(mlscript.definitionMetadata)]: [Array] },
 //│ >     paramsOpt: None {},
@@ -146,6 +143,12 @@ staged module M with
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
 //│ >     }
 //│ >   },
+//│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
+//│ >     name: 'E1',
+//│ >     value: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
+//│ >   },
 //│ >   [class A2] {
 //│ >     B: [class B2] {
 //│ >       C: [Function],
@@ -156,8 +159,26 @@ staged module M with
 //│ >     name: 'A',
 //│ >     value: [class A2] {
 //│ >       B: [Function],
-//│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
 //│ >     }
+//│ >   },
+//│ >   [class B2] {
+//│ >     C: [Function: C] { class: [Function] },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'B' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'B',
+//│ >     value: [class B2] {
+//│ >       C: [Function],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [Function: C] {
+//│ >     class: [class C3] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
 //│ >   },
 //│ >   [class M2] {
 //│ >     E: [class E1] { [Symbol(mlscript.definitionMetadata)]: [Array] },
@@ -180,10 +201,9 @@ staged module M with
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.181: 	  fun g()() = 1
+//│ ║  l.202: 	  fun g()() = 1
 //│ ╙──       	  ^^^^^^^^^^^^^
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun g()() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'g' => [Function: g_gen] }
 
@@ -191,15 +211,14 @@ staged module M with
 staged module M with
   fun f() = x => x
   fun g()() = 1
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() =
-//│ >   let tmp
-//│ >   tmp = new Function_()
+//│ >   let {tmp}
+//│ >   tmp = new Function_
 //│ >   tmp
 //│ > fun g() =
-//│ >   let tmp1
-//│ >   tmp1 = new Function_1()
+//│ >   let {tmp1}
+//│ >   tmp1 = new Function_1
 //│ >   tmp1
 //│ > Map(3) {
 //│ >   'ctor$' => [Function: ctor$_gen],
@@ -208,8 +227,8 @@ staged module M with
 //│ > }
 //│ > Map(2) {
 //│ >   [class Function$1 extends Function] {
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'Function$' ]
-//│ >   } => ClassSymbol {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'Function$',
 //│ >     value: [class Function$1 extends Function] {
 //│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
@@ -218,8 +237,8 @@ staged module M with
 //│ >     auxParams: []
 //│ >   },
 //│ >   [class Function$ extends Function] {
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'Function$' ]
-//│ >   } => ClassSymbol {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'Function$1',
 //│ >     value: [class Function$ extends Function] {
 //│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
@@ -229,9 +248,17 @@ staged module M with
 //│ >   }
 //│ > }
 
+// TODO: these need to be printed separately, somehow:
+:noModuleCheck
+let x = M."f_instr"().body.rest.rhs.cls.l.value
+let y = M."g_instr"().body.rest.rhs.cls.l.value
+//│ x = class Function$
+//│ y = class Function$
+
+:todo creating symbols for objects
 staged module RetUnit with
   fun f() = ()
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = Runtime.Unit
+//│ > fun ctor_() = ()
+//│ > fun f() = ()
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }

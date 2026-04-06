@@ -8,20 +8,19 @@ class C with
   fun call(x) = x + 1
 staged module M with
   fun f(x) = x.C#call(10)
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f(x) = x.call(10)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 staged class A(val a)
 //│ > fun ctor_(a) =
-//│ >   set A.a = a
+//│ >   val a = a
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
 //│ >   [Function: A] {
 //│ >     class: [class A] { 'cache$A': [FunCache], 'generatorMap$A': [Map] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'A',
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'A1',
 //│ >     value: [Function: A] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
@@ -34,7 +33,7 @@ staged module C with
 //│ >   class I
 //│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
 //│ > Map(1) {
-//│ >   [class I] { [Symbol(mlscript.definitionMetadata)]: [ 'class', 'I' ] } => ClassSymbol {
+//│ >   [class I] { Symbol(mlscript.definitionMetadata): [ 'class', 'I' ] } => ConcreteClassSymbol {
 //│ >     name: 'I',
 //│ >     value: [class I] { [Symbol(mlscript.definitionMetadata)]: [Array] },
 //│ >     paramsOpt: None {},
@@ -46,12 +45,11 @@ staged module C with
 class C
 staged module M with
   fun f() = C
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = C
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
-//│ >   [class C4] { [Symbol(mlscript.definitionMetadata)]: [ 'class', 'C' ] } => ClassSymbol {
+//│ >   [class C4] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [class C4] { [Symbol(mlscript.definitionMetadata)]: [Array] },
 //│ >     paramsOpt: None {},
@@ -62,15 +60,14 @@ staged module M with
 // :sir
 staged class C with
   fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 :e
 staged class C(x)
 //│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
-//│ ║  l.71: 	staged class C(x)
+//│ ║  l.68: 	staged class C(x)
 //│ ╙──      	       ^^^^^^^^^^
 
 staged class B(val x) with
@@ -79,22 +76,22 @@ staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
 //│ > fun ctor_(x) =
-//│ >   set B.x = x
-//│ > fun f(y) = +(B.x, y)
+//│ >   val x = x
+//│ > fun f(y) = B1.x + y
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) {
 //│ >   [Function: B] {
 //│ >     class: [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] }
-//│ >   } => ClassSymbol {
-//│ >     name: 'B',
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'B1',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   }
 //│ > }
 //│ > fun ctor_(x) =
-//│ >   let tmp
-//│ >   tmp = +(x, 1)
+//│ >   let {tmp}
+//│ >   tmp = x + 1
 //│ >   super(tmp)
 //│ > fun f() = 42
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
@@ -105,8 +102,8 @@ staged class D(val x) extends B(x+1) with
 //│ >       'generatorMap$B': [Map],
 //│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
 //│ >     }
-//│ >   } => ClassSymbol {
-//│ >     name: 'B',
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'B1',
 //│ >     value: [Function: B] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
@@ -116,8 +113,8 @@ staged class D(val x) extends B(x+1) with
 //│ >       'cache$D': [FunCache],
 //│ >       'generatorMap$D': [Map]
 //│ >     }
-//│ >   } => ClassSymbol {
-//│ >     name: 'D',
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'D1',
 //│ >     value: [Function: D] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
@@ -132,7 +129,7 @@ staged module M with
     Unstaged;
     Staged
 //│ > fun ctor_(x) =
-//│ >   set Staged.x = x
+//│ >   val x = x
 //│ > fun inner() = 1
 //│ > Map(2) {
 //│ >   'ctor$' => [Function: ctor$_gen],
@@ -144,16 +141,15 @@ staged module M with
 //│ >       'cache$Staged': [FunCache],
 //│ >       'generatorMap$Staged': [Map]
 //│ >     }
-//│ >   } => ClassSymbol {
-//│ >     name: 'Staged',
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'Staged1',
 //│ >     value: [Function: Staged] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f() = ,(Unstaged, Staged)
+//│ > fun ctor_() = ()
+//│ > fun f() = ,(Unstaged, Staged1)
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: Staged] {
@@ -162,15 +158,15 @@ staged module M with
 //│ >       'generatorMap$Staged': [Map],
 //│ >       [Symbol(mlscript.definitionMetadata)]: [Array]
 //│ >     }
-//│ >   } => ClassSymbol {
-//│ >     name: 'Staged',
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'Staged1',
 //│ >     value: [Function: Staged] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
 //│ >   [class Unstaged] {
-//│ >     [Symbol(mlscript.definitionMetadata)]: [ 'class', 'Unstaged' ]
-//│ >   } => ClassSymbol {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Unstaged' ]
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'Unstaged',
 //│ >     value: [class Unstaged] { [Symbol(mlscript.definitionMetadata)]: [Array] },
 //│ >     paramsOpt: None {},
