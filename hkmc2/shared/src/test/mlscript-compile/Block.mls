@@ -49,7 +49,7 @@ class Arg(val value: Path)
 class Case with
   constructor
     Lit(val lit: Literal)
-    Cls(val cls: ClassSymbol, val path: Path)
+    Cls(val cls: Symbol, val path: Path)
     Tup(val len: Int)
 
 class Result with 
@@ -67,7 +67,7 @@ class Path extends Result with
 
 class Defn with 
   constructor 
-    ValDefn(val tsym: Symbol, val sym: Symbol, val rhs: Path)
+    ValDefn(val tsym: Opt[Symbol], val sym: Symbol, val rhs: Path)
     ClsLikeDefn(val sym: ClassSymbol, val methods: Array[FunDefn], val companion: Opt[ClsLikeBody]) // companion unused
     FunDefn(val sym: Symbol, val params: Array[ParamList], val body: Block)
 
@@ -110,7 +110,9 @@ fun showPath(p: Path): Str =
     // avoids needing to import the runtime module
     Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
     Select(qual, name) then showPath(qual) + "." + showSymbol(name)
-    DynSelect(qual, fld, arrayIdx) then showPath(qual) + ".(" + showPath(fld) + ")"
+    DynSelect(qual, fld, arrayIdx) then
+      if arrayIdx then showPath(qual) + ".[" + showPath(fld) + "]"
+      else showPath(qual) + ".(" + showPath(fld) + ")"
     ValueRef(l) then showSymbol(l)
     ValueLit(lit) then showLiteral(lit)
 

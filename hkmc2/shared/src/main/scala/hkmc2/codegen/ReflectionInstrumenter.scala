@@ -127,7 +127,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)
     // FIXME: there may be more types of symbols that need to be renamed during staging
-    case _: BuiltinSymbol | _ =>
+    case _ =>
       blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(k)
 
   def transformOption[A](xOpt: Opt[A], f: A => (Path => Block) => Block)(k: Path => Block): Block = xOpt match
@@ -302,7 +302,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
         tuple(symsStaged): tup =>
           transformBlock(body): (body, ctx) =>
             blockCtor("Scoped", Ls(tup, body))(b => Scoped(syms, k(b, ctx)))
-    case _: Label | _: Break | Define(_: FunDefn, _) =>
+    case Define(_: FunDefn, _) =>
+      raise(ErrorReport(msg"Nested function definitions are not supported in staged modules: ${b.toString()}" -> N :: Nil))
+      End()
+    case _: Label | _: Break =>
       raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}.\n Try enabling :ftc." -> N :: Nil))
       End()
     case _ =>
