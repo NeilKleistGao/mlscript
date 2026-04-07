@@ -168,16 +168,16 @@ module Nonstaged with
 staged module Staged with
   fun f() = 1
 staged module CallSubst with
-  fun call() = 
-    Nonstaged.f()
-    Staged.f()
+  fun call() = Nonstaged.f() + Staged.f()
 //│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > fun ctor_() = ()
 //│ > fun call() =
-//│ >   Nonstaged.f()
-//│ >   Staged.f()
+//│ >   let {tmp, tmp1}
+//│ >   tmp = Nonstaged.f()
+//│ >   tmp1 = Staged.f()
+//│ >   tmp + tmp1
 //│ > Map(2) {
 //│ >   'ctor$' => [Function: ctor$_gen],
 //│ >   'call' => [Function: call_gen]

@@ -2,7 +2,6 @@ import "./Predef.mls"
 import "./Option.mls"
 import "./StrOps.mls"
 import "./Runtime.mls"
-import "./CachedHash.mls"
 
 open Predef
 open StrOps
@@ -18,7 +17,7 @@ type Literal = null | undefined | Str | Int | Num | Bool
 
 type ParamList = Array[Symbol]
 
-class Symbol(val name: Str) extends CachedHash
+class Symbol(val name: Str)
 class ClassSymbol(val name: Str) extends Symbol(name)
 class VirtualClassSymbol(val name: Str) extends ClassSymbol(name)
 class ConcreteClassSymbol(val name: Str, val value: Class, val paramsOpt: Opt[ParamList], val auxParams: Array[ParamList]) extends ClassSymbol(name)
@@ -43,16 +42,9 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
     else false
 
 // TODO: move this to somewhere appropriate
-// TODO: is this the only way? we cannot assign a property to a class that is not extensible 
-fun checkMap(symbolMap, key, value) = 
-  // this approach of updating the class value doesn't work if the class is not extensible
-  // if classValue.("stagedSymbol") is
-  //   v and v is Symbol then v
-  //   else set classValue.("stagedSymbol") = value; value
-  // console.log(symbolMap, value)
-  // let key = value.hash()
+fun checkMap(symbolMap, key, value) =
   let v = symbolMap.get(key)
-  if v is 
+  if v is
     Symbol then v
     else symbolMap.set(key, value); value
 
@@ -64,7 +56,7 @@ class Case with
     Cls(val cls: Symbol, val path: Path)
     Tup(val len: Int)
 
-class Result extends CachedHash with 
+class Result with
   constructor
     Call(val _fun: Path, val args: Array[Arg])
     Instantiate(val cls: Path, val args: Array[Arg]) // assume immutable
