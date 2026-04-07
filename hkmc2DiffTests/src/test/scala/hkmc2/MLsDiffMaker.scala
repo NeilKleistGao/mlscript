@@ -74,7 +74,6 @@ abstract class MLsDiffMaker extends DiffMaker:
   val liftDefns = NullaryCommand("lift")
   val importQQ = NullaryCommand("qq")
   val stageCode = NullaryCommand("staging")
-  val shapeProp = NullaryCommand("shapeProp")
   val rewriteWhile = NullaryCommand("rewriteWhile")
   val noInlineOpt = NullaryCommand("noInline")
   val inlineThreshold = Command("inlineThreshold")(_.trim.toInt)
@@ -121,7 +120,6 @@ abstract class MLsDiffMaker extends DiffMaker:
       patMatConsequentSharingThreshold = patMatConsequentSharingThreshold.get
         .orElse(Config.default.patMatConsequentSharingThreshold),
       stageCode = stageCode.isSet,
-      shapeProp = shapeProp.isSet,
       target = if wasm.isSet then CompilationTarget.Wasm else CompilationTarget.JS,
       rewriteWhileLoops = rewriteWhile.isSet,
       tailRecOpt = !noTailRecOpt.isSet,

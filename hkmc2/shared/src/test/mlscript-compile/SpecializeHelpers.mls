@@ -343,7 +343,7 @@ fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
   else funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("_dot_")
 
-fun specialize(cache, funName, dflt, shapes, useStub) =
+fun specialize(cache, funName, dflt, shapes) =
   let newName = specializeName(funName, shapes)
   if cache.getFun(newName) is
     Some(x) then [x.0.sym.name, x.1]
