@@ -343,6 +343,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
     FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false, f.configOverride)
 
+  def refreshParamList(ps: ParamList) = 
+    PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
+
   override def applyBlock(b: Block): Block = b match
     // TODO: assume staged classes have no companion module
     // find modules with staged annotation, or classes without companion module
@@ -357,7 +360,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             return End()
           val companion = ClsLikeBody(ModuleOrObjectSymbol(Tree.TypeDef(syntax.Mod, Tree.Empty(), N), Tree.Ident(defn.sym.nme)), Nil, Nil, Nil, End())
           val ctor = Begin(defn.preCtor, defn.ctor)
-          (defn.sym, companion, ctor, defn.paramsOpt, defn.methods)
+          (defn.sym, companion, ctor, defn.paramsOpt.map(refreshParamList), defn.methods)
 
       val modSym = companion.isym
 
@@ -378,7 +381,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
 
         // refresh parameters
-        val funParams = f.params.map(ps => PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme))))))
+        val funParams = f.params.map(refreshParamList)
         val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
         val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
           tuple(tups): args =>
