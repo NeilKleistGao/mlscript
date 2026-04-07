@@ -386,7 +386,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               Return(res, false)
         FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
 
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
       val (helperMethods, cacheEntries, generatorEntries) = (ctorFun :: methods).map(f =>
         val staged = stageMethod(f)
         val stagedPath = modSym.asPath.selSN(staged.sym.nme)
