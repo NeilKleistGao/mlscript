@@ -1,0 +1,244 @@
+:js
+
+import "../../mlscript-compile/NaiveRegExp.mls"
+open NaiveRegExp
+
+
+:re
+RegExp().match("foo")
+//│ ═══[RUNTIME ERROR] Error: Not implemented
+
+
+Exact("x").match("x")
+//│ = Some("x")
+
+
+Exact("x").match("")
+//│ = None
+
+
+Exact("x").match("xyz")
+//│ = Some("x")
+
+
+Any().match("x")
+//│ = Some("x")
+
+
+Any().match("")
+//│ = None
+
+
+Any().match("xyz")
+//│ = Some("x")
+
+
+Star(Exact("x")).match("")
+//│ = Some("")
+
+
+Star(Exact("x")).match("xyz")
+//│ = Some("x")
+
+
+Star(Exact("x")).match("xxxy")
+//│ = Some("xxx")
+
+
+Star(Exact("x")).match("xxxyxxx")
+//│ = Some("xxx")
+
+
+Star(Any()).match("xxxyxxx")
+//│ = Some("xxxyxxx")
+
+
+Question(Exact("x")).match("x")
+//│ = Some("x")
+
+
+Question(Exact("x")).match("y")
+//│ = Some("")
+
+
+Question(Exact("x")).match("xx")
+//│ = Some("x")
+
+
+Question(Any()).match("y")
+//│ = Some("y")
+
+
+Set([Exact("x"), Exact("y"), Exact("z")]).match("z")
+//│ = Some("z")
+
+
+Set([Exact("x"), Exact("y"), Exact("z")]).match("y")
+//│ = Some("y")
+
+Set([Exact("x"), Exact("y"), Exact("z")]).match("w")
+//│ = None
+
+
+Concat(Star(Exact("x")), Exact("y")).match("x")
+//│ = None
+
+
+Concat(Star(Exact("x")), Exact("y")).match("y")
+//│ = Some("y")
+
+
+Concat(Star(Exact("x")), Exact("y")).match("xxxxxy")
+//│ = Some("xxxxxy")
+
+
+Concat(Star(Exact("x")), Exact("y")).match("xyyyy")
+//│ = Some("xy")
+
+
+plus(Exact("x")).match("")
+//│ = None
+
+plus(Exact("x")).match("x")
+//│ = Some("x")
+
+
+plus(Exact("x")).match("y")
+//│ = None
+
+
+plus(Exact("x")).match("xxx")
+//│ = Some("xxx")
+
+
+let w = Set([Exact("a"), Exact("b"), Exact("c"), Exact("d"), Exact("e"), Exact("f"), Exact("g"), Exact("h"), Exact("i"), Exact("j"), Exact("k"), Exact("l"), Exact("m"), Exact("n"), Exact("o"), Exact("p"), Exact("q"), Exact("r"), Exact("s"), Exact("t"), Exact("u"), Exact("v"), Exact("w"), Exact("x"), Exact("y"), Exact("z")])
+//│ w = Set(
+//│   [
+//│     Exact("a"),
+//│     Exact("b"),
+//│     Exact("c"),
+//│     Exact("d"),
+//│     Exact("e"),
+//│     Exact("f"),
+//│     Exact("g"),
+//│     Exact("h"),
+//│     Exact("i"),
+//│     Exact("j"),
+//│     Exact("k"),
+//│     Exact("l"),
+//│     Exact("m"),
+//│     Exact("n"),
+//│     Exact("o"),
+//│     Exact("p"),
+//│     Exact("q"),
+//│     Exact("r"),
+//│     Exact("s"),
+//│     Exact("t"),
+//│     Exact("u"),
+//│     Exact("v"),
+//│     Exact("w"),
+//│     Exact("x"),
+//│     Exact("y"),
+//│     Exact("z")
+//│   ]
+//│ )
+
+let p = Set([Concat(
+  Exact(" "),
+  Concat(
+    Concat(Exact("t"), Star(w)),
+    Set([Exact(" "), Exact("."), Exact(",")])
+  )
+), Concat(Question(Exact("")), Concat(
+    Concat(Exact("T"), Star(w)),
+    Set([Exact(" "), Exact("."), Exact(",")])
+  ))])
+//│ p = Set(
+//│   [
+//│     Concat(
+//│       Exact(" "),
+//│       Concat(
+//│         Concat(
+//│           Exact("t"),
+//│           Star(
+//│             Set(
+//│               [
+//│                 Exact("a"),
+//│                 Exact("b"),
+//│                 Exact("c"),
+//│                 Exact("d"),
+//│                 Exact("e"),
+//│                 Exact("f"),
+//│                 Exact("g"),
+//│                 Exact("h"),
+//│                 Exact("i"),
+//│                 Exact("j"),
+//│                 Exact("k"),
+//│                 Exact("l"),
+//│                 Exact("m"),
+//│                 Exact("n"),
+//│                 Exact("o"),
+//│                 Exact("p"),
+//│                 Exact("q"),
+//│                 Exact("r"),
+//│                 Exact("s"),
+//│                 Exact("t"),
+//│                 Exact("u"),
+//│                 Exact("v"),
+//│                 Exact("w"),
+//│                 Exact("x"),
+//│                 Exact("y"),
+//│                 Exact("z")
+//│               ]
+//│             )
+//│           )
+//│         ),
+//│         Set([Exact(" "), Exact("."), Exact(",")])
+//│       )
+//│     ),
+//│     Concat(
+//│       Question(Exact("")),
+//│       Concat(
+//│         Concat(
+//│           Exact("T"),
+//│           Star(
+//│             Set(
+//│               [
+//│                 Exact("a"),
+//│                 Exact("b"),
+//│                 Exact("c"),
+//│                 Exact("d"),
+//│                 Exact("e"),
+//│                 Exact("f"),
+//│                 Exact("g"),
+//│                 Exact("h"),
+//│                 Exact("i"),
+//│                 Exact("j"),
+//│                 Exact("k"),
+//│                 Exact("l"),
+//│                 Exact("m"),
+//│                 Exact("n"),
+//│                 Exact("o"),
+//│                 Exact("p"),
+//│                 Exact("q"),
+//│                 Exact("r"),
+//│                 Exact("s"),
+//│                 Exact("t"),
+//│                 Exact("u"),
+//│                 Exact("v"),
+//│                 Exact("w"),
+//│                 Exact("x"),
+//│                 Exact("y"),
+//│                 Exact("z")
+//│               ]
+//│             )
+//│           )
+//│         ),
+//│         Set([Exact(" "), Exact("."), Exact(",")])
+//│       )
+//│     )
+//│   ]
+//│ )
+
+matchAll(p, "To be or not to be, that is the question.")
+//│ = ["To ", " to ", " that ", " the "]

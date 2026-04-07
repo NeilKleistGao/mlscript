@@ -1,0 +1,67 @@
+import "./Predef.mls"
+import "./Option.mls"
+open Predef
+open Option
+
+module NaiveRegExp with
+  class RegExp() with
+    fun match(s) = ???
+
+  class Exact(val p) extends RegExp with // single character
+    fun match(s) = if s.length > 0 and s.0 === p then Some(p) else None
+
+  class Any() extends RegExp with // pattern `.`
+    fun match(s) = if s.length > 0 then Some(s.0) else None
+
+  class Star(val r) extends RegExp with // pattern (...)*
+    fun match(s) =
+      if r.match(s) is
+        Some(ss) then
+          let rst = s.slice(ss.length)
+          if match(rst) is
+            Some(ss2) then Some(ss + ss2)
+            None then Some(ss)
+        None then Some("")
+
+  class Question(val r) extends RegExp with // pattern (...)?
+    fun match(s) =
+      if r.match(s) is
+        Some(ss) then Some(ss)
+        None then Some("")
+
+  class Set(val rs) extends RegExp with // pattern (r1 | r2 | r3 | ...)
+    fun match(s) =
+      fun impl(s, rs) =
+        if rs.length === 0 then None
+        else
+          if rs.0.match(s) is
+            Some(ss) then Some(ss)
+            None then impl(s, rs.slice(1))  
+      impl(s, rs)
+
+  class Concat(val r1, val r2) extends RegExp with // pattern r1 r2 r3 ...
+    fun match(s) =
+      if r1.match(s) is
+        Some(ss1) then
+          let rst = s.slice(ss1.length)
+          if r2.match(rst) is
+            Some(ss2) then Some(ss1 + ss2)
+            None then None
+        None then None
+
+  fun plus(r) = Concat(r, Star(r)) // pattern (...)+ 
+
+
+  fun matchAll(p, s) =
+    fun impl(s, res) = 
+      if s === "" then res
+      else
+        if p.match(s) is
+          Some(ss) then
+            let sc = if ss.length === 0 then 1 else ss.length
+            let rst = s.slice(sc)
+            impl(rst, res.concat(ss))
+          None then 
+            let rst = s.slice(1) // TODO: improve?
+            impl(rst, res)
+    impl(s, [])
