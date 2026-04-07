@@ -129,7 +129,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
           blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap(toValue(sym.nme), _, stagingCtx))
         case baseSym: BaseTypeSymbol =>
           val name = scope.allocateOrGetName(sym)
-          // FIXME: we want the parent path for subtyping, but it is only available for ClsLikeDefn, not ClassDef
           val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
             case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
             case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
@@ -263,9 +262,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
     case Case.Field(name, safe) =>
       raise(ErrorReport(msg"Case.Field not supported in staged module." -> name.toLoc :: Nil))
       End()
-
-  // def transformBlock(b: Block)(using Context)(k: Path => Block): Block =
-  //   transformBlock(b)((p, _) => k(p))
 
   def transformBlock(b: Block)(using ctx: Context)(k: (Path, Context) => Block): Block = b match
     case Return(res, implct) =>
