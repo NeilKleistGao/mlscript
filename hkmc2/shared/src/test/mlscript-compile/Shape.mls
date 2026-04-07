@@ -2,7 +2,7 @@ import "./Block.mls"
 import "./Option.mls"
 import "./CachedHash.mls"
 
-open Block { Literal, ClassSymbol, showSymbol, isPrimitiveType, isPrimitiveTypeOf }
+open Block { Literal, ConcreteClassSymbol, showSymbol, isPrimitiveType, isPrimitiveTypeOf }
 open Option
 
 type Shape = Shape.Shape
@@ -14,7 +14,7 @@ class Shape extends CachedHash with
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape])
-    Class(val sym: ClassSymbol, val params: Array[Shape]) // TODO: track the auxParams as well
+    Class(val sym: ConcreteClassSymbol, val params: Array[Shape]) // TODO: track the auxParams as well
 
 fun show(s: Shape) =
   if s is
@@ -25,11 +25,11 @@ fun show(s: Shape) =
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
-    [Class(ClassSymbol(_, _, paramsOpt, auxParams), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
+    [Class(ConcreteClassSymbol(_, _, paramsOpt, auxParams), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
       paramsSymb.map(_.name).indexOf(n) is
         -1 then []
         n then [params.(n)]
-    [Class(ClassSymbol, p), Dyn] then [Dyn()]
+    [Class(ConcreteClassSymbol, p), Dyn] then [Dyn()]
     [Dyn, Lit(n)] and 
       n is Str then [Dyn()]
       n is Int then [Dyn()]

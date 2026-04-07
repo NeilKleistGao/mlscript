@@ -49,41 +49,35 @@ print(Test."cache$Test")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type Test.
 //│ ║  l.36: 	print(Test."cache$Test")
 //│ ╙──      	      ^^^^
-//│ > fun test() = 20
 //│ > fun f_Lit2_Lit2(x, y) = 4
-//│ > fun fib_Lit4(n) = 3
-//│ > fun fib_Lit3(n) = 2
-//│ > fun fib_Lit2(n) = 1
-//│ > fun fib_Lit1(n) = 1
-//│ > fun pyth_Lit2_Lit4(x, y) = 20
-//│ > fun test2(n) =
-//│ >   let dyn
-//│ >   let tmp10
-//│ >   dyn = Test.pyth_Dyn_Lit2(n, 2)
-//│ >   tmp10 = *(dyn, 2)
-//│ >   Test.fib(tmp10)
-//│ > fun pyth_Dyn_Lit2(x, y) =
-//│ >   let tmp6
-//│ >   let tmp7
-//│ >   tmp6 = NonStaged.sq(x)
-//│ >   tmp7 = 4
-//│ >   tmp6 + tmp7
 //│ > fun fib(n) =
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let tmp4
-//│ >   let n
-//│ >   let tmp5
+//│ >   let {tmp2, tmp3, tmp4, tmp5, n}
 //│ >   if n is
 //│ >     1 then 1
 //│ >     2 then 1
-//│ >     else 
+//│ >     else
 //│ >       n = n
-//│ >       tmp5 = n - 1
-//│ >       tmp2 = Test.fib(tmp5)
-//│ >       tmp3 = n - 2
-//│ >       tmp4 = Test.fib(tmp3)
-//│ >       tmp2 + tmp4
+//│ >       tmp2 = n - 1
+//│ >       tmp3 = Test.fib(tmp2)
+//│ >       tmp4 = n - 2
+//│ >       tmp5 = Test.fib(tmp4)
+//│ >       tmp3 + tmp5
+//│ > fun fib_Lit1(n) = 1
+//│ > fun fib_Lit2(n) = 1
+//│ > fun fib_Lit3(n) = 2
+//│ > fun fib_Lit4(n) = 3
+//│ > fun pyth_Dyn_Lit2(x, y) =
+//│ >   let {tmp6, tmp7}
+//│ >   tmp6 = NonStaged.sq(x)
+//│ >   tmp7 = 4
+//│ >   tmp6 + tmp7
+//│ > fun pyth_Lit2_Lit4(x, y) = 20
+//│ > fun test() = 20
+//│ > fun test2(n) =
+//│ >   let {dyn, tmp10}
+//│ >   dyn = Test.pyth_Dyn_Lit2(n, 2)
+//│ >   tmp10 = *(dyn, 2)
+//│ >   Test.fib(tmp10)
 
 class C(val x)
 
@@ -102,17 +96,17 @@ print(TestIf."cache$TestIf")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'TestIf' does not contain member 'test_gen'
-//│ ║  l.100: 	TestIf.test_gen()
-//│ ╙──       	      ^^^^^^^^^
+//│ ║  l.94: 	TestIf.test_gen()
+//│ ╙──      	      ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestIf.
-//│ ║  l.101: 	print(TestIf."cache$TestIf")
-//│ ╙──       	      ^^^^^^
-//│ > fun test() = "else"
+//│ ║  l.95: 	print(TestIf."cache$TestIf")
+//│ ╙──      	      ^^^^^^
 //│ > fun f_C_Lit2(x) = "C(2)"
 //│ > fun f_C_Lit3(x) = "C"
 //│ > fun f_Lit2(x) = "else"
+//│ > fun test() = "else"
 
 :noSanityCheck
 class C(val n)
@@ -135,37 +129,36 @@ print(TestIf2."cache$TestIf2")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'TestIf2' does not contain member 'test_gen'
-//│ ║  l.131: 	TestIf2.test_gen()
+//│ ║  l.125: 	TestIf2.test_gen()
 //│ ╙──       	       ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'TestIf2' does not contain member 'test2_gen'
-//│ ║  l.132: 	TestIf2.test2_gen(mkDyn())
+//│ ║  l.126: 	TestIf2.test2_gen(mkDyn())
 //│ ╙──       	       ^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'TestIf2' does not contain member 'test3_gen'
-//│ ║  l.133: 	TestIf2.test3_gen()
+//│ ║  l.127: 	TestIf2.test3_gen()
 //│ ╙──       	       ^^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestIf2.
-//│ ║  l.134: 	print(TestIf2."cache$TestIf2")
+//│ ║  l.128: 	print(TestIf2."cache$TestIf2")
 //│ ╙──       	      ^^^^^^^
-//│ > fun test() = 3
+//│ > fun f_C_Dyn(x) =
+//│ >   let {tmp, y}
+//│ >   y = x.n
+//│ >   tmp = ()
+//│ >   y + 1
 //│ > fun f_C_Lit2(x) = 3
+//│ > fun f_Lit0(x) = 1
+//│ > fun test() = 3
 //│ > fun test2(dyn) =
-//│ >   let tmp2
+//│ >   let {tmp2}
 //│ >   tmp2 = C(dyn)
 //│ >   TestIf2.f_C_Dyn(tmp2)
-//│ > fun f_C_Dyn(x) =
-//│ >   let tmp
-//│ >   let y
-//│ >   y = x.n
-//│ >   tmp = Runtime.Unit
-//│ >   y + 1
 //│ > fun test3() = 1
-//│ > fun f_Lit0(x) = 1
 
 staged module TestTuple with
   fun first(x) = if x is
@@ -183,30 +176,26 @@ print(TestTuple."cache$TestTuple")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'TestTuple' does not contain member 'test_gen'
-//│ ║  l.181: 	TestTuple.test_gen(mkDyn())
+//│ ║  l.174: 	TestTuple.test_gen(mkDyn())
 //│ ╙──       	         ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestTuple.
-//│ ║  l.182: 	print(TestTuple."cache$TestTuple")
+//│ ║  l.175: 	print(TestTuple."cache$TestTuple")
 //│ ╙──       	      ^^^^^^^^^
-//│ > fun test(y) =
-//│ >   let tmp
-//│ >   let tmp1
-//│ >   let t
-//│ >   t = [10, y]
-//│ >   tmp = TestTuple.first_Arr_Lit10_Dyn_end(t)
-//│ >   tmp1 = TestTuple.second_Arr_Lit10_Dyn_end(t)
-//│ >   tmp + tmp1
 //│ > fun first_Arr_Lit10_Dyn_end(x) = 10
 //│ > fun second_Arr_Lit10_Dyn_end(x) =
-//│ >   let b
-//│ >   let element1_1
-//│ >   let element0_1
+//│ >   let {element1_1, element0_1, b}
 //│ >   element0_1 = x.(0)
 //│ >   element1_1 = x.(1)
 //│ >   b = element1_1
 //│ >   b
+//│ > fun test(y) =
+//│ >   let {t, tmp, tmp1}
+//│ >   t = [10, y]
+//│ >   tmp = 10
+//│ >   tmp1 = TestTuple.second_Arr_Lit10_Dyn_end(t)
+//│ >   tmp + tmp1
 
 staged class L1() with
   fun call(x) = x + 2
@@ -224,58 +213,50 @@ staged module M with
     twice(m, 5) + y
 
 M.foo_gen(mkDyn())
+print(M."cache$M")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'foo_gen'
-//│ ║  l.226: 	M.foo_gen(mkDyn())
+//│ ║  l.215: 	M.foo_gen(mkDyn())
 //│ ╙──       	 ^^^^^^^^
-//│ = ["foo", {Dyn()}]
-
-print(M."cache$M")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.234: 	print(M."cache$M")
+//│ ║  l.216: 	print(M."cache$M")
 //│ ╙──       	      ^
+//│ > fun call_L1_Lit5(this, arg0) = 7
+//│ > fun call_L1_Lit7(this, arg0) = 9
+//│ > fun call_Union_L2_L3_end_Lit5(this, arg0) =
+//│ >   if this is
+//│ >     L2() then call_L2__Lit5(this, arg0)
+//│ >     L3() then call_L3__Lit5(this, arg0)
+//│ > fun call_Union_L2_L3_end_Union_Lit5_Lit10_end(this, arg0) =
+//│ >   if this is
+//│ >     L2() then call_L2__Union_Lit5_Lit10_end(this, arg0)
+//│ >     L3() then call_L3__Union_Lit5_Lit10_end(this, arg0)
 //│ > fun foo(b) =
-//│ >   let y
-//│ >   let tmp1
-//│ >   let tmp2
-//│ >   let tmp3
-//│ >   let m
-//│ >   let tmp4
-//│ >   tmp1 = new L1()
-//│ >   y = M.twice_L1_Lit5(tmp1, 5)
-//│ >   tmp2 = new L2()
-//│ >   tmp3 = new L3()
+//│ >   let {y, tmp1, tmp2, tmp3, m, tmp4}
+//│ >   tmp1 = new L1
+//│ >   y = 9
+//│ >   tmp2 = new L2
+//│ >   tmp3 = new L3
 //│ >   m = M.pick_L2_L3_Dyn(tmp2, tmp3, b)
 //│ >   tmp4 = M.twice_Union_L2_L3_end_Lit5(m, 5)
 //│ >   tmp4 + y
-//│ > fun twice_L1_Lit5(f, x) = 9
-//│ > fun call_L1_Lit5(recv, arg0) = 7
-//│ > fun call_L1_Lit7(recv, arg0) = 9
 //│ > fun pick_L2_L3_Dyn(x, y, b) =
-//│ >   let obj_1
-//│ >   let obj_2
+//│ >   let {obj_1, obj_2}
 //│ >   if b is
 //│ >     true then
-//│ >       obj_1 = new L2()
+//│ >       obj_1 = new L2
 //│ >       obj_1
-//│ >     else 
-//│ >       obj_2 = new L3()
+//│ >     else
+//│ >       obj_2 = new L3
 //│ >       obj_2
+//│ > fun twice_L1_Lit5(f, x) = 9
 //│ > fun twice_Union_L2_L3_end_Lit5(f, x) =
-//│ >   let tmp
+//│ >   let {tmp}
 //│ >   tmp = call_Union_L2_L3_end_Lit5(f, x)
 //│ >   call_Union_L2_L3_end_Union_Lit5_Lit10_end(f, tmp)
-//│ > fun call_Union_L2_L3_end_Lit5(recv, arg0) =
-//│ >   if recv is
-//│ >     L2 then recv.call_L2__Lit5(arg0)
-//│ >     L3 then recv.call_L3__Lit5(arg0)
-//│ > fun call_Union_L2_L3_end_Union_Lit5_Lit10_end(recv, arg0) =
-//│ >   if recv is
-//│ >     L2 then recv.call_L2__Union_Lit5_Lit10_end(arg0)
-//│ >     L3 then recv.call_L3__Union_Lit5_Lit10_end(arg0)
 
 print(L2.class."cache$L2")
 print(L3.class."cache$L3")
@@ -297,17 +278,30 @@ print(TestThis."cache$TestThis")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test_gen'
-//│ ║  l.295: 	TestThis.test_gen()
+//│ ║  l.276: 	TestThis.test_gen()
 //│ ╙──       	        ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestThis.
-//│ ║  l.296: 	print(TestThis."cache$TestThis")
+//│ ║  l.277: 	print(TestThis."cache$TestThis")
 //│ ╙──       	      ^^^^^^^^
+//│ > fun f_B_Lit2_A_Lit2(this, arg0) = 4
 //│ > fun test() = 4
-//│ > fun f_B_Lit2_A_Lit2(recv, arg0) = 4
 
 :todo
 staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
+
+staged class C1(val n) with
+  fun f() = n
+
+staged class C2(val n) with
+  fun f() = n
+
+staged module M with
+  fun pick(b) = if b then C1(2) else C2(3)
+  fun test(b) = pick(b).f()
+
+C1.class."cache$C1"
+//│ = 

@@ -5,7 +5,7 @@ import "./Predef.mls"
 import "./Shape.mls"
 import "./StrOps.mls"
 
-open Block {ClassSymbol}
+open Block {ConcreteClassSymbol}
 open Shape {Dyn, Lit, Arr, Class}
 open Predef
 open Option
@@ -62,7 +62,7 @@ fun mkArr(shapes: Array[ShapeSet]) =
     .map(x => Arr(x))
     |> liftMany
 
-fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) = 
+fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) = 
   params
     .map(_.shapeset.values().toArray())
     |> prod
@@ -91,7 +91,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then new! value(...params.map(valOf))
+    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams), params) then new! value(...params.map(valOf))
     else throw Error("Unknown shape")
 
 fun valOfSet(s : ShapeSet) = 
@@ -120,7 +120,7 @@ fun val2path(v, allocs) =
     let meta = v.constructor.(Symbols.definitionMetadata)
     let clsName = meta.1
     let paramNames = meta.2
-    let classSym = Block.ClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ClassSymbol
+    let classSym = Block.ConcreteClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ConcreteClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs))
     let blocks = mapped.map(_.0)
     let paths = mapped.map(_.1)
