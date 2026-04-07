@@ -224,16 +224,6 @@ print(M."cache$M")
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.216: 	print(M."cache$M")
 //│ ╙──       	      ^
-//│ > fun call_L1_Lit5(this, arg0) = 7
-//│ > fun call_L1_Lit7(this, arg0) = 9
-//│ > fun call_Union_L2_L3_end_Lit5(this, arg0) =
-//│ >   if this is
-//│ >     L2() then call_L2__Lit5(this, arg0)
-//│ >     L3() then call_L3__Lit5(this, arg0)
-//│ > fun call_Union_L2_L3_end_Union_Lit5_Lit10_end(this, arg0) =
-//│ >   if this is
-//│ >     L2() then call_L2__Union_Lit5_Lit10_end(this, arg0)
-//│ >     L3() then call_L3__Union_Lit5_Lit10_end(this, arg0)
 //│ > fun foo(b) =
 //│ >   let {y, tmp1, tmp2, tmp3, m, tmp4}
 //│ >   tmp1 = new L1
@@ -255,15 +245,23 @@ print(M."cache$M")
 //│ > fun twice_L1_Lit5(f, x) = 9
 //│ > fun twice_Union_L2_L3_end_Lit5(f, x) =
 //│ >   let {tmp}
-//│ >   tmp = call_Union_L2_L3_end_Lit5(f, x)
-//│ >   call_Union_L2_L3_end_Union_Lit5_Lit10_end(f, tmp)
+//│ >   tmp = L2.call_Union_L2_L3_end_Lit5(f, x)
+//│ >   L2.call_Union_L2_L3_end_Union_Lit5_Lit10_end(f, tmp)
 
 print(L2.class."cache$L2")
 print(L3.class."cache$L3")
-//│ > fun call_L2__Lit5(x) = 5
-//│ > fun call_L2__Union_Lit5_Lit10_end(x) = x
-//│ > fun call_L3__Lit5(x) = 10
-//│ > fun call_L3__Union_Lit5_Lit10_end(x) = *(x, 2)
+//│ > fun call_L2__Lit5(this, x) = 5
+//│ > fun call_L2__Union_Lit5_Lit10_end(this, x) = x
+//│ > fun call_Union_L2_L3_end_Lit5(this, arg0) =
+//│ >   if this is
+//│ >     L2 then L2.call_L2__Lit5(this, arg0)
+//│ >     L3 then L3.call_L3__Lit5(this, arg0)
+//│ > fun call_Union_L2_L3_end_Union_Lit5_Lit10_end(this, arg0) =
+//│ >   if this is
+//│ >     L2 then L2.call_L2__Union_Lit5_Lit10_end(this, arg0)
+//│ >     L3 then L3.call_L3__Union_Lit5_Lit10_end(this, arg0)
+//│ > fun call_L3__Lit5(this, x) = 10
+//│ > fun call_L3__Union_Lit5_Lit10_end(this, x) = *(x, 2)
 
 staged class A(val x: Int) with
   fun f(y: Int) = this.x + y
@@ -278,14 +276,13 @@ print(TestThis."cache$TestThis")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
 //│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test_gen'
-//│ ║  l.276: 	TestThis.test_gen()
+//│ ║  l.274: 	TestThis.test_gen()
 //│ ╙──       	        ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestThis.
-//│ ║  l.277: 	print(TestThis."cache$TestThis")
+//│ ║  l.275: 	print(TestThis."cache$TestThis")
 //│ ╙──       	      ^^^^^^^^
-//│ > fun f_B_Lit2_A_Lit2(this, arg0) = 4
 //│ > fun test() = 4
 
 :todo

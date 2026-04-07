@@ -36,14 +36,13 @@ class Ctx(
   val ctx: Map[String, ShapeSet], 
   val allocs: Array[Block.Symbol],
   val currentThis: Option[Block.ClassSymbol],
-  val thisShape: ShapeSet,
-  val cache: FunCache
+  val thisShape: ShapeSet
 ) with
   fun get(path) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then Some(ctx.get(ps))
     else None
-  fun clone = Ctx(new Map(ctx), allocs, currentThis, thisShape, cache)
+  fun clone = Ctx(new Map(ctx), allocs, currentThis, thisShape)
   fun add(path, ss) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then
@@ -52,8 +51,7 @@ class Ctx(
       ctx.set(ps, ss)
     this
 module Ctx with
-  fun empty() = Ctx(new Map(), mut [], None, mkBot(), new FunCache(new Map()))
-  fun withCache(cache) = Ctx(new Map(), mut [], None, mkBot(), cache)
+  fun empty() = Ctx(new Map(), mut [], None, mkBot())
 
 class FunCache(val cache: Map[String, [Block.FunDefn, ShapeSet]]) with
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
@@ -194,14 +192,19 @@ fun sor(ctx, r) = if r is
           [End(), r, mkDyn()] 
         else
           let wrapperName = specializeName(f, [ [pss, ...argShapes] ])
-          if ctx.cache.getFun(wrapperName) is
+          let C_0 = [...knownMap.entries()].0.0
+          let actualClass0 = getActualClass(C_0.value)
+          let clsName0 = actualClass0.(Symbols.definitionMetadata).1
+          let cacheName0 = "cache$" + clsName0
+          let clsCache = actualClass0.(cacheName0)
+          if clsCache.getFun(wrapperName) is
             Some(x) and 
               staticSet(x.1) then
                 let v2p = val2path(valOfSet(x.1), ctx.allocs)
                 [v2p.0, v2p.1, x.1]
-              else if ctx.cache.getFun(wrapperName) is
+              else if clsCache.getFun(wrapperName) is
                 Some(x) then
-                  [End(), Call(ValueRef(Symbol(wrapperName)), [Arg(ValueRef(symb)), ...args]), x.1]
+                  [End(), Call(Select(ValueRef(Symbol(clsName0)), Symbol(wrapperName)), [Arg(ValueRef(symb)), ...args]), x.1]
                 else throw Error("FIXME")
             None then
               let recvSym = Symbol("this")
@@ -224,13 +227,13 @@ fun sor(ctx, r) = if r is
                   let v2p = val2path(valOfSet(retShape), allocs)
                   wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
                 else
-                  Return(Call(ValueRef(Symbol(retSym)), [Arg(ValueRef(recvSym)), ...argSymRefs.map(s => Arg(ValueRef(s)))]), false)
-                ctx.cache.setFun(wrapperName, [FunDefn(Symbol(wrapperName), ps, body), retShape])
+                  Return(Call(Select(ValueRef(Symbol(clsName)), Symbol(retSym)), [Arg(ValueRef(recvSym)), ...argSymRefs.map(s => Arg(ValueRef(s)))]), false)
+                clsCache.setFun(wrapperName, [FunDefn(Symbol(wrapperName), ps, body), retShape])
                 if staticSet(retShape) then
                   let v2p = val2path(valOfSet(retShape), ctx.allocs)
                   [v2p.0, v2p.1, retShape]
                 else
-                  [End(), Call(ValueRef(Symbol(wrapperName)), [Arg(ValueRef(symb)), ...args]), retShape]
+                  [End(), Call(Select(ValueRef(Symbol(clsName0)), Symbol(wrapperName)), [Arg(ValueRef(symb)), ...args]), retShape]
               else
                 let armsRet = [...knownMap.entries()].map(entry =>
                   let C_i = entry.0
@@ -243,7 +246,7 @@ fun sor(ctx, r) = if r is
                   let generated = f_gen(ss_i)(...argShapes)
                   let retSym = generated.0
                   let retShape = generated.1
-                  let callRes = Call(ValueRef(Symbol(retSym)), [Arg(ValueRef(recvSym)), ...argSymRefs.map(s => Arg(ValueRef(s)))])
+                  let callRes = Call(Select(ValueRef(Symbol(clsName)), Symbol(retSym)), [Arg(ValueRef(recvSym)), ...argSymRefs.map(s => Arg(ValueRef(s)))])
                   [Arm(Cls(C_i, ValueRef(recvSym)), Return(callRes, false)), retShape]
                 )
                 let armsAcc = armsRet.map(x => x.0)
@@ -254,12 +257,12 @@ fun sor(ctx, r) = if r is
                 let dflt = dfltRet.0
                 let totalRetShape = union(totalStagedRetShape, dfltRet.1)
                 let matchBody = Match(ValueRef(recvSym), armsAcc, dflt, End())
-                ctx.cache.setFun(wrapperName, [FunDefn(Symbol(wrapperName), ps, matchBody), totalRetShape])
+                clsCache.setFun(wrapperName, [FunDefn(Symbol(wrapperName), ps, matchBody), totalRetShape])
                 if staticSet(totalRetShape) then
                   let v2p = val2path(valOfSet(totalRetShape), ctx.allocs)
                   [v2p.0, v2p.1, totalRetShape]
                 else
-                  [End(), Call(ValueRef(Symbol(wrapperName)), [Arg(ValueRef(symb)), ...args]), totalRetShape]
+                  [End(), Call(Select(ValueRef(Symbol(clsName0)), Symbol(wrapperName)), [Arg(ValueRef(symb)), ...args]), totalRetShape]
       else throw Error("unknown call in sor: " + r.toString())
   else throw Error("unknown result in sor: " + r.toString())
 
@@ -270,7 +273,7 @@ fun prop(ctx, b) = if b is
     Scoped(symbols, rest) then
       symbols.forEach((x, _, _) => ctx.add(ValueRef(x), mkBot()))
       let newAllocs = mut []
-      let newCtx = Ctx(new Map(ctx.ctx), newAllocs, ctx.currentThis, ctx.thisShape, ctx.cache)
+      let newCtx = Ctx(new Map(ctx.ctx), newAllocs, ctx.currentThis, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
     Assign(x, r, b) and 
@@ -346,12 +349,14 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
       defn is FunDefn(Symbol(_), ps, body) then
         let isMethod = shapes.length > ps.length // TODO: clean up
         let paramShapes = if isMethod then shapes.slice(1) else shapes
+        let newPs = if isMethod then [ [Symbol("this"), ...ps.(0)], ...ps.slice(1) ] else ps
         let ctx = if isMethod then
           let clsSymb = shapes.(0).(0).values().0.sym
-          Ctx(new Map(), mut [], Some(clsSymb), shapes.(0).(0), cache)
-        else Ctx.withCache(cache)
+          Ctx(new Map(), mut [], Some(clsSymb), shapes.(0).(0))
+        else Ctx.empty()
+        if isMethod do ctx.add(ValueRef(Symbol("this")), shapes.(0).(0))
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
-        cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
+        cache.setFun(newName, [FunDefn(Symbol(newName), newPs, body), mkDyn()])
         let propFun = prop
         let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
@@ -360,6 +365,6 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
           let v2p = val2path(valOfSet(res.1), allocs)
           wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
         else bodyWithScoped
-        let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, finalBody), res.1])
+        let entry = cache.setFun(newName, [FunDefn(Symbol(newName), newPs, finalBody), res.1])
         [entry.0.sym.name, entry.1]
     else throw Error("cache error")
