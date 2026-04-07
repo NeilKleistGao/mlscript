@@ -119,9 +119,12 @@ fun sor(ctx, r) = if r is
           [End(), recovered, sop(ctx, recovered)]
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
         throw Error("runtime.Tuple.slice not handled in shape propagation")
-      // Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ClassSymbol then // FIXME
-      ValueRef(clsSymb) and clsSymb is ClassSymbol then
+      Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ClassSymbol then // class within module
         [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
+      ValueRef(clsSymb) and clsSymb is ClassSymbol then // global class
+        [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
+      ValueRef(Symbol("super")) then
+        print("superman detected!")
       ValueRef(symb) and  // built-in or top-level
         let name = symb.name
         args is
@@ -188,7 +191,7 @@ fun sor(ctx, r) = if r is
         let splitted = fsplit(pss)
         let knownMap = splitted.0
         let unkShape = splitted.1
-        if knownMap.size == 0 then 
+        if knownMap.size is 0 then
           [End(), r, mkDyn()] 
         else
           let wrapperName = specializeName(f, [ [pss, ...argShapes] ])
@@ -210,7 +213,7 @@ fun sor(ctx, r) = if r is
               let recvSym = Symbol("this")
               let argSymRefs = args.map((a, i, _) => Symbol("arg" + i))
               let ps = [ [recvSym, ...argSymRefs] ]
-              if knownMap.size == 1 and unkShape.isEmpty() then
+              if knownMap.size is 1 and unkShape.isEmpty() then
                 let entry = [...knownMap.entries()].0
                 let C_i = entry.0
                 let ss_i = entry.1
@@ -338,7 +341,7 @@ fun buildShapeSetName(ss: ShapeSet): Str =
 
 fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
-  else funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("__")
+  else funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("_dot_")
 
 fun specialize(cache, funName, dflt, shapes, useStub) =
   let newName = specializeName(funName, shapes)
@@ -349,12 +352,12 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
       defn is FunDefn(Symbol(_), ps, body) then
         let isMethod = shapes.length > ps.length // TODO: clean up
         let paramShapes = if isMethod then shapes.slice(1) else shapes
-        let newPs = if isMethod then [ [Symbol("this"), ...ps.(0)], ...ps.slice(1) ] else ps
+        let newPs = if isMethod then [ [Symbol("_this"), ...ps.(0)], ...ps.slice(1) ] else ps
         let ctx = if isMethod then
           let clsSymb = shapes.(0).(0).values().0.sym
           Ctx(new Map(), mut [], Some(clsSymb), shapes.(0).(0))
         else Ctx.empty()
-        if isMethod do ctx.add(ValueRef(Symbol("this")), shapes.(0).(0))
+        if isMethod do ctx.add(ValueRef(Symbol("_this")), shapes.(0).(0))
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
         cache.setFun(newName, [FunDefn(Symbol(newName), newPs, body), mkDyn()])
         let propFun = prop
