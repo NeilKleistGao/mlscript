@@ -56,7 +56,7 @@ def toValue(lit: Str | Int | BigDecimal | Bool): Value =
   Value.Lit(l)
 
 // transform Block to Block IR so that it can be instrumented in mlscript
-class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTransformer(SymbolSubst.Id):
+class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(SymbolSubst.Id):
   // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
   val scope = Scope.empty(Scope.Cfg.default)
   val defnMap = HashMap[Symbol, ClsLikeDefn | ClsLikeBody]()
@@ -380,7 +380,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx, Config) extends BlockTrans
         val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
         val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
           tuple(tups): args =>
-            call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args, toValue(!config.shapeProp))): res =>
+            call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
               Return(res, false)
         FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
 
