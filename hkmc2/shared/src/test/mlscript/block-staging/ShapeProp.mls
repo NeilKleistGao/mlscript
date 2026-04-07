@@ -250,18 +250,18 @@ print(M."cache$M")
 
 print(L2.class."cache$L2")
 print(L3.class."cache$L3")
-//│ > fun call_L2__Lit5(this, x) = 5
-//│ > fun call_L2__Union_Lit5_Lit10_end(this, x) = x
+//│ > fun call_L2_dot_Lit5(_this, x) = 5
+//│ > fun call_L2_dot_Union_Lit5_Lit10_end(_this, x) = x
 //│ > fun call_Union_L2_L3_end_Lit5(this, arg0) =
 //│ >   if this is
-//│ >     L2 then L2.call_L2__Lit5(this, arg0)
-//│ >     L3 then L3.call_L3__Lit5(this, arg0)
+//│ >     L2() then L2.call_L2_dot_Lit5(this, arg0)
+//│ >     L3() then L3.call_L3_dot_Lit5(this, arg0)
 //│ > fun call_Union_L2_L3_end_Union_Lit5_Lit10_end(this, arg0) =
 //│ >   if this is
-//│ >     L2 then L2.call_L2__Union_Lit5_Lit10_end(this, arg0)
-//│ >     L3 then L3.call_L3__Union_Lit5_Lit10_end(this, arg0)
-//│ > fun call_L3__Lit5(this, x) = 10
-//│ > fun call_L3__Union_Lit5_Lit10_end(this, x) = *(x, 2)
+//│ >     L2() then L2.call_L2_dot_Union_Lit5_Lit10_end(this, arg0)
+//│ >     L3() then L3.call_L3_dot_Union_Lit5_Lit10_end(this, arg0)
+//│ > fun call_L3_dot_Lit5(_this, x) = 10
+//│ > fun call_L3_dot_Union_Lit5_Lit10_end(_this, x) = *(x, 2)
 
 staged class A(val x: Int) with
   fun f(y: Int) = this.x + y
@@ -269,21 +269,25 @@ staged class B(val x: Int) with
   fun f(y: A) = y.f(this.x)
 
 staged module TestThis with
-  fun test() = B(2).f(A(2))
+  fun test(x) = B(x).f(A(x))
 
-TestThis.test_gen()
+:fixme
+TestThis.test_gen(mkDyn())
 print(TestThis."cache$TestThis")
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
+print(B.class."cache$B")
 //│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test_gen'
-//│ ║  l.274: 	TestThis.test_gen()
+//│ ║  l.275: 	TestThis.test_gen(mkDyn())
 //│ ╙──       	        ^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestThis.
-//│ ║  l.275: 	print(TestThis."cache$TestThis")
+//│ ║  l.276: 	print(TestThis."cache$TestThis")
 //│ ╙──       	      ^^^^^^^^
-//│ > fun test() = 4
+//│ > fun test(x) =
+//│ >   let {tmp, tmp1}
+//│ >   tmp = B(x)
+//│ >   tmp1 = A(x)
+//│ >   B.f_B_Dyn_A_Dyn(tmp, tmp1)
+//│ > fun f_B_Dyn_A_Dyn(this, arg0) = B.f_B_Dyn_dot_A_Dyn(this, arg0)
+//│ > fun f_B_Dyn_dot_A_Dyn(_this, y) = A.f_A_Dyn_Dyn(y, B1.x)
 
 :todo
 staged class D(val x) extends B(x+1) with
