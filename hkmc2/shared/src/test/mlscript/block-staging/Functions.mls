@@ -412,24 +412,12 @@ staged module NestedFunDefn with
 :todo force enable :ftc to desugar Label and Break
 staged module M with
   fun f() = if 1 is
-//│ ╔══[PARSE ERROR] Expected start of expression in this position; found end of input instead
-//│ ║  l.414: 	  fun f() = if 1 is
-//│ ╙──       	                   ^
-//│ ╔══[COMPILATION ERROR] Unrecognized pattern split (‹erroneous syntax›).
-//│ ║  l.414: 	  fun f() = if 1 is
-//│ ╙──       	                   ^
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Throw(Lit(StrLit(This code cannot be run as its compilation yielded an error.)))
-//│ ═══[COMPILATION ERROR] No definition found in scope for member 'scrut'
-//│ ═══[RUNTIME ERROR] ReferenceError: scrut is not defined
     0 then 1 + 1 + 1
     1 then 1 + 1 + 1
     else 1 + 1 + 1
-//│ ╔══[COMPILATION ERROR] Unexpected infix use of keyword 'then' here
-//│ ║  l.424: 	    0 then 1 + 1 + 1
-//│ ║         	    ^^^^^^^^^^^^^^^^
-//│ ║  l.425: 	    1 then 1 + 1 + 1
-//│ ╙──       	^^^^^
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:split_root$,false,Label(label:split_1$,false,Assign(tmp:scrut,Lit(IntLit(1)),Match(Ref(tmp:scrut,None),List((Lit(IntLit(0)),Break(label:split_1$)), (Lit(IntLit(1)),Break(label:split_1$))),Some(Break(label:split_1$)),End())),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Lit(IntLit(1))), Arg(None,Lit(IntLit(1))))),Return(Call(Ref(builtin:+,None),List(Arg(None,Ref(tmp:tmp,None)), Arg(None,Lit(IntLit(1))))),false))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
+//│  Try enabling :ftc.
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 :e
 class C(val a)
@@ -439,7 +427,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.439: 	  fun g() = {1 : 2}
+//│ ║  l.427: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
