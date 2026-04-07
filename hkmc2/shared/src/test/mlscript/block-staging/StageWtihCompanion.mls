@@ -1,0 +1,26 @@
+:js
+:staging
+
+staged class M with
+  fun f() = 1
+staged module M with
+  fun g() = 2
+//│ > fun ctor_() = ()
+//│ > fun g() = 2
+//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'g' => [Function: g_gen] }
+//│ > fun class_ctor_() = ()
+//│ > fun f() = 1
+//│ > Map(2) {
+//│ >   'class$ctor$' => [Function: class$ctor$_gen],
+//│ >   'f' => [Function: f_gen]
+//│ > }
+
+staged class B
+module B with
+  fun f() = 1
+//│ > fun class_ctor_() = ()
+//│ > Map(1) { 'class$ctor$' => [Function: class$ctor$_gen] }
+
+:expect 1
+B.f()
+//│ = 1
