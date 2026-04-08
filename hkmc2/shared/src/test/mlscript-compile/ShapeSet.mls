@@ -119,7 +119,10 @@ fun val2path(v, allocs) =
   else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
     let meta = v.constructor.(Symbols.definitionMetadata)
     let clsName = meta.1
-    let paramNames = meta.2
+    // class may have no parameters
+    let paramNames = if meta.2 is
+      undefined then []
+      ps then ps
     let classSym = Block.ConcreteClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ConcreteClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs))
     let blocks = mapped.map(_.0)
