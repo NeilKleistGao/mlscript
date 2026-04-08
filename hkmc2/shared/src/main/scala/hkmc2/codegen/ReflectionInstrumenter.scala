@@ -219,7 +219,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
           tuple(args.map(_._1)): tup =>
             blockCtor("Call", Ls(fun, tup), "app")(k)
     case _ =>
-      raise(ErrorReport(msg"Other Results not supported in staged module: ${r.toString()}" -> r.toLoc :: Nil))
+      raise(ErrorReport(msg"Other Results not supported in staged module: ${r.getClass.toString()}" -> r.toLoc :: Nil))
       End()
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool)) => Block): Block =
@@ -306,13 +306,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
           transformBlock(body): (body, ctx) =>
             blockCtor("Scoped", Ls(tup, body))(b => Scoped(syms, k(b, ctx)))
     case Define(_: FunDefn, _) =>
-      raise(ErrorReport(msg"Nested function definitions are not supported in staged modules: ${b.toString()}" -> N :: Nil))
+      raise(ErrorReport(msg"Nested function definitions are not supported in staged modules. Try enabling :ftc." -> N :: Nil))
       End()
     case _: Label | _: Break =>
-      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}.\n Try enabling :ftc." -> N :: Nil))
+      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.getClass.toString()}." -> N :: Nil))
       End()
     case _ =>
-      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}" -> N :: Nil))
+      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.getClass.toString()}" -> N :: Nil))
       End()
 
   def transformFunDefn(f: FunDefn)(using Context)(k: Path => Block): Block =
