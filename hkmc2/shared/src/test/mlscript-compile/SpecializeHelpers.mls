@@ -118,11 +118,12 @@ fun sor(ctx, r) = if r is
           let evaluated = f(...argShapes.map(valOfSet))
           let evaluated_path = val2path(evaluated, ctx.allocs)
           [evaluated_path.0, evaluated_path.1, sov(evaluated)]
-      Select(ValueRef(ClassSymbol(name, value, paramsOpt, auxParams)), Symbol(symb)) then
+      Select(ValueRef(ConcreteClassSymbol(name, value, paramsOpt, auxParams)), Symbol(symb)) then
         // TODO 
         [End(), r, mkDyn()]
       Select(ValueRef(symb), Symbol(f)) and sop(ctx, ValueRef(symb)) is Class(sym, params) then // class method call
         // TODO
+        [End(), r, mkDyn()]
     else 
       [End(), r, mkDyn()]
 
@@ -199,7 +200,7 @@ fun specializeName(funName, shapes) =
   if shapes.every(ps => ps.every(s => s.isDyn())) then funName
   else funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("__")
 
-fun specialize(cache, funName, dflt, shapes, useStub) =
+fun specialize(cache, funName, dflt, shapes) =
   // replace function symbol in block definition to new name
   let newName = specializeName(funName, shapes)
   if cache.getFun(newName) is
@@ -210,8 +211,7 @@ fun specialize(cache, funName, dflt, shapes, useStub) =
         let ctx = Ctx.empty
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), shapes.(i).(j))))
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
-        let propFun = if useStub then propStub else prop
-        let res = propFun(ctx, body)
+        let res = prop(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, bodyWithScoped), res.1])
         [entry.0.sym, entry.1]

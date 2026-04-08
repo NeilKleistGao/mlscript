@@ -33,11 +33,11 @@ printCode(DynSelect(ValueRef(Symbol("p")), ValueRef(Symbol("field")), false))
 
 class B
 class D(val x)(y) extends B
-let bSym = ClassSymbol("B", B, None, [])
-let dSym = ClassSymbol("A", D, Some([Symbol("x")]), [[Symbol("y")]])
-//│ bSym = ClassSymbol("B", class B, None, [])
-//│ dSym = ClassSymbol(
-//│   "A",
+let bSym = ConcreteClassSymbol("B", B, None, [])
+let dSym = ConcreteClassSymbol("D", D, Some([Symbol("x")]), [[Symbol("y")]])
+//│ bSym = ConcreteClassSymbol("B", class B, None, [])
+//│ dSym = ConcreteClassSymbol(
+//│   "D",
 //│   fun D { class: class D },
 //│   Some([Symbol("x")]),
 //│   [[Symbol("y")]]
@@ -47,7 +47,7 @@ printCode(Call(ValueRef(Symbol("f")), [Arg(ValueLit(3))]))
 printCode(Instantiate(ValueRef(dSym), [Arg(ValueLit(0))]))
 printCode(Tuple([Arg(ValueRef(Symbol("x"))), Arg(ValueRef(Symbol("y")))]))
 //│ > f(3)
-//│ > new A(0)
+//│ > new D(0)
 //│ > [x, y]
 
 let f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false))
@@ -57,52 +57,42 @@ printCode(f)
 printCode(ClsLikeDefn(dSym, [f], []))
 printCode(ClsLikeDefn(bSym, [], []))
 //│ > fun f(x) = 1
-//│ > class A(x)(y) with 
+//│ > class D(x)(y) with
 //│ >   fun f(x) = 1
 //│ > class B
 
 printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), Return(ValueRef(Symbol("x")), true))))
-//│ > let x
-//│ > let y
+//│ > let {x, y}
 //│ > x = 4.2
 //│ > x
 
-printCode(Define(ValDefn(Some(bSym), Symbol("x"), ValueLit(1)), End()))
-//│ > set B.x = 1
+printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(dSym, ValueRef(dSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
+//│ > if x is
+//│ >   1 then 2
+//│ >   D(x) then 3
+//│ >   else x
+
+printCode(Define(ValDefn(Some(dSym), Symbol("x"), ValueLit(1)), End()))
+//│ > val x = 1
 
 printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
-//│ > set a = 1
+//│ > val a = 1
 
 printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(bSym, ValueRef(bSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
 //│ > if x is
 //│ >   1 then 2
 //│ >   B then 3
-//│ >   else
-//│ >     x
-
-printCode(Define(ValDefn(Some(bSym), Symbol("x"), ValueLit(1)), End()))
-//│ > set B.x = 1
-
-printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
-//│ > set a = 1
-
-printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(bSym, ValueRef(bSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
-//│ > if x is
-//│ >   1 then 2
-//│ >   B then 3
-//│ >   else
-//│ >     x
+//│ >   else x
 
 printCode(Scoped([Symbol("y")], Match(
     ValueLit(1), 
     [Arm(Lit(1), Return(ValueLit(1), false))], 
     Some(Return(ValueLit(1), false)), 
     Return(ValueRef(Symbol("y")), false))))
-//│ > let y
+//│ > let {y}
 //│ > if 1 is
 //│ >   1 then 1
-//│ >   else
-//│ >     1
+//│ >   else 1
 //│ > y
 
 printCode(Scoped([Symbol("y")],  Match(
@@ -110,7 +100,7 @@ printCode(Scoped([Symbol("y")],  Match(
     [Arm(Lit(1), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))], 
     Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))), 
     End())))
-//│ > let y
+//│ > let {y}
 //│ > if 1 is
 //│ >   1 then
 //│ >     y = 1
@@ -129,7 +119,7 @@ printCode(Scoped([Symbol("y")], Match(
     ))], 
     Some(Assign(Symbol("y"), ValueLit(3), Return(ValueRef(Symbol("y")), false))), 
     End())))
-//│ > let y
+//│ > let {y}
 //│ > if 1 is
 //│ >   1 then
 //│ >     if 2 is

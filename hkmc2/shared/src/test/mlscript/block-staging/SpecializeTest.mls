@@ -1,7 +1,6 @@
 :js
 :staging
 :noModuleCheck
-:shapeProp
 
 import "../../mlscript-compile/ShapeSet.mls"
 
@@ -13,28 +12,36 @@ staged module M with
     let y = x * 2
     y
   fun f_gen
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x) =
-//│ >   let y
-//│ >   y = *(x, 2)
-//│ >   y
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 M.f_gen(mkDyn())
-//│ = [Symbol("f"), {Dyn()}]
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:228)
+//│ ═══[RUNTIME ERROR] TypeError: s.hash is not a function
+//│     at ShapeSet.lift (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:91:30)
+//│     at ShapeSet.mkDyn (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:187:21)
+//│     at REPL23:1:49
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:600:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:935:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
 
 M.f_gen(mkLit(2))
-//│ = [Symbol("f_Lit2"), {Lit(4)}]
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:228)
+//│ ═══[RUNTIME ERROR] TypeError: s.hash is not a function
+//│     at ShapeSet.lift (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:91:30)
+//│     at ShapeSet.mkLit (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/ShapeSet.mjs:192:21)
+//│     at REPL26:1:51
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:600:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:935:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
 
 print(M."cache$M")
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x) =
-//│ >   let y
-//│ >   y = *(x, 2)
-//│ >   y
-//│ > fun f_Lit2(x) =
-//│ >   let y
-//│ >   y = 4
-//│ >   4
+//│ > 

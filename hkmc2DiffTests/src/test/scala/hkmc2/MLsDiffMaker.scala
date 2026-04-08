@@ -44,6 +44,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val showIR = NullaryCommand("sir")
   val checkIR = NullaryCommand("checkIR")
   val showOptimizedIR = NullaryCommand("soir")
+  val showOptimizedTree = NullaryCommand("olot")
   val showContext = NullaryCommand("ctx")
   val parseOnly = NullaryCommand("parseOnly")
   val funcToCls = NullaryCommand("ftc")
@@ -73,8 +74,9 @@ abstract class MLsDiffMaker extends DiffMaker:
   val liftDefns = NullaryCommand("lift")
   val importQQ = NullaryCommand("qq")
   val stageCode = NullaryCommand("staging")
-  val shapeProp = NullaryCommand("shapeProp")
   val rewriteWhile = NullaryCommand("rewriteWhile")
+  val noInlineOpt = NullaryCommand("noInline")
+  val inlineThreshold = Command("inlineThreshold")(_.trim.toInt)
   val noTailRecOpt = NullaryCommand("noTailRec")
   val deforest = Command("deforest")(_.trim)
   val patMatConsequentSharingThreshold = Command("patMatConsequentSharingThreshold")(_.trim.toInt)
@@ -88,6 +90,8 @@ abstract class MLsDiffMaker extends DiffMaker:
     if effectHandlers.isSet then
       if liftDefns.isUnset then
         output(s"$errMarker Option ':effectHandlers' requires ':lift'")
+    if inlineThreshold.isSet && noInlineOpt.isSet then
+      output(s"$errMarker Option ':noInline' conflicts with option ':inlineThreshold'")
     Config(
       baseDir = wd,
       sanityChecks = Opt.when(noSanityCheck.isUnset)(SanityChecks(light = true)),
@@ -116,11 +120,11 @@ abstract class MLsDiffMaker extends DiffMaker:
       patMatConsequentSharingThreshold = patMatConsequentSharingThreshold.get
         .orElse(Config.default.patMatConsequentSharingThreshold),
       stageCode = stageCode.isSet,
-      shapeProp = shapeProp.isSet,
       target = if wasm.isSet then CompilationTarget.Wasm else CompilationTarget.JS,
       rewriteWhileLoops = rewriteWhile.isSet,
       tailRecOpt = !noTailRecOpt.isSet,
       deforest = Opt.when(deforest.isSet)(Deforest.default),
+      inlining = Opt.when(!noInlineOpt.isSet)(Config.Inliner(inlineThreshold.get.getOrElse(1))),
       qqEnabled = importQQ.isSet,
       funcToCls = funcToCls.isSet,
       commentGeneratedCode = debug.isSet,
@@ -195,6 +199,9 @@ abstract class MLsDiffMaker extends DiffMaker:
   var curCtx = Elaborator.State.init
   var curICtx = Resolver.ICtx.empty
   
+  /** Persistent config modification from `#config(...)` directives. */
+  var configModify: Config => Config = identity
+  
   var prelude = Elaborator.Ctx.empty
   
   override def run(): Unit =
@@ -266,7 +273,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   def processOrigin(origin: Origin)(using Raise): Unit =
     val oldCtx = curCtx
     
-    given Config = mkConfig
+    given Config = configModify(mkConfig)
     
     val lexer = new syntax.Lexer(origin, dbg = dbgParsing.isSet)
     val tokens = lexer.bracketedTokens
@@ -312,6 +319,14 @@ abstract class MLsDiffMaker extends DiffMaker:
     val blk = new syntax.Tree.Block(trees)
     val (e, newCtx) = elab.topLevel(blk)
     curCtx = newCtx
+    
+    // Extract SetConfig statements and update persistent config
+    e.stats.foreach:
+      case sc: semantics.SetConfig =>
+        val prev = configModify
+        configModify = cfg => sc.modify(prev(cfg))
+      case _ => ()
+    
     // If elaborated tree is displayed, don't show the string serialization.
     if (showElab.isSet || debug.isSet) && !showElaboratedTree.isSet then
       output(s"Elab: ${e.showDbg}")

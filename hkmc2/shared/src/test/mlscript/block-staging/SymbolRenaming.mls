@@ -1,23 +1,20 @@
 :js
 :staging
 
-staged module Variables with
-  fun f(x, x) = 
+staged module TempVariable with
+  fun f(x, x) =
     let x
     let x
     x
-//│ > fun ctor_() =
-//│ >   ()
-//│ > fun f(x2, x3) =
-//│ >   let x
-//│ >   let x1
-//│ >   x1
+//│ > fun ctor_() = ()
+//│ > fun f(x, x) =
+//│ >   let {x, x}
+//│ >   x
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
 staged module DupeFunctionName with
   fun f() = 1
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
@@ -28,12 +25,11 @@ staged module NoSymbol with
     g()
     g()
     ()
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f(g) =
-//│ >   __no__symbol__ = g()
-//│ >   __no__symbol__ = g()
-//│ >   Runtime.Unit
+//│ >   g()
+//│ >   g()
+//│ >   ()
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }
 
@@ -41,12 +37,10 @@ staged module Selection with
   fun f(x) =
     x.call()
     C(1).x is Bool
-//│ > fun ctor_() =
-//│ >   ()
+//│ > fun ctor_() = ()
 //│ > fun f(x) =
-//│ >   let scrut
-//│ >   let tmp
-//│ >   __no__symbol__ = x.call()
+//│ >   let {scrut, tmp}
+//│ >   x.call()
 //│ >   tmp = C(1)
 //│ >   scrut = tmp.x
 //│ >   if scrut is
@@ -56,7 +50,7 @@ staged module Selection with
 //│ > Map(2) {
 //│ >   [Function: C] {
 //│ >     class: [class C] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
@@ -71,14 +65,14 @@ staged module DupeClass with
 //│ > fun ctor_() =
 //│ >   class C(y)
 //│ > fun f() =
-//│ >   let tmp
+//│ >   let {tmp}
 //│ >   tmp = DupeClass.C(1)
 //│ >   tmp.y
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: C] {
 //│ >     class: [class C2] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ClassSymbol {
+//│ >   } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
