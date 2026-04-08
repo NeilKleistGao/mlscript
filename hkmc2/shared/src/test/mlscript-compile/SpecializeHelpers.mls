@@ -51,7 +51,7 @@ class Ctx(
       ctx.set(ps, ss)
     this
 module Ctx with
-  fun empty() = Ctx(new Map(), mut [], None, mkBot())
+  val empty = Ctx(new Map(), mut [], None, mkBot())
 
 class FunCache(val cache: Map[String, [Block.FunDefn, ShapeSet]]) with
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
@@ -356,7 +356,7 @@ fun specialize(cache, funName, dflt, shapes) =
         let ctx = if isMethod then
           let clsSymb = shapes.(0).(0).values().0.sym
           Ctx(new Map(), mut [], Some(clsSymb), shapes.(0).(0))
-        else Ctx.empty()
+        else Ctx.empty
         if isMethod do ctx.add(ValueRef(Symbol("_this")), shapes.(0).(0))
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
         cache.setFun(newName, [FunDefn(Symbol(newName), newPs, body), mkDyn()])
