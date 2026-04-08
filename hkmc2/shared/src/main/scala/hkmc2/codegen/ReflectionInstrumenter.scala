@@ -110,28 +110,36 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   // transformation helpers
 
+  // preserveName overrides the renaming of symbols within the function
   // if sym is ClassSymbol, we may need pOpt to link to the path pointing to the value of the symbol
-  def transformSymbol(sym: Symbol, pOpt: Option[Path] = N, symName: Str = "sym")(using stagingCtx: Context)(k: (Path, Context) => Block): Block =
+  def transformSymbol(sym: Symbol, preserveName: Bool = false, pOpt: Option[Path] = N, symName: Str = "sym")(using stagingCtx: Context)(k: (Path, Context) => Block): Block =
     def cachedK(p: Path, ctx: Context) =
       k(p, ctx.addCache(sym, p))
     def checkMap(key: Path, p: Path, ctx: Context) =
       symbolMapUsed = true
       blockCall("checkMap", Ls(symbolMapSym, key, p))(cachedK(_, ctx))
     stagingCtx.getCache(sym).map(cachedK(_, stagingCtx)).getOrElse:
+      // add name to scope to avoid shadowing by other symbols
+      val newName = scope.allocateOrGetName(sym)
+      val rename = sym match
+        case _ if preserveName => false
+        // avoid name collision
+        case _: TempSymbol | _: VarSymbol => true
+        // FIXME: there may be more types of symbols that need to be renamed during staging
+        case _: BaseTypeSymbol | _: BuiltinSymbol => false
+        case t: TermSymbol if t.defn.exists(_.sym.asTrm.isDefined) && (t.k is syntax.Fun) => false
+        case _ => false
+      val name = if rename then newName else sym.nme
+      // println(("symbol:", sym, name, stagingCtx))
       sym match
         case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
           // no need to perform caching for redirecting call
-          transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
-        // avoid name collision
-        case _: TempSymbol =>
-          val name = scope.allocateOrGetName(sym)
-          blockCtor("Symbol", Ls(toValue(name)), symName)(cachedK(_, stagingCtx))
+          transformSymbol(t.defn.get.sym.asClsOrMod.get, rename, pOpt, symName)(k)
         case _: NoSymbol =>
           blockCtor("NoSymbol", Nil, symName)(cachedK(_, stagingCtx))
         case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
-          blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap(toValue(sym.nme), _, stagingCtx))
+          blockCtor("VirtualClassSymbol", Ls(toValue(name)), symName)(checkMap(toValue(name), _, stagingCtx))
         case baseSym: BaseTypeSymbol =>
-          val name = scope.allocateOrGetName(sym)
           val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
             case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
             case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
@@ -149,17 +157,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               transformParamsOpt(paramsOpt): (paramsOpt, ctx) =>
                 auxParams.map(ps => ctx => transformParamList(ps)(using ctx)).chainContext: (auxParams, ctx) =>
                   tuple(auxParams): auxParams =>
-                    blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _, stagingCtx))
+                    blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _, ctx))
             case _: ModuleOrObjectSymbol =>
               blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _, stagingCtx))
-        // preserve names to builtin symbols
-        case t: TermSymbol if t.defn.exists(_.sym.asTrm.isDefined) && (t.k is syntax.Fun) =>
-          blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(cachedK(_, stagingCtx))
-        case _: BuiltinSymbol | _: VarSymbol =>
-          blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(cachedK(_, stagingCtx))
-        // FIXME: there may be more types of symbols that need to be renamed during staging
         case _ =>
-          blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(cachedK(_, stagingCtx))
+          blockCtor("Symbol", Ls(toValue(name)), symName)(cachedK(_, stagingCtx))
 
   def transformOption[A](xOpt: Opt[A], f: A => ((Path, Context) => Block) => Block)(using Context)(k: (Path, Context) => Block): Block = xOpt match
     case S(x) => f(x)((p, ctx) => optionSome(p)(k(_, ctx)))
@@ -203,7 +205,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case s @ Select(p, Tree.Ident(name)) =>
           transformPath(p): (x, ctx) =>
             s.symbol match
-              case S(sym) => transformSymbol(sym, S(s))(using ctx)((sym, ctx) => blockCtor("Select", Ls(x, sym), "sel")(k(_, ctx)))
+              case S(sym) => transformSymbol(sym, true, pOpt = S(s))(using ctx)((sym, ctx) => blockCtor("Select", Ls(x, sym), "sel")(k(_, ctx)))
               case N => blockCtor("Symbol", Ls(toValue(name)))(sym => blockCtor("Select", Ls(x, sym), "sel")(k(_, ctx)))
         case DynSelect(qual, fld, arrayIdx) =>
           transformPath(qual): (x, ctx) =>
@@ -247,7 +249,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   // maintain parameter names in instrumented code
   def transformParamList(ps: ParamList)(using ctx: Context)(k: (Path, Context) => Block) =
-    ps.params.map(p => ctx => transformSymbol(p.sym)(using ctx)).chainContext((ps, ctx) => tuple(ps)(k(_, ctx)))
+    ps.params.map(p => ctx => transformSymbol(p.sym, true)(using ctx)).chainContext((ps, ctx) => tuple(ps)(k(_, ctx)))
 
   def transformParamsOpt(pOpt: Opt[ParamList])(using ctx: Context)(k: (Path, Context) => Block) =
     transformOption(pOpt, transformParamList)(k)
@@ -326,11 +328,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   def transformFunDefn(f: FunDefn)(using Context)(k: (Path, Context) => Block): Block =
     // maintain parameter names in instrumented code
-    transformParams(f.params): (paramList, ctx) =>
-      transformBlock(f.body)(using ctx): (body, ctx) =>
-        if f.params.length > 1 then
-          raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
-        transformSymbol(f.sym)(using ctx): (sym, ctx) =>
+    transformSymbol(f.sym): (sym, ctx) =>
+      transformParams(f.params)(using ctx): (paramList, ctx) =>
+        transformBlock(f.body)(using ctx): (body, ctx) =>
+          if f.params.length > 1 then
+            raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
           blockCtor("FunDefn", Ls(sym, paramList, body))(k(_, ctx))
 
   def stageMethod(f: FunDefn): FunDefn =
