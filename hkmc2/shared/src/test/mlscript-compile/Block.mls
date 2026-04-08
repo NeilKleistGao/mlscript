@@ -138,7 +138,7 @@ fun showResult(r: Result): Str =
         ValueRef(Symbol("+")) then showArg(lhs) + " + " + showArg(rhs)
         ValueRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
       else showPath(fun_) + "(" + showArgs(args) + ")"
-    Instantiate(cls, args) then "new " + showPath(cls) + "(" + showArgs(args) + ")"
+    Instantiate(cls, args) then "new " + showPath(cls) + (if args.length != 0 then "(" + showArgs(args) + ")" else "")
     Tuple(elems) then "[" + showArgs(elems) + "]"
     _ then "<unknown result:" ~ r ~ ">"
 
@@ -196,7 +196,7 @@ fun showBlock(b) =
       // initialize symbols
       "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
     End() then "()"
-    _ then "<unknown block:" ~ b ~ ">"
+    _ then "<unknown block: " + b.toString() + " >"
 
 // removes trailing newline
 fun showRestBlock(b : Block): Str =
@@ -218,7 +218,7 @@ fun printModule(name, methods) = print("module " + name + " with" + indent("\n" 
 
 fun codegen(name, cache, file) =
   let methods = cache.dump()
-  let ctorBody = cache.getFun("ctor$").value.0.body
+  let ctorBody = cache.getFun("ctor").value.0.body
   let fullpath = path.join of process.cwd(), file
   let code = "module " + name + " with" + indent("\n" + showBlock(ctorBody) + "\n" + methods.map(showDefn).join("\n"))
   if not fs.existsSync(fullpath) do

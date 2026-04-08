@@ -5,7 +5,7 @@ import "./Predef.mls"
 import "./Shape.mls"
 import "./StrOps.mls"
 
-open Block {ClassSymbol}
+open Block {ConcreteClassSymbol}
 open Shape {Dyn, Lit, Arr, Class}
 open Predef
 open Option
@@ -16,7 +16,7 @@ type ShapeSet = ShapeSet.ShapeSet
 module ShapeSet with...
 
 class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
-  fun keys() = [...shapeset.keys()].toSorted()
+  fun keys() = shapeset.keys().toArray().toSorted()
 
   fun values() = shapeset.values().toArray()
 
@@ -26,14 +26,9 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 
   fun flatMap(f) = liftMany(values().flatMap(f))
 
-  fun toString() = "{" ~ shapeset.keys().toArray().toSorted().toString() ~ "}"
+  fun toString() = "{" ~ keys().toSorted().toString() ~ "}"
 
-  fun isDyn() =
-    shapeset.size == 1 and values().0 is Dyn
-
-  fun isDynArr() =
-    if shapeset.size == 1 and values().0 is Arr(shapes) then shapes.every(s => s is Dyn) else false
-
+  fun isDyn() = shapeset.size == 1 and values().0 is Dyn
 
 module ShapeSet with
   fun empty = ShapeSet(new Map)
@@ -43,16 +38,14 @@ fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 fun liftMany(arr: Array[Shape]) = 
   ShapeSet(new Map(arr.map(s => [s.hash(), s])))
 
-fun union(s1: ShapeSet, s2: ShapeSet) = ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
+fun union(s1: ShapeSet, s2: ShapeSet) = 
+  if s1.isDyn() then s1
+  else if s2.isDyn() then s2
+  else ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
 
 fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.shapeset.entries().toArray()).flat()))
 
-// Cartesian product: https://stackoverflow.com/a/43053803
-fun prod(xs) = 
-  if xs.length ==
-    0 then [[]]
-    1 then xs
-  else xs.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())))
+fun prod(xs) = xs.reduce((a, b) => a.flatMap(d => b.map(e => [...d, e])), [[]])
 
 // lifted constructors
 
@@ -69,7 +62,7 @@ fun mkArr(shapes: Array[ShapeSet]) =
     .map(x => Arr(x))
     |> liftMany
 
-fun mkClass(sym: ClassSymbol, params: Array[ShapeSet]) = 
+fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) = 
   params
     .map(_.shapeset.values().toArray())
     |> prod
@@ -98,8 +91,8 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ClassSymbol(name, value, paramsOpt, auxParams), params) then value(...params.map(valOf))
-    else throw Error("Unknown shape")
+    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams), params) then new! value(...params.map(valOf))
+    else throw Error("Unknown shape: " + s)
 
 fun valOfSet(s : ShapeSet) = 
   if s.values().length ==
@@ -124,10 +117,10 @@ fun val2path(v, allocs) =
     let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
   else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
-    let md = v.constructor.(Symbols.definitionMetadata)
-    let clsName = md.1
-    let paramNames = md.2
-    let classSym = Block.ClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ClassSymbol
+    let meta = v.constructor.(Symbols.definitionMetadata)
+    let clsName = meta.1
+    let paramNames = meta.2
+    let classSym = Block.ConcreteClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ConcreteClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs))
     let blocks = mapped.map(_.0)
     let paths = mapped.map(_.1)

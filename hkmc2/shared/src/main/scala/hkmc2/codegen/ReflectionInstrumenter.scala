@@ -394,8 +394,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               Return(res, false)
         FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
 
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
-      val (helperMethods, cacheEntries, generatorEntries) = (ctorFun :: methods).map(f =>
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
+      val (helperMethods, _, generatorEntries) = (ctorFun :: methods).map(f =>
         val staged = stageMethod(f)
         val stagedPath = modSym.asPath.selSN(staged.sym.nme)
         val gen = genMethod(f, stagedPath)
@@ -414,9 +414,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
       // initialize cache for the module
       def cacheDecl(rest: Block) =
-          this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): map =>
-            assign(Instantiate(mut = false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
-              Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
+        this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): map =>
+          assign(Instantiate(false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
+            Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
 
       def generatorMapDecl(rest: Block) =
         generatorEntries.collectApply: defs =>

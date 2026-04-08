@@ -8,7 +8,7 @@ import "../../mlscript-compile/CachedHash.mls"
 import "../../mlscript-compile/SpecializeHelpers.mls"
 import "../../mlscript-compile/Runtime.mls"
 open Option
-open Block { Symbol, ClassSymbol, Tup, Case }
+open Block { Symbol, ConcreteClassSymbol, Tup, Case }
 open Shape { Arr, Class, Dyn, Lit }
 open ShapeSet
 open SpecializeHelpers { sov }
@@ -62,7 +62,7 @@ selSet(arrSp, mkLit(1))
 selSet(mkDyn(), mkLit(5))
 //│ = {Dyn()}
 
-let a = Class(ClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")])
+let a = Class(ConcreteClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")])
 let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)])])
 selSet(x, liftMany([Lit("a"), Lit(2)]))
 //│ = {Dyn(),Lit(undefined)}
@@ -169,7 +169,7 @@ sop(Ctx.empty.add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
 
 
 val x = Symbol("x")
-val C = ClassSymbol("C", undefined, Some(["a"]), [])
+val C = ConcreteClassSymbol("C", undefined, Some(["a"]), [])
 val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
 let ctx = Ctx.empty
 ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
@@ -196,7 +196,7 @@ sor(Ctx.empty, tup)
 //│ ]
 //│ tup = Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))])
 
-let c = ClassSymbol("C", undefined, Some([Symbol("p")]), [])
+let c = ConcreteClassSymbol("C", undefined, Some([Symbol("p")]), [])
 let inst = Instantiate(ValueRef(c), [Arg(ValueLit(123))])
 sor(Ctx.empty, inst)
 //│ = [
@@ -289,18 +289,8 @@ prop(Ctx.empty, c)
 //│   )
 //│ )
 
-let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
+let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(VirtualClassSymbol("Bool"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(VirtualClassSymbol("Int"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
 prop(Ctx.empty, c)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.292: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
-//│ ╙──       	                                                                                  ^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: newDefn (Resolver.scala:662)
-//│ ╔══[COMPILATION ERROR] Expected 4 arguments, got 2
-//│ ║  l.292: 	let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(ClassSymbol("Bool", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(ClassSymbol("Int", None), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
-//│ ╙──       	                                                                                                                                                                                                                                                        ^^^^^^^^^^^^^
 //│ = [
 //│   Scoped(
 //│     [Symbol("x")],
@@ -318,7 +308,7 @@ prop(Ctx.empty, c)
 //│       [
 //│         Arm(
 //│           Cls(
-//│             ClassSymbol("Bool", None, undefined, undefined),
+//│             VirtualClassSymbol("Bool"),
 //│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
 //│           ),
 //│           Return(ValueLit(1), false)
@@ -326,7 +316,7 @@ prop(Ctx.empty, c)
 //│         Arm(Lit(8), Return(ValueLit(2), false)),
 //│         Arm(
 //│           Cls(
-//│             ClassSymbol("Int", None, undefined, undefined),
+//│             VirtualClassSymbol("Int"),
 //│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
 //│           ),
 //│           Return(ValueLit(3), false)
@@ -351,8 +341,22 @@ val fPath = Select(M, fSym)
 val callF = Call(fPath, [Arg(ValueLit(12))])
 sor(Ctx.empty, callF)
 //│ = [
-//│   End(),
-//│   Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(ValueLit(12))]),
+//│   Match(
+//│     ValueRef(Symbol("M")),
+//│     [],
+//│     Some(
+//│       Assign(
+//│         Symbol("hi"),
+//│         Call(
+//│           Select(ValueRef(Symbol("M")), Symbol("f")),
+//│           [Arg(ValueLit(12))]
+//│         ),
+//│         End()
+//│       )
+//│     ),
+//│     End()
+//│   ),
+//│   ValueRef(Symbol("hi")),
 //│   {Dyn()}
 //│ ]
 //│ callF = Call(Select(ValueRef(Symbol("M")), Symbol("f")), [Arg(ValueLit(12))])
@@ -385,7 +389,7 @@ prop(Ctx.empty, blockBranch)
 //│ >     z = 1
 //│ >   2 then
 //│ >     z = 2
-//│ >   else
+//│ >   else 
 //│ >     z = 3
 //│ > z
 //│ = [
@@ -447,17 +451,20 @@ prop(Ctx.empty, earlyRetBlock)
 //│   )
 //│ )
 
-// let x = true
-// let y = false
-// if x is
-//   true then 
-//     if y is
-//       true then return 1
-//       else return 2
-//   else return 3
-// return 4
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1), false))], Some(Return(ValueLit(2), false)), End()))], Some(Return(ValueLit(3), false)), Return(ValueLit(4), false)))))
+printCode(nestedBlock)
 val res = prop(Ctx.empty, nestedBlock)
+//│ > let x
+//│ > let y
+//│ > x = true
+//│ > y = false
+//│ > if x is
+//│ >   true then
+//│ >     if y is
+//│ >       true then 1
+//│ >       else 2
+//│ >   else 3
+//│ > 4
 //│ nestedBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
 //│   Assign(
@@ -494,7 +501,7 @@ val res = prop(Ctx.empty, nestedBlock)
 //│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2), false))
 //│     )
 //│   ),
-//│   {Lit(2),Lit(4)}
+//│   {Lit(2)}
 //│ ]
 
 val2path(1, mut [])

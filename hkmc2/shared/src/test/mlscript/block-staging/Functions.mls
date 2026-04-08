@@ -51,6 +51,13 @@ staged module Staged with
 staged module CallSubst with
   fun call() = Nonstaged.f() + Staged.f()
 
+:e
+print(CallSubst."cache$CallSubst")
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type CallSubst.
+//│ ║  l.55: 	print(CallSubst."cache$CallSubst")
+//│ ╙──      	      ^^^^^^^^^
+//│ > 
+
 :ftc
 staged module Arguments with
   fun f(x) =
@@ -82,6 +89,10 @@ staged module ClassFunctions with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
 
+:todo
+staged module RetUnit with
+  fun f() = ()
+
 // name collision
 class A()
 staged module A with
@@ -104,10 +115,10 @@ staged module Continue with
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:scrut, tmp:tmp),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
 //│  Try enabling :ftc.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.101: 	    let x = 1
+//│ ║  l.112: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.101: 	    let x = 1
+//│ ║  l.112: 	    let x = 1
 //│ ╙──       	        ^
 
 :todo
@@ -136,7 +147,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.136: 	  fun g() = {1 : 2}
+//│ ║  l.147: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 
 :todo
