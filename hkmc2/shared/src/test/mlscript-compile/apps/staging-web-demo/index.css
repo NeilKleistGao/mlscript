@@ -1,0 +1,413 @@
+:root {
+    --page-bg: #f4ead7;
+    --page-bg-soft: rgba(255, 250, 241, 0.8);
+    --card-bg: rgba(255, 252, 246, 0.88);
+    --card-border: rgba(103, 77, 48, 0.16);
+    --card-shadow: 0 24px 60px rgba(70, 46, 22, 0.12);
+    --ink-strong: #26180f;
+    --ink-muted: #6e5745;
+    --accent: #a64d2d;
+    --accent-strong: #7e341b;
+    --accent-soft: rgba(166, 77, 45, 0.14);
+    --surface-bg: #101827;
+    --surface-bg-soft: #182235;
+    --surface-border: rgba(160, 184, 214, 0.2);
+    --surface-text: #f7f2ea;
+    --surface-muted: #c7d3e6;
+    --terminal-glow: rgba(110, 231, 183, 0.16);
+    --font-body: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    --font-display: "Segoe UI Variable Display", "Avenir Next", "Trebuchet MS", sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    color-scheme: light;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-body);
+    color: var(--ink-strong);
+    background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.55), transparent 28rem),
+        radial-gradient(circle at top right, rgba(226, 200, 164, 0.35), transparent 22rem),
+        linear-gradient(180deg, #f7efe0 0%, var(--page-bg) 38%, #eadfca 100%);
+}
+
+button,
+select,
+textarea {
+    font: inherit;
+}
+
+button,
+select {
+    appearance: none;
+}
+
+button {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.72rem 1.18rem;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: #fff7f1;
+    font-family: var(--font-display);
+    font-size: 0.96rem;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 12px 24px rgba(126, 52, 27, 0.18);
+    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    filter: saturate(1.05);
+    box-shadow: 0 16px 28px rgba(126, 52, 27, 0.22);
+}
+
+button:disabled {
+    cursor: wait;
+    filter: saturate(0.8);
+    opacity: 0.7;
+    transform: none;
+    box-shadow: 0 8px 16px rgba(126, 52, 27, 0.12);
+}
+
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.output-surface:focus-visible,
+.artifact-toggle:focus-visible {
+    outline: 3px solid rgba(166, 77, 45, 0.28);
+    outline-offset: 2px;
+}
+
+select {
+    min-width: 15.5rem;
+    max-width: 100%;
+    border: 1px solid rgba(93, 67, 41, 0.18);
+    border-radius: 999px;
+    padding: 0.72rem 2.8rem 0.72rem 1rem;
+    background:
+        linear-gradient(45deg, transparent 50%, var(--ink-muted) 50%) calc(100% - 1.25rem) calc(50% - 0.16rem) / 0.5rem 0.5rem no-repeat,
+        linear-gradient(135deg, var(--ink-muted) 50%, transparent 50%) calc(100% - 0.95rem) calc(50% - 0.16rem) / 0.5rem 0.5rem no-repeat,
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 240, 229, 0.98));
+    color: var(--ink-strong);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+textarea {
+    resize: none;
+    border: 1px solid var(--surface-border);
+    outline: none;
+}
+
+::selection {
+    background: rgba(166, 77, 45, 0.28);
+    color: inherit;
+}
+
+.page-shell {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 2.2rem clamp(1rem, 2.6vw, 2.25rem) 3rem;
+}
+
+.page-header {
+    display: grid;
+    gap: 0.65rem;
+    margin-bottom: 1.5rem;
+}
+
+.eyebrow,
+.card-kicker {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-family: var(--font-display);
+    font-size: 0.77rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+h1,
+h2 {
+    margin: 0;
+    font-family: var(--font-display);
+}
+
+h1 {
+    font-size: clamp(2.2rem, 4vw, 3.8rem);
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+}
+
+h2 {
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+}
+
+.intro,
+.card-copy {
+    margin: 0;
+    color: var(--ink-muted);
+    line-height: 1.6;
+}
+
+.intro {
+    max-width: 68ch;
+    font-size: 1.05rem;
+}
+
+#playground {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+        "program artifacts"
+        "runner output";
+    gap: 1.2rem;
+}
+
+.card-program {
+    grid-area: program;
+}
+
+.card-artifacts {
+    grid-area: artifacts;
+}
+
+.card-runner {
+    grid-area: runner;
+}
+
+.card-output {
+    grid-area: output;
+}
+
+.card {
+    min-height: 23rem;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, rgba(255, 253, 249, 0.94), var(--card-bg));
+    border: 1px solid var(--card-border);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.15rem 1.2rem 1rem;
+    border-bottom: 1px solid rgba(103, 77, 48, 0.1);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(246, 236, 221, 0.72)),
+        var(--page-bg-soft);
+}
+
+.card-header > div {
+    min-width: 0;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.card-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    padding: 1rem 1.2rem 1.2rem;
+}
+
+.editor-surface,
+.output-surface {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+    border: 1px solid var(--surface-border);
+    background:
+        radial-gradient(circle at top right, rgba(77, 136, 255, 0.1), transparent 18rem),
+        linear-gradient(180deg, var(--surface-bg-soft) 0%, var(--surface-bg) 100%);
+    color: var(--surface-text);
+    font-family: var(--font-mono);
+    font-size: 0.94rem;
+    line-height: 1.58;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    tab-size: 2;
+}
+
+.editor-surface::placeholder {
+    color: rgba(247, 242, 234, 0.56);
+}
+
+.output-surface {
+    overflow: auto;
+    white-space: pre-wrap;
+    color: var(--surface-muted);
+}
+
+.artifact-switch {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.artifact-switch > input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+}
+
+.artifact-controls {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.artifact-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.68rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(93, 67, 41, 0.16);
+    background: rgba(255, 250, 242, 0.88);
+    color: var(--ink-muted);
+    font-family: var(--font-display);
+    font-size: 0.94rem;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.artifact-toggle:hover {
+    transform: translateY(-1px);
+}
+
+#artifact-tab-terms:checked ~ .artifact-controls .terms-toggle,
+#artifact-tab-block-ir:checked ~ .artifact-controls .block-ir-toggle,
+#artifact-tab-output-js:checked ~ .artifact-controls .output-js-toggle {
+    color: #fff7f1;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    border-color: transparent;
+    box-shadow: 0 12px 24px rgba(126, 52, 27, 0.18);
+}
+
+.artifact-panels {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.artifact-panel {
+    display: none;
+}
+
+#artifact-tab-terms:checked ~ .artifact-panels #compiled-terms,
+#artifact-tab-block-ir:checked ~ .artifact-panels #block-ir,
+#artifact-tab-output-js:checked ~ .artifact-panels #output-js {
+    display: block;
+}
+
+.terminal-output {
+    background:
+        radial-gradient(circle at top right, var(--terminal-glow), transparent 16rem),
+        linear-gradient(180deg, #132128 0%, #0c151b 100%);
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+    .page-shell {
+        padding-bottom: 2rem;
+    }
+
+    #playground {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "program"
+            "artifacts"
+            "runner"
+            "output";
+    }
+
+    .card {
+        min-height: 20rem;
+    }
+
+    .card-header {
+        flex-direction: column;
+    }
+
+    .toolbar {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    select {
+        min-width: min(100%, 18rem);
+    }
+}
+
+@media (max-width: 640px) {
+    .page-shell {
+        padding-top: 1.4rem;
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+
+    .card-header,
+    .card-body {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+
+    .editor-surface,
+    .output-surface {
+        padding: 0.9rem 0.95rem;
+        font-size: 0.9rem;
+    }
+
+    .artifact-controls {
+        width: 100%;
+    }
+
+    .artifact-toggle {
+        flex: 1 1 12rem;
+    }
+}
