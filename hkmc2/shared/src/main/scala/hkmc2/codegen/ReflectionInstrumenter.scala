@@ -272,22 +272,21 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       transformResult(res): (x, ctx) =>
         blockCtor("Return", Ls(x, toValue(implct)), "return")(k(_, ctx))
     case Assign(x, r, b) =>
-      transformResult(r): (y, ctx) =>
-        transformSymbol(x)(using ctx): (xSym, ctx) =>
-          blockCtor("ValueRef", Ls(xSym)): xStaged =>
-            (Assign(x, xStaged, _)):
-              given Context = ctx.addCache(x.asPath, xStaged)
-              transformBlock(b): (z, ctx) =>
+      transformSymbol(x): (xSym, ctx) =>
+        blockCtor("ValueRef", Ls(xSym)): xStaged =>
+          (Assign(x, xStaged, _)):
+            transformResult(r)(using ctx.addCache(x.asPath, xStaged)): (y, ctx) =>
+              transformBlock(b)(using ctx): (z, ctx) =>
                 blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
     case Define(cls: ClsLikeDefn, rest) =>
       assert(cls.companion.isEmpty, "nested module not supported")
-      transformBlock(rest): (p, ctx) =>
-        transformSymbol(cls.isym)(using ctx): (c, ctx) =>
-          // staging the methods within the module
-          cls.methods.map(defn => ctx => transformFunDefn(defn)(using ctx)).chainContext(using ctx): (methods, ctx) =>
-            tuple(methods): methods =>
-              optionNone(): none => // TODO: handle companion object
-                blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
+      transformSymbol(cls.isym): (c, ctx) =>
+        // staging the methods within the module
+        cls.methods.map(defn => ctx => transformFunDefn(defn)(using ctx)).chainContext(using ctx): (methods, ctx) =>
+          tuple(methods): methods =>
+            optionNone(): none => // TODO: handle companion object
+              blockCtor("ClsLikeDefn", Ls(c, methods, none)): cls =>
+                transformBlock(rest)(using ctx): (p, ctx) =>
                   blockCtor("Define", Ls(cls, p))(k(_, ctx))
     case Define(v: ValDefn, rest) =>
       // TODO: only allow ValDefn inside ctors
@@ -326,11 +325,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   def transformFunDefn(f: FunDefn)(using Context)(k: (Path, Context) => Block): Block =
     // maintain parameter names in instrumented code
-    transformParams(f.params): (paramList, ctx) =>
-      transformBlock(f.body)(using ctx): (body, ctx) =>
-        if f.params.length > 1 then
-          raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
-        transformSymbol(f.sym)(using ctx): (sym, ctx) =>
+    transformSymbol(f.sym): (sym, ctx) =>
+      if f.params.length > 1 then
+        raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
+      transformParams(f.params)(using ctx): (paramList, ctx) =>
+        transformBlock(f.body)(using ctx): (body, ctx) =>
           blockCtor("FunDefn", Ls(sym, paramList, body))(k(_, ctx))
 
   def stageMethod(f: FunDefn): FunDefn =
