@@ -201,6 +201,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
         transformPath(cls): cls =>
           tuple(xs.map(_._1)): codes =>
             blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
+    // desugar Runtime.Tuple.get into Select
+    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx))))) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
+      transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
     case Call(fun, args) =>
       val stagedFunPath = fun match
         case s @ Select(qual, Tree.Ident(name)) => s.symbol.flatMap({
