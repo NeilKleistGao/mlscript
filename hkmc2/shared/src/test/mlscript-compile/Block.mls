@@ -103,10 +103,7 @@ fun showLiteral(l: Literal) =
     Str then "\"" + l.toString() + "\""
     else l.toString()
 
-fun showSymbol(s: Symbol) = if s.name is
-  "runtime" then "Runtime"
-  // FIXME: this is a hack for local symbols, and will fail if global symbols contain them, like the generated classes of :ftc.
-  else s.name.replaceAll("$", "_")
+fun showSymbol(s: Symbol) = s.name.replaceAll("$", "_")
 
 fun showPath(p: Path): Str =
   if p is
@@ -141,9 +138,7 @@ fun showResult(r: Result): Str =
 fun showCase(c) =
   if c is
     Lit(l) then showLiteral(l)
-    Cls(cls, p) then showSymbol(cls) +
-      if isPrimitiveType(cls) then ""
-        else showParamsOpt(cls.paramsOpt) // it seems we only need the arity, printing the parameter names is unnecessary
+    Cls(cls, _) then showSymbol(cls)
     Tup(len) then "[" + Array(len).fill("_").join(", ") + "]"
     _ then "<unknown case>"
 

@@ -221,13 +221,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         transformPath(cls)(using ctx): (cls, ctx) =>
           tuple(xs.map(_._1)): codes =>
             blockCtor("Instantiate", Ls(cls, codes), "inst")(k(_, ctx))
+    // desugar Runtime.Tuple.get into Select
+    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx))))) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
+      transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
     case Call(fun, args) =>
       transformPath(fun): (stagedFun, ctx) =>
         transformArgs(args)(using ctx): (args, ctx) =>
           tuple(args.map(_._1)): tup =>
             blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, ctx))
     case _ =>
-      raise(ErrorReport(msg"Other Results not supported in staged module." -> r.toLoc :: Nil))
+      raise(ErrorReport(msg"Other Results not supported in staged module: ${r.getClass.toString()}" -> r.toLoc :: Nil))
       End()
 
   def transformArg(a: Arg)(using Context)(k: ((Path, Bool), Context) => Block): Block =
@@ -310,13 +313,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformBlock(body)(using ctx): (body, ctx) =>
             blockCtor("Scoped", Ls(tup, body))(b => Scoped(syms, k(b, ctx)))
     case Define(_: FunDefn, _) =>
-      raise(ErrorReport(msg"Nested function definitions are not supported in staged modules: ${b.toString()}" -> N :: Nil))
+      raise(ErrorReport(msg"Nested function definitions are not supported in staged modules. Try enabling :ftc." -> N :: Nil))
       End()
     case _: Label | _: Break =>
-      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}.\n Try enabling :ftc." -> N :: Nil))
+      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.getClass.toString()}." -> N :: Nil))
       End()
     case _ =>
-      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.toString()}" -> N :: Nil))
+      raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.getClass.toString()}" -> N :: Nil))
       End()
 
   def transformFunDefn(f: FunDefn)(using Context)(k: (Path, Context) => Block): Block =
