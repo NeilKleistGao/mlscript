@@ -61,7 +61,7 @@ staged module Expressions with
 //│ >     Int then 3
 //│ >     else 0
 //│ > fun match2() =
-//│ >   let {element1_, element0_, a}
+//│ >   let {element0_, a, element1_}
 //│ >   if x1 is
 //│ >     [] then 1
 //│ >     [_, _] then
@@ -192,17 +192,14 @@ module A with
 //│ > fun ctor_() = ()
 //│ > fun f() = 1
 
-:todo
+// FIXME: for g to be defined in the next stage, we need to also print the other ClsLikeDefn/FunDefn nodes when printing the next stage
 :ftc
 staged module NestedFunDefn with
   fun f() =
     fun g() = 1
     g()
-  fun g(x, y) = x || y
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Unreachable
 //│ > fun ctor_() = ()
 //│ > fun f() = g()
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 :todo
 staged module LabelBreak with
@@ -216,10 +213,10 @@ staged module LabelBreak with
     else 2
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.210: 	    let x = 1
+//│ ║  l.207: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.210: 	    let x = 1
+//│ ║  l.207: 	    let x = 1
 //│ ╙──       	        ^
 //│ > fun ctor_() = ()
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
@@ -232,7 +229,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.232: 	  fun g() = {1 : 2}
+//│ ║  l.229: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > fun ctor_() =
 //│ >   x = C(1)
