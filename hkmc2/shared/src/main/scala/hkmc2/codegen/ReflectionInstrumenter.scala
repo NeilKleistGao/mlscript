@@ -291,10 +291,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   blockCtor("Define", Ls(cls, p))(k(_, ctx))
     case Define(v: ValDefn, rest) =>
       // TODO: only allow ValDefn inside ctors
-      transformBlock(rest): (p, ctx) =>
-        transformOption(v.tsym.owner, transformSymbol(_))(using ctx): (owner, ctx) =>
-          transformSymbol(v.sym)(using ctx): (sym, ctx) =>
-            transformPath(v.rhs)(using ctx): (rhs, ctx) =>
+      transformOption(v.tsym.owner, transformSymbol(_)): (owner, ctx) =>
+        transformSymbol(v.sym)(using ctx): (sym, ctx) =>
+          // println(v.rhs)
+          transformPath(v.rhs)(using ctx): (rhs, ctx) =>
+            transformBlock(rest)(using ctx): (p, ctx) =>
               blockCtor("ValDefn", Ls(owner, sym, rhs)): v =>
                 blockCtor("Define", Ls(v, p))(k(_, ctx))
     case End(_) => ruleEnd()(k(_, ctx))
@@ -354,17 +355,30 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     case Define(defn: ClsLikeDefn, rest)
         if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) ||
           defn.companion.isEmpty && defn.isym.defn.exists(_.hasStagedModifier.isDefined) =>
-      val (sym, companion, ctor, ctorParams, methods) = defn.companion match
-        case S(companion) => (companion.isym, companion, companion.ctor, N, companion.methods)
+      val (sym, companion, preCtor, ctor, ctorParams, methods) = defn.companion match
+        case S(companion) => (companion.isym, companion, End(), companion.ctor, Ls(PlainParamList(Nil)), companion.methods)
         case N =>
+          def replaceSuper(parentPath: Path) = new BlockTransformer(SymbolSubst.Id):
+            override def applyResult(r: Result)(k: Result => Block) = super.applyResult(r): r => 
+              r match
+                case Call(Value.Ref(sym: BuiltinSymbol, _), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
+                case r => k(r)
           if !defn.privateFields.isEmpty then
             raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
             return End()
           val companion = ClsLikeBody(ModuleOrObjectSymbol(Tree.TypeDef(syntax.Mod, Tree.Empty(), N), Tree.Ident(defn.sym.nme)), Nil, Nil, Nil, End())
-          val ctor = Begin(defn.preCtor, defn.ctor)
-          (defn.sym, companion, ctor, defn.paramsOpt.map(refreshParamList), defn.methods)
+          val preCtor = defn.parentPath match
+            case S(parent) => replaceSuper(parent).applyBlock(defn.preCtor)
+            case N => defn.preCtor
+          val params = defn.paramsOpt match
+            case S(p) => (p :: defn.auxParams)
+            case N => defn.auxParams
+          (defn.sym, companion, preCtor, defn.ctor, params, defn.methods)
 
       val modSym = companion.isym
+      val ownerSym = defn.companion match
+        case S(defn) => defn.isym
+        case N => defn.isym
 
       // avoid name clash of cache and generator map for derived staged classes
       val suffix = "$" + scope.allocateOrGetName(sym)
@@ -390,9 +404,23 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
               Return(res, false)
         FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
+      
+      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), ctorParams, ctor)(false, N)
 
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
-      val (helperMethods, cacheEntries, generatorEntries) = (ctorFun :: methods).map(f =>
+      // refresh VarSymbols for ctor
+      val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id))).flatten.toMap
+      val paramRewrite = new BlockTransformer(new SymbolSubst():
+        override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)
+      ):
+        override def applyScopedBlock(b: Block) = b match
+          case Scoped(s, bd) =>
+            val nb = applySubBlock(bd)
+            val ns = s.map(applyLocal)
+            if (nb is bd) && (s is ns) then b else Scoped(ns, nb)
+          case _ => applySubBlock(b)
+
+      val (helperMethods, cacheEntries, generatorEntries) = methods.map(f =>
         val staged = stageMethod(f)
         val stagedPath = modSym.asPath.selSN(staged.sym.nme)
         val gen = genMethod(f, stagedPath)
@@ -414,8 +442,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         cacheEntries.collectApply: cacheTups =>
           tuple(cacheTups): tup =>
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              assign(Instantiate(false, helperMod("FunCache"), Ls(Arg(N, map)))): funCache =>
-                Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
+              transformSymbol(ownerSym)(using Context(new HashMap())): (stagedSym, _) =>
+                this.ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
+                  Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
 
       def generatorMapDecl(rest: Block) =
         generatorEntries.collectApply: defs =>
@@ -437,7 +466,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = helperMethods.flatten,
+        methods = stageMethod(preCtorFun) :: stageMethod(paramRewrite.applyFunDefn(ctorFun)) :: helperMethods.flatten,
         ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
         publicFields = companion.publicFields,
       )

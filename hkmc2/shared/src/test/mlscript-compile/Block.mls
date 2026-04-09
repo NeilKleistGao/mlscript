@@ -87,15 +87,16 @@ class Block with
     End()
   
 fun concat(b1: Block, b2: Block) = if b1 is
+  Return then b1
+  End then b2
   Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, concat(rest, b2))
-  Return(res, implct) then b1
   Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
   Define(defn, rest) then Define(defn, concat(rest, b2))
   Scoped(symbols, rest) then Scoped(symbols, concat(rest, b2))
-  End() then b2
 
 fun indent(s: Str) = s.replaceAll("\n", "\n  ")
 
+// we write .map(f(_)) instead of .map(f) here because of method debinding, see https://github.com/hkust-taco/mlscript/issues/450
 class Printer(val owner: Opt[Class]) with
   fun showLiteral(l: Literal) =
     if l is 
@@ -111,7 +112,7 @@ class Printer(val owner: Opt[Class]) with
       // avoids needing to import the runtime module
       Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
       Select(qual, name) and
-        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name)
+        qual is ValueRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
         else showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
@@ -156,7 +157,7 @@ class Printer(val owner: Opt[Class]) with
       None then ""
 
   fun showParamList(ps: Array[ParamList]) =
-    ps.map(showParams).join("")
+    ps.map(showParams(_)).join("")
 
   fun showDefn(d: Defn): Str =
     if d is
@@ -186,7 +187,7 @@ class Printer(val owner: Opt[Class]) with
         + if dflt is Some(db) then indent("\nelse" + indent((if db is Return then " " else "\n") + showBlock(db))) else ""
         + showRestBlock(rest)
       Scoped(symbols, rest) then
-        // initialize symbols
+        // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
       End() then "()"
       _ then "<unknown block>" + b
