@@ -96,112 +96,117 @@ fun concat(b1: Block, b2: Block) = if b1 is
 
 fun indent(s: Str) = s.replaceAll("\n", "\n  ")
 
-fun showLiteral(l: Literal) =
-  if l is 
-    undefined then "undefined"
-    null then "null"
-    Str then "\"" + l.toString() + "\""
-    else l.toString()
+class Printer(val owner: Opt[Class]) with
+  fun showLiteral(l: Literal) =
+    if l is 
+      undefined then "undefined"
+      null then "null"
+      Str then "\"" + l.toString() + "\""
+      else l.toString()
 
-fun showSymbol(s: Symbol) = s.name.replaceAll("$", "_")
+  fun showSymbol(s: Symbol) = s.name.replaceAll("$", "_")
 
-fun showPath(p: Path): Str =
-  if p is
-    // avoids needing to import the runtime module
-    Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
-    Select(qual, name) then showPath(qual) + "." + showSymbol(name)
-    DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
-    DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
-    ValueRef(l) then showSymbol(l)
-    ValueLit(lit) then showLiteral(lit)
+  fun showPath(p: Path): Str =
+    if p is
+      // avoids needing to import the runtime module
+      Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
+      Select(qual, name) and
+        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name)
+        else showPath(qual) + "." + showSymbol(name)
+      DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
+      DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
+      ValueRef(l) then showSymbol(l)
+      ValueLit(lit) then showLiteral(lit)
 
-fun showArg(arg: Arg) =
-  showPath(arg.value)
+  fun showArg(arg: Arg) =
+    showPath(arg.value)
 
-fun showArgs(args: Array[Arg]) =
-  args.map(showArg).join(", ")
+  fun showArgs(args: Array[Arg]) =
+    args.map(showArg(_)).join(", ")
+  fun showResult(r: Result): Str =
+    if r is
+      Path then showPath(r)
+      Call(fun_, args) and
+        // use infix to avoid parsing + and - as taking a unary argument
+        args is [lhs, rhs] and fun_ is
+          ValueRef(Symbol("+")) then showArg(lhs) + " + " + showArg(rhs)
+          ValueRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
+        else showPath(fun_) + "(" + showArgs(args) + ")"
+      Instantiate(cls, args) then "new " + showPath(cls) + (if args.length != 0 then "(" + showArgs(args) + ")" else "")
+      Tuple(elems) then "[" + showArgs(elems) + "]"
+      _ then "<unknown result>"
 
-fun showResult(r: Result): Str =
-  if r is
-    Path then showPath(r)
-    Call(fun_, args) and
-      // use infix to avoid parsing + and - as taking a unary argument
-      args is [lhs, rhs] and fun_ is
-        ValueRef(Symbol("+")) then showArg(lhs) + " + " + showArg(rhs)
-        ValueRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
-      else showPath(fun_) + "(" + showArgs(args) + ")"
-    Instantiate(cls, args) then "new " + showPath(cls) + (if args.length != 0 then "(" + showArgs(args) + ")" else "")
-    Tuple(elems) then "[" + showArgs(elems) + "]"
-    _ then "<unknown result>"
+  // Case (match arm patterns)
+  fun showCase(c) =
+    if c is
+      Lit(l) then showLiteral(l)
+      Cls(cls, _) then showSymbol(cls)
+      Tup(len) then "[" + Array(len).fill("_").join(", ") + "]"
+      _ then "<unknown case>"
 
-// Case (match arm patterns)
-fun showCase(c) =
-  if c is
-    Lit(l) then showLiteral(l)
-    Cls(cls, _) then showSymbol(cls)
-    Tup(len) then "[" + Array(len).fill("_").join(", ") + "]"
-    _ then "<unknown case>"
+  fun showArm(a) =
+    showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
 
-fun showArm(a) =
-  showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
+  fun showParams(p: ParamList) =
+    "(" + p.map(showSymbol(_)).join(", ") + ")"
 
-fun showParams(p: ParamList) =
-  "(" + p.map(showSymbol(_)).join(", ") + ")"
+  fun showParamsOpt(p) =
+    if p is
+      Some(s) then showParams(s)
+      None then ""
 
-fun showParamsOpt(p) =
-  if p is
-    Some(s) then showParams(s)
-    None then ""
+  fun showParamList(ps: Array[ParamList]) =
+    ps.map(showParams).join("")
 
-fun showParamList(ps: Array[ParamList]) =
-  ps.map(showParams).join("")
+  fun showDefn(d: Defn): Str =
+    if d is
+      FunDefn(sym, ps, body) then
+        "fun " + showSymbol(sym) + showParamList(ps) + " =" +
+        (if body is Return | End then " " else "\n  ") + indent(showBlock(body))
+      ClsLikeDefn(sym, methods, _) then
+        "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
+          + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
+      // TODO: used to represent assignments in constructors, which still need some adjustments
+      ValDefn(owner, sym, rhs) then
+        "val " + showSymbol(sym) + " = " + showPath(rhs)
+      _ then "<unknown defn: " + d.toString() + " >"
 
-fun showDefn(d: Defn): Str =
-  if d is
-    FunDefn(sym, ps, body) then
-      "fun " + showSymbol(sym) + showParamList(ps) + " =" +
-      (if body is Return | End then " " else "\n  ") + indent(showBlock(body))
-    ClsLikeDefn(sym, methods, _) then
-      "class " + showSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams).join("")
-        + indent((if methods is [] then "" else " with\n") + methods.map(showDefn).join("\n"))
-    // TODO: used to represent assignments in constructors, which still need some adjustments
-    ValDefn(owner, sym, rhs) then
-      "val " + showSymbol(sym) + " = " + showPath(rhs)
-    _ then "<unknown defn: " + d.toString() + " >"
+  fun showBlock(b) =
+    if b is
+      Assign(lhs, rhs, rest) then
+        (if lhs is NoSymbol then "" else showSymbol(lhs) + " = ")
+          + showResult(rhs) + showRestBlock(rest)
+      Define(d, rest) then
+        showDefn(d) + showRestBlock(rest)
+      Return(res, _) then
+        showResult(res)
+      Match(scrut, arms, dflt, rest) then
+        "if " + showPath(scrut) + " is"
+        + indent("\n" + arms.map(showArm(_)).join("\n"))
+        + if dflt is Some(db) then indent("\nelse" + indent((if db is Return then " " else "\n") + showBlock(db))) else ""
+        + showRestBlock(rest)
+      Scoped(symbols, rest) then
+        // initialize symbols
+        "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
+      End() then "()"
+      _ then "<unknown block>" + b
 
-fun showBlock(b) =
-  if b is
-    Assign(lhs, rhs, rest) then
-      (if lhs is NoSymbol then "" else showSymbol(lhs) + " = ")
-        + showResult(rhs) + showRestBlock(rest)
-    Define(d, rest) then
-      showDefn(d) + showRestBlock(rest)
-    Return(res, _) then
-      showResult(res)
-    Match(scrut, arms, dflt, rest) then
-      "if " + showPath(scrut) + " is"
-      + indent("\n" + arms.map(showArm).join("\n"))
-      + if dflt is Some(db) then indent("\nelse" + indent((if db is Return then " " else "\n") + showBlock(db))) else ""
-      + showRestBlock(rest)
-    Scoped(symbols, rest) then
-      // initialize symbols
-      "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
-    End() then "()"
-    _ then "<unknown block>" + b
+  // removes trailing newline
+  fun showRestBlock(b : Block): Str =
+    if b is End then "" else "\n" + showBlock(b)
 
-// removes trailing newline
-fun showRestBlock(b : Block): Str =
-  if b is End then "" else "\n" + showBlock(b)
+  fun show(x) =
+    if x is
+      Symbol then showSymbol(x)
+      Path then showPath(x)
+      Result then showResult(x)
+      Case then showCase(x)
+      Defn then showDefn(x)
+      Block then showBlock(x)
+    else
+      "<unknown>"
+  fun printCode(x) =
+    print(show(x))
 
-fun show(x) =
-  if x is
-    Symbol then showSymbol(x)
-    Path then showPath(x)
-    Result then showResult(x)
-    Case then showCase(x)
-    Defn then showDefn(x)
-    Block then showBlock(x)
-  else
-    "<unknown>"
-
-fun printCode(x) = print(show(x))
+module Printer with
+  val default = Printer(None)
