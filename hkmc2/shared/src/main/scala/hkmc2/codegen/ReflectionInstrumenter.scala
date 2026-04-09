@@ -424,7 +424,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
               Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
 
-      def genOutputBody(psym: VarSymbol) =
+      def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
         val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
 
         val gens = helperMethods.map(_(1))
@@ -438,13 +438,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                 ((args, k) => call(_, args, true, "gen_call")(k))
                 (genPath)
             )
-          callGenCont(call(blockMod("codegen"), toValue(modSym.nme) :: cachePath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
+          callGenCont(call(blockMod("codegen"), toValue(modSym.nme) :: cachePath :: sourceSym.asPath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
 
       val entryFunDef =
         val sym = BlockMemberSymbol("generate", Nil)
+        val sourceSym = VarSymbol(Ident("source"))
         val psym = VarSymbol(Ident("path"))
-        val params = PlainParamList(Param.simple(psym) :: Nil)
-        FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(psym))(false, N)
+        val params = PlainParamList(Param.simple(sourceSym) :: Param.simple(psym) :: Nil)
+        FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(sourceSym, psym))(false, N)
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
