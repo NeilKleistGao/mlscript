@@ -5,12 +5,29 @@ staged module M with
   class C with
     fun f() = 1
     fun g() = f()
-//│ > fun ctor_() =
+//│ > module M with
 //│ >   class C with
 //│ >     fun f() = 1
 //│ >     fun g() = C.f()
-//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
-//│ > Map(1) {
+//│ >   
+//│ > Map(0) {}
+//│ > Map(2) {
+//│ >   [class M] {
+//│ >     C: [class C] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     'cache$M': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: Map(0) {},
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$M': Map(0) {}
+//│ >   } => ModuleSymbol {
+//│ >     name: 'M',
+//│ >     value: [class M] {
+//│ >       C: [Function],
+//│ >       'cache$M': [FunCache],
+//│ >       'generatorMap$M': Map(0) {}
+//│ >     }
+//│ >   },
 //│ >   [class C] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [class C] { Symbol(mlscript.definitionMetadata): [Array] },
@@ -32,48 +49,43 @@ staged module D with
   fun matching() =
     1 is Int
     1 is C
-//│ > fun ctor_() = ()
-//│ > fun f() = 1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > fun ctor_() =
+//│ > module A with
+//│ >   ()
+//│ >   fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > module D with
 //│ >   class E
-//│ > fun f() =
-//│ >   let {scrut}
-//│ >   A.f()
-//│ >   scrut = B.f
-//│ >   if scrut is
-//│ >     Bool then true
-//│ >     else false
-//│ > fun matching() =
-//│ >   let {tmp, scrut1, scrut2}
-//│ >   scrut1 = 1
-//│ >   if scrut1 is
-//│ >     Int then
-//│ >       tmp = true
-//│ >     else
-//│ >       tmp = false
-//│ >   scrut2 = 1
-//│ >   if scrut2 is
-//│ >     C then true
-//│ >     else false
-//│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
+//│ >   fun f() =
+//│ >     let {scrut}
+//│ >     A.f()
+//│ >     scrut = B.f
+//│ >     if scrut is
+//│ >       Bool then true
+//│ >       else false
+//│ >   fun matching() =
+//│ >     let {tmp, scrut1, scrut2}
+//│ >     scrut1 = 1
+//│ >     if scrut1 is
+//│ >       Int then
+//│ >         tmp = true
+//│ >       else
+//│ >         tmp = false
+//│ >     scrut2 = 1
+//│ >     if scrut2 is
+//│ >       C then true
+//│ >       else false
+//│ > Map(2) {
 //│ >   'f' => [Function: f_gen],
 //│ >   'matching' => [Function: matching_gen]
 //│ > }
-//│ > Map(6) {
-//│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
-//│ >     name: 'E',
-//│ >     value: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
-//│ >   },
+//│ > Map(7) {
 //│ >   [class A] {
-//│ >     'cache$A': FunCache { cache: [Map] },
-//│ >     'generatorMap$A': Map(2) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen]
+//│ >     'cache$A': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
 //│ >     },
+//│ >     'generatorMap$A': Map(1) { 'f' => [Function: f_gen] },
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'A' ]
 //│ >   } => ModuleSymbol {
 //│ >     name: 'A',
@@ -96,6 +108,31 @@ staged module D with
 //│ >     value: [Function: C] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: [ [Array], [Array] ]
+//│ >   },
+//│ >   [class D] {
+//│ >     E: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     'cache$D': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$D': Map(2) {
+//│ >       'f' => [Function: f_gen],
+//│ >       'matching' => [Function: matching_gen]
+//│ >     }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'D',
+//│ >     value: [class D] {
+//│ >       E: [Function],
+//│ >       'cache$D': [FunCache],
+//│ >       'generatorMap$D': [Map]
+//│ >     }
+//│ >   },
+//│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
+//│ >     name: 'E',
+//│ >     value: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
 //│ >   }
 //│ > }
 
@@ -109,27 +146,24 @@ staged module M with
     x = A.B.C
     A.B.C(2)
     E
-//│ > fun ctor_() =
-//│ >   class E
-//│ > fun f() =
-//│ >   let {x}
-//│ >   x = D.E1
-//│ >   x = A.B.C
-//│ >   A.B.C(2)
-//│ >   M.E
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > module M with
+//│ >   class E1
+//│ >   fun f() =
+//│ >     let {x}
+//│ >     x = D.E
+//│ >     x = A.B.C
+//│ >     A.B.C(2)
+//│ >     E1
+//│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > Map(7) {
-//│ >   [class E1] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
-//│ >     name: 'E',
-//│ >     value: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
-//│ >   },
 //│ >   [class D] {
 //│ >     E: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     'cache$D': FunCache { cache: [Map] },
-//│ >     'generatorMap$D': Map(3) {
-//│ >       'ctor$' => [Function: ctor$_gen],
+//│ >     'cache$D': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$D': Map(2) {
 //│ >       'f' => [Function: f_gen],
 //│ >       'matching' => [Function: matching_gen]
 //│ >     },
@@ -144,7 +178,7 @@ staged module M with
 //│ >     }
 //│ >   },
 //│ >   [class E] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
-//│ >     name: 'E1',
+//│ >     name: 'E',
 //│ >     value: [class E] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
@@ -182,11 +216,12 @@ staged module M with
 //│ >   },
 //│ >   [class M2] {
 //│ >     E: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     'cache$M': FunCache { cache: [Map] },
-//│ >     'generatorMap$M': Map(2) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen]
-//│ >     }
+//│ >     'cache$M': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$M': Map(1) { 'f' => [Function: f_gen] }
 //│ >   } => ModuleSymbol {
 //│ >     name: 'M',
 //│ >     value: [class M2] {
@@ -194,6 +229,12 @@ staged module M with
 //│ >       'cache$M': [FunCache],
 //│ >       'generatorMap$M': [Map]
 //│ >     }
+//│ >   },
+//│ >   [class E1] { Symbol(mlscript.definitionMetadata): [ 'class', 'E' ] } => ConcreteClassSymbol {
+//│ >     name: 'E1',
+//│ >     value: [class E1] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     paramsOpt: None {},
+//│ >     auxParams: []
 //│ >   }
 //│ > }
 
@@ -201,31 +242,29 @@ staged module M with
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.202: 	  fun g()() = 1
+//│ ║  l.243: 	  fun g()() = 1
 //│ ╙──       	  ^^^^^^^^^^^^^
-//│ > fun ctor_() = ()
-//│ > fun g()() = 1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'g' => [Function: g_gen] }
+//│ > module M with
+//│ >   ()
+//│ >   fun g()() = 1
+//│ > Map(1) { 'g' => [Function: g_gen] }
 
 :ftc
 staged module M with
   fun f() = x => x
   fun g()() = 1
-//│ > fun ctor_() = ()
-//│ > fun f() =
-//│ >   let {tmp}
-//│ >   tmp = new Function_
-//│ >   tmp
-//│ > fun g() =
-//│ >   let {tmp1}
-//│ >   tmp1 = new Function_1
-//│ >   tmp1
+//│ > module M with
+//│ >   ()
+//│ >   fun f() =
+//│ >     let {tmp}
+//│ >     tmp = new Function_
+//│ >     tmp
+//│ >   fun g() =
+//│ >     let {tmp1}
+//│ >     tmp1 = new Function_1
+//│ >     tmp1
+//│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
 //│ > Map(3) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'f' => [Function: f_gen],
-//│ >   'g' => [Function: g_gen]
-//│ > }
-//│ > Map(2) {
 //│ >   [class Function$1 extends Function] {
 //│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
 //│ >   } => ConcreteClassSymbol {
@@ -245,6 +284,17 @@ staged module M with
 //│ >     },
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
+//│ >   },
+//│ >   [class M6] {
+//│ >     'cache$M': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$M': Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'M',
+//│ >     value: [class M6] { 'cache$M': [FunCache], 'generatorMap$M': [Map] }
 //│ >   }
 //│ > }
 
@@ -257,13 +307,31 @@ let y = M."g_instr"().body.rest.rhs.cls.l.value
 
 staged module Shadowing with
   fun f(x, x) = x
-//│ > fun ctor_() = ()
-//│ > fun f(x, x) = x
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > module Shadowing with
+//│ >   ()
+//│ >   fun f(x, x) = x
+//│ > Map(1) { 'f' => [Function: f_gen] }
 
 staged module RetUnit with
   fun f() = ()
-//│ > fun ctor_() = ()
-//│ > fun f() = ()
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }
+//│ > module RetUnit with
+//│ >   ()
+//│ >   fun f() = ()
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} },
+//│ >   [class RetUnit] {
+//│ >     'cache$RetUnit': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$RetUnit': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'RetUnit',
+//│ >     value: [class RetUnit] {
+//│ >       'cache$RetUnit': [FunCache],
+//│ >       'generatorMap$RetUnit': [Map]
+//│ >     }
+//│ >   }
+//│ > }

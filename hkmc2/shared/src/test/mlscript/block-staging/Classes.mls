@@ -8,17 +8,19 @@ class C with
   fun call(x) = x + 1
 staged module M with
   fun f(x) = x.C#call(10)
-//│ > fun ctor_() = ()
-//│ > fun f(x) = x.call(10)
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > module M with
+//│ >   ()
+//│ >   fun f(x) = x.call(10)
+//│ > Map(1) { 'f' => [Function: f_gen] }
 
 staged class A(val a)
-//│ > fun ctor_(a) =
-//│ >   val a = a
-//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
+//│ > class A1(a) with
+//│ >   ()
+//│ >   
+//│ > Map(0) {}
 //│ > Map(1) {
 //│ >   [Function: A] {
-//│ >     class: [class A] { 'cache$A': [FunCache], 'generatorMap$A': [Map] }
+//│ >     class: [class A] { 'cache$A': [FunCache], 'generatorMap$A': Map(0) {} }
 //│ >   } => ConcreteClassSymbol {
 //│ >     name: 'A1',
 //│ >     value: [Function: A] { class: [Function] },
@@ -29,10 +31,27 @@ staged class A(val a)
 
 staged module C with
   class I
-//│ > fun ctor_() =
+//│ > module C with
 //│ >   class I
-//│ > Map(1) { 'ctor$' => [Function: ctor$_gen] }
-//│ > Map(1) {
+//│ >   
+//│ > Map(0) {}
+//│ > Map(2) {
+//│ >   [class C2] {
+//│ >     I: [class I] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     'cache$C': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: Map(0) {},
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$C': Map(0) {}
+//│ >   } => ModuleSymbol {
+//│ >     name: 'C',
+//│ >     value: [class C2] {
+//│ >       I: [Function],
+//│ >       'cache$C': [FunCache],
+//│ >       'generatorMap$C': Map(0) {}
+//│ >     }
+//│ >   },
 //│ >   [class I] { Symbol(mlscript.definitionMetadata): [ 'class', 'I' ] } => ConcreteClassSymbol {
 //│ >     name: 'I',
 //│ >     value: [class I] { Symbol(mlscript.definitionMetadata): [Array] },
@@ -44,28 +63,41 @@ staged module C with
 class C
 staged module M with
   fun f() = C
-//│ > fun ctor_() = ()
-//│ > fun f() = C
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(1) {
+//│ > module M with
+//│ >   ()
+//│ >   fun f() = C
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) {
 //│ >   [class C4] { Symbol(mlscript.definitionMetadata): [ 'class', 'C' ] } => ConcreteClassSymbol {
 //│ >     name: 'C',
 //│ >     value: [class C4] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
+//│ >   },
+//│ >   [class M2] {
+//│ >     'cache$M': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$M': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'M',
+//│ >     value: [class M2] { 'cache$M': [FunCache], 'generatorMap$M': [Map] }
 //│ >   }
 //│ > }
 
 staged class C with
   fun f() = 1
-//│ > fun ctor_() = ()
-//│ > fun f() = 1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > class C1 with
+//│ >   ()
+//│ >   fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
 
 :e
 staged class C(x)
 //│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
-//│ ║  l.66: 	staged class C(x)
+//│ ║  l.98: 	staged class C(x)
 //│ ╙──      	       ^^^^^^^^^^
 
 staged class B(val x) with
@@ -73,10 +105,10 @@ staged class B(val x) with
 staged class D(val x) extends B(x+1) with
   val y = 1
   fun f() = 42
-//│ > fun ctor_(x) =
-//│ >   val x = x
-//│ > fun f(y) = B1.x + y
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > class B1(x) with
+//│ >   ()
+//│ >   fun f(y) = x + y
+//│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > Map(1) {
 //│ >   [Function: B] {
 //│ >     class: [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] }
@@ -87,12 +119,10 @@ staged class D(val x) extends B(x+1) with
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor_(x) =
-//│ >   let {tmp}
-//│ >   tmp = x + 1
-//│ >   super(tmp)
-//│ > fun f() = 42
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > class D1(x) extends B1(x + 1) with
+//│ >   val y = 1
+//│ >   fun f() = 42
+//│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: B] {
 //│ >     class: [class B] {
@@ -126,13 +156,10 @@ staged module M with
   fun f() =
     Unstaged;
     Staged
-//│ > fun ctor_(x) =
-//│ >   val x = x
-//│ > fun inner() = 1
-//│ > Map(2) {
-//│ >   'ctor$' => [Function: ctor$_gen],
-//│ >   'inner' => [Function: inner_gen]
-//│ > }
+//│ > class Staged1(x) with
+//│ >   ()
+//│ >   fun inner() = 1
+//│ > Map(1) { 'inner' => [Function: inner_gen] }
 //│ > Map(1) {
 //│ >   [Function: Staged] {
 //│ >     class: [class Staged] {
@@ -146,10 +173,11 @@ staged module M with
 //│ >     auxParams: []
 //│ >   }
 //│ > }
-//│ > fun ctor_() = ()
-//│ > fun f() = ,(Unstaged, Staged1)
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(2) {
+//│ > module M with
+//│ >   ()
+//│ >   fun f() = ,(Unstaged, Staged1)
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(3) {
 //│ >   [Function: Staged] {
 //│ >     class: [class Staged] {
 //│ >       'cache$Staged': [FunCache],
@@ -169,5 +197,16 @@ staged module M with
 //│ >     value: [class Unstaged] { Symbol(mlscript.definitionMetadata): [Array] },
 //│ >     paramsOpt: None {},
 //│ >     auxParams: []
+//│ >   },
+//│ >   [class M4] {
+//│ >     'cache$M': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$M': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'M',
+//│ >     value: [class M4] { 'cache$M': [FunCache], 'generatorMap$M': [Map] }
 //│ >   }
 //│ > }

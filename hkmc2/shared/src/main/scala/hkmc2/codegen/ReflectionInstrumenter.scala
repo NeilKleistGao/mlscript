@@ -292,7 +292,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       // TODO: only allow ValDefn inside ctors
       transformOption(v.tsym.owner, transformSymbol(_)): (owner, ctx) =>
         transformSymbol(v.sym)(using ctx): (sym, ctx) =>
-          // println(v.rhs)
           transformPath(v.rhs)(using ctx): (rhs, ctx) =>
             transformBlock(rest)(using ctx): (p, ctx) =>
               blockCtor("ValDefn", Ls(owner, sym, rhs)): v =>

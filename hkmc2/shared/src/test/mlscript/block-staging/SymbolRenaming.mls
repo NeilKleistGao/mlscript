@@ -6,17 +6,19 @@ staged module TempVariable with
     let x
     let x
     x
-//│ > fun ctor_() = ()
-//│ > fun f(x, x) =
-//│ >   let {x, x}
-//│ >   x
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > module TempVariable with
+//│ >   ()
+//│ >   fun f(x, x) =
+//│ >     let {x, x}
+//│ >     x
+//│ > Map(1) { 'f' => [Function: f_gen] }
 
 staged module DupeFunctionName with
   fun f() = 1
-//│ > fun ctor_() = ()
-//│ > fun f() = 1
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ > module DupeFunctionName with
+//│ >   ()
+//│ >   fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
 
 class C(val x)
 
@@ -25,29 +27,47 @@ staged module NoSymbol with
     g()
     g()
     ()
-//│ > fun ctor_() = ()
-//│ > fun f(g) =
-//│ >   g()
-//│ >   g()
+//│ > module NoSymbol with
 //│ >   ()
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(1) { Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} } }
+//│ >   fun f(g) =
+//│ >     g()
+//│ >     g()
+//│ >     ()
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   Unit {} => ModuleSymbol { name: 'Unit', value: Unit {} },
+//│ >   [class NoSymbol] {
+//│ >     'cache$NoSymbol': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$NoSymbol': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'NoSymbol',
+//│ >     value: [class NoSymbol] {
+//│ >       'cache$NoSymbol': [FunCache],
+//│ >       'generatorMap$NoSymbol': [Map]
+//│ >     }
+//│ >   }
+//│ > }
 
 staged module Selection with
   fun f(x) =
     x.call()
     C(1).x is Bool
-//│ > fun ctor_() = ()
-//│ > fun f(x) =
-//│ >   let {scrut, tmp}
-//│ >   x.call()
-//│ >   tmp = C(1)
-//│ >   scrut = tmp.x
-//│ >   if scrut is
-//│ >     Bool then true
-//│ >     else false
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-//│ > Map(2) {
+//│ > module Selection with
+//│ >   ()
+//│ >   fun f(x) =
+//│ >     let {scrut, tmp}
+//│ >     x.call()
+//│ >     tmp = C(1)
+//│ >     scrut = tmp.x
+//│ >     if scrut is
+//│ >       Bool then true
+//│ >       else false
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(3) {
 //│ >   [Function: C] {
 //│ >     class: [class C] { Symbol(mlscript.definitionMetadata): [Array] }
 //│ >   } => ConcreteClassSymbol {
@@ -56,35 +76,42 @@ staged module Selection with
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: []
 //│ >   },
-//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' }
+//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
+//│ >   [class Selection] {
+//│ >     'cache$Selection': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$Selection': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'Selection',
+//│ >     value: [class Selection] {
+//│ >       'cache$Selection': [FunCache],
+//│ >       'generatorMap$Selection': [Map]
+//│ >     }
+//│ >   }
 //│ > }
 
 staged module DupeClass with
   class C(val y)
   fun f() = C(1).y
-//│ > fun ctor_() =
+//│ > module DupeClass with
 //│ >   class C(y)
-//│ > fun f() =
-//│ >   let {tmp}
-//│ >   tmp = DupeClass.C(1)
-//│ >   tmp.y
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
+//│ >   fun f() =
+//│ >     let {tmp}
+//│ >     tmp = C(1)
+//│ >     tmp.y
+//│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > Map(2) {
-//│ >   [Function: C] {
-//│ >     class: [class C2] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'C',
-//│ >     value: [Function: C] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   },
 //│ >   [class DupeClass] {
 //│ >     C: [Function: C] { class: [Function] },
-//│ >     'cache$DupeClass': FunCache { cache: [Map] },
-//│ >     'generatorMap$DupeClass': Map(2) {
-//│ >       'ctor$' => [Function: ctor$_gen],
-//│ >       'f' => [Function: f_gen]
-//│ >     }
+//│ >     'cache$DupeClass': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$DupeClass': Map(1) { 'f' => [Function: f_gen] }
 //│ >   } => ModuleSymbol {
 //│ >     name: 'DupeClass',
 //│ >     value: [class DupeClass] {
@@ -92,5 +119,13 @@ staged module DupeClass with
 //│ >       'cache$DupeClass': [FunCache],
 //│ >       'generatorMap$DupeClass': [Map]
 //│ >     }
+//│ >   },
+//│ >   [Function: C] {
+//│ >     class: [class C2] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'C',
+//│ >     value: [Function: C] { class: [Function] },
+//│ >     paramsOpt: Some { value: [Array] },
+//│ >     auxParams: []
 //│ >   }
 //│ > }
