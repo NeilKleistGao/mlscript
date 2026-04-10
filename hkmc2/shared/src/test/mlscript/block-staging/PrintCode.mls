@@ -31,17 +31,11 @@ printCode(DynSelect(ValueRef(Symbol("p")), ValueRef(Symbol("field")), false))
 //│ > p.x
 //│ > p.(field)
 
+:silent
 class B
 class D(val x)(y) extends B
 let bSym = ConcreteClassSymbol("B", B, None, [])
 let dSym = ConcreteClassSymbol("D", D, Some([Symbol("x")]), [[Symbol("y")]])
-//│ bSym = ConcreteClassSymbol("B", class B, None, [])
-//│ dSym = ConcreteClassSymbol(
-//│   "D",
-//│   fun D { class: class D },
-//│   Some([Symbol("x")]),
-//│   [[Symbol("y")]]
-//│ )
 
 printCode(Call(ValueRef(Symbol("f")), [Arg(ValueLit(3))]))
 printCode(Instantiate(ValueRef(dSym), [Arg(ValueLit(0))]))
