@@ -76,6 +76,290 @@ class WebImporter(tl0: TL, wd0: io.Path, prelude0: Ctx)
       Import(sym, path, file)
 
 object WebImporter:
+  val preludeSource: Str =
+    """
+
+declare type Any
+declare type Anything
+declare type Nothing
+
+declare type untyped
+
+declare type tailrec
+declare type tailcall
+
+declare class Object
+declare module Object with
+  fun
+    create
+    freeze
+    assign
+    entries
+    prototype
+    fromEntries
+    getPrototypeOf
+    defineProperty
+    getOwnPropertyDescriptor
+    getOwnPropertyDescriptors
+declare class JSON
+declare module JSON with
+  fun
+    stringify
+declare class Number
+declare module Number with
+  val
+    MIN_VALUE
+    MAX_VALUE
+    MIN_SAFE_INTEGER
+    MAX_SAFE_INTEGER
+    NEGATIVE_INFINITY
+    POSITIVE_INFINITY
+declare class BigInt
+declare module BigInt
+declare class Function
+declare module Function
+declare class String
+declare module String with
+  fun
+    fromCharCode
+    fromCodePoint
+    raw
+declare class RegExp
+declare module RegExp
+declare class Set[V]
+declare module Set
+declare class Map[K, V]
+declare module Map
+declare class WeakSet[V]
+declare module WeakSet
+declare class WeakMap[K, V]
+declare module WeakMap
+declare class Error//(info) // TODO: handle JS classes that can be instantiated without `new` specially in codegen.
+declare class TypeError//(info) // TODO: handle JS classes that can be instantiated without `new` specially in codegen.
+declare class RangeError//(info) // TODO: handle JS classes that can be instantiated without `new` specially in codegen.
+declare class Date
+declare module Date
+
+declare class ArrayBuffer
+declare module ArrayBuffer
+declare class TypedArray
+declare module TypedArray
+declare class Int8Array
+declare module Int8Array
+declare class Uint8Array
+declare module Uint8Array
+declare class Uint8ClampedArray
+declare module Uint8ClampedArray
+declare class Int16Array
+declare module Int16Array
+declare class Uint16Array
+declare module Uint16Array
+declare class Int32Array
+declare module Int32Array
+declare class Uint32Array
+declare module Uint32Array
+declare class Float16Array
+declare module Float16Array
+declare class Float32Array
+declare module Float32Array
+declare class Float64Array
+declare module Float64Array
+declare class BigInt64Array
+declare module BigInt64Array
+declare class BigUint64Array
+declare module BigUint64Array
+
+// MLscript-specific types
+declare class Bool
+declare class Int
+declare class Num
+declare class Str
+
+// The `Array` class/function is a footgun:
+//    > Array()
+//    []
+//    > Array(1)
+//    [ <1 empty item> ]
+//    > Array(1, 2)
+//    [ 1, 2 ]
+// We used to declare it as a class taking exactly one argument here to avoid that footgun:
+//    declare class Array[T](val length: Int): Array[T]
+// but this made instance checks wrongly use `Array.class`;
+// TODO: handle Array and other JS classes that can be instantiated without `new` specially in codegen.
+declare class Array[T]
+declare module Array with
+  fun
+    from
+    concat
+    isArray
+    prototype
+
+declare object Symbol with
+  // The `TermDef` needs `rhs` to be defined to be recognized as `isMLsFun`.
+  // Otherwise, it would be wrapped in `runtime.safeCall`, which accesses the
+  // uninitialized `runtime` in the `Rendering` module.
+  fun for: Str -> Any = ()
+  val iterator: Any
+
+// MLwasm-specific types
+declare class Int31
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math
+declare module Math with
+  declare
+    val
+      E: Num
+      LN10: Num
+      LN2: Num
+      LOG10E: Num
+      LOG2E: Num
+      PI: Num
+      SQRT1_2: Num
+      SQRT2: Num
+    fun
+      abs: Num -> Num
+      acos: Num -> Num
+      acosh: Num -> Num
+      asin: Num -> Num
+      asinh: Num -> Num
+      atan: Num -> Num
+      atan2: (Num, Num) -> Num
+      atanh: Num -> Num
+      cbrt: Num -> Num
+      ceil: Num -> Num
+      clz32: Num -> Int
+      cos: Num -> Num
+      cosh: Num -> Num
+      exp: Num -> Num
+      expm1: Num -> Num
+      floor: Num -> Num
+      f16round: Num -> Num
+      fround: Num -> Num
+      hypot(...values): Num
+      imul: (Num, Num) -> Int
+      log: Num -> Num
+      log10: Num -> Num
+      log1p: Num -> Num
+      log2: Num -> Num
+      max(...values): Num
+      min(...values): Num
+      pow: (Num, Num) -> Num
+      random: () -> Num
+      round: Num -> Num
+      sign: Num -> (-1 | 0 | 1)
+      sin: Num -> Num
+      sinh: Num -> Num
+      sqrt: Num -> Num
+      tan: Num -> Num
+      tanh: Num -> Num
+      trunc: Num -> Num
+
+declare module Reflect with
+  fun
+    get
+    // set // TODO: handle keyword-named members
+    has
+    ownKeys
+    getPrototypeOf
+    apply
+    construct
+declare module console with
+  declare
+    fun
+      log
+      debug
+      info
+      warn
+      error
+      // assert
+      clear
+      count
+      countReset
+      dir
+      dirxml
+      group
+      groupCollapsed
+      groupEnd
+      table
+      time
+      timeEnd
+      trace
+
+declare val process // TODO make `module`
+declare val fs // TODO make `module`
+
+declare val Infinity
+
+// Wasm support
+declare class Promise
+declare val Promise
+declare object WebAssembly with
+  declare class Memory
+  declare object Module with
+    fun
+      exports
+      imports
+
+  fun
+    instantiate
+    validate
+
+// declare fun typeof: (Any) -> Str
+
+declare fun parseInt(str: Str, radix: Int): Int
+declare fun parseFloat(str: Str): Num
+
+
+declare module source with
+  object
+    line
+    name
+    file
+
+declare module js with
+  fun
+    bitand
+    bitnot
+    bitor
+    shl
+    try_catch
+
+declare module wasm with
+  fun
+    plus_impl
+    minus_impl
+    times_impl
+    div_impl
+    mod_impl
+    eq_impl
+    neq_impl
+    lt_impl
+    le_impl
+    gt_impl
+    ge_impl
+    neg_impl
+    pos_impl
+    not_impl
+
+declare module debug with
+  fun printStack
+
+declare module annotations with
+  object compile
+  object buffered
+  object bufferable
+
+declare module scope with
+  fun locally
+
+
+// HTML DOM API definitions.
+// Move them to a separate Prelude file when there are enough of them.
+declare val document
+declare val customElements
+declare class HTMLElement
+"""
+
   val fileNameSourceMap: MutMap[Str, (Str, Opt[Str])] = MutMap.empty
   def embeddedSourceMap: MutMap[Str, (Str, Opt[Str])] = fileNameSourceMap
   lazy val embeddedFiles: Map[String, String] =
@@ -87,6 +371,8 @@ object WebImporter:
           case S(jsSource) =>
             withSource + ((io.Path("/") / s"${base.baseName}.mjs").toString -> jsSource)
           case N => withSource
+
+  fileNameSourceMap += "Prelude.mls" -> (preludeSource -> N)
   
   fileNameSourceMap += "Rendering.mls" -> ("""
 module Rendering with ...

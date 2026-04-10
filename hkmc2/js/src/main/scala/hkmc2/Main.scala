@@ -24,6 +24,7 @@ import codegen.js.{JSBuilder, JSBuilderArgNumSanityChecks}
 object Main {
   private given DebugPrinter = new DebugPrinter
   private val rootPath = io.Path("/")
+  private val runtimeFile = rootPath / "Runtime.mls"
 
   enum Stage:
     case Lexer, Parser, Elaborator, Resolver, Typing, Lowering, Generation
@@ -201,7 +202,8 @@ object Main {
         case err: Throwable =>
           println(err)
     
-    importFile("Runtime.mls", "Runtime", WebImporter.fileNameSourceMap("Runtime.mls")._1, verbose = true)
+    importFile("Prelude.mls", "Prelude", WebImporter.fileNameSourceMap("Prelude.mls")._1, verbose = false)
+    importFile(runtimeFile.toString, "Runtime", WebImporter.fileNameSourceMap("Runtime.mls")._1, verbose = true)
     
     
     val blk = new syntax.Tree.Block(res)
@@ -266,103 +268,6 @@ object Main {
         diagnostics = getDiagnosticsHTML(Stage.Generation),
       ),
     )
-    
-    // val tryRes = try {
-    //   // import fastparse._
-    //   // import fastparse.Parsed.{Success, Failure}
-    //   // import mlscript.{NewParser, ErrorReport, Origin}
-    //   // val lines = str.splitSane('\n').toIndexedSeq
-    //   // val processedBlock = lines.mkString
-    //   // val fph = new mlscript.FastParseHelpers(str, lines)
-    //   // val origin = Origin("<input>", 1, fph)
-    //   // val lexer = new NewLexer(origin, throw _, dbg = false)
-    //   // val tokens = lexer.bracketedTokens
-    //   // val parser = new NewParser(origin, tokens, newDefs = true, throw _, dbg = false, N) {
-    //   //   def doPrintDbg(msg: => Str): Unit = if (dbg) println(msg)
-    //   // }
-    //   // parser.parseAll(parser.typingUnit) match {
-    //   //   case tu =>
-    //   //     val pgrm = Pgrm(tu.entities)
-    //   //     println(s"Parsed: $pgrm")
-          
-    //   //     val typer = new mlscript.Typer(
-    //   //       dbg = false,
-    //   //       verbose = false,
-    //   //       explainErrors = false,
-    //   //       newDefs = true,
-    //   //     )
-          
-    //   //     import typer._
-
-    //   //     implicit val raise: Raise = throw _
-    //   //     implicit var ctx: Ctx = Ctx.init
-    //   //     implicit val extrCtx: Opt[typer.ExtrCtx] = N
-
-    //   //     val vars: Map[Str, typer.SimpleType] = Map.empty
-    //   //     val tpd = typer.typeTypingUnit(tu, N)(ctx.nest, raise, vars)
-          
-    //   //     object SimplifyPipeline extends typer.SimplifyPipeline {
-    //   //       def debugOutput(msg: => Str): Unit =
-    //   //         // if (mode.dbgSimplif) output(msg)
-    //   //         println(msg)
-    //   //     }
-    //   //     val sim = SimplifyPipeline(tpd, S(true))(ctx)
-          
-    //   //     val exp = typer.expandType(sim)(ctx)
-          
-    //   //     val expStr = exp.showIn(0)(ShowCtx.mk(exp :: Nil, newDefs = true)).stripSuffix("\n")
-    //   //       .replaceAll("  ", "&nbsp;&nbsp;")
-    //   //       .replaceAll("\n", "<br/>")
-
-    //   //     // TODO format HTML better
-    //   //     val typingStr = """<div><table width="100%">
-    //   //                       |  <tr>
-    //   //                       |    <td colspan="2"><h4><i>Typing Results:</i></h4></td>
-    //   //                       |  </tr>
-    //   //                       |""".stripMargin +
-    //   //                    s"""<tr>
-    //   //                       |  ${s"<td colspan=\"2\">${expStr}</td>"}
-    //   //                       |</tr>
-    //   //                       |""".stripMargin
-
-    //   //     val backend = new JSWebBackend()
-    //   //     val (lines, resNames) = backend(pgrm)
-    //   //     val code = lines.mkString("\n")
-
-    //   //     // TODO: add a toggle button to show js code
-    //   //     // val jsStr = ("\n\n=====================JavaScript Code=====================\n" + code)
-    //   //     //   .stripSuffix("\n")
-    //   //     //   .replaceAll("  ", "&nbsp;&nbsp;")
-    //   //     //   .replaceAll("\n", "<br/>")
-
-    //   //     val exe = executeCode(code) match {
-    //   //       case Left(err) => err
-    //   //       case Right(lines) => generateResultTable(resNames.zip(lines))
-    //   //     }
-
-    //   //     val resStr = ("""<tr>
-    //   //                     |  <td colspan="2"><h4><i>Execution Results:</i></h4></td>
-    //   //                     |</tr>
-    //   //                     |""".stripMargin + exe + "</table>")
-          
-    //   //     typingStr + resStr
-    //   // }
-    //   ()
-    // } catch {
-    //   // case err: ErrorReport =>
-    //   case err: Diagnostic =>
-    //     report(err)
-    //   case err: Throwable =>
-    //     s"""
-    //   <font color="Red">
-    //   Unexpected error: ${err}${
-    //       err.printStackTrace
-    //       // err.getStackTrace().map(s"$htmlLineBreak$htmlWhiteSpace$htmlWhiteSpace at " + _).mkString
-    //       ""
-    //     }</font>"""
-    // }
-    
-    // target.innerHTML = tryRes
   }
   
   def underline(fragment: Str): Str =

@@ -34,6 +34,7 @@ let query = document.querySelector.bind(document)
 let editor = query("#source-editor")
 let selector = query("#demo-select")
 let parseButton = query("#compile-button")
+let statusPanel = query("#compile-status")
 let outputPanel = query("#specialized-code")
 
 examples Iter.each of case [key, example] then
@@ -61,16 +62,23 @@ selector.addEventListener of "change", event =>
     Some(example) do set editor.value = example.source
     None do throw new Error of "Example \"" + selector.value + "\" not found"
 
+fun formatError(error) =
+  error.name + ": " + error.message +
+  if error.stack is Str then "\n" + error.stack else ""
+
 parseButton.addEventListener of "click", event =>
+  set statusPanel.textContent = "Compiling the current program..."
+  set outputPanel.textContent = "Compiling..."
   Runtime.try_catch of
     () =>
       let res = MLscript.compile of
         traces:
           codegen: false
         editor.value
-      let sections = []
+      let sections = mut []
       let generatedVars = res.codegen.vars.trim()
       let generatedCode = res.codegen.code.trim()
+      let hasGeneratedCode = generatedVars != "" || generatedCode != ""
       if generatedVars != "" do sections.push(generatedVars)
       if generatedCode != "" do sections.push(generatedCode)
       if res.codegen.diagnostics.length > 0 do
@@ -78,18 +86,23 @@ parseButton.addEventListener of "click", event =>
       set outputPanel.textContent =
         if sections.length > 0 then sections.join("\n\n")
         else "No specialized code was generated."
+      set statusPanel.textContent =
+        if res.codegen.diagnostics.length > 0 then
+          "Compilation completed with code generation diagnostics."
+        else if hasGeneratedCode then
+          "Compilation succeeded. Specialized code is shown below."
+        else
+          "Compilation completed. No specialized code was generated."
       
     error =>
-      console.log(error)
-      set outputPanel.textContent =
-        error.name + ": " + error.message +
-        if error.stack is Str then "\n" + error.stack else ""
+      set statusPanel.textContent = "Compilation failed. See the error output below."
+      set outputPanel.textContent = formatError(error)
 
 let indentRegex = new RegExp("""^(\s*)""")
 
 fun parseIndentedText(text) =
-  let root = (text: "", children: [])
-  let stack = [(node: root, indent: -1)]
+  let root = (text: "", children: mut [])
+  let stack = mut [(node: root, indent: -1)]
   text.split("\n")
     Iter.filtering(line => line.trim().length > 0)
     Iter.each of line =>
@@ -97,7 +110,7 @@ fun parseIndentedText(text) =
       let text = line.substring(indent)
       while indent <= stack.[stack.length - 1].indent do
         stack.pop()
-      let newNode = (text: text, children: [])
+      let newNode = (text: text, children: mut [])
       stack.[stack.length - 1].node.children.push of newNode
       stack.push of node: newNode, indent: indent
   root.children
