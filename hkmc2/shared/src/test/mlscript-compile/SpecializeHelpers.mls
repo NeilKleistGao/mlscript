@@ -59,14 +59,13 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
 
     // process preCtor: inline temp variable when printing
     class InlinePrinter(ctx: Map[Symbol, String]) extends Printer(Some(owner)) with
-      // TODO: is there some way to call the inherited functions? currently we just default to another printer instance
       fun showPath(p) = if p is
         ValueRef(s) and ctx.has(s) then ctx.get(s)
-        Select(qual, name) then showPath(qual) + "." + printer.showSymbol(name)
+        Select(qual, name) then showPath(qual) + "." + this.showSymbol(name)
         DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
         DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
-        ValueRef(s) then printer.showSymbol(s)
-        ValueLit(lit) then printer.showLiteral(lit)
+        ValueRef(s) then this.showSymbol(s)
+        ValueLit(lit) then this.showLiteral(lit)
     
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)
     

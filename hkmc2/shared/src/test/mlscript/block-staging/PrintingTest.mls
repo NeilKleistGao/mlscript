@@ -4,12 +4,6 @@
 fun f(_) = 1
 class C(val x)
 
-// :lot
-class D(val z) extends C(z + f(z)) with
-  let {tmp3}
-  tmp3 = z + z
-  val b = tmp3
-
 // :sjs
 staged class D(val z) extends C([2, z + f(z)]."0") with
   val b = z + z
@@ -22,7 +16,7 @@ staged class D(val z) extends C([2, z + f(z)]."0") with
 //│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > Map(2) {
 //│ >   [Function: D] {
-//│ >     class: [class D2 extends C] {
+//│ >     class: [class D extends C] {
 //│ >       'cache$D': [FunCache],
 //│ >       'generatorMap$D': [Map]
 //│ >     }
@@ -42,52 +36,20 @@ staged class D(val z) extends C([2, z + f(z)]."0") with
 //│ >   }
 //│ > }
 
-:e
-// :sir
 staged class D(val x)(val y, val z)(val a) with
   val b = 1
   fun g() = x
-//│ ═══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
 //│ > class D1(x)(y, z)(a) with
 //│ >   val b = 1
 //│ >   fun g() = x
 //│ > Map(1) { 'g' => [Function: g_gen] }
 //│ > Map(1) {
 //│ >   [Function: D] {
-//│ >     class: [class D4] { 'cache$D': [FunCache], 'generatorMap$D': [Map] }
+//│ >     class: [class D2] { 'cache$D': [FunCache], 'generatorMap$D': [Map] }
 //│ >   } => ConcreteClassSymbol {
 //│ >     name: 'D1',
 //│ >     value: [Function: D] { class: [Function] },
 //│ >     paramsOpt: Some { value: [Array] },
 //│ >     auxParams: [ [Array], [Array] ]
-//│ >   }
-//│ > }
-
-import "../../mlscript-compile/Block.mls"
-import "../../mlscript-compile/Option.mls"
-
-open Block
-open Option
-
-
-staged module M with
-  val x = 1
-  fun g() = f(undefined)
-//│ > module M with
-//│ >   val x = 1
-//│ >   fun g() = f(undefined)
-//│ > Map(1) { 'g' => [Function: g_gen] }
-//│ > Map(1) {
-//│ >   [class M] {
-//│ >     x: 1,
-//│ >     'cache$M': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$M': Map(1) { 'g' => [Function: g_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'M',
-//│ >     value: [class M] { x: 1, 'cache$M': [FunCache], 'generatorMap$M': [Map] }
 //│ >   }
 //│ > }

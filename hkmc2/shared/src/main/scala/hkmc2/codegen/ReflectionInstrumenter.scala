@@ -16,10 +16,11 @@ import syntax.{Literal, Tree}
 
 // it should be possible to cache some common constructions (End, Option) into the context
 // this avoids having to rebuild the same shapes everytime they are needed
-case class Context(cache: HashMap[Path | Symbol, Path]):
+// allowMultipleParamList: bypasses error from instrumenting user functions with multiple parameter lists
+case class Context(cache: HashMap[Path | Symbol, Path], allowMultipleParamList: Bool = false):
   def getCache(p: Path | Symbol): Option[Path] = cache.get(p)
-  def addCache(p: Path | Symbol, v: Path): Context = Context(cache.clone() += (p -> v))
-  def delCache(p: Path | Symbol): Context = Context(cache.clone() -= p)
+  def addCache(p: Path | Symbol, v: Path): Context = Context(cache.clone() += (p -> v), allowMultipleParamList)
+  def delCache(p: Path | Symbol): Context = Context(cache.clone() -= p, allowMultipleParamList)
 
 extension [A, B](ls: Iterable[(A => B) => B])
   def collectApply(f: Ls[A] => B): B =
@@ -325,13 +326,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   def transformFunDefn(f: FunDefn)(using Context)(k: (Path, Context) => Block): Block =
     // maintain parameter names in instrumented code
     transformSymbol(f.sym): (sym, ctx) =>
-      if f.params.length > 1 then
+      if f.params.length > 1 && !ctx.allowMultipleParamList then
         raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
       transformParams(f.params)(using ctx): (paramList, ctx) =>
         transformBlock(f.body)(using ctx): (body, ctx) =>
           blockCtor("FunDefn", Ls(sym, paramList, body))(k(_, ctx))
 
-  def stageMethod(f: FunDefn): FunDefn =
+  def stageMethod(f: FunDefn, ctx: Context = Context(new HashMap())): FunDefn =
     val stageSymName = f.sym.nme + "_instr"
     val stageSym = BlockMemberSymbol(stageSymName, Nil, false)
 
@@ -339,7 +340,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(stageSymName))
     val argSyms = f.params.flatMap(_.params).map(_.sym)
     val newBody =
-      val rest = transformFunDefn(f)(using Context(new HashMap()))((block, _) => Return(block, false))
+      val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block, false))
       (Scoped(Set(argSyms*), rest))
 
     FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false, f.configOverride)
@@ -471,7 +472,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = stageMethod(preCtorFun) :: stageMethod(paramRewrite.applyFunDefn(ctorFun)) :: helperMethods.flatten,
+        methods = stageMethod(preCtorFun) :: stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(new HashMap(), true)) :: helperMethods.flatten,
         ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
         publicFields = companion.publicFields,
       )
