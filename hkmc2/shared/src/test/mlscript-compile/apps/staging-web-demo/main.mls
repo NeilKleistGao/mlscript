@@ -31,23 +31,10 @@ open Examples
 module Main with ...
 
 let query = document.querySelector.bind(document)
-let editor = query("#editor")
-let selector = query("select#example")
-let parseButton = query("button#parse")
-let outputPanel = query("#output")
-let compileTimeReport = query(".compile-time-report")
-
-// Elements of tab contents.
-module tabs with
-  module codegen with
-    val el = query("#tab-code-generation")
-    val output = el.querySelector(".output")
-    val traces = el.querySelector("code.traces")
-    val showTraces = el.querySelector("#show-traces")
-    object diagnostics with
-      val elem = el.querySelector(".diagnostics")
-      val output = elem.querySelector(".output")
-      val text = elem.querySelector(".text")
+let editor = query("#source-editor")
+let selector = query("#demo-select")
+let parseButton = query("#compile-button")
+let outputPanel = query("#specialized-code")
 
 examples Iter.each of case [key, example] then
   let option = document.createElement of "option"
@@ -74,44 +61,29 @@ selector.addEventListener of "change", event =>
     Some(example) do set editor.value = example.source
     None do throw new Error of "Example \"" + selector.value + "\" not found"
 
-fun showDiagnostics(elems, diagnostics, problematicStages) =
-  if diagnostics is [] and
-    problematicStages is [] then
-      set elems.text.innerHTML = "<em>Everything went smoothly, without any problems.</em>"
-    else
-      set elems.text.innerHTML =
-        "<em>There is no issue with this stage, " +
-        "but there are problems in the following stage" +
-        (if problematicStages.length > 1 then "s" else "") + ": " +
-        problematicStages Iter.joined(", ") + ".</em>"
-  else
-    set elems.output.innerHTML = diagnostics.join("\n")
-    set elems.text.innerHTML = ""
-
-fun addCollapsibleTree(element, tree) =
-  let collapsibleTree = document.createElement("collapsible-tree")
-  set collapsibleTree.textContent = tree
-  element.appendChild of collapsibleTree
-
 parseButton.addEventListener of "click", event =>
   Runtime.try_catch of
     () =>
       let res = MLscript.compile of
         traces:
-          codegen: tabs.codegen.showTraces.checked
+          codegen: false
         editor.value
-      let problematicStages = []
-      if res.codegen.diagnostics.length > 0 do problematicStages.push of "code generation"
-      // Code Generation
-      set tabs.codegen.output.innerHTML = res.codegen.vars.trim() + "\n" + res.codegen.code.trim()
-      set tabs.codegen.traces.innerHTML = res.codegen.traces
-      showDiagnostics of tabs.codegen.diagnostics, res.codegen.diagnostics, problematicStages
+      let sections = []
+      let generatedVars = res.codegen.vars.trim()
+      let generatedCode = res.codegen.code.trim()
+      if generatedVars != "" do sections.push(generatedVars)
+      if generatedCode != "" do sections.push(generatedCode)
+      if res.codegen.diagnostics.length > 0 do
+        sections.push of "Diagnostics:\n" + res.codegen.diagnostics.join("\n")
+      set outputPanel.textContent =
+        if sections.length > 0 then sections.join("\n\n")
+        else "No specialized code was generated."
       
     error =>
       console.log(error)
-      let errorDisplay = document.createElement("error-display")
-      errorDisplay.setError of error
-      outputPanel.appendChild of errorDisplay
+      set outputPanel.textContent =
+        error.name + ": " + error.message +
+        if error.stack is Str then "\n" + error.stack else ""
 
 let indentRegex = new RegExp("""^(\s*)""")
 
