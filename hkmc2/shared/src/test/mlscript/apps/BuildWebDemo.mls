@@ -1,4 +1,5 @@
 :js
+:noFreeze
 
 :silent
 import "fs"
@@ -11,12 +12,13 @@ import "../../mlscript-compile/Option.mls"
 open Option { Some, None }
 
 :silent
-let css_pattern = new RegExp("""<link[^>]*href=["']([^"']+)["'][^>]*rel=["']stylesheet["'][^>]*>""", "gi")
+let link_pattern = new RegExp("""<link\b[^>]*>""", "gi")
+let href_pattern = new RegExp("""href=["']([^"']+)["']""", "i")
+let stylesheet_rel_pattern = new RegExp("""rel=["']stylesheet["']""", "i")
 let script_pattern = new RegExp("""<script[^>]*src=["']([^"']+)["'][^>]*>""", "gi")
-// let import_pattern = new RegExp("""import\s+([\s\S]+?\s+from\s+)?["']([^"']+)["']""", "g")
-let import_pattern = new RegExp("""import\s+([\s\S]+?\s+from\s+)?["']([^"'+]+)["']""", "g")
-let mls_import_pattern = new RegExp("""import\s+["']([^"']+)["']""", "g")
-let dynamic_import_pattern = new RegExp("""import\(["']([^"']+)["']\)""", "g")
+let import_pattern = new RegExp("""^(\s*import\s+(?:[^"'\n]+?\s+from\s+)?)["']([^"']+)["']""", "gm")
+let mls_import_pattern = new RegExp("""^(\s*import\s+)["']([^"']+)["']""", "gm")
+let dynamic_import_pattern = new RegExp("""\bimport\(\s*["']([^"']+)["']\s*\)""", "g")
 
 // `process.cwd()` is different in `hkmc2AllTests / test` and
 // `~hkmc2DiffTests / Test / run`. This is a workaround to make the path.
@@ -26,6 +28,9 @@ fun projectRoot =
   if cwd.endsWith(suffix) then cwd else path.join(cwd, suffix)
 
 fun fileContent(filePath) = fs.readFileSync(filePath, "utf8")
+
+fun isLocalModulePath(specifier) =
+  if specifier.startsWith(".") then true else specifier.startsWith("/")
 
 fun scripts(html) =
   let matches = []
@@ -40,9 +45,13 @@ fun stylesheets(html) =
   let matches = []
   let match
   while
-    let match = css_pattern.exec(html)
+    let match = link_pattern.exec(html)
     (match is null) is false do
-      matches.push(match.(1).trim())
+      let tag = match.(0)
+      if stylesheet_rel_pattern.test(tag) do
+        let hrefMatch = href_pattern.exec(tag)
+        if (hrefMatch is null) is false do
+          matches.push(hrefMatch.(1).trim())
   matches
 
 fun imports(js) =
@@ -50,11 +59,15 @@ fun imports(js) =
   while
     let match = import_pattern.exec(js)
     (match is null) is false do
-      matches.push(match.(2).trim())
+      let importPath = match.(2).trim()
+      if isLocalModulePath(importPath) do
+        matches.push(importPath)
   while
     let match = dynamic_import_pattern.exec(js)
     (match is null) is false do
-      matches.push(match.(1).trim())
+      let importPath = match.(1).trim()
+      if isLocalModulePath(importPath) do
+        matches.push(importPath)
   matches
 
 class File(val absPath: Str) with
@@ -64,10 +77,16 @@ class File(val absPath: Str) with
   fun debugName = path.relative of projectRoot, absPath
   
   fun flattenImports =
-    let pass1 = content.replaceAll of import_pattern, (...matches) => mkStr of
-      "import ", matches.(1), "\"./", (path.basename of matches.(2)), "\""
-    let pass2 = pass1.replaceAll of dynamic_import_pattern, (...matches) => mkStr of
-      "import(\"./", (path.basename of matches.(1)), "\")"
+    let pass1 = content.replaceAll of import_pattern, (...matches) =>
+      let importPath = matches.(2)
+      if isLocalModulePath(importPath) then
+        mkStr of matches.(1), "\"./", (path.basename of importPath), "\""
+      else matches.(0)
+    let pass2 = pass1.replaceAll of dynamic_import_pattern, (...matches) =>
+      let importPath = matches.(1)
+      if isLocalModulePath(importPath) then
+        mkStr of "import(\"./", (path.basename of importPath), "\")"
+      else matches.(0)
     pass2
     
   fun companionMlsFile =
@@ -77,8 +96,11 @@ class File(val absPath: Str) with
         path.basename(mlsAbsPath)
         fileContent(mlsAbsPath).replaceAll of
           mls_import_pattern
-          (...matches) => mkStr of
-            "import ", "\"./", (path.basename of matches.(1)), "\""
+          (...matches) =>
+            let importPath = matches.(2)
+            if isLocalModulePath(importPath) then
+              mkStr of matches.(1), "\"./", (path.basename of importPath), "\""
+            else matches.(0)
     else None
 
 fun build(htmlPath, outputPath, git) =
@@ -142,7 +164,7 @@ fun build(htmlPath, outputPath, git) =
   
   // Write the CSS files to the output directory.
   (stylesheets of html)
-    Iter.filtering of fileName => not of fileName.startsWith("http")
+    Iter.filtering of fileName => not fileName.startsWith("http")
     Iter.each of fileName =>
       let content = fileContent of path.join of absolute(htmlPath) of fileName
       fs.writeFileSync of
@@ -197,7 +219,7 @@ let webDemoDir = "web-demo"
 //│ webDemoDir = "web-demo"
 
 build of
-  path.join of projectRoot, "src", "test", "mlscript-compile", "apps", "invalml-web-demo", "index.html"
+  path.join of projectRoot, "src", "test", "mlscript-compile", "apps", "staging-web-demo", "index.html"
   // - - - - -
   // Be careful with the output path! Every file in it will be deleted.
   // The path here is just an example. Do not output to the test folder because
@@ -210,24 +232,27 @@ build of
   //   "" // Username
   //   "" // Email
   None
-//│ > Processing src/test/mlscript-compile/apps/invalml-web-demo/main.mjs
-//│ > Processing ../js/target/scala-3.6.1/hkmc2-opt/MLscript.mjs
-//│ > Processing src/test/mlscript-compile/apps/invalml-web-demo/Examples.mjs
+//│ > Processing src/test/mlscript-compile/apps/staging-web-demo/main.mjs
+//│ > Processing ../js/target/scala-3.7.4/hkmc2-opt/MLscript.mjs
+//│ > Processing src/test/mlscript-compile/apps/staging-web-demo/Examples.mjs
 //│ > Processing src/test/mlscript-compile/MutMap.mjs
 //│ > Processing src/test/mlscript-compile/Predef.mjs
+//│ > Processing src/test/mlscript-compile/Term.mjs
 //│ > Processing src/test/mlscript-compile/Rendering.mjs
-//│ > Processing src/test/mlscript-compile/Runtime.mjs
 //│ > Processing src/test/mlscript-compile/RuntimeJS.mjs
+//│ > Processing src/test/mlscript-compile/Runtime.mjs
+//│ > Processing src/test/mlscript-compile/LazyArray.mjs
 //│ > Processing src/test/mlscript-compile/Option.mjs
 //│ > Processing src/test/mlscript-compile/XML.mjs
 //│ > Processing src/test/mlscript-compile/Iter.mjs
 //│ > Processing src/test/mlscript-compile/Stack.mjs
-//│ > Processing src/test/mlscript-compile/Str.mjs
+//│ > Processing src/test/mlscript-compile/StrOps.mjs
 //│ > Processing src/test/mlscript-compile/Runtime.mjs
-//│ > Collected 13 files
-//│ > There are 15 files in the output folder.
+//│ > Collected 15 files
+//│ > There are 17 files in the output folder.
 //│ > Removing Examples.mjs
 //│ > Removing Iter.mjs
+//│ > Removing LazyArray.mjs
 //│ > Removing MLscript.mjs
 //│ > Removing MutMap.mjs
 //│ > Removing Option.mjs
@@ -236,9 +261,8 @@ build of
 //│ > Removing Runtime.mjs
 //│ > Removing RuntimeJS.mjs
 //│ > Removing Stack.mjs
-//│ > Removing Str.mjs
+//│ > Removing StrOps.mjs
+//│ > Removing Term.mjs
 //│ > Removing XML.mjs
 //│ > Removing index.html
-//│ > Removing main.css
 //│ > Removing main.mjs
-

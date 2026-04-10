@@ -12,7 +12,7 @@
 // automatically refresh the browser.
 
 
-import "../../Str.mls"
+import "../../StrOps.mls"
 import "../../Iter.mls"
 import "../../XML.mls"
 import "../../Option.mls"
@@ -20,7 +20,7 @@ import "../../Runtime.mls"
 import "../../Predef.mls"
 import "../../MutMap.mls"
 import "./Examples.mls"
-import "../../../../../../js/target/scala-3.6.1/hkmc2-opt/MLscript.mjs"
+import "../../../../../../js/target/scala-3.7.4/hkmc2-opt/MLscript.mjs"
 
 
 open XML { elem }
@@ -96,19 +96,10 @@ fun addCollapsibleTree(element, tree) =
 parseButton.addEventListener of "click", event =>
   Runtime.try_catch of
     () =>
-      let startTime = Date.now()
       let res = MLscript.compile of
         traces:
-          parser: tabs.parser.showTraces.checked
-          elaborator: tabs.elaborator.showTraces.checked
-          resolver: tabs.resolver.showTraces.checked
-          lowering: tabs.lowering.showTraces.checked
           codegen: tabs.codegen.showTraces.checked
         editor.value
-      let elapsedSeconds = ((Date.now() - startTime) / 1000).toPrecision(3)
-      // set compileTimeReport.innerHTML = "Compilation took " + elapsedSeconds + " seconds."
-      console.log of "Compilation took " + elapsedSeconds + " seconds."
-      console.log(res)
       let problematicStages = []
       if res.codegen.diagnostics.length > 0 do problematicStages.push of "code generation"
       // Code Generation
