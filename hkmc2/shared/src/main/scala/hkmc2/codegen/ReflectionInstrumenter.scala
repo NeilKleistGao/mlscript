@@ -140,7 +140,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               return End()
 
           val path = pOpt.getOrElse(owner match
-            case S(owner) => owner.asPath.selSN(sym.nme)
+            case S(owner) => owner.asPath.sel(Tree.Ident(baseSym.nme), baseSym)
             case N => bsym.asPath)
           baseSym match
             case _: ClassSymbol =>
@@ -353,6 +353,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     case Define(defn: ClsLikeDefn, rest)
         if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) ||
           defn.companion.isEmpty && defn.isym.defn.exists(_.hasStagedModifier.isDefined) =>
+      if defn.companion.isEmpty && defn.owner.isDefined then
+        // FIXME: find a way to instrument the symbol for non-top-level staged classes
+        raise(ErrorReport(msg"Only top-level staged classes are supported." -> defn.sym.toLoc :: Nil))
+        return End()
       val (sym, companion, preCtor, ctor, ctorParams, methods) = defn.companion match
         case S(companion) => (companion.isym, companion, End(), companion.ctor, Ls(PlainParamList(Nil)), companion.methods)
         case N =>
@@ -374,9 +378,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           (defn.sym, companion, preCtor, defn.ctor, params, defn.methods)
 
       val modSym = companion.isym
-      val ownerSym = defn.companion match
-        case S(defn) => defn.isym
-        case N => defn.isym
 
       // avoid name clash of cache and generator map for derived staged classes
       val suffix = "$" + scope.allocateOrGetName(sym)
@@ -437,10 +438,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
       // initialize cache for the module
       def cacheDecl(rest: Block) =
+        val ownerSym = defn.companion match
+          case S(defn) => defn.isym
+          case N => defn.isym
+
+        val pOpt = defn.companion.map(_ => Value.Ref(ownerSym))
+        
         cacheEntries.collectApply: cacheTups =>
           tuple(cacheTups): tup =>
             this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              transformSymbol(ownerSym)(using Context(new HashMap())): (stagedSym, _) =>
+              transformSymbol(ownerSym, pOpt)(using Context(new HashMap())): (stagedSym, _) =>
                 this.ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
                   Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
 

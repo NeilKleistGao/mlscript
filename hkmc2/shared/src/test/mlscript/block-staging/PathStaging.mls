@@ -1,0 +1,187 @@
+:js
+:staging
+
+class CA() with
+  fun f() = 1
+staged module MA with
+  fun f() = 1
+  class CB() with
+    fun f() = 1
+//│ > module MA with
+//│ >   class CB() with
+//│ >     fun f() = 1
+//│ >   fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(2) {
+//│ >   [class MA] {
+//│ >     CB: [Function: CB] { class: [Function] },
+//│ >     'cache$MA': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$MA': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'MA',
+//│ >     value: [class MA] {
+//│ >       CB: [Function],
+//│ >       'cache$MA': [FunCache],
+//│ >       'generatorMap$MA': [Map]
+//│ >     }
+//│ >   },
+//│ >   [class CB] {
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'CB', [] ]
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'CB',
+//│ >     value: [class CB] { Symbol(mlscript.definitionMetadata): [Array] },
+//│ >     paramsOpt: Some { value: [] },
+//│ >     auxParams: []
+//│ >   }
+//│ > }
+
+module MB with
+  class CC() with
+    fun f() = 1
+  staged module MC with
+    fun f() = 1
+//│ > module MC with
+//│ >   ()
+//│ >   fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
+
+class M() with
+  fun f() = 1
+staged module M with
+  fun f() = 
+    CA().f()
+    MA.f()
+    MA.CB.f()
+    MB.CC.f()
+    MB.MC.f()
+//│ > module M with
+//│ >   ()
+//│ >   fun f() =
+//│ >     let {tmp}
+//│ >     tmp = CA()
+//│ >     tmp.f()
+//│ >     MA.f()
+//│ >     MA.CB.f()
+//│ >     MB.CC.f()
+//│ >     MB.MC.f()
+//│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(7) {
+//│ >   [Function: CA] {
+//│ >     class: [class CA] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'CA',
+//│ >     value: [Function: CA] { class: [Function] },
+//│ >     paramsOpt: Some { value: [] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class MA] {
+//│ >     CB: [Function: CB] { class: [Function] },
+//│ >     'cache$MA': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$MA': Map(1) { 'f' => [Function: f_gen] },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'MA' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'MA',
+//│ >     value: [class MA] {
+//│ >       CB: [Function],
+//│ >       'cache$MA': [FunCache],
+//│ >       'generatorMap$MA': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [Function: CB] {
+//│ >     class: [class CB] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'CB',
+//│ >     value: [Function: CB] { class: [Function] },
+//│ >     paramsOpt: Some { value: [] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class MB] {
+//│ >     CC: [Function: CC] { class: [Function] },
+//│ >     MC: [class MC] {
+//│ >       'cache$MC': [FunCache],
+//│ >       'generatorMap$MC': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'MB' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'MB',
+//│ >     value: [class MB] {
+//│ >       CC: [Function],
+//│ >       MC: [Function],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [Function: CC] {
+//│ >     class: [class CC] { Symbol(mlscript.definitionMetadata): [Array] }
+//│ >   } => ConcreteClassSymbol {
+//│ >     name: 'CC',
+//│ >     value: [Function: CC] { class: [Function] },
+//│ >     paramsOpt: Some { value: [] },
+//│ >     auxParams: []
+//│ >   },
+//│ >   [class MC] {
+//│ >     'cache$MC': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$MC': Map(1) { 'f' => [Function: f_gen] },
+//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'MC' ]
+//│ >   } => ModuleSymbol {
+//│ >     name: 'MC',
+//│ >     value: [class MC] {
+//│ >       'cache$MC': [FunCache],
+//│ >       'generatorMap$MC': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     }
+//│ >   },
+//│ >   [class M] {
+//│ >     'cache$M': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$M': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'M',
+//│ >     value: [class M] { 'cache$M': [FunCache], 'generatorMap$M': [Map] }
+//│ >   }
+//│ > }
+
+staged class C() with
+  fun f() = 1
+//│ > class C1() with
+//│ >   ()
+//│ >   fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
+
+// :sjs
+module N with
+  class NM() with
+    fun g() = 1
+  staged module NM with
+    fun f() = 1
+//│ > module NM with
+//│ >   ()
+//│ >   fun f() = 1
+//│ > Map(1) { 'f' => [Function: f_gen] }
+
+:e
+module N with
+  staged class NC() with
+    fun f() = 1
+//│ ╔══[COMPILATION ERROR] Only top-level staged classes are supported.
+//│ ║  l.180: 	  staged class NC() with
+//│ ║         	         ^^^^^^^^^^^^^^^
+//│ ║  l.181: 	    fun f() = 1
+//│ ╙──       	^^^^^^^^^^^^^^^
+
