@@ -434,7 +434,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
     // staged modules
     case S(defn) if defn.hasStagedModifier.isDefined =>
-      val _ = transformSymbol(companion.isym)(using Context(new HashMap()))((_, _) => End())
       val (sym, ctor, methods) = (companion.isym, companion.ctor, companion.methods)
       // avoid name clash of cache and generator map for derived staged classes
       val modSym = sym
@@ -453,7 +452,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   override def applyBlock(b: Block): Block = b match
     // staged classes
     case Define(defn: ClsLikeDefn, rest) if defn.isym.defn.exists(_.hasStagedModifier.isDefined) => 
-      val _ = transformSymbol(defn.isym)(using Context(new HashMap()))((_, _) => End())
       if !defn.privateFields.isEmpty then
         raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
         return End()
