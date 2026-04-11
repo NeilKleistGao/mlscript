@@ -430,7 +430,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         call(printFun, Ls(str), false): _ =>
           call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
             symbolMapSym.map(sym => call(printFun, Ls(sym), false)(_ => rest)).getOrElse(rest)
-
+    
+    // cache and generator may update symbolMapSym, so we call them first
     (helperMethods.flatten, b => Begin(cacheDecl(generatorMapDecl(End())), debugCont(b)))
 
   override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match

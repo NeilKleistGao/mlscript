@@ -46,6 +46,12 @@ staged module D with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class A] { 'cache$A': [FunCache], 'generatorMap$A': [Map] } => ModuleSymbol { name: 'A', value: [Function] }
+//│ >   }
+//│ > }
 //│ > module D with
 //│ >   class E
 //│ >   fun f() =
@@ -170,12 +176,18 @@ staged module M with
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.171: 	  fun g()() = 1
+//│ ║  l.177: 	  fun g()() = 1
 //│ ╙──       	  ^^^^^^^^^^^^^
 //│ > module M with
 //│ >   ()
 //│ >   fun g()() = 1
 //│ > Map(1) { 'g' => [Function: g_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class M4] { 'cache$M': [FunCache], 'generatorMap$M': [Map] } => ModuleSymbol { name: 'M', value: [Function] }
+//│ >   }
+//│ > }
 
 :ftc
 staged module M with
@@ -229,6 +241,15 @@ staged module Shadowing with
 //│ >   ()
 //│ >   fun f(x, x) = x
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class Shadowing] {
+//│ >       'cache$Shadowing': [FunCache],
+//│ >       'generatorMap$Shadowing': [Map]
+//│ >     } => ModuleSymbol { name: 'Shadowing', value: [Function] }
+//│ >   }
+//│ > }
 
 staged module RetUnit with
   fun f() = ()

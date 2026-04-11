@@ -12,6 +12,12 @@ staged module M with
 //│ >   ()
 //│ >   fun f(x) = x.call(10)
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class M] { 'cache$M': [FunCache], 'generatorMap$M': [Map] } => ModuleSymbol { name: 'M', value: [Function] }
+//│ >   }
+//│ > }
 
 staged class A(val a)
 //│ > class A(a) with
@@ -81,12 +87,26 @@ staged class C with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(1) {
+//│ >     [class C6] {
+//│ >       'class$cache$C': [FunCache],
+//│ >       'class$generatorMap$C': [Map]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'C',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(0) {}
+//│ > }
 
 :e
 staged class C(x)
 //│ ╔══[COMPILATION ERROR] Staged classes with private fields are not supported.
-//│ ║  l.86: 	staged class C(x)
-//│ ╙──      	       ^^^^^^^^^^
+//│ ║  l.106: 	staged class C(x)
+//│ ╙──       	       ^^^^^^^^^^
 
 staged class B(val x) with
   fun f(y) = this.x + y
