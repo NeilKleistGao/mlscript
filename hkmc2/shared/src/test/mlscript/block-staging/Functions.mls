@@ -1,7 +1,6 @@
 :js
 :staging
 
-:checkIR
 staged module Rebinding with
   fun lit() =
     let x = 42
@@ -13,20 +12,13 @@ staged module Rebinding with
 //│ >     x = 42
 //│ >     x
 //│ > Map(1) { 'lit' => [Function: lit_gen] }
-//│ > Map(1) {
-//│ >   [class Rebinding] {
-//│ >     'cache$Rebinding': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$Rebinding': Map(1) { 'lit' => [Function: lit_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Rebinding',
-//│ >     value: [class Rebinding] {
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class Rebinding] {
 //│ >       'cache$Rebinding': [FunCache],
 //│ >       'generatorMap$Rebinding': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'Rebinding', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -102,30 +94,16 @@ staged module Expressions with
 //│ >   'match1' => [Function: match1_gen],
 //│ >   'match2' => [Function: match2_gen]
 //│ > }
-//│ > Map(3) {
-//│ >   'Bool' => VirtualClassSymbol { name: 'Bool' },
-//│ >   'Int' => VirtualClassSymbol { name: 'Int' },
-//│ >   [class Expressions] {
-//│ >     'cache$Expressions': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$Expressions': Map(7) {
-//│ >       'lit' => [Function: lit_gen],
-//│ >       'assign' => [Function: assign_gen],
-//│ >       'tup1' => [Function: tup1_gen],
-//│ >       'tup2' => [Function: tup2_gen],
-//│ >       'dynsel' => [Function: dynsel_gen],
-//│ >       'match1' => [Function: match1_gen],
-//│ >       'match2' => [Function: match2_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Expressions',
-//│ >     value: [class Expressions] {
+//│ > SymbolMap {
+//│ >   classMap: Map(2) {
+//│ >     'Bool' => VirtualClassSymbol { name: 'Bool' },
+//│ >     'Int' => VirtualClassSymbol { name: 'Int' }
+//│ >   },
+//│ >   moduleMap: Map(1) {
+//│ >     [class Expressions] {
 //│ >       'cache$Expressions': [FunCache],
 //│ >       'generatorMap$Expressions': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'Expressions', value: [Function] }
 //│ >   }
 //│ > }
 //│ x = [1, 2, 3]
@@ -151,61 +129,34 @@ staged module ClassInstrumentation with
 //│ >   'app1' => [Function: app1_gen],
 //│ >   'app2' => [Function: app2_gen]
 //│ > }
-//│ > Map(5) {
-//│ >   [Function: Outside] {
-//│ >     class: [class Outside] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'Outside',
-//│ >     value: [Function: Outside] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   [class ClassInstrumentation] {
-//│ >     Inside: [Function: Inside] { class: [Function] },
-//│ >     NoArg: [class NoArg] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     'cache$ClassInstrumentation': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
+//│ > SymbolMap {
+//│ >   classMap: Map(3) {
+//│ >     [Function: Outside] { class: [Function] } => ConcreteClassSymbol {
+//│ >       name: 'Outside',
+//│ >       value: [Function],
+//│ >       paramsOpt: [Some],
+//│ >       auxParams: []
 //│ >     },
-//│ >     'generatorMap$ClassInstrumentation': Map(4) {
-//│ >       'inst1' => [Function: inst1_gen],
-//│ >       'inst2' => [Function: inst2_gen],
-//│ >       'app1' => [Function: app1_gen],
-//│ >       'app2' => [Function: app2_gen]
+//│ >     [class NoArg] { Symbol(mlscript.definitionMetadata): [Array] } => ConcreteClassSymbol {
+//│ >       name: 'NoArg',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     },
+//│ >     [Function: Inside] { class: [Function] } => ConcreteClassSymbol {
+//│ >       name: 'Inside',
+//│ >       value: [Function],
+//│ >       paramsOpt: [Some],
+//│ >       auxParams: []
 //│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'ClassInstrumentation',
-//│ >     value: [class ClassInstrumentation] {
+//│ >   },
+//│ >   moduleMap: Map(1) {
+//│ >     [class ClassInstrumentation] {
 //│ >       Inside: [Function],
 //│ >       NoArg: [Function],
 //│ >       'cache$ClassInstrumentation': [FunCache],
 //│ >       'generatorMap$ClassInstrumentation': [Map]
-//│ >     }
-//│ >   },
-//│ >   [class NoArg] {
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'NoArg' ]
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'NoArg',
-//│ >     value: [class NoArg] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
-//│ >   },
-//│ >   [Function: Inside] {
-//│ >     class: [class Inside] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'Inside',
-//│ >     value: [Function: Inside] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   [class Inside] {
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Inside', [Array] ]
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'Inside',
-//│ >     value: [class Inside] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
+//│ >     } => ModuleSymbol { name: 'ClassInstrumentation', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -219,20 +170,13 @@ staged module CallSubst with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > Map(1) {
-//│ >   [class Staged] {
-//│ >     'cache$Staged': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$Staged': Map(1) { 'f' => [Function: f_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Staged',
-//│ >     value: [class Staged] {
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class Staged] {
 //│ >       'cache$Staged': [FunCache],
 //│ >       'generatorMap$Staged': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'Staged', value: [Function] }
 //│ >   }
 //│ > }
 //│ > module CallSubst with
@@ -243,42 +187,19 @@ staged module CallSubst with
 //│ >     tmp1 = Staged.f()
 //│ >     tmp + tmp1
 //│ > Map(1) { 'call' => [Function: call_gen] }
-//│ > Map(3) {
-//│ >   [class Staged] {
-//│ >     'cache$Staged': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$Staged': Map(1) { 'f' => [Function: f_gen] },
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Staged' ]
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Staged',
-//│ >     value: [class Staged] {
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(3) {
+//│ >     [class Staged] {
 //│ >       'cache$Staged': [FunCache],
 //│ >       'generatorMap$Staged': [Map],
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
-//│ >     }
-//│ >   },
-//│ >   [class Nonstaged] {
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Nonstaged' ]
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Nonstaged',
-//│ >     value: [class Nonstaged] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   },
-//│ >   [class CallSubst] {
-//│ >     'cache$CallSubst': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$CallSubst': Map(1) { 'call' => [Function: call_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'CallSubst',
-//│ >     value: [class CallSubst] {
+//│ >     } => ModuleSymbol { name: 'Staged', value: [Function] },
+//│ >     [class Nonstaged] { Symbol(mlscript.definitionMetadata): [Array] } => ModuleSymbol { name: 'Nonstaged', value: [Function] },
+//│ >     [class CallSubst] {
 //│ >       'cache$CallSubst': [FunCache],
 //│ >       'generatorMap$CallSubst': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'CallSubst', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -298,30 +219,22 @@ staged module Arguments with
 //│ >     tmp = new Function_
 //│ >     tmp
 //│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
-//│ > Map(2) {
-//│ >   [class Function$1 extends Function] {
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Function$' ]
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'Function$',
-//│ >     value: [class Function$1 extends Function] {
+//│ > SymbolMap {
+//│ >   classMap: Map(1) {
+//│ >     [class Function$1 extends Function] {
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
-//│ >     },
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
 //│ >   },
-//│ >   [class Arguments] {
-//│ >     'cache$Arguments': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$Arguments': Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Arguments',
-//│ >     value: [class Arguments] {
+//│ >   moduleMap: Map(1) {
+//│ >     [class Arguments] {
 //│ >       'cache$Arguments': [FunCache],
 //│ >       'generatorMap$Arguments': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'Arguments', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -353,23 +266,13 @@ staged module OtherBlocks with
 //│ >   'scope' => [Function: scope_gen],
 //│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
 //│ > }
-//│ > Map(1) {
-//│ >   [class OtherBlocks] {
-//│ >     'cache$OtherBlocks': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$OtherBlocks': Map(2) {
-//│ >       'scope' => [Function: scope_gen],
-//│ >       'breakAndLabel' => [Function: breakAndLabel_gen]
-//│ >     }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'OtherBlocks',
-//│ >     value: [class OtherBlocks] {
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class OtherBlocks] {
 //│ >       'cache$OtherBlocks': [FunCache],
 //│ >       'generatorMap$OtherBlocks': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'OtherBlocks', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -379,28 +282,21 @@ staged module ClassDefs with
 //│ >   class A
 //│ >   
 //│ > Map(0) {}
-//│ > Map(2) {
-//│ >   [class ClassDefs] {
-//│ >     A: [class A] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     'cache$ClassDefs': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: Map(0) {},
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$ClassDefs': Map(0) {}
-//│ >   } => ModuleSymbol {
-//│ >     name: 'ClassDefs',
-//│ >     value: [class ClassDefs] {
+//│ > SymbolMap {
+//│ >   classMap: Map(1) {
+//│ >     [class A] { Symbol(mlscript.definitionMetadata): [Array] } => ConcreteClassSymbol {
+//│ >       name: 'A',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(1) {
+//│ >     [class ClassDefs] {
 //│ >       A: [Function],
 //│ >       'cache$ClassDefs': [FunCache],
 //│ >       'generatorMap$ClassDefs': Map(0) {}
-//│ >     }
-//│ >   },
-//│ >   [class A] { Symbol(mlscript.definitionMetadata): [ 'class', 'A' ] } => ConcreteClassSymbol {
-//│ >     name: 'A',
-//│ >     value: [class A] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     paramsOpt: None {},
-//│ >     auxParams: []
+//│ >     } => ModuleSymbol { name: 'ClassDefs', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -410,30 +306,21 @@ staged module ValClass with
 //│ >   class A(a)
 //│ >   
 //│ > Map(0) {}
-//│ > Map(2) {
-//│ >   [class ValClass] {
-//│ >     A: [Function: A] { class: [Function] },
-//│ >     'cache$ValClass': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: Map(0) {},
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$ValClass': Map(0) {}
-//│ >   } => ModuleSymbol {
-//│ >     name: 'ValClass',
-//│ >     value: [class ValClass] {
+//│ > SymbolMap {
+//│ >   classMap: Map(1) {
+//│ >     [Function: A] { class: [Function] } => ConcreteClassSymbol {
+//│ >       name: 'A',
+//│ >       value: [Function],
+//│ >       paramsOpt: [Some],
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(1) {
+//│ >     [class ValClass] {
 //│ >       A: [Function],
 //│ >       'cache$ValClass': [FunCache],
 //│ >       'generatorMap$ValClass': Map(0) {}
-//│ >     }
-//│ >   },
-//│ >   [class A1] {
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'A', [Array] ]
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'A',
-//│ >     value: [class A1] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
+//│ >     } => ModuleSymbol { name: 'ValClass', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -450,46 +337,26 @@ staged module ClassFunctions with
 //│ >     fun g() = InnerClass.f()
 //│ >   
 //│ > Map(0) {}
-//│ > Map(3) {
-//│ >   [class ClassFunctions] {
-//│ >     InnerClass: [Function: InnerClass] { class: [Function] },
-//│ >     'cache$ClassFunctions': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: Map(0) {},
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$ClassFunctions': Map(0) {}
-//│ >   } => ModuleSymbol {
-//│ >     name: 'ClassFunctions',
-//│ >     value: [class ClassFunctions] {
+//│ > SymbolMap {
+//│ >   classMap: Map(1) {
+//│ >     [Function: InnerClass] { class: [Function] } => ConcreteClassSymbol {
+//│ >       name: 'InnerClass',
+//│ >       value: [Function],
+//│ >       paramsOpt: [Some],
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(2) {
+//│ >     [class ClassFunctions] {
 //│ >       InnerClass: [Function],
 //│ >       'cache$ClassFunctions': [FunCache],
 //│ >       'generatorMap$ClassFunctions': Map(0) {}
-//│ >     }
-//│ >   },
-//│ >   [class InnerClass] {
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'InnerClass', [] ]
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'InnerClass',
-//│ >     value: [class InnerClass] { Symbol(mlscript.definitionMetadata): [Array] },
-//│ >     paramsOpt: Some { value: [] },
-//│ >     auxParams: []
-//│ >   },
-//│ >   [class Arguments] {
-//│ >     'cache$Arguments': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$Arguments': Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] },
-//│ >     Symbol(mlscript.definitionMetadata): [ 'class', 'Arguments' ]
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Arguments',
-//│ >     value: [class Arguments] {
+//│ >     } => ModuleSymbol { name: 'ClassFunctions', value: [Function] },
+//│ >     [class Arguments] {
 //│ >       'cache$Arguments': [FunCache],
 //│ >       'generatorMap$Arguments': [Map],
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'Arguments', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -502,17 +369,10 @@ staged module A with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > Map(1) {
-//│ >   [class A2] {
-//│ >     'cache$A': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$A': Map(1) { 'f' => [Function: f_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'A',
-//│ >     value: [class A2] { 'cache$A': [FunCache], 'generatorMap$A': [Map] }
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class A2] { 'cache$A': [FunCache], 'generatorMap$A': [Map] } => ModuleSymbol { name: 'A', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -524,17 +384,10 @@ module A with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > Map(1) {
-//│ >   [class B] {
-//│ >     'cache$B': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$B': Map(1) { 'f' => [Function: f_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'B',
-//│ >     value: [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] }
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] } => ModuleSymbol { name: 'B', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -548,20 +401,13 @@ staged module NestedFunDefn with
 //│ >   ()
 //│ >   fun f() = g()
 //│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > Map(1) {
-//│ >   [class NestedFunDefn] {
-//│ >     'cache$NestedFunDefn': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$NestedFunDefn': Map(1) { 'f' => [Function: f_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'NestedFunDefn',
-//│ >     value: [class NestedFunDefn] {
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class NestedFunDefn] {
 //│ >       'cache$NestedFunDefn': [FunCache],
 //│ >       'generatorMap$NestedFunDefn': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'NestedFunDefn', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -578,10 +424,10 @@ staged module LabelBreak with
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.571: 	    let x = 1
+//│ ║  l.417: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.571: 	    let x = 1
+//│ ║  l.417: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -593,7 +439,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.593: 	  fun g() = {1 : 2}
+//│ ║  l.439: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -619,19 +465,12 @@ staged module Spread with
 //│ >           else 0
 //│ >       else 0
 //│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > Map(1) {
-//│ >   [class Spread] {
-//│ >     'cache$Spread': FunCache {
-//│ >       owner: [ModuleSymbol],
-//│ >       cache: [Map],
-//│ >       printer: [Printer]
-//│ >     },
-//│ >     'generatorMap$Spread': Map(1) { 'f' => [Function: f_gen] }
-//│ >   } => ModuleSymbol {
-//│ >     name: 'Spread',
-//│ >     value: [class Spread] {
+//│ > SymbolMap {
+//│ >   classMap: Map(0) {},
+//│ >   moduleMap: Map(1) {
+//│ >     [class Spread] {
 //│ >       'cache$Spread': [FunCache],
 //│ >       'generatorMap$Spread': [Map]
-//│ >     }
+//│ >     } => ModuleSymbol { name: 'Spread', value: [Function] }
 //│ >   }
 //│ > }

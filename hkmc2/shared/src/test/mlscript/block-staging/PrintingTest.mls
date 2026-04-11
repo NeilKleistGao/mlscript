@@ -4,52 +4,29 @@
 fun f(_) = 1
 class C(val x)
 
-// :sjs
-staged class D(val z) extends C([2, z + f(z)]."0") with
+staged class D(val x)(val y, val z)(val a) extends C([2, z + f(z)]."0") with
   val b = z + z
-  fun f() = b
-//│ > class D1(z) extends C([2, z + f(z)].("0")) with
+  fun f() = a + x
+//│ > class D(x)(y, z)(a) extends C([2, z + f(z)].("0")) with
 //│ >   let {tmp3}
 //│ >   tmp3 = z + z
 //│ >   val b = tmp3
-//│ >   fun f() = b
+//│ >   fun f() = a + x
 //│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > Map(2) {
-//│ >   [Function: D] {
-//│ >     class: [class D extends C] {
-//│ >       'cache$D': [FunCache],
-//│ >       'generatorMap$D': [Map]
+//│ > SymbolMap {
+//│ >   classMap: Map(2) {
+//│ >     [Function: D] { class: [Function] } => ConcreteClassSymbol {
+//│ >       name: 'D',
+//│ >       value: [Function],
+//│ >       paramsOpt: [Some],
+//│ >       auxParams: [Array]
+//│ >     },
+//│ >     [Function: C] { class: [Function] } => ConcreteClassSymbol {
+//│ >       name: 'C',
+//│ >       value: [Function],
+//│ >       paramsOpt: [Some],
+//│ >       auxParams: []
 //│ >     }
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'D1',
-//│ >     value: [Function: D] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
 //│ >   },
-//│ >   [Function: C] {
-//│ >     class: [class C] { Symbol(mlscript.definitionMetadata): [Array] }
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'C',
-//│ >     value: [Function: C] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: []
-//│ >   }
-//│ > }
-
-staged class D(val x)(val y, val z)(val a) with
-  val b = 1
-  fun g() = x
-//│ > class D1(x)(y, z)(a) with
-//│ >   val b = 1
-//│ >   fun g() = x
-//│ > Map(1) { 'g' => [Function: g_gen] }
-//│ > Map(1) {
-//│ >   [Function: D] {
-//│ >     class: [class D2] { 'cache$D': [FunCache], 'generatorMap$D': [Map] }
-//│ >   } => ConcreteClassSymbol {
-//│ >     name: 'D1',
-//│ >     value: [Function: D] { class: [Function] },
-//│ >     paramsOpt: Some { value: [Array] },
-//│ >     auxParams: [ [Array], [Array] ]
-//│ >   }
+//│ >   moduleMap: Map(0) {}
 //│ > }

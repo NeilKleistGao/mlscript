@@ -113,9 +113,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   def transformSymbol(sym: Symbol, pOpt: Option[Path] = N, symName: Str = "sym")(using stagingCtx: Context)(k: (Path, Context) => Block): Block =
     def cachedK(p: Path, ctx: Context) =
       k(p, ctx.addCache(sym, p))
-    def checkMap(key: Path, p: Path, ctx: Context) =
+    def checkMap(mapType: Str, key: Path, p: Path, ctx: Context) =
       if symbolMapSym is None then symbolMapSym = S(TempSymbol(N, "symbolMap"))
-      blockCall("checkMap", Ls(symbolMapSym.get, key, p))(cachedK(_, ctx))
+      call(symbolMapSym.get.asPath.selSN("checkMap"), Ls(toValue(mapType), key, p))(cachedK(_, ctx))
+      // blockCall("checkMap", Ls(symbolMapSym.get, key, p))(cachedK(_, ctx))
     stagingCtx.getCache(sym).map(cachedK(_, stagingCtx)).getOrElse:
       sym match
         case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
@@ -128,7 +129,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case _: NoSymbol =>
           blockCtor("NoSymbol", Nil, symName)(cachedK(_, stagingCtx))
         case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
-          blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap(toValue(sym.nme), _, stagingCtx))
+          blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap("classMap", toValue(sym.nme), _, stagingCtx))
         case baseSym: BaseTypeSymbol =>
           val name = scope.allocateOrGetName(sym)
           val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
@@ -149,9 +150,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               transformParamsOpt(paramsOpt): (paramsOpt, ctx) =>
                 auxParams.map(ps => ctx => transformParamList(ps)(using ctx)).chainContext: (auxParams, ctx) =>
                   tuple(auxParams): auxParams =>
-                    blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap(path, _, stagingCtx))
+                    blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams), symName)(checkMap("classMap", path, _, stagingCtx))
             case _: ModuleOrObjectSymbol =>
-              blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap(path, _, stagingCtx))
+              blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(checkMap("moduleMap", path, _, stagingCtx))
         // preserve names to builtin symbols
         case _: BuiltinSymbol | _: VarSymbol =>
           blockCtor("Symbol", Ls(toValue(sym.nme)), symName)(cachedK(_, stagingCtx))
@@ -430,7 +431,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
             symbolMapSym.map(sym => call(printFun, Ls(sym), false)(_ => rest)).getOrElse(rest)
 
-    (helperMethods.flatten, b => cacheDecl(generatorMapDecl(debugCont(b))))
+    (helperMethods.flatten, b => Begin(cacheDecl(generatorMapDecl(End())), debugCont(b)))
 
   override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
     // staged modules
@@ -506,5 +507,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     mkDefnMap(b)
     val rest = applyBlock(b)
     symbolMapSym match
-      case S(sym) => Scoped(Set(sym), Assign(sym, Instantiate(false, State.globalThisSymbol.asPath.selSN("Map"), Nil), rest))
+      case S(sym) => 
+        val mapPath = State.globalThisSymbol.asPath.selSN("Map")
+        ctor(mapPath, Nil): map1 =>
+          ctor(mapPath, Nil): map2 =>
+            ctor(blockMod("SymbolMap"), Ls(map1, map2)): map => 
+              Scoped(Set(sym), Assign(sym, map, rest))
       case N => rest
