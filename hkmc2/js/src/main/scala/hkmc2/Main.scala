@@ -256,14 +256,14 @@ object Main {
     val lowered0 = low.program(e2)
     val nestedScp = baseScp
     
-    val (pre, code) = nestedScp.givenIn:
+    val code = nestedScp.givenIn:
       given Raise = raise(Stage.Generation)
-      jsb.worksheet(lowered0)
+      jsb.block(lowered0.main, false)
       
     js.Dynamic.literal(
       codegen = js.Dynamic.literal(
-        vars = pre.toString,
-        code = code.toString,
+        vars = "",
+        code = code.stripBreaks.mkString(100),
         traces = getOutput(Stage.Generation),
         diagnostics = getDiagnosticsHTML(Stage.Generation),
       ),

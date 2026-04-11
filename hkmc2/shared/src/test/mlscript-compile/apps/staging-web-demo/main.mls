@@ -76,11 +76,14 @@ parseButton.addEventListener of "click", event =>
           codegen: false
         editor.value
       let sections = mut []
-      let generatedVars = res.codegen.vars.trim()
+      // let generatedVars = res.codegen.vars.trim()
       let generatedCode = res.codegen.code.trim()
-      let hasGeneratedCode = generatedVars != "" || generatedCode != ""
-      if generatedVars != "" do sections.push(generatedVars)
-      if generatedCode != "" do sections.push(generatedCode)
+      let hasGeneratedCode = generatedCode != ""
+      // if generatedVars != "" do sections.push(generatedVars)
+      if generatedCode != "" do
+        let res = globalThis.eval(generatedCode)
+        console.log(generatedCode)
+        sections.push(res)
       if res.codegen.diagnostics.length > 0 do
         sections.push of "Diagnostics:\n" + res.codegen.diagnostics.join("\n")
       set outputPanel.textContent =
