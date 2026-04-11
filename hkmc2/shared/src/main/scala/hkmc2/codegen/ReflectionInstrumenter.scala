@@ -141,7 +141,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               return End()
 
           val path = pOpt.getOrElse(owner match
-            case S(owner) => owner.asPath.sel(Tree.Ident(baseSym.nme), baseSym)
+            case S(owner) => owner.asPath.selSN(baseSym.nme)
             case N => bsym.asPath)
           baseSym match
             case _: ClassSymbol =>
@@ -454,10 +454,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     case Define(defn: ClsLikeDefn, rest) if defn.isym.defn.exists(_.hasStagedModifier.isDefined) => 
       if !defn.privateFields.isEmpty then
         raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
-        return End()
-      if defn.owner.isDefined then
-        // FIXME: find a way to instrument the symbol for non-top-level staged classes
-        raise(ErrorReport(msg"Only top-level staged classes are supported." -> defn.sym.toLoc :: Nil))
         return End()
       
       // stage the companion module first, to avoid staging the new functions we add to the companion module
