@@ -13,6 +13,22 @@ staged module Rebinding with
 //│ >     x = 42
 //│ >     x
 //│ > Map(1) { 'lit' => [Function: lit_gen] }
+//│ > Map(1) {
+//│ >   [class Rebinding] {
+//│ >     'cache$Rebinding': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$Rebinding': Map(1) { 'lit' => [Function: lit_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'Rebinding',
+//│ >     value: [class Rebinding] {
+//│ >       'cache$Rebinding': [FunCache],
+//│ >       'generatorMap$Rebinding': [Map]
+//│ >     }
+//│ >   }
+//│ > }
 
 let x = [1, 2, 3]
 staged module Expressions with
@@ -203,6 +219,22 @@ staged module CallSubst with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [class Staged] {
+//│ >     'cache$Staged': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$Staged': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'Staged',
+//│ >     value: [class Staged] {
+//│ >       'cache$Staged': [FunCache],
+//│ >       'generatorMap$Staged': [Map]
+//│ >     }
+//│ >   }
+//│ > }
 //│ > module CallSubst with
 //│ >   ()
 //│ >   fun call() =
@@ -470,6 +502,19 @@ staged module A with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [class A2] {
+//│ >     'cache$A': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$A': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'A',
+//│ >     value: [class A2] { 'cache$A': [FunCache], 'generatorMap$A': [Map] }
+//│ >   }
+//│ > }
 
 // nested module
 module A with
@@ -479,6 +524,19 @@ module A with
 //│ >   ()
 //│ >   fun f() = 1
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [class B] {
+//│ >     'cache$B': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$B': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'B',
+//│ >     value: [class B] { 'cache$B': [FunCache], 'generatorMap$B': [Map] }
+//│ >   }
+//│ > }
 
 // FIXME: for g to be defined in the next stage, we need to also print the other ClsLikeDefn/FunDefn nodes when printing the next stage
 :ftc
@@ -490,6 +548,22 @@ staged module NestedFunDefn with
 //│ >   ()
 //│ >   fun f() = g()
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [class NestedFunDefn] {
+//│ >     'cache$NestedFunDefn': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$NestedFunDefn': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'NestedFunDefn',
+//│ >     value: [class NestedFunDefn] {
+//│ >       'cache$NestedFunDefn': [FunCache],
+//│ >       'generatorMap$NestedFunDefn': [Map]
+//│ >     }
+//│ >   }
+//│ > }
 
 :todo
 staged module LabelBreak with
@@ -504,10 +578,10 @@ staged module LabelBreak with
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.497: 	    let x = 1
+//│ ║  l.571: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.497: 	    let x = 1
+//│ ║  l.571: 	    let x = 1
 //│ ╙──       	        ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -519,7 +593,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.519: 	  fun g() = {1 : 2}
+//│ ║  l.593: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
@@ -545,3 +619,19 @@ staged module Spread with
 //│ >           else 0
 //│ >       else 0
 //│ > Map(1) { 'f' => [Function: f_gen] }
+//│ > Map(1) {
+//│ >   [class Spread] {
+//│ >     'cache$Spread': FunCache {
+//│ >       owner: [ModuleSymbol],
+//│ >       cache: [Map],
+//│ >       printer: [Printer]
+//│ >     },
+//│ >     'generatorMap$Spread': Map(1) { 'f' => [Function: f_gen] }
+//│ >   } => ModuleSymbol {
+//│ >     name: 'Spread',
+//│ >     value: [class Spread] {
+//│ >       'cache$Spread': [FunCache],
+//│ >       'generatorMap$Spread': [Map]
+//│ >     }
+//│ >   }
+//│ > }

@@ -348,133 +348,147 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   def refreshParamList(ps: ParamList) = 
     PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
 
+  def genMethod(cache: Path, classFun: Bool)(f: FunDefn, stagedPath: Path) =
+    val genSymName = f.sym.nme + "_gen"
+    val sym = BlockMemberSymbol(genSymName, Nil, false)
+    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
+
+    // refresh parameters
+    val funParams = f.params.map(refreshParamList)
+    val params = if classFun then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
+    val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
+      tuple(tups): args =>
+        call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
+          Return(res, false)
+    FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
+  
+  def stageCtor(ctorFun: FunDefn): FunDefn = 
+    // refresh VarSymbols for ctor
+    val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id))).flatten.toMap
+    val paramRewrite = new BlockTransformer(new SymbolSubst():
+      override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)
+    ):
+      override def applyScopedBlock(b: Block) = b match
+        case Scoped(s, bd) =>
+          val nb = applySubBlock(bd)
+          val ns = s.map(applyLocal)
+          if (nb is bd) && (s is ns) then b else Scoped(ns, nb)
+        case _ => applySubBlock(b)
+    stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(new HashMap(), true))
+    
+
+  def stageMethods(ownerSym: DefinitionSymbol[?], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str)(methods: Ls[FunDefn]): (Ls[FunDefn], Block => Block) =
+    // for storing specialized functions in each staged module
+    val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
+    val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
+    val cachePath = modSym.asPath.selSN(cacheNme)
+    val generatorMapSym = BlockMemberSymbol(generatorMapNme, Nil, true)
+    val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(generatorMapNme))
+
+    // TODO: remove generator function for ctor, we only need the staged function
+    val (helperMethods, cacheEntries, generatorEntries) = methods.map(f =>
+      val staged = stageMethod(f)
+      val stagedPath = modSym.asPath.selSN(staged.sym.nme)
+      val gen = genMethod(cachePath, forClass)(f, stagedPath)
+      def cacheDebug(k: Path => Block) =
+        call(stagedPath, Nil): res =>
+          // stub for the returned shape of the function
+          // TODO: we should call the _gen function with all arguments dynamic instead
+          tuple(Ls(res, toValue(1))): entry =>
+            tuple(Ls(toValue(f.sym.nme), entry))(k)
+
+      (
+        Ls(staged, gen),
+        cacheDebug,
+        tuple(Ls(toValue(f.sym.nme), modSym.asPath.selSN(gen.sym.nme)))
+      )
+    ).unzip3
+
+    // initialize cache for the module
+    def cacheDecl(rest: Block) =
+      val pOpt = if !forClass then S(Value.Ref(ownerSym)) else N
+      
+      cacheEntries.collectApply: cacheTups =>
+        tuple(cacheTups): tup =>
+          ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
+            transformSymbol(ownerSym, pOpt)(using Context(new HashMap())): (stagedSym, _) =>
+              ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
+                Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
+
+    def generatorMapDecl(rest: Block) =
+      generatorEntries.collectApply: defs =>
+        tuple(defs): tup =>
+          ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
+            Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
+
+    // TODO: remove this. only for testing
+    def debugCont(rest: Block) =
+      val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
+      call(cachePath.selSN("toString"), Nil, false): str =>
+        call(printFun, Ls(str), false): _ =>
+          call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
+            symbolMapSym.map(sym => call(printFun, Ls(sym), false)(_ => rest)).getOrElse(rest)
+
+    (helperMethods.flatten, b => cacheDecl(generatorMapDecl(debugCont(b))))
+
+  override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
+    // staged modules
+    case S(defn) if defn.hasStagedModifier.isDefined =>
+      val _ = transformSymbol(companion.isym)(using Context(new HashMap()))((_, _) => End())
+      val (sym, ctor, methods) = (companion.isym, companion.ctor, companion.methods)
+      // avoid name clash of cache and generator map for derived staged classes
+      val modSym = sym
+      val suffix = "$" + sym.nme
+      val cacheNme = "cache" + suffix
+      val generatorMapNme = "generatorMap" + suffix
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(false, N)
+
+      val (newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme)(methods)
+      companion.copy(
+        methods = stageCtor(ctorFun) :: newMethods,
+        ctor = Begin(companion.ctor, cont(End())),
+      )
+    case b => super.applyObjBody(companion)
+
   override def applyBlock(b: Block): Block = b match
-    // TODO: assume staged classes have no companion module
-    // find modules with staged annotation, or classes without companion module
-    case Define(defn: ClsLikeDefn, rest)
-        if defn.companion.exists(_.isym.defn.exists(_.hasStagedModifier.isDefined)) ||
-          defn.companion.isEmpty && defn.isym.defn.exists(_.hasStagedModifier.isDefined) =>
-      if defn.companion.isEmpty && defn.owner.isDefined then
+    // staged classes
+    case Define(defn: ClsLikeDefn, rest) if defn.isym.defn.exists(_.hasStagedModifier.isDefined) => 
+      val _ = transformSymbol(defn.isym)(using Context(new HashMap()))((_, _) => End())
+      if !defn.privateFields.isEmpty then
+        raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
+        return End()
+      if defn.owner.isDefined then
         // FIXME: find a way to instrument the symbol for non-top-level staged classes
         raise(ErrorReport(msg"Only top-level staged classes are supported." -> defn.sym.toLoc :: Nil))
         return End()
-      val (sym, companion, preCtor, ctor, ctorParams, methods) = defn.companion match
-        case S(companion) => (companion.isym, companion, End(), companion.ctor, Ls(PlainParamList(Nil)), companion.methods)
-        case N =>
-          def replaceSuper(parentPath: Path) = new BlockTransformer(SymbolSubst.Id):
-            override def applyResult(r: Result)(k: Result => Block) = super.applyResult(r): r => 
-              r match
-                case Call(Value.Ref(sym: BuiltinSymbol, _), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
-                case r => k(r)
-          if !defn.privateFields.isEmpty then
-            raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
-            return End()
-          val companion = ClsLikeBody(ModuleOrObjectSymbol(Tree.TypeDef(syntax.Mod, Tree.Empty(), N), Tree.Ident(defn.sym.nme)), Nil, Nil, Nil, End())
-          val preCtor = defn.parentPath match
-            case S(parent) => replaceSuper(parent).applyBlock(defn.preCtor)
-            case N => defn.preCtor
-          val params = defn.paramsOpt match
-            case S(p) => (p :: defn.auxParams)
-            case N => defn.auxParams
-          (defn.sym, companion, preCtor, defn.ctor, params, defn.methods)
-
-      val modSym = companion.isym
-
-      // avoid name clash of cache and generator map for derived staged classes
-      val suffix = "$" + scope.allocateOrGetName(sym)
-      // for storing specialized functions in each staged module
-      val cacheNme = "cache" + suffix
-      val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
-      val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
-      val cachePath = modSym.asPath.selSN(cacheNme)
-      val generatorMapNme = "generatorMap" + suffix
-      val generatorMapSym = BlockMemberSymbol(generatorMapNme, Nil, true)
-      val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(generatorMapNme))
-
-      def genMethod(f: FunDefn, stagedPath: Path) =
-        val genSymName = f.sym.nme + "_gen"
-        val sym = BlockMemberSymbol(genSymName, Nil, false)
-        val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
-
-        // refresh parameters
-        val funParams = f.params.map(refreshParamList)
-        val params = if defn.companion.isEmpty then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
-        val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
-          tuple(tups): args =>
-            call(helperMod("specialize"), Ls(cachePath, toValue(f.sym.nme), stagedPath, args)): res =>
-              Return(res, false)
-        FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
       
+      // stage the companion module first, to avoid staging the new functions we add to the companion module
+      val companion = defn.companion.map(applyObjBody).getOrElse(ClsLikeBody.empty(Tree.Ident(defn.sym.nme)))
+      
+      def replaceSuper(parentPath: Path) = new BlockTransformer(SymbolSubst.Id):
+        override def applyResult(r: Result)(k: Result => Block) = super.applyResult(r):
+          case Call(Value.Ref(sym: BuiltinSymbol, _), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
+          case r => k(r)
+      val preCtor = defn.parentPath match
+        case S(parent) => replaceSuper(parent).applyBlock(defn.preCtor)
+        case N => defn.preCtor
+      
+      val (sym, ctor, ctorParams, methods) = (defn.sym, defn.ctor, defn.paramsOpt, defn.methods)
+      
+      val modSym = companion.isym
+      val suffix = "$" + sym.nme
+      val cacheNme = "class$cache" + suffix
+      val generatorMapNme = "class$generatorMap" + suffix
+
       val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N)
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), ctorParams, ctor)(false, N)
-
-      // refresh VarSymbols for ctor
-      val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id))).flatten.toMap
-      val paramRewrite = new BlockTransformer(new SymbolSubst():
-        override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)
-      ):
-        override def applyScopedBlock(b: Block) = b match
-          case Scoped(s, bd) =>
-            val nb = applySubBlock(bd)
-            val ns = s.map(applyLocal)
-            if (nb is bd) && (s is ns) then b else Scoped(ns, nb)
-          case _ => applySubBlock(b)
-
-      val (helperMethods, cacheEntries, generatorEntries) = methods.map(f =>
-        val staged = stageMethod(f)
-        val stagedPath = modSym.asPath.selSN(staged.sym.nme)
-        val gen = genMethod(f, stagedPath)
-        def cacheDebug(k: Path => Block) =
-          call(stagedPath, Nil): res =>
-            // stub for the returned shape of the function
-            tuple(Ls(res, toValue(1))): entry =>
-              tuple(Ls(toValue(f.sym.nme), entry))(k)
-
-        (
-          Ls(staged, gen),
-          cacheDebug,
-          tuple(Ls(toValue(f.sym.nme), modSym.asPath.selSN(gen.sym.nme))),
-        ),
-      ).unzip3
-
-      // initialize cache for the module
-      def cacheDecl(rest: Block) =
-        val ownerSym = defn.companion match
-          case S(defn) => defn.isym
-          case N => defn.isym
-
-        val pOpt = defn.companion.map(_ => Value.Ref(ownerSym))
-        
-        cacheEntries.collectApply: cacheTups =>
-          tuple(cacheTups): tup =>
-            this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              transformSymbol(ownerSym, pOpt)(using Context(new HashMap())): (stagedSym, _) =>
-                this.ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
-                  Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
-
-      def generatorMapDecl(rest: Block) =
-        generatorEntries.collectApply: defs =>
-          tuple(defs): tup =>
-            this.ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-              Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
-
-      // TODO: remove this. only for testing
-      def debugCont(rest: Block) =
-        val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
-        // val renderFun = State.runtimeSymbol.asPath.selSN("render")
-        // val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
-
-        // assign(options): options =>
-        call(cachePath.selSN("toString"), Nil, false): str =>
-          call(printFun, Ls(str), false): _ =>
-            call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
-              symbolMapSym.map(sym => call(printFun, Ls(sym), false)(_ => rest)).getOrElse(rest)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
+      
+      val (newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme)(methods)
 
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = stageMethod(preCtorFun) :: stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(new HashMap(), true)) :: helperMethods.flatten,
-        ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(debugCont(End())))),
-        publicFields = companion.publicFields,
+        methods = stageMethod(preCtorFun) :: stageCtor(ctorFun) :: newMethods,
+        ctor = Begin(companion.ctor, cont(End())),
       )
       val newClsLikeDefn = defn.copy(companion = S(newCompanion))(defn.configOverride)
       Define(newClsLikeDefn, applyBlock(rest))
