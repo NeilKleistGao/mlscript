@@ -76,9 +76,11 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       End then ""
       else throw Error("unexpected Block type in constructor: " + b.toString())
     
-    let preCtor = runtimeClass."preCtor$_instr"().body
-    assert preCtor is Block.Block
-    let extendsClause = inlineAssigments(new Map())(preCtor)
+    let extendsClause = if owner is ConcreteClassSymbol then
+      let preCtor = runtimeClass."preCtor$_instr"().body
+      assert preCtor is Block.Block
+      inlineAssigments(new Map())(preCtor)
+    else ""
     
     // process ctor: remove ValDefn of parameters defined in paramsOpt
     fun removeExtraValDefn(params, block) = if block is
@@ -89,7 +91,7 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       Scoped(symbols, rest) then Scoped(symbols, removeExtraValDefn(params, rest))
       else block
     
-    let ctor = runtimeClass."ctor$_instr"()
+    let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
     assert ctor is FunDefn
     let params = new Set(ctor.params.flat())
     let ctorBody = removeExtraValDefn(params, ctor.body)

@@ -139,10 +139,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             case _ =>
               raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
               return End()
-
+          
           val path = pOpt.getOrElse(owner match
             case S(owner) => owner.asPath.selSN(baseSym.nme)
             case N => bsym.asPath)
+          
           baseSym match
             case _: ClassSymbol =>
               transformParamsOpt(paramsOpt): (paramsOpt, ctx) =>
@@ -467,7 +468,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case S(parent) => replaceSuper(parent).applyBlock(defn.preCtor)
         case N => defn.preCtor
       
-      val (sym, ctor, ctorParams, methods) = (defn.sym, defn.ctor, defn.paramsOpt, defn.methods)
+      val (sym, ctor, ctorParams, methods) =
+        val ctorParams = defn.paramsOpt match
+          case S(ps) => ps :: defn.auxParams
+          case N => defn.auxParams
+        (defn.sym, defn.ctor, ctorParams, defn.methods)
       
       val modSym = companion.isym
       val suffix = "$" + sym.nme
@@ -475,7 +480,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val generatorMapNme = "class$generatorMap" + suffix
 
       val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N)
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), Ls(ctorParams.getOrElse(PlainParamList(Nil))), ctor)(false, N)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(false, N)
       
       val (newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme)(methods)
 
