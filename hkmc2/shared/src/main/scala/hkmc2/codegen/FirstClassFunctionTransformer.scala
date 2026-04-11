@@ -109,4 +109,19 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
   def transform(b: Block): Block =
     val desugared = new DesugarMultipleParamList().applyBlock(b)
     new CollectFunDefns().applyBlock(desugared)
-    applyBlock(desugared)
+    new LabelTransformer().applyBlock(applyBlock(desugared))
+
+
+class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSubst()):
+  private val contMap = HashMap.empty[Symbol, Symbol]
+
+  override def applyBlock(b: Block): Block = b match
+    case Label(label, false, body, rest) =>
+      val contSym = BlockMemberSymbol("cont$", Nil, false)
+      val contFun = FunDefn.withFreshSymbol(N, contSym, PlainParamList(Nil) :: Nil, rest)(false, N)
+      contMap.addOne(label -> contSym)
+      super.applyBlock(Scoped(Set(contSym), Define(contFun, body)))
+    case Break(label) => contMap.get(label) match
+      case Some(sym: Symbol) => Return(Call(Value.Ref(sym, N), Nil)(true, false, false), true)
+      case _ => super.applyBlock(b)
+    case _ => super.applyBlock(b)

@@ -130,14 +130,13 @@ staged module NestedFunDefn with
   fun g(x, y) = x || y
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Unreachable(Rest of abortive match)
 
-:todo force enable :ftc to desugar Label and Break
+
+:ftc
 staged module M with
   fun f() = if 1 is
     0 then 1 + 1 + 1
     1 then 1 + 1 + 1
     else 1 + 1 + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:split_root$,false,Label(label:split_1$,false,Assign(tmp:scrut,Lit(IntLit(1)),Match(Ref(tmp:scrut,None),List((Lit(IntLit(0)),Break(label:split_1$)), (Lit(IntLit(1)),Break(label:split_1$))),Some(Break(label:split_1$)),End())),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Lit(IntLit(1))), Arg(None,Lit(IntLit(1))))),Return(Call(Ref(builtin:+,None),List(Arg(None,Ref(tmp:tmp,None)), Arg(None,Lit(IntLit(1))))),false))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
-//│  Try enabling :ftc.
 
 :e
 class C(val a)
@@ -147,7 +146,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.147: 	  fun g() = {1 : 2}
+//│ ║  l.146: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 
 :todo
