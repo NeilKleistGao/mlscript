@@ -13,6 +13,17 @@ open ShapeSet
 
 module SpecializeHelpers with ...
 
+let moduleGenMapPrefix = "generatorMap$"
+let classGenMapPrefix = "class$generatorMap$"
+let moduleCachePrefix = "cache$"
+let classCachePrefix = "class$cache$"
+
+fun getGenMapName(name, isClass) =
+  (if isClass then classGenMapPrefix else moduleGenMapPrefix) + name
+
+fun getCacheName(name, isClass) =
+  (if isClass then classCachePrefix else moduleCachePrefix) + name
+
 fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
 
 fun isSubClassOf(d, b) = getActualClass(b).isPrototypeOf(getActualClass(d))
@@ -95,18 +106,18 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
     ValueLit(lit) then mkLit(lit)
     ValueRef(l) then mkDyn()
 
-fun isStaged(c) = 
+fun isStagedClass(c) = 
   let actualClass = getActualClass(c)
   let clsName = actualClass.(Symbols.definitionMetadata).1
-  let genMapName = "generatorMap$" + clsName
+  let genMapName = getGenMapName(clsName, true)
   not (actualClass.(genMapName) is undefined)
 
 fun fsplit(pss) = 
   let knownMap = new Map()
   let unkShape = foldl((acc, s) => if s is
-    Class(sym, params) and isStaged(sym.value) then
-      if knownMap.has(sym) then knownMap.set(sym, union(knownMap.get(sym), lift(s)))
-      else knownMap.set(sym, lift(s))
+    Class(sym, params) and isStagedClass(sym.value) then
+      if knownMap.has(sym) then do knownMap.set(sym, union(knownMap.get(sym), lift(s)))
+      else do knownMap.set(sym, lift(s))
       acc
     else union(acc, mkDyn())
   )(mkBot(), ...pss.values())
@@ -168,8 +179,8 @@ fun sor(ctx, r) = if r is
             "||" then lit(l1 || l2)
           else [End(), r, mkDyn()]
       Select(ValueRef(ModuleSymbol(name, value)), Symbol(fld)) and
-        let mapPropName = "generatorMap$" + name
-        let cachePropName = "cache$" + name
+        let mapPropName = getGenMapName(name, false)
+        let cachePropName = getCacheName(name, false)
         let genMap = value.(mapPropName)
         not (genMap is undefined) and
           let f_gen = genMap.get(fld) 
@@ -194,14 +205,14 @@ fun sor(ctx, r) = if r is
 
 fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
   let pss = sop(ctx, ValueRef(symb))
-  let argShapes = args.map((a, _, _) => sop(ctx, a.value))
+  let argShapes = args.map(a => sop(ctx, a.value))
   let splitted = fsplit(pss)
   let knownMap = splitted.0
   let unkShape = splitted.1
   let isRet = xOpt is None
-  if knownMap.size is 0 then
+  if knownMap.size is 0 and
     let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
-    if isRet then
+    isRet then
       [concat(End(), Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
     else
       let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
@@ -213,7 +224,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
       let ss_i = entry.1
       let actualClass = getActualClass(C_i.value)
       let clsName = actualClass.(Symbols.definitionMetadata).1
-      let genMapName = "generatorMap$" + clsName
+      let genMapName = getGenMapName(clsName, true)
       let genMap = actualClass.(genMapName)
       let f_gen = genMap.get(f)
       let generated = f_gen(ss_i)(...argShapes)
