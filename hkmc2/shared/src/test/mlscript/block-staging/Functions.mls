@@ -178,6 +178,8 @@ staged module CallSubst with
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 //│ > fun ctor_() = ()
+//│ > fun f() = 1
+//│ > fun ctor_() = ()
 //│ > fun call() =
 //│ >   let {tmp, tmp1}
 //│ >   tmp = Nonstaged.f()
@@ -365,7 +367,6 @@ staged module ClassFunctions with
 //│ >   }
 //│ > }
 
-:todo
 staged module RetUnit with
   fun f() = ()
 //│ > fun ctor_() = ()
@@ -389,46 +390,33 @@ module A with
 //│ > fun f() = 1
 //│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
 
-staged module Shadowing with
-  fun f(x, x) = x
-//│ > fun ctor_() = ()
-//│ > fun f(x, x) = x
-//│ > Map(2) { 'ctor$' => [Function: ctor$_gen], 'f' => [Function: f_gen] }
-
-:todo
-staged module Continue with
-  fun f() = 
-    let x = 1
-    while x == 1 do
-      set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:scrut, tmp:tmp),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
-//│  Try enabling :ftc.
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.389: 	    let x = 1
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.389: 	    let x = 1
-//│ ╙──       	        ^
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
-
-:todo
+// FIXME: for g to be defined in the next stage, we need to also print the other ClsLikeDefn/FunDefn nodes when printing the next stage
 :ftc
 staged module NestedFunDefn with
   fun f() =
     fun g() = 1
     g()
-  fun g(x, y) = x || y
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Unreachable(Rest of abortive match)
-//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│ > fun ctor_() = ()
+//│ > fun f() = g()
 
-:todo force enable :ftc to desugar Label and Break
-staged module M with
-  fun f() = if 1 is
-    0 then 1 + 1 + 1
-    1 then 1 + 1 + 1
-    else 1 + 1 + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:split_root$,false,Label(label:split_1$,false,Assign(tmp:scrut,Lit(IntLit(1)),Match(Ref(tmp:scrut,None),List((Lit(IntLit(0)),Break(label:split_1$)), (Lit(IntLit(1)),Break(label:split_1$))),Some(Break(label:split_1$)),End())),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Lit(IntLit(1))), Arg(None,Lit(IntLit(1))))),Return(Call(Ref(builtin:+,None),List(Arg(None,Ref(tmp:tmp,None)), Arg(None,Lit(IntLit(1))))),false))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
-//│  Try enabling :ftc.
+:todo
+staged module LabelBreak with
+  fun f() =
+    let x = 1
+    while x == 1 do
+      set x = x + 1
+  fun g() = if 1 is
+    0 then 2
+    1 then 2
+    else 2
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
+//│ ║  l.207: 	    let x = 1
+//│ ║         	        ^
+//│ ╟── which references the symbol introduced here
+//│ ║  l.207: 	    let x = 1
+//│ ╙──       	        ^
+//│ > fun ctor_() = ()
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 :e
@@ -437,9 +425,9 @@ staged module A with
   let x = C(1)
   fun f() = set x.a = 0
   fun g() = {1 : 2}
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
-//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.427: 	  fun g() = {1 : 2}
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
+//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
+//│ ║  l.229: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: match error
 
