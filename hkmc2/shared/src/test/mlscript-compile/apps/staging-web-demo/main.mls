@@ -33,8 +33,6 @@ open Predef
 open Option { Some, None }
 open Examples
 
-declare fun eval(code)
-
 module Main with ...
 
 let query = document.querySelector.bind(document)
@@ -46,6 +44,7 @@ let outputPanel = query("#specialized-code")
 let topLevelModulePattern = new RegExp("""^\s*(?:staged\s+)?module\s+([A-Za-z_][A-Za-z0-9_]*)\s+with\b""", "m")
 // TODO: do not skip staged 
 
+let specializedCode = ""
 
 examples Iter.each of case [key, example] then
   let option = document.createElement of "option"
@@ -104,7 +103,8 @@ parseButton.addEventListener of "click", event =>
       if generatedVars != "" do sections.push(generatedVars)
       if hasGeneratedCode do
         console.log(generatedVars + generatedCode)
-        let res = eval(generatedVars + generatedCode)
+        let res = globalThis.eval(generatedVars + generatedCode)
+        set specializedCode = res
         sections.push(res)
       if res.codegen.diagnostics.length > 0 do
         sections.push of "Diagnostics:\n" + res.codegen.diagnostics.join("\n")

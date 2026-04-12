@@ -256,6 +256,12 @@ object Main {
     //   semantics.Import(State.runtimeSymbol, "Runtime.mjs", rootPath / "Runtime.mjs") :: e.stats,
     //   e.res
     // )
+
+    val runtimeNme = baseScp.allocateName(Elaborator.State.runtimeSymbol)(using throw _)
+    val blockNme = baseScp.allocateName(Elaborator.State.blockSymbol)(using throw _)
+    val optionNme = baseScp.allocateName(Elaborator.State.optionSymbol)(using throw _)
+    val shapeSetNme = baseScp.allocateName(Elaborator.State.shapeSetSymbol)(using throw _)
+    val specializationHelpersNme = baseScp.allocateName(Elaborator.State.specializeHelpersSymbol)(using throw _)
     
     val lowered0 = low.program(e)
     val nestedScp = baseScp
