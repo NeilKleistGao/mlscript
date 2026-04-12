@@ -39,8 +39,12 @@ let query = document.querySelector.bind(document)
 let editor = query("#source-editor")
 let selector = query("#demo-select")
 let parseButton = query("#compile-button")
+let runButton = query("#run-button")
 let statusPanel = query("#compile-status")
 let outputPanel = query("#specialized-code")
+let runnerEditor = query("#runner-editor")
+let runnerOutput = query("#runner-output")
+let runStatus = query("#run-status")
 let topLevelModulePattern = new RegExp("""^\s*(?:staged\s+)?module\s+([A-Za-z_][A-Za-z0-9_]*)\s+with\b""", "m")
 // TODO: do not skip staged 
 
@@ -99,8 +103,10 @@ parseButton.addEventListener of "click", event =>
       let sections = mut []
       let generatedVars = res.codegen.vars.trim()
       let generatedCode = res.codegen.code.trim()
-      let hasGeneratedCode = generatedVars != "" || generatedCode != ""
-      if generatedVars != "" do sections.push(generatedVars)
+      let compiledCode =
+        if generatedVars != "" && generatedCode != "" then generatedVars + "\n\n" + generatedCode
+        else generatedVars + generatedCode
+      let hasGeneratedCode = compiledCode != ""
       if hasGeneratedCode do
         console.log(generatedVars + generatedCode)
         let res = globalThis.eval(generatedVars + generatedCode)
@@ -120,8 +126,36 @@ parseButton.addEventListener of "click", event =>
           "Compilation completed. No specialized code was generated."
       
     error =>
+      set specializedCode = ""
       set statusPanel.textContent = "Compilation failed. See the error output below."
       set outputPanel.textContent = formatError(error)
+
+runButton.addEventListener of "click", event =>
+  set runStatus.textContent = "Running the combined code..."
+  set runnerOutput.textContent = "Running..."
+  Runtime.try_catch of
+    () =>
+      if specializedCode == "" then
+        set runStatus.textContent = "Run unavailable. Compile the program first."
+        set runnerOutput.textContent = "Compile the program first to populate the specialized code."
+      else
+        let combinedCode = MLscript.compile of
+          traces:
+            codegen: false
+          specializedCode + "\n" + runnerEditor.value
+        let generatedVars = combinedCode.codegen.vars.trim()
+        let generatedCode = combinedCode.codegen.code.trim()
+        let compiledCode =
+          if generatedVars != "" && generatedCode != "" then generatedVars + "\n\n" + generatedCode
+          else generatedVars + generatedCode
+        console.log(compiledCode)
+        let result = globalThis.eval(compiledCode.replaceAll("runtime", "Runtime")) // FIXME
+        // console.log(result)
+        set runnerOutput.textContent = result
+        set runStatus.textContent = "Run succeeded. The return value is shown below."
+    error =>
+      set runStatus.textContent = "Run failed. See the runtime output below."
+      set runnerOutput.textContent = formatError(error)
 
 let indentRegex = new RegExp("""^(\s*)""")
 
