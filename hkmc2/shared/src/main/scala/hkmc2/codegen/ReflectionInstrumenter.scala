@@ -409,13 +409,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // initialize cache for the module
     def cacheDecl(rest: Block) =
       val pOpt = if !forClass then S(Value.Ref(ownerSym)) else N
-      
-      cacheEntries.collectApply: cacheTups =>
-        tuple(cacheTups): tup =>
-          ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-            transformSymbol(ownerSym, pOpt)(using Context(new HashMap())): (stagedSym, _) =>
-              ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
-                Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
+      // cacheEntries.collectApply: cacheTups =>
+      //   tuple(cacheTups): tup =>
+      ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls()): map =>
+        transformSymbol(ownerSym, pOpt)(using Context(new HashMap())): (stagedSym, _) =>
+          ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
+            Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
 
     def generatorMapDecl(rest: Block) =
       generatorEntries.collectApply: defs =>
@@ -424,12 +423,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
 
     // TODO: remove this. only for testing
-    def debugCont(rest: Block) =
-      val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
-      call(cachePath.selSN("toString"), Nil, false): str =>
-        call(printFun, Ls(str), false): _ =>
-          call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
-            symbolMapSym.map(sym => call(printFun, Ls(sym), false)(_ => rest)).getOrElse(rest)
+    def debugCont(rest: Block) = rest
+      // val printFun = State.globalThisSymbol.asPath.selSN("console").selSN("log")
+      // call(cachePath.selSN("toString"), Nil, false): str =>
+      //   call(printFun, Ls(str), false): _ =>
+      //     call(printFun, Ls(modSym.asPath.selSN(generatorMapNme)), false): _ =>
+      //       symbolMapSym.map(sym => call(printFun, Ls(sym), false)(_ => rest)).getOrElse(rest)
     
     // cache and generator may update symbolMapSym, so we call them first
     (helperMethods.flatten, b => Begin(cacheDecl(generatorMapDecl(End())), debugCont(b)))
