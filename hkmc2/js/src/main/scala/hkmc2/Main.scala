@@ -112,7 +112,7 @@ object Main {
     
     var curCtx = State.init
     
-    given Config = Config.default(rootPath) // TODO: Support custom config?
+    given Config = Config.default(rootPath).copy(noFreeze = true)
     
     val lexer = new Lexer(origin, dbg = debugParsing)(using raise(Stage.Lexer))
     val tokens = lexer.bracketedTokens
@@ -204,6 +204,11 @@ object Main {
     
     importFile("Prelude.mls", "Prelude", WebImporter.fileNameSourceMap("Prelude.mls")._1, verbose = false)
     importFile(runtimeFile.toString, "Runtime", WebImporter.fileNameSourceMap("Runtime.mls")._1, verbose = true)
+    importFile("CachedHash.mls", "CachedHash", WebImporter.fileNameSourceMap("CachedHash.mls")._1, verbose = false)
+    importFile("Block.mls", "Block", WebImporter.fileNameSourceMap("Block.mls")._1, verbose = false)
+    importFile("Shape.mls", "Shape", WebImporter.fileNameSourceMap("Shape.mls")._1, verbose = false)
+    importFile("ShapeSet.mls", "ShapeSet", WebImporter.fileNameSourceMap("ShapeSet.mls")._1, verbose = false)
+    importFile("SpecializeHelpers.mls", "SpecializeHelpers", WebImporter.fileNameSourceMap("SpecializeHelpers.mls")._1, verbose = false)
     
     
     val blk = new syntax.Tree.Block(res)
@@ -244,21 +249,20 @@ object Main {
     val low = ltl.givenIn:
       given Raise = raise(Stage.Lowering)
       new codegen.Lowering()
-        with codegen.LoweringSelSanityChecks
     val jsb = jtl.givenIn:
       new JSBuilder with JSBuilderArgNumSanityChecks
     
-    val e2 = new semantics.Term.Blk(
-      semantics.Import(State.runtimeSymbol, "Runtime.mjs", rootPath / "Runtime.mjs") :: e.stats,
-      e.res
-    )
+    // val e2 = new semantics.Term.Blk(
+    //   semantics.Import(State.runtimeSymbol, "Runtime.mjs", rootPath / "Runtime.mjs") :: e.stats,
+    //   e.res
+    // )
     
-    val lowered0 = low.program(e2)
+    val lowered0 = low.program(e)
     val nestedScp = baseScp
     
     val code = nestedScp.givenIn:
       given Raise = raise(Stage.Generation)
-      jsb.block(lowered0.main, false)
+      jsb.program(lowered0, N, rootPath)
       
     js.Dynamic.literal(
       codegen = js.Dynamic.literal(

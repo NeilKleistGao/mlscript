@@ -19,6 +19,11 @@ import "../../Option.mls"
 import "../../Runtime.mls"
 import "../../Predef.mls"
 import "../../MutMap.mls"
+import "../../Block.mls"
+import "../../CachedHash.mls"
+import "../../Shape.mls"
+import "../../ShapeSet.mls"
+import "../../SpecializeHelpers.mls"
 import "./Examples.mls"
 import "../../../../../../js/target/scala-3.7.4/hkmc2-opt/MLscript.mjs"
 
@@ -28,6 +33,8 @@ open Predef
 open Option { Some, None }
 open Examples
 
+declare fun eval(code)
+
 module Main with ...
 
 let query = document.querySelector.bind(document)
@@ -36,6 +43,9 @@ let selector = query("#demo-select")
 let parseButton = query("#compile-button")
 let statusPanel = query("#compile-status")
 let outputPanel = query("#specialized-code")
+let topLevelModulePattern = new RegExp("""^\s*(?:staged\s+)?module\s+([A-Za-z_][A-Za-z0-9_]*)\s+with\b""", "m")
+// TODO: do not skip staged 
+
 
 examples Iter.each of case [key, example] then
   let option = document.createElement of "option"
@@ -66,23 +76,35 @@ fun formatError(error) =
   error.name + ": " + error.message +
   if error.stack is Str then "\n" + error.stack else ""
 
+fun topLevelModuleName(source) =
+  let matched = topLevelModulePattern.exec(source)
+  if matched is null then None else Some(matched.[1])
+
+fun currentTopLevelModuleName() =
+  topLevelModuleName(editor.value)
+
 parseButton.addEventListener of "click", event =>
-  set statusPanel.textContent = "Compiling the current program..."
   set outputPanel.textContent = "Compiling..."
   Runtime.try_catch of
     () =>
+      let moduleName =
+        if currentTopLevelModuleName() is
+          Some(name) then name
+          None then
+            set statusPanel.textContent = "No staged module found."
+            ""
       let res = MLscript.compile of
         traces:
           codegen: false
-        editor.value
+        editor.value + "\n" + moduleName + ".show()"
       let sections = mut []
-      // let generatedVars = res.codegen.vars.trim()
+      let generatedVars = res.codegen.vars.trim()
       let generatedCode = res.codegen.code.trim()
-      let hasGeneratedCode = generatedCode != ""
-      // if generatedVars != "" do sections.push(generatedVars)
-      if generatedCode != "" do
-        let res = globalThis.eval(generatedCode)
-        console.log(generatedCode)
+      let hasGeneratedCode = generatedVars != "" || generatedCode != ""
+      if generatedVars != "" do sections.push(generatedVars)
+      if hasGeneratedCode do
+        console.log(generatedVars + generatedCode)
+        let res = eval(generatedVars + generatedCode)
         sections.push(res)
       if res.codegen.diagnostics.length > 0 do
         sections.push of "Diagnostics:\n" + res.codegen.diagnostics.join("\n")

@@ -424,15 +424,37 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           callGenCont(call(cachePath.selSN("dump"), Nil, false)(mthds => 
             call(blockMod("codegen"), toValue(modSym.nme) :: mthds :: psym.asPath :: Nil, true, "tmp")(_ => End())))
 
+      def genShowBody() =
+        val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
+
+        val gens = helperMethods.map(_(1))
+
+        call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
+          def callGenCont(rest: Block) =
+            gens.foldRight(rest)((gen, rest) =>
+              val genPath = modSym.asPath.selSN(gen.sym.nme)
+              val params = gen.params.map(_.params.map(_ => dynVal))
+              params.foldRight((_: Path) => rest)
+                ((args, k) => call(_, args, true, "gen_call")(k))
+                (genPath)
+            )
+          callGenCont(call(cachePath.selSN("dump"), Nil, false)(mthds => 
+            call(blockMod("genMod"), toValue(modSym.nme) :: mthds :: Nil, true, "tmp")(p => Return(p, false))))
+
       val entryFunDef =
         val sym = BlockMemberSymbol("generate", Nil)
         val psym = VarSymbol(Ident("path"))
         val params = PlainParamList(Param.simple(psym) :: Nil)
         FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(psym))(false)
 
+      val webdemoEntryFunDef =
+        val sym = BlockMemberSymbol("show", Nil)
+        FunDefn.withFreshSymbol(S(modSym), sym, PlainParamList(Nil) :: Nil, genShowBody())(false)
+
+
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = entryFunDef :: helperMethods.flatten,
+        methods = entryFunDef :: webdemoEntryFunDef :: helperMethods.flatten,
         ctor = Begin(companion.ctor, cacheDecl(generatorMapDecl(End()))),
         publicFields = companion.publicFields
       )
