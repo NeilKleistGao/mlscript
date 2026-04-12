@@ -160,113 +160,143 @@ print(TestIf2."cache$TestIf2")
 //│ >   TestIf2.f_C_Dyn(tmp2)
 //│ > fun test3() = 1
 
-staged module TestTuple with
-  fun first(x) = if x is
-    [a, _] then a
-    else 0
-  fun second(x) = if x is
-    [_, b] then b
-    else 0
-  fun test(y) = 
-    let t = [10, y]
-    first(t) + second(t)
+:noSanityCheck
+staged module LinearAlgebra with
+  fun _dot(v1, v2, n, acc) = 
+    if n ==
+      v1.length then acc
+      else _dot(v1, v2, n + 1, v1.(n) * v2.(n) + acc)
+  fun dot(v1, v2) = _dot(v1, v2, 0, 0)
+  fun test(x) = dot([x, 1, 2], [3, 4, 1])
 
-TestTuple.test_gen(mkDyn())
-print(TestTuple."cache$TestTuple")
+LinearAlgebra.test_gen(mkDyn())
+print(LinearAlgebra."cache$LinearAlgebra")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
-//│ ╔══[COMPILATION ERROR] Module 'TestTuple' does not contain member 'test_gen'
-//│ ║  l.174: 	TestTuple.test_gen(mkDyn())
-//│ ╙──       	         ^^^^^^^^^
+//│ ╔══[COMPILATION ERROR] Module 'LinearAlgebra' does not contain member 'test_gen'
+//│ ║  l.172: 	LinearAlgebra.test_gen(mkDyn())
+//│ ╙──       	             ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestTuple.
-//│ ║  l.175: 	print(TestTuple."cache$TestTuple")
-//│ ╙──       	      ^^^^^^^^^
-//│ > fun first_Arr_Lit10_Dyn_end(x) = 10
-//│ > fun second_Arr_Lit10_Dyn_end(x) =
-//│ >   let {element1_1, element0_1, b}
-//│ >   element0_1 = x.(0)
-//│ >   element1_1 = x.(1)
-//│ >   b = element1_1
-//│ >   b
-//│ > fun test(y) =
-//│ >   let {t, tmp, tmp1}
-//│ >   t = [10, y]
-//│ >   tmp = 10
-//│ >   tmp1 = TestTuple.second_Arr_Lit10_Dyn_end(t)
-//│ >   tmp + tmp1
+//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type LinearAlgebra.
+//│ ║  l.173: 	print(LinearAlgebra."cache$LinearAlgebra")
+//│ ╙──       	      ^^^^^^^^^^^^^
+//│ > fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2, n, acc) =
+//│ >   let {tmp, tmp1, tmp2, scrut}
+//│ >   scrut = false
+//│ >   tmp = 1
+//│ >   tmp1 = *(v1.(n), v2.(n))
+//│ >   tmp2 = tmp1 + acc
+//│ >   LinearAlgebra._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, tmp, tmp2)
+//│ > fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, n, acc) =
+//│ >   let {tmp, tmp1, tmp2, scrut}
+//│ >   scrut = false
+//│ >   tmp = 2
+//│ >   tmp1 = 4
+//│ >   tmp2 = tmp1 + acc
+//│ >   LinearAlgebra._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, tmp, tmp2)
+//│ > fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, n, acc) =
+//│ >   let {tmp, tmp1, tmp2, scrut}
+//│ >   scrut = false
+//│ >   tmp = 3
+//│ >   tmp1 = 2
+//│ >   tmp2 = tmp1 + acc
+//│ >   LinearAlgebra._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, tmp, tmp2)
+//│ > fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, n, acc) =
+//│ >   let {tmp, tmp1, tmp2, scrut}
+//│ >   scrut = true
+//│ >   acc
+//│ > fun dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(v1, v2) = LinearAlgebra._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2, 0, 0)
+//│ > fun test(x) =
+//│ >   let {tmp3, tmp4}
+//│ >   tmp3 = [x, 1, 2]
+//│ >   tmp4 = [3, 4, 1]
+//│ >   LinearAlgebra.dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(tmp3, tmp4)
 
-staged class L1() with
-  fun call(x) = x + 2
-staged class L2() with
-  fun call(x) = x
-staged class L3() with
-  fun call(x) = x * 2
+staged class L1(val y) with
+  fun call(x) = x + 2 + y
+staged class L2(val y) with
+  fun call(x) = x + y
+staged class L3(val y) with
+  fun call(x) = x * 2 + y
+class L4(val y) with
+  fun call(x) = x + y
 
 staged module M with
   fun twice(f, x) = f.call(f.call(x))
   fun pick(x, y, b) = if b then x else y
-  fun foo(b) = 
-    let y = twice(new L1(), 5)
-    let m = pick(new L2(), new L3(), b)
+  fun test(b) = 
+    let y = twice(new L1(1), 5)
+    let m = pick(pick(new L2(2), new L3(3), b), new L4(4), b)
     twice(m, 5) + y
 
-M.foo_gen(mkDyn())
+M.test_gen(mkDyn())
 print(M."cache$M")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:371)
-//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'foo_gen'
-//│ ║  l.215: 	M.foo_gen(mkDyn())
-//│ ╙──       	 ^^^^^^^^
+//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'test_gen'
+//│ ║  l.233: 	M.test_gen(mkDyn())
+//│ ╙──       	 ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.216: 	print(M."cache$M")
+//│ ║  l.234: 	print(M."cache$M")
 //│ ╙──       	      ^
-//│ > fun foo(b) =
-//│ >   let {y, tmp1, tmp2, tmp3, m, tmp4}
-//│ >   tmp1 = new L1
-//│ >   y = 9
-//│ >   tmp2 = new L2
-//│ >   tmp3 = new L3
-//│ >   m = M.pick_L2_L3_Dyn(tmp2, tmp3, b)
-//│ >   tmp4 = M.twice_Union_L2_L3_end_Lit5(m, 5)
-//│ >   tmp4 + y
-//│ > fun pick_L2_L3_Dyn(x, y, b) =
+//│ > fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
 //│ >   let {obj_1, obj_2}
 //│ >   if b is
 //│ >     true then
-//│ >       obj_1 = new L2
+//│ >       obj_1 = new L2(2)
 //│ >       obj_1
 //│ >     else
-//│ >       obj_2 = new L3
+//│ >       obj_2 = new L3(3)
 //│ >       obj_2
-//│ > fun twice_L1_Lit5(f, x) = 9
-//│ > fun twice_Union_L2_L3_end_Lit5(f, x) =
+//│ > fun pick_Union_L2_Lit2_L3_Lit3_end_L4_Lit4_Dyn(x, y, b) =
+//│ >   let {obj_3}
+//│ >   if b is
+//│ >     true then x
+//│ >     else
+//│ >       obj_3 = new L4(4)
+//│ >       obj_3
+//│ > fun test(b) =
+//│ >   let {y, tmp1, m, tmp2, tmp3, tmp4, tmp5, tmp6}
+//│ >   tmp1 = new L1(1)
+//│ >   y = 11
+//│ >   tmp2 = new L2(2)
+//│ >   tmp3 = new L3(3)
+//│ >   tmp4 = M.pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
+//│ >   tmp5 = new L4(4)
+//│ >   m = M.pick_Union_L2_Lit2_L3_Lit3_end_L4_Lit4_Dyn(tmp4, tmp5, b)
+//│ >   tmp6 = M.twice_Union_L2_Lit2_L3_Lit3_L4_Lit4_end_Lit5(m, 5)
+//│ >   tmp6 + y
+//│ > fun twice_L1_Lit1_Lit5(f, x) = 11
+//│ > fun twice_Union_L2_Lit2_L3_Lit3_L4_Lit4_end_Lit5(f, x) =
 //│ >   let {tmp}
-//│ >   tmp = L2.call_Union_L2_L3_end_Lit5(f, x)
-//│ >   L2.call_Union_L2_L3_end_Union_Lit5_Lit10_end(f, tmp)
-
-print(L2.class."cache$L2")
-print(L3.class."cache$L3")
-//│ > fun call_L2_dot_Lit5(_this, x) = 5
-//│ > fun call_L2_dot_Union_Lit5_Lit10_end(_this, x) = x
-//│ > fun call_Union_L2_L3_end_Lit5(this, arg0) =
-//│ >   if this is
-//│ >     L2() then L2.call_L2_dot_Lit5(this, arg0)
-//│ >     L3() then L3.call_L3_dot_Lit5(this, arg0)
-//│ > fun call_Union_L2_L3_end_Union_Lit5_Lit10_end(this, arg0) =
-//│ >   if this is
-//│ >     L2() then L2.call_L2_dot_Union_Lit5_Lit10_end(this, arg0)
-//│ >     L3() then L3.call_L3_dot_Union_Lit5_Lit10_end(this, arg0)
-//│ > fun call_L3_dot_Lit5(_this, x) = 10
-//│ > fun call_L3_dot_Union_Lit5_Lit10_end(_this, x) = *(x, 2)
+//│ >   if f is
+//│ >     L2(y) then
+//│ >       tmp = f.call_L2_Lit2_dot_Lit5(x)
+//│ >       if f is
+//│ >         L2(y) then f.call_L2_Lit2_dot_Lit7(tmp)
+//│ >         L3(y) then f.call_L3_Lit3_dot_Lit7(tmp)
+//│ >         else f.call(tmp)
+//│ >     L3(y) then
+//│ >       tmp = f.call_L3_Lit3_dot_Lit5(x)
+//│ >       if f is
+//│ >         L2(y) then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
+//│ >         L3(y) then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
+//│ >         else f.call(tmp)
+//│ >     else
+//│ >       tmp = f.call(x)
+//│ >       if f is
+//│ >         L2(y) then f.call_L2_Lit2_dot_Dyn(tmp)
+//│ >         L3(y) then f.call_L3_Lit3_dot_Dyn(tmp)
+//│ >         else f.call(tmp)
+//│ >   f.call(tmp)
 
 staged class A(val x: Int) with
   fun f(y: Int) = this.x + y
 staged class B(val x: Int) with
-  fun f(y: A) = y.f(this.x)
+  fun f(y: A) = x 
 
 staged module TestThis with
   fun test(x) = B(x).f(A(x))
@@ -274,20 +304,24 @@ staged module TestThis with
 :fixme
 TestThis.test_gen(mkDyn())
 print(TestThis."cache$TestThis")
-print(B.class."cache$B")
 //│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test_gen'
-//│ ║  l.275: 	TestThis.test_gen(mkDyn())
+//│ ║  l.305: 	TestThis.test_gen(mkDyn())
 //│ ╙──       	        ^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestThis.
-//│ ║  l.276: 	print(TestThis."cache$TestThis")
+//│ ║  l.306: 	print(TestThis."cache$TestThis")
 //│ ╙──       	      ^^^^^^^^
 //│ > fun test(x) =
 //│ >   let {tmp, tmp1}
 //│ >   tmp = B(x)
 //│ >   tmp1 = A(x)
-//│ >   B.f_B_Dyn_A_Dyn(tmp, tmp1)
-//│ > fun f_B_Dyn_A_Dyn(this, arg0) = B.f_B_Dyn_dot_A_Dyn(this, arg0)
-//│ > fun f_B_Dyn_dot_A_Dyn(_this, y) = A.f_A_Dyn_Dyn(y, B1.x)
+//│ >   if tmp is
+//│ >     B(x) then tmp.f_B_Dyn_dot_A_Dyn(tmp1)
+
+print(B.class."cache$B")
+//│ > fun f_B_Dyn_dot_A_Dyn(_this, y) = B1.x
+
+print(B.class.f_instr())
+//│ > FunDefn(Symbol("f"), [[Symbol("y")]], Return(Select(ValueRef(ConcreteClassSymbol("B1", fun B { class: class B { cache$B: fun f_B_Dyn_dot_A_Dyn(_this, y) = B1.x, generatorMap$B: Map(2) {"ctor" => fun ctor_gen, "f" => fun f_gen} } }, Some([Symbol("x")]), [])), Symbol("x")), false))
 
 :todo
 staged class D(val x) extends B(x+1) with
@@ -306,3 +340,72 @@ staged module M with
 
 C1.class."cache$C1"
 //│ = 
+
+
+class D(val z)
+
+:lot
+class C(val x, val y) extends D(x + 1)
+//│ —————————————| Lowered IR Tree |————————————————————————————————————————————————————————————————————
+//│ Program:
+//│   main = Scoped(syms = {member:C⁰}): 
+//│     body = Define:
+//│       defn = ClsLikeDefn:
+//│         isym = class:C¹
+//│         sym = member:C⁰
+//│         ctorSym = S of term:C¹/C²
+//│         k = Cls
+//│         paramsOpt = S of ParamList:
+//│           params = Ls of 
+//│             Param:
+//│               flags = (val)
+//│               sym = x⁰
+//│               modulefulness = Modulefulness of N
+//│             Param:
+//│               flags = (val)
+//│               sym = y⁰
+//│               modulefulness = Modulefulness of N
+//│         parentPath = S of Ref{disamb=class:D⁰}:
+//│           l = member:D¹
+//│           disamb = S of class:D⁰
+//│         publicFields = Ls of 
+//│           Tuple2:
+//│             _1 = member:x¹
+//│             _2 = term:C¹/x²
+//│           Tuple2:
+//│             _1 = member:y¹
+//│             _2 = term:C¹/y²
+//│         preCtor = Scoped(syms = {tmp:tmp⁰}): 
+//│           body = Assign:
+//│             lhs = tmp:tmp⁰
+//│             rhs = Call:
+//│               fun = Ref:
+//│                 l = builtin:+⁰
+//│               args = Ls of 
+//│                 Arg:
+//│                   value = Ref:
+//│                     l = x⁰
+//│                 Arg:
+//│                   value = Lit of IntLit of 1
+//│             rest = Return: \
+//│             res = Call:
+//│               fun = Ref:
+//│                 l = builtin:super⁰
+//│               args = Ls of 
+//│                 Arg:
+//│                   value = Ref:
+//│                     l = tmp:tmp⁰
+//│             implct = true
+//│         ctor = Define:
+//│           defn = ValDefn:
+//│             tsym = term:C¹/x²
+//│             sym = member:x¹
+//│             rhs = Ref:
+//│               l = x⁰
+//│           rest = Define: \
+//│           defn = ValDefn:
+//│             tsym = term:C¹/y²
+//│             sym = member:y¹
+//│             rhs = Ref:
+//│               l = y⁰
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
