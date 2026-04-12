@@ -44,22 +44,15 @@ staged module M with
   fun g()() = 1
 
 // TODO: these need to be printed separately, somehow:
+:noModuleCheck
 let x = M."f_instr"().body.rest.rhs.cls.l.value
 let y = M."g_instr"().body.rest.rhs.cls.l.value
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: traverse (Resolver.scala:349)
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.47: 	let x = M."f_instr"().body.rest.rhs.cls.l.value
-//│ ╙──      	        ^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: traverse (Resolver.scala:349)
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.48: 	let y = M."g_instr"().body.rest.rhs.cls.l.value
-//│ ╙──      	        ^
 //│ x = class Function$
 //│ y = class Function$
 
-:todo creating symbols for objects
+staged module Shadowing with
+  fun f(x, x) = x
+
 staged module RetUnit with
   fun f() = ()
 

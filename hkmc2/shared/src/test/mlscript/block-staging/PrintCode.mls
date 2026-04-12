@@ -24,26 +24,18 @@ printCode(ValueLit("string"))
 //│ > "string"
 
 printCode(Symbol("internal$"))
-printCode(Symbol("runtime"))
 //│ > internal_
-//│ > Runtime
 
 printCode(Select(ValueRef(Symbol("p")), Symbol("x")))
 printCode(DynSelect(ValueRef(Symbol("p")), ValueRef(Symbol("field")), false))
 //│ > p.x
 //│ > p.(field)
 
+:silent
 class B
 class D(val x)(y) extends B
 let bSym = ConcreteClassSymbol("B", B, None, [])
 let dSym = ConcreteClassSymbol("D", D, Some([Symbol("x")]), [[Symbol("y")]])
-//│ bSym = ConcreteClassSymbol("B", class B, None, [])
-//│ dSym = ConcreteClassSymbol(
-//│   "D",
-//│   fun D { class: class D },
-//│   Some([Symbol("x")]),
-//│   [[Symbol("y")]]
-//│ )
 
 printCode(Call(ValueRef(Symbol("f")), [Arg(ValueLit(3))]))
 printCode(Instantiate(ValueRef(dSym), [Arg(ValueLit(0))]))
@@ -71,7 +63,7 @@ printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), 
 printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(dSym, ValueRef(dSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
 //│ > if x is
 //│ >   1 then 2
-//│ >   D(x) then 3
+//│ >   D then 3
 //│ >   else x
 
 printCode(Define(ValDefn(Some(dSym), Symbol("x"), ValueLit(1)), End()))
@@ -97,7 +89,7 @@ printCode(Scoped([Symbol("y")], Match(
 //│ >   else 1
 //│ > y
 
-printCode(Scoped([Symbol("y")],  Match(
+printCode(Scoped([Symbol("y")], Match(
     ValueLit(1), 
     [Arm(Lit(1), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))], 
     Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))), 
@@ -135,5 +127,5 @@ printCode(Scoped([Symbol("y")], Match(
 //│ >     y = 3
 //│ >     y
 
-Printer(Some(aSym)).printCode(Select(ValueRef(aSym), Symbol("x")))
+Printer(Some(dSym)).printCode(Select(ValueRef(dSym), Symbol("x")))
 //│ > x

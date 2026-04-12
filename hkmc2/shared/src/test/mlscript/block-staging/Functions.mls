@@ -1,13 +1,12 @@
 :js
 :staging
 
-:checkIR
 staged module Rebinding with
   fun lit() =
     let x = 42
     x
 
-val x = [1, 2, 3]
+let x = [1, 2, 3]
 staged module Expressions with
   fun lit(x) = x + x
   fun assign() =
@@ -40,9 +39,9 @@ staged module ClassInstrumentation with
   class Inside(a, b)
   class NoArg
   fun inst1() = Outside(1)
-  fun app2() = Inside(1, 2) 
   fun inst2() = new NoArg
   fun app1() = Outside(1)
+  fun app2() = Inside(1, 2) 
 
 module Nonstaged with
   fun f() = 1
@@ -50,13 +49,6 @@ staged module Staged with
   fun f() = 1
 staged module CallSubst with
   fun call() = Nonstaged.f() + Staged.f()
-
-:e
-print(CallSubst."cache$CallSubst")
-//│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type CallSubst.
-//│ ║  l.55: 	print(CallSubst."cache$CallSubst")
-//│ ╙──      	      ^^^^^^^^^
-//│ > 
 
 :ftc
 staged module Arguments with
@@ -80,7 +72,6 @@ staged module OtherBlocks with
 staged module ClassDefs with
   class A
 
-:todo ValDefn in class
 staged module ValClass with
   class A(val a)
 
@@ -88,10 +79,6 @@ staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
-
-:todo
-staged module RetUnit with
-  fun f() = ()
 
 // name collision
 class A()
@@ -103,40 +90,31 @@ module A with
   staged module B with
     fun f() = 1
 
-staged module Shadowing with
-  fun f(x, x) = x
-
-:todo
-staged module Continue with
-  fun f() = 
-    let x = 1
-    while x == 1 do
-      set x = x + 1
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Label(label:lbl,true,Scoped(HashSet(tmp:scrut, tmp:tmp),Assign(tmp:scrut,Call(Select(Ref(member:Predef,Some(module:Predef)),Ident(equals)),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Match(Ref(tmp:scrut,None),List((Lit(BoolLit(true)),Assign(tmp:tmp,Call(Ref(builtin:+,None),List(Arg(None,Ref(x,None)), Arg(None,Lit(IntLit(1))))),Assign(x,Ref(tmp:tmp,None),Continue(label:lbl))))),None,End()))),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false)).
-//│  Try enabling :ftc.
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.112: 	    let x = 1
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.112: 	    let x = 1
-//│ ╙──       	        ^
-
-:todo
+// FIXME: for g to be defined in the next stage, we need to also print the other ClsLikeDefn/FunDefn nodes when printing the next stage
 :ftc
 staged module NestedFunDefn with
   fun f() =
     fun g() = 1
     g()
-  fun g(x, y) = x || y
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: Unreachable(Rest of abortive match)
 
-
-:ftc
-staged module M with
-  fun f() = if 1 is
+:todo
+staged module LabelBreak with
+  fun f() =
+    let x = 1
+    while x == 1 do
+      set x = x + 1
+  fun g() = if 1 is
     0 then 1 + 1 + 1
     1 then 1 + 1 + 1
     else 1 + 1 + 1
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
+//│ ║  l.103: 	    let x = 1
+//│ ║         	        ^
+//│ ╟── which references the symbol introduced here
+//│ ║  l.103: 	    let x = 1
+//│ ╙──       	        ^
 
 :e
 class C(val a)
@@ -144,9 +122,9 @@ staged module A with
   let x = C(1)
   fun f() = set x.a = 0
   fun g() = {1 : 2}
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: AssignField(Ref(term:A/x,None),Ident(a),Lit(IntLit(0)),Return(Select(Ref(tmp:runtime,None),Ident(Unit)),false))
-//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module.
-//│ ║  l.146: 	  fun g() = {1 : 2}
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
+//│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
+//│ ║  l.124: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 
 :todo

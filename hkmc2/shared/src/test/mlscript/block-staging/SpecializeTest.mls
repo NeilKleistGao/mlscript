@@ -14,14 +14,19 @@ staged module M with
   fun f_gen
 
 M.f_gen(mkDyn())
-//│ = ["f", {Dyn()}]
+//│ = [Symbol("f_{Dyn_28_29}"), [[{Dyn()}]]]
 
 M.f_gen(mkLit(2))
-//│ = ["f_Lit2", {Lit(4)}]
+//│ = [Symbol("f_{Lit_282_29}"), [[{Lit(2)}]]]
 
 print(M."cache$M")
-//│ > fun f(x) =
-//│ >   let {y}
-//│ >   y = *(x, 2)
-//│ >   y
-//│ > fun f_Lit2(x) = 4
+//│ > module M with
+//│ >   ()
+//│ >   fun f_{Dyn_28_29}(x) =
+//│ >     let {y}
+//│ >     y = *(x, 2)
+//│ >     y
+//│ >   fun f_{Lit_282_29}(x) =
+//│ >     let {y}
+//│ >     y = *(x, 2)
+//│ >     y
