@@ -33,6 +33,14 @@ Any().match("xyz")
 //│ = Some("x")
 
 
+Not(["x", "y", "z"]).match("xyz")
+//│ = None
+
+
+Not(["x", "y", "z"]).match("w")
+//│ = Some("w")
+
+
 Star(Exact("x")).match("")
 //│ = Some("")
 
@@ -69,14 +77,14 @@ Question(Any()).match("y")
 //│ = Some("y")
 
 
-Set([Exact("x"), Exact("y"), Exact("z")]).match("z")
+Union(Union(Exact("x"), Exact("y")), Exact("z")).match("z")
 //│ = Some("z")
 
 
-Set([Exact("x"), Exact("y"), Exact("z")]).match("y")
+Union(Union(Exact("x"), Exact("y")), Exact("z")).match("y")
 //│ = Some("y")
 
-Set([Exact("x"), Exact("y"), Exact("z")]).match("w")
+Union(Union(Exact("x"), Exact("y")), Exact("z")).match("w")
 //│ = None
 
 
@@ -111,134 +119,38 @@ plus(Exact("x")).match("xxx")
 //│ = Some("xxx")
 
 
-let w = Set([Exact("a"), Exact("b"), Exact("c"), Exact("d"), Exact("e"), Exact("f"), Exact("g"), Exact("h"), Exact("i"), Exact("j"), Exact("k"), Exact("l"), Exact("m"), Exact("n"), Exact("o"), Exact("p"), Exact("q"), Exact("r"), Exact("s"), Exact("t"), Exact("u"), Exact("v"), Exact("w"), Exact("x"), Exact("y"), Exact("z")])
-//│ w = Set(
-//│   [
-//│     Exact("a"),
-//│     Exact("b"),
-//│     Exact("c"),
-//│     Exact("d"),
-//│     Exact("e"),
-//│     Exact("f"),
-//│     Exact("g"),
-//│     Exact("h"),
-//│     Exact("i"),
-//│     Exact("j"),
-//│     Exact("k"),
-//│     Exact("l"),
-//│     Exact("m"),
-//│     Exact("n"),
-//│     Exact("o"),
-//│     Exact("p"),
-//│     Exact("q"),
-//│     Exact("r"),
-//│     Exact("s"),
-//│     Exact("t"),
-//│     Exact("u"),
-//│     Exact("v"),
-//│     Exact("w"),
-//│     Exact("x"),
-//│     Exact("y"),
-//│     Exact("z")
-//│   ]
-//│ )
+nTimes(Exact("x"), 3).match("xxx")
+//│ = Some("xxx")
 
-let p = Set([Concat(
+
+nTimes(Exact("x"), 3).match("xxy")
+//│ = None
+
+
+nTimes(Exact("x"), 3).match("xx")
+//│ = None
+
+
+:silent
+let p = Union(Concat(
   Exact(" "),
   Concat(
-    Concat(Exact("t"), Star(w)),
-    Set([Exact(" "), Exact("."), Exact(",")])
+    Concat(Exact("t"), Star(words)),
+    notWord
   )
 ), Concat(Question(Exact("")), Concat(
-    Concat(Exact("T"), Star(w)),
-    Set([Exact(" "), Exact("."), Exact(",")])
-  ))])
-//│ p = Set(
-//│   [
-//│     Concat(
-//│       Exact(" "),
-//│       Concat(
-//│         Concat(
-//│           Exact("t"),
-//│           Star(
-//│             Set(
-//│               [
-//│                 Exact("a"),
-//│                 Exact("b"),
-//│                 Exact("c"),
-//│                 Exact("d"),
-//│                 Exact("e"),
-//│                 Exact("f"),
-//│                 Exact("g"),
-//│                 Exact("h"),
-//│                 Exact("i"),
-//│                 Exact("j"),
-//│                 Exact("k"),
-//│                 Exact("l"),
-//│                 Exact("m"),
-//│                 Exact("n"),
-//│                 Exact("o"),
-//│                 Exact("p"),
-//│                 Exact("q"),
-//│                 Exact("r"),
-//│                 Exact("s"),
-//│                 Exact("t"),
-//│                 Exact("u"),
-//│                 Exact("v"),
-//│                 Exact("w"),
-//│                 Exact("x"),
-//│                 Exact("y"),
-//│                 Exact("z")
-//│               ]
-//│             )
-//│           )
-//│         ),
-//│         Set([Exact(" "), Exact("."), Exact(",")])
-//│       )
-//│     ),
-//│     Concat(
-//│       Question(Exact("")),
-//│       Concat(
-//│         Concat(
-//│           Exact("T"),
-//│           Star(
-//│             Set(
-//│               [
-//│                 Exact("a"),
-//│                 Exact("b"),
-//│                 Exact("c"),
-//│                 Exact("d"),
-//│                 Exact("e"),
-//│                 Exact("f"),
-//│                 Exact("g"),
-//│                 Exact("h"),
-//│                 Exact("i"),
-//│                 Exact("j"),
-//│                 Exact("k"),
-//│                 Exact("l"),
-//│                 Exact("m"),
-//│                 Exact("n"),
-//│                 Exact("o"),
-//│                 Exact("p"),
-//│                 Exact("q"),
-//│                 Exact("r"),
-//│                 Exact("s"),
-//│                 Exact("t"),
-//│                 Exact("u"),
-//│                 Exact("v"),
-//│                 Exact("w"),
-//│                 Exact("x"),
-//│                 Exact("y"),
-//│                 Exact("z")
-//│               ]
-//│             )
-//│           )
-//│         ),
-//│         Set([Exact(" "), Exact("."), Exact(",")])
-//│       )
-//│     )
-//│   ]
-//│ )
+    Concat(Exact("T"), Star(words)),
+    notWord
+  )))
+
 
 matchAll(p, "To be or not to be, that is the question.")
 //│ = ["To ", " to ", " that ", " the "]
+
+
+:silent
+let p = Concat(plus(Concat(plus(words), ".")), plus(words))
+
+// FIXME
+p.match("a.b")
+//│ = None
