@@ -98,24 +98,13 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       inlineAssigments(new Map())(preCtor)
     else ""
     
-    // process ctor: remove ValDefn of parameters defined in paramsOpt
-    fun removeExtraValDefn(params, block) = if block is
-      Define(ValDefn(Some, sym, ValueRef(rhs)), rest) and params.has(rhs) then removeExtraValDefn(params, rest)
-      Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, removeExtraValDefn(params, rest))
-      Assign(lhs, rhs, rest) then Assign(lhs, rhs, removeExtraValDefn(params, rest))
-      Define(defn, rest) then Define(defn, removeExtraValDefn(params, rest))
-      Scoped(symbols, rest) then Scoped(symbols, removeExtraValDefn(params, rest))
-      else block
-    
     let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
     assert ctor is FunDefn
-    let params = new Set(ctor.params.flat())
-    let ctorBody = removeExtraValDefn(params, ctor.body)
 
     decl + owner.name + printer.showParamList(paramList)
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
-      + indent("\n" + printer.showBlock(ctorBody))
+      + indent("\n" + printer.showBlock(ctor.body))
       + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().join("\n"))
 
 module FunCache with
