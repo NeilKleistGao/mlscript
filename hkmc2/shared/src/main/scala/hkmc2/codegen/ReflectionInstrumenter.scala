@@ -385,7 +385,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     stageMethod(transformer.applyFunDefn(ctorFun), Context(new HashMap(), true))
     
 
-  def stageMethods(ownerSym: DefinitionSymbol[?], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str)(methods: Ls[FunDefn]): (Ls[FunDefn], Block => Block) =
+  def stageMethods(ownerSym: DefinitionSymbol[?], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str)(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
     // for storing specialized functions in each staged module
     val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
     val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
@@ -442,7 +442,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val params = PlainParamList(Param.simple(sourceSym) :: Param.simple(psym) :: Nil)
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(sourceSym, psym))(false, N)
 
-    (entryFunDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(b)))
+    (entryFunDef, stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(b)))
 
   override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
     // staged modules
@@ -455,9 +455,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val generatorMapNme = "generatorMap" + suffix
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(false, N)
 
-      val (newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme)(methods)
+      val (entryFun, newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme)(methods)
       companion.copy(
-        methods = stageCtor(ctorFun) :: newMethods,
+        methods = entryFun :: stageCtor(ctorFun) :: newMethods,
         ctor = Begin(companion.ctor, cont(End())),
       )
     case b => super.applyObjBody(companion)
@@ -494,12 +494,27 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N)
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(false, N)
       
-      val (newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme)(methods)
-
+      val (entryFun, newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme)(methods)
+      val (companionEntryFun, companionMethods) = companion.methods.partition(_.sym.nme == "generate")
+      val combinedEntryFun: FunDefn = companionEntryFun match
+        case Nil => entryFun
+        case companionFun :: Nil =>
+          val symMap = entryFun.params.flatMap(_.params.map(_.sym))
+            .zip(companionFun.params.flatMap(_.params.map(_.sym)))
+            .toMap
+          val transformer = new BlockTransformer(new SymbolSubst():
+            override def mapVarSym(l: VarSymbol): VarSymbol = symMap.getOrElse(l, l)
+          )
+          val combinedBody = Begin(companionFun.body, transformer.applyBlock(entryFun.body))
+          companionFun.copy(body = combinedBody)(companionFun.forceTailRec, companionFun.configOverride)
+        case _ =>
+          raise(ErrorReport(msg"There shouldn't be more than one entry function generated in a module." -> N :: Nil))
+          entryFun
+  
       // used for staging classes inside modules
       val newCompanion = companion.copy(
         // actually, the entry function should come from stageMethods
-        methods = stageMethod(preCtorFun) :: stageCtor(ctorFun) :: newMethods ++ companion.methods,
+        methods = combinedEntryFun :: stageMethod(preCtorFun) :: stageCtor(ctorFun) :: newMethods ++ companionMethods,
         ctor = Begin(companion.ctor, cont(End())),
         publicFields = companion.publicFields,
       )
