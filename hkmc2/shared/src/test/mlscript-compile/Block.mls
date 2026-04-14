@@ -20,7 +20,7 @@ type Opt[A] = Option[A]
 
 type Literal = null | undefined | Str | Int | Num | Bool
 
-type ParamList = Array[Symbol]
+type ParamList = Array[Param]
 
 class Symbol(val name: Str)
 class ClassSymbol(val name: Str) extends Symbol(name)
@@ -28,6 +28,13 @@ class VirtualClassSymbol(val name: Str) extends ClassSymbol(name)
 class ConcreteClassSymbol(val name: Str, val value: Class, val paramsOpt: Opt[ParamList], val auxParams: Array[ParamList]) extends ClassSymbol(name)
 class ModuleSymbol(val name: Str, val value: Class) extends Symbol(name)
 class NoSymbol() extends Symbol("$no_symbol$")
+
+class Constraint with
+  constructor
+    Dynamic()
+    Static()
+
+class Param(val constraint: Opt[Constraint], val sym: Symbol)
 class Arm(val cse: Case, val body: Block)
 
 fun isPrimitiveType(sym: Symbol) =
@@ -158,8 +165,9 @@ class Printer(val owner: Opt[Class]) with
   fun showArm(a) =
     showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
 
-  fun showParams(p: ParamList) =
-    "(" + p.map(showSymbol(_)).join(", ") + ")"
+  fun showParams(pl: ParamList) =
+    // do not print constraints to next stage
+    "(" + pl.map(p => showSymbol(p.sym)).join(", ") + ")"
 
   fun showParamsOpt(p) =
     if p is

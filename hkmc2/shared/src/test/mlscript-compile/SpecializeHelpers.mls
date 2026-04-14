@@ -342,14 +342,13 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
       defn is FunDefn(Symbol(_), ps, body) then
         let isMethod = shapes.length > ps.length // TODO: clean up
         let paramShapes = if isMethod then shapes.slice(1) else shapes
-        let newPs = if isMethod then [ [Symbol("_this"), ...ps.(0)], ...ps.slice(1) ] else ps
         let ctx = if isMethod then
           let clsSymb = shapes.(0).(0).values().0.sym
           Ctx(new Map(), mut [], Some(clsSymb), shapes.(0).(0))
         else Ctx.empty()
         if isMethod do ctx.add(ValueRef(Symbol("_this")), shapes.(0).(0))
-        ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
-        cache.setFun(newName, [FunDefn(Symbol(newName), newPs, body), mkDyn()])
+        ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2.sym), paramShapes.(i).(j))))
+        cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
         let propFun = prop
         let res = propFun(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
@@ -358,7 +357,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
           let v2p = val2path(valOfSet(res.1), allocs)
           wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
         else bodyWithScoped
-        let entry = cache.setFun(newName, [FunDefn(Symbol(newName), newPs, finalBody), res.1])
+        let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, finalBody), res.1])
         [entry.0.sym.name, entry.1]
     else throw Error("cache error")
 class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, [Block.Block, Shape]]) with
