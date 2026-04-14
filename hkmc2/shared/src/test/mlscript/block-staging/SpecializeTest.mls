@@ -6,27 +6,25 @@ import "../../mlscript-compile/ShapeSet.mls"
 
 open ShapeSet
 
-// :sjs
-staged module M with  
+staged module M with
   fun f(x) =
     let y = x * 2
     y
   fun f_gen
 
 M.f_gen(mkDyn())
-//│ = [Symbol("f_{Dyn_28_29}"), [[{Dyn()}]]]
+//│ = ["f", {Dyn()}]
+
 
 M.f_gen(mkLit(2))
-//│ = [Symbol("f_{Lit_282_29}"), [[{Lit(2)}]]]
+//│ = ["f_Lit2", {Lit(4)}]
+
 
 print(M."cache$M")
 //│ > module M with
 //│ >   ()
-//│ >   fun f_{Dyn_28_29}(x) =
+//│ >   fun f(x) =
 //│ >     let {y}
 //│ >     y = *(x, 2)
 //│ >     y
-//│ >   fun f_{Lit_282_29}(x) =
-//│ >     let {y}
-//│ >     y = *(x, 2)
-//│ >     y
+//│ >   fun f_Lit2(x) = 4

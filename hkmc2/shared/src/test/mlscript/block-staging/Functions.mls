@@ -1,12 +1,13 @@
 :js
 :staging
 
+:checkIR
 staged module Rebinding with
   fun lit() =
     let x = 42
     x
 
-let x = [1, 2, 3]
+val x = [1, 2, 3]
 staged module Expressions with
   fun lit(x) = x + x
   fun assign() =
@@ -72,6 +73,7 @@ staged module OtherBlocks with
 staged module ClassDefs with
   class A
 
+// TODO: ValDefn in class
 staged module ValClass with
   class A(val a)
 
@@ -110,10 +112,10 @@ staged module LabelBreak with
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.103: 	    let x = 1
+//│ ║  l.105: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.103: 	    let x = 1
+//│ ║  l.105: 	    let x = 1
 //│ ╙──       	        ^
 
 :e
@@ -124,7 +126,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.124: 	  fun g() = {1 : 2}
+//│ ║  l.126: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 
 :todo

@@ -516,7 +516,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         // actually, the entry function should come from stageMethods
         methods = combinedEntryFun :: stageMethod(preCtorFun) :: stageCtor(ctorFun) :: newMethods ++ companionMethods,
         ctor = Begin(companion.ctor, cont(End())),
-        publicFields = companion.publicFields,
       )
       val newClsLikeDefn = defn.copy(companion = S(newCompanion))(defn.configOverride)
       Define(newClsLikeDefn, applyBlock(rest))

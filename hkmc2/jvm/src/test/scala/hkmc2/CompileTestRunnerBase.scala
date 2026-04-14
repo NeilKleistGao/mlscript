@@ -67,7 +67,7 @@ abstract class CompileTestRunnerBase(
             val blockFile = mainTestDir / "mlscript-compile" / "Block.mjs"
             val optionFile = mainTestDir / "mlscript-compile" / "Option.mjs"
             val shapeSetFile = mainTestDir / "mlscript-compile" / "ShapeSet.mjs"
-            val specializeHelpersFile = mainTestDir / "mlscript-compile" / "SpecializeHelpers.mjs" ,
+            val specializeHelpersFile = mainTestDir / "mlscript-compile" / "SpecializeHelpers.mjs",
           mkRaise = report.mkRaise
         )
         compiler.compileModule(file)
