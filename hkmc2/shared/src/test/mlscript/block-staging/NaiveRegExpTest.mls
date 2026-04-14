@@ -9,148 +9,153 @@ RegExp().match("foo")
 //│ ═══[RUNTIME ERROR] Error: Not implemented
 
 
-Exact("x").match("x")
+exact("x").match("x")
 //│ = Some("x")
 
 
-Exact("x").match("")
+exact("x").match("")
 //│ = None
 
 
-Exact("x").match("xyz")
+exact("x").match("xyz")
 //│ = Some("x")
 
 
-Any().match("x")
+any.match("x")
 //│ = Some("x")
 
 
-Any().match("")
+any.match("")
 //│ = None
 
 
-Any().match("xyz")
+any.match("xyz")
 //│ = Some("x")
 
 
-Not(["x", "y", "z"]).match("xyz")
+notOf(["x", "y", "z"]).match("xyz")
 //│ = None
 
 
-Not(["x", "y", "z"]).match("w")
+notOf(["x", "y", "z"]).match("w")
 //│ = Some("w")
 
 
-Star(Exact("x")).match("")
+star(exact("x")).match("")
 //│ = Some("")
 
 
-Star(Exact("x")).match("xyz")
+star(exact("x")).match("xyz")
 //│ = Some("x")
 
 
-Star(Exact("x")).match("xxxy")
+star(exact("x")).match("xxxy")
 //│ = Some("xxx")
 
 
-Star(Exact("x")).match("xxxyxxx")
+star(exact("x")).match("xxxyxxx")
 //│ = Some("xxx")
 
 
-Star(Any()).match("xxxyxxx")
+star(any).match("xxxyxxx")
 //│ = Some("xxxyxxx")
 
 
-Question(Exact("x")).match("x")
+Star(exact("x"), exact("x")).match("xxxxxxx")
+//│ = Some("xxxxxxx")
+
+Star(exact("x"), exact("x")).match("x")
+//│ = Some("x")
+
+question(exact("x")).match("x")
 //│ = Some("x")
 
 
-Question(Exact("x")).match("y")
+question(exact("x")).match("y")
 //│ = Some("")
 
 
-Question(Exact("x")).match("xx")
+question(exact("x")).match("xx")
 //│ = Some("x")
 
 
-Question(Any()).match("y")
+question(any).match("y")
 //│ = Some("y")
 
 
-Union(Union(Exact("x"), Exact("y")), Exact("z")).match("z")
+union(union(exact("x"), exact("y")), exact("z")).match("z")
 //│ = Some("z")
 
 
-Union(Union(Exact("x"), Exact("y")), Exact("z")).match("y")
+union(union(exact("x"), exact("y")), exact("z")).match("y")
 //│ = Some("y")
 
-Union(Union(Exact("x"), Exact("y")), Exact("z")).match("w")
+union(union(exact("x"), exact("y")), exact("z")).match("w")
 //│ = None
 
 
-Concat(Star(Exact("x")), Exact("y")).match("x")
+// x*y
+Star(exact("x"), exact("y")).match("x")
 //│ = None
 
 
-Concat(Star(Exact("x")), Exact("y")).match("y")
+Star(exact("x"), exact("y")).match("y")
 //│ = Some("y")
 
 
-Concat(Star(Exact("x")), Exact("y")).match("xxxxxy")
+Star(exact("x"), exact("y")).match("xxxxxy")
 //│ = Some("xxxxxy")
 
 
-Concat(Star(Exact("x")), Exact("y")).match("xyyyy")
+Star(exact("x"), exact("y")).match("xyyyy")
 //│ = Some("xy")
 
 
-plus(Exact("x")).match("")
+// x+
+plus(exact("x")).match("")
 //│ = None
 
-plus(Exact("x")).match("x")
+plus(exact("x")).match("x")
 //│ = Some("x")
 
 
-plus(Exact("x")).match("y")
+plus(exact("x")).match("y")
 //│ = None
 
 
-plus(Exact("x")).match("xxx")
+plus(exact("x")).match("xxx")
 //│ = Some("xxx")
 
 
-nTimes(Exact("x"), 3).match("xxx")
+// x{3}, equivalent to xxx
+nTimes(exact("x"), 3).match("xxx")
 //│ = Some("xxx")
 
 
-nTimes(Exact("x"), 3).match("xxy")
+nTimes(exact("x"), 3).match("xxy")
 //│ = None
 
 
-nTimes(Exact("x"), 3).match("xx")
+nTimes(exact("x"), 3).match("xx")
 //│ = None
 
 
 :silent
-let p = Union(Concat(
-  Exact(" "),
-  Concat(
-    Concat(Exact("t"), Star(words)),
-    notWord
-  )
-), Concat(Question(Exact("")), Concat(
-    Concat(Exact("T"), Star(words)),
-    notWord
-  )))
+let p = setOf(["T", "t"], Star(words, notWord))
 
 
 matchAll(p, "To be or not to be, that is the question.")
-//│ = ["To ", " to ", " that ", " the "]
+//│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
 
 
-:silent
-let p = Concat(plus(Concat(plus(words), ".")), plus(words))
+email.match("foo@bar.baz")
+//│ = Some("foo@bar.baz")
 
-// FIXME
-p.match("a.b")
-//│ = None
+email.match("foo-foo@bar.baz")
+//│ = Some("foo-foo@bar.baz")
+
+email.match("a.b.c.d@e-f.g.h")
+//│ = Some("a.b.c.d@e-f.g.h")
+
+email.match("a-b.c.d@e-f.g.h")
+//│ = Some("a-b.c.d@e-f.g.h")
