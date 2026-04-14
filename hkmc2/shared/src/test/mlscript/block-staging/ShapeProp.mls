@@ -288,16 +288,11 @@ print(M."cache$M")
 //│ >     let {tmp1, tmp2}
 //│ >     tmp1 = new L2(2)
 //│ >     tmp2 = new L3(3)
-//│ >     M.pick_L2_Lit2_L3_Lit3_Dyn(tmp1, tmp2, b)
-//│ >   fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
-//│ >     let {obj_2, obj_3}
+//│ >     M.pick_Dyn_Union_L3_Lit2_L3_Lit3_end_Dyn(tmp1, tmp2, b)
+//│ >   fun pick_Dyn_Union_L3_Lit2_L3_Lit3_end_Dyn(x, y, b) =
 //│ >     if b is
-//│ >       true then
-//│ >         obj_2 = new L2(2)
-//│ >         obj_2
-//│ >       else
-//│ >         obj_3 = new L3(3)
-//│ >         obj_3
+//│ >       true then x
+//│ >       else y
 
 
 print(L1.class."class$cache$L1")
@@ -322,17 +317,17 @@ print(TestThis."cache$TestThis")
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
 //│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test_gen'
-//│ ║  l.320: 	TestThis.test_gen(mkDyn(1))
+//│ ║  l.315: 	TestThis.test_gen(mkDyn(1))
 //│ ╙──       	        ^^^^^^^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: newDefn (Resolver.scala:662)
 //│ ╔══[COMPILATION ERROR] Expected 0 arguments, got 1
-//│ ║  l.320: 	TestThis.test_gen(mkDyn(1))
+//│ ║  l.315: 	TestThis.test_gen(mkDyn(1))
 //│ ╙──       	                       ^^^
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: traverse (Resolver.scala:349)
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type TestThis.
-//│ ║  l.321: 	print(TestThis."cache$TestThis")
+//│ ║  l.316: 	print(TestThis."cache$TestThis")
 //│ ╙──       	      ^^^^^^^^
 //│ > module TestThis with
 //│ >   ()
@@ -340,19 +335,16 @@ print(TestThis."cache$TestThis")
 //│ >     let {tmp, tmp1}
 //│ >     tmp = B(x)
 //│ >     tmp1 = A(1)
-//│ >     tmp.f_B_Dyn_dot_A_Lit1(tmp1)
+//│ >     tmp.f(tmp1)
 
 print(A.class."class$cache$A")
 print(B.class."class$cache$B")
 //│ > class A(x) with
 //│ >   ()
-//│ >   fun f_A_Lit1_dot_Dyn(y) = x + y
+//│ >   
 //│ > class B(x) with
 //│ >   ()
-//│ >   fun f_B_Dyn_dot_A_Lit1(y) =
-//│ >     let {tmp}
-//│ >     tmp = y.f_A_Lit1_dot_Dyn(x)
-//│ >     x + tmp
+//│ >   
 
 staged class B(val y) 
 
@@ -366,13 +358,13 @@ M.f_gen()
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
 //│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'f_gen'
-//│ ║  l.365: 	M.f_gen()
+//│ ║  l.357: 	M.f_gen()
 //│ ╙──       	 ^^^^^^
 //│ = [
 //│   "f",
 //│   {Class(ConcreteClassSymbol("D", fun D { class: class D { class$cache$D: class D(x) extends B(x + 1) with \
 //│       () \
-//│       , class$generatorMap$D: Map(1) {"f" => fun f_gen} } }, Some([Symbol("x")]), []), [Lit(2)])}
+//│       , class$generatorMap$D: Map(1) {"f" => fun f_gen} } }, Some([Symbol("y"), Symbol("x")]), []), [Lit(3), Lit(2)])}
 //│ ]
 
 
@@ -385,23 +377,10 @@ staged module M with
   fun f() = new C(1, 2)
   fun test() = f().z
 
-M.f_gen()
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
-//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'f_gen'
-//│ ║  l.388: 	M.f_gen()
-//│ ╙──       	 ^^^^^^
-//│ = [
-//│   "f",
-//│   {Class(ConcreteClassSymbol("C", fun C { class: class C { class$cache$C: class C(x, y) extends D(x + 2) with \
-//│       () \
-//│       , class$generatorMap$C: Map(0) {} } }, Some([Symbol("x"), Symbol("y")]), []), [Lit(1), Lit(2)])}
-//│ ]
-
 M.test_gen()
 //│ FAILURE: Unexpected compilation error
 //│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
 //│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'test_gen'
-//│ ║  l.401: 	M.test_gen()
+//│ ║  l.380: 	M.test_gen()
 //│ ╙──       	 ^^^^^^^^^
-//│ = ["test", {}]
+//│ = ["test", {Lit(3)}]
