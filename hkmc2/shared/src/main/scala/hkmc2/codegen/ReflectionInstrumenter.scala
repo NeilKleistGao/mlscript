@@ -254,7 +254,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   // maintain parameter names in instrumented code
   def transformParamList(ps: ParamList)(using ctx: Context)(k: (Path, Context) => Block) =
-    ps.params.map(p => ctx => transformSymbol(p.sym, true)(using ctx)).chainContext((ps, ctx) => tuple(ps)(k(_, ctx)))
+    ps.params.map(p => (ctx: Context) => (k: (Path, Context) => Block) =>
+        transformOption(p.flags.reflConstraint, {
+          case ReflectionConstraint.Dynamic => k => blockCtor("Dynamic", Nil)(k(_, ctx))
+          case ReflectionConstraint.Static => k => blockCtor("Static", Nil)(k(_, ctx))
+        })(using ctx): (constraint, ctx) =>
+          transformSymbol(p.sym, true)(using ctx): (sym, ctx) =>
+            blockCtor("Param", Ls(constraint, sym))(k(_, ctx))
+      ).chainContext((ps, ctx) => tuple(ps)(k(_, ctx)))
 
   def transformParamsOpt(pOpt: Opt[ParamList])(using ctx: Context)(k: (Path, Context) => Block) =
     transformOption(pOpt, transformParamList)(k)

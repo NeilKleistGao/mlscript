@@ -57,3 +57,18 @@ staged module A
 //│ };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+:el
+fun f(@dynamic x) = x
+//│ Elab: { fun member:f(@dynamicx) = x⁰; }
+
+fun g(@static x) = x
+
+:e
+fun h(@dynamic @static x) = x
+//│ ╔══[COMPILATION ERROR] At most one reflection constraint can be added for each parameter.
+//│ ║  l.68: 	fun h(@dynamic @static x) = x
+//│ ╙──      	               ^^^^^^^^^
+//│ ╔══[COMPILATION ERROR] Name not found: x
+//│ ║  l.68: 	fun h(@dynamic @static x) = x
+//│ ╙──      	                            ^

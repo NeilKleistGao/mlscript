@@ -8,7 +8,7 @@ import "../../mlscript-compile/CachedHash.mls"
 import "../../mlscript-compile/SpecializeHelpers.mls"
 import "../../mlscript-compile/Runtime.mls"
 open Option
-open Block { Symbol, ConcreteClassSymbol, Tup, Case, Printer }
+open Block { Param, Symbol, ConcreteClassSymbol, Tup, Case, Printer }
 open Shape { Arr, Class, Dyn, Lit }
 open ShapeSet
 open SpecializeHelpers { sov }
@@ -45,7 +45,7 @@ valOf(Arr([Lit(1), Arr([Lit(2), Lit(3)])]))
 
 :re
 valOf(mkDyn())
-//│ ═══[RUNTIME ERROR] Error: Unknown shape
+//│ ═══[RUNTIME ERROR] Error: Unknown shape: {Dyn()}
 
 valOfSet(mkLit(0))
 //│ = 0
@@ -65,15 +65,20 @@ selSet(mkDyn(), mkLit(5))
 //│ = {Dyn()}
 
 :fixme
-let a = Class(ConcreteClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")])
+let a = Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")])
 let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)])])
 selSet(x, liftMany([Lit("a"), Lit(2)]))
 //│ ═══[RUNTIME ERROR] Error: Array out of bound
 //│ a = Class(
-//│   ConcreteClassSymbol("A", undefined, Some(["a", "b"]), []),
+//│   ConcreteClassSymbol(
+//│     "A",
+//│     undefined,
+//│     Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
+//│     []
+//│   ),
 //│   [Lit(42), Lit("c")]
 //│ )
-//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ConcreteClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")]),Dyn()}
+//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")]),Dyn()}
 
 selSet(lift(Arr([Dyn(), Lit(1), a])), mkLit(1))
 //│ = {Lit(1)}
@@ -96,7 +101,7 @@ filterSet(mkDyn(), Block.Tup(2))
 //│ = {Arr([Dyn(), Dyn()])}
 
 let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()]), Arr([Lit(1), Lit(2), Lit(3)]), a])
-//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ConcreteClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
+//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
@@ -106,7 +111,7 @@ filterSet(filterShapes, Block.Lit(1))
 assert(filterSet(filterShapes, Block.Lit(2)).isEmpty())
 
 filterSet(filterShapes, Block.Cls(Symbol("A"), undefined))
-//│ = {Class(ConcreteClassSymbol("A", undefined, Some(["a", "b"]), []), [Lit(42), Lit("c")])}
+//│ = {Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")])}
 
 filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
 //│ = {Lit(1)}
@@ -177,16 +182,16 @@ sop(Ctx.empty().add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
 
 
 val x = Symbol("x")
-val C = ConcreteClassSymbol("C", undefined, Some(["a"]), [])
+val C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [])
 val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
 let ctx = Ctx.empty()
 ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
 //│ = {}
-//│ C = ConcreteClassSymbol("C", undefined, Some(["a"]), [])
+//│ C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [])
 //│ ctx = Ctx(
 //│   Map(1) {
-//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some(["a"]), []), [Lit("pass")])}
+//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), []), [Lit("pass")])}
 //│   },
 //│   [],
 //│   None,
@@ -347,7 +352,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.348: 	val MSym = ValueRef(ModuleSymbol("M", M))
+//│ ║  l.353: 	val MSym = ValueRef(ModuleSymbol("M", M))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M))
