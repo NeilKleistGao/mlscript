@@ -200,10 +200,10 @@ staged module M with
     twice(m, 5)
 
 M."test_gen"(mkLit(true))
-//│ = ["test_Littrue", {Lit(9)}]
+//│ = ["test_Littrue", {Dyn()}]
 
 M."test_gen"(mkLit(false))
-//│ = ["test_Litfalse", {Lit(29)}]
+//│ = ["test_Litfalse", {Dyn()}]
 
 M."test_gen"(mkDyn())
 //│ = ["test", {Dyn()}]
@@ -211,49 +211,58 @@ M."test_gen"(mkDyn())
 print(M."cache$M")
 //│ > module M with
 //│ >   ()
-//│ >   fun test_Littrue(b) = 9
+//│ >   fun test_Littrue(b) =
+//│ >     let {y, m, tmp1, tmp2, tmp3}
+//│ >     tmp1 = new L1(1)
+//│ >     y = 11
+//│ >     tmp2 = new L2(2)
+//│ >     tmp3 = new L3(3)
+//│ >     m = M.pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Littrue(tmp2, tmp3, b)
+//│ >     M.twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Lit5(m, 5)
 //│ >   fun twice_L1_Lit1_Lit5(f, x) = 11
-//│ >   fun pick_L2_Lit2_L3_Lit3_Littrue(x, y, b) =
-//│ >     let {obj_2}
-//│ >     obj_2 = new L2(2)
-//│ >     obj_2
-//│ >   fun twice_L2_Lit2_Lit5(f, x) = 9
-//│ >   fun test_Litfalse(b) = 29
-//│ >   fun pick_L2_Lit2_L3_Lit3_Litfalse(x, y, b) =
-//│ >     let {obj_5}
-//│ >     obj_5 = new L3(3)
-//│ >     obj_5
-//│ >   fun twice_L3_Lit3_Lit5(f, x) = 29
+//│ >   fun pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Littrue(x, y, b) = x
+//│ >   fun twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Lit5(f, x) =
+//│ >     let {tmp}
+//│ >     tmp = f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Lit5(x)
+//│ >     f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(tmp)
+//│ >   fun test_Litfalse(b) =
+//│ >     let {y, m, tmp1, tmp2, tmp3}
+//│ >     tmp1 = new L1(1)
+//│ >     y = 11
+//│ >     tmp2 = new L2(2)
+//│ >     tmp3 = new L3(3)
+//│ >     m = M.pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Litfalse(tmp2, tmp3, b)
+//│ >     M.twice_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(m, 5)
+//│ >   fun pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Litfalse(x, y, b) = y
+//│ >   fun twice_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(f, x) =
+//│ >     let {tmp}
+//│ >     tmp = f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Lit5(x)
+//│ >     f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(tmp)
 //│ >   fun test(b) =
 //│ >     let {y, m, tmp1, tmp2, tmp3}
 //│ >     tmp1 = new L1(1)
 //│ >     y = 11
 //│ >     tmp2 = new L2(2)
 //│ >     tmp3 = new L3(3)
-//│ >     m = M.pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
-//│ >     M.twice_Union_L2_Lit2_L3_Lit3_end_Lit5(m, 5)
-//│ >   fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
-//│ >     let {obj_7, obj_8}
+//│ >     m = M.pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Dyn(tmp2, tmp3, b)
+//│ >     M.twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(m, 5)
+//│ >   fun pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Dyn(x, y, b) =
 //│ >     if b is
-//│ >       true then
-//│ >         obj_7 = new L2(2)
-//│ >         obj_7
-//│ >       else
-//│ >         obj_8 = new L3(3)
-//│ >         obj_8
-//│ >   fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f, x) =
+//│ >       true then x
+//│ >       else y
+//│ >   fun twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(f, x) =
 //│ >     let {tmp}
 //│ >     if f is
 //│ >       L2 then
-//│ >         tmp = f.call_L2_Lit2_dot_Lit5(x)
+//│ >         tmp = f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Lit5(x)
 //│ >         if f is
-//│ >           L2 then f.call_L2_Lit2_dot_Lit7(tmp)
-//│ >           L3 then f.call_L3_Lit3_dot_Lit7(tmp)
+//│ >           L2 then f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(tmp)
+//│ >           L3 then f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(tmp)
 //│ >       L3 then
-//│ >         tmp = f.call_L3_Lit3_dot_Lit5(x)
+//│ >         tmp = f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Lit5(x)
 //│ >         if f is
-//│ >           L2 then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
-//│ >           L3 then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
+//│ >           L2 then f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(tmp)
+//│ >           L3 then f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(tmp)
 //│ >     f.call(tmp)
 
 print(L1.class."class$cache$L1")
@@ -265,15 +274,15 @@ print(L3.class."class$cache$L3")
 //│ >   fun call_L1_Lit1_dot_Lit8(x) = 11
 //│ > class L2(y) with
 //│ >   ()
-//│ >   fun call_L2_Lit2_dot_Lit5(x) = 7
-//│ >   fun call_L2_Lit2_dot_Lit7(x) = 9
-//│ >   fun call_L2_Lit2_dot_Union_Lit7_Lit13_end(x) = x + y
+//│ >   fun call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Lit5(x) = x + y
+//│ >   fun call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(x) = x + y
 //│ > class L3(y) with
 //│ >   ()
-//│ >   fun call_L3_Lit3_dot_Lit5(x) = 13
-//│ >   fun call_L3_Lit3_dot_Lit13(x) = 29
-//│ >   fun call_L3_Lit3_dot_Lit7(x) = 17
-//│ >   fun call_L3_Lit3_dot_Union_Lit7_Lit13_end(x) =
+//│ >   fun call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Lit5(x) =
+//│ >     let {tmp1}
+//│ >     tmp1 = 10
+//│ >     tmp1 + y
+//│ >   fun call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(x) =
 //│ >     let {tmp1}
 //│ >     tmp1 = *(x, 2)
 //│ >     tmp1 + y
@@ -287,21 +296,11 @@ staged module TestThis with
   fun test2(y) = B(1).x + y // FIXME
   fun test(x) = B(x).f(A(1))
 
-TestThis.test2_gen(mkLit(1))
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
-//│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test2_gen'
-//│ ║  l.290: 	TestThis.test2_gen(mkLit(1))
-//│ ╙──       	        ^^^^^^^^^^
+TestThis."test2_gen"(mkLit(1))
 //│ = ["test2_Lit1", {Lit(2)}]
 
-TestThis.test_gen(mkLit(1))
+TestThis."test_gen"(mkLit(1))
 print(TestThis."cache$TestThis")
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
-//│ ╔══[COMPILATION ERROR] Module 'TestThis' does not contain member 'test_gen'
-//│ ║  l.298: 	TestThis.test_gen(mkLit(1))
-//│ ╙──       	        ^^^^^^^^^
 //│ > module TestThis with
 //│ >   ()
 //│ >   fun test2_Lit1(y) = 2
@@ -316,42 +315,17 @@ print(B.class."class$cache$B")
 //│ >   ()
 //│ >   fun f_B_Lit1_dot_A_Lit1(y) = 3
 
-staged class B(val y) 
+staged class B(val x, val y)
 
-staged class D(val x) extends B(x+1) with
-  fun f() = 42
+staged class D(val x) extends B(x + 1, x + 2)
 
 staged module M with
-  fun f() = new D(2)
+  fun test() = new D(1, 2).y
+  fun test2() = new D(1, 2).x
 
-M.f_gen()
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
-//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'f_gen'
-//│ ║  l.327: 	M.f_gen()
-//│ ╙──       	 ^^^^^^
-//│ = [
-//│   "f",
-//│   {Class(ConcreteClassSymbol("D", fun D { class: class D { class$cache$D: class D(x) extends B(x + 1) with \
-//│       () \
-//│       , class$generatorMap$D: Map(1) {"f" => fun f_gen} } }, Some([Symbol("x")]), []), [Lit(2)])}
-//│ ]
-
-
-staged class D(val z)
-
-staged class C(val x, val y) extends D(x + 2)
-
-:noSanityCheck
-staged module M with
-  fun f() = new C(1, 2)
-  fun test() = f().z
+M."test_gen"()
+//│ = ["test", {Lit(3)}]
 
 // FIXME
-M.test_gen()
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: resolveField (Elaborator.scala:373)
-//│ ╔══[COMPILATION ERROR] Module 'M' does not contain member 'test_gen'
-//│ ║  l.351: 	M.test_gen()
-//│ ╙──       	 ^^^^^^^^^
-//│ = ["test", {}]
+M."test2_gen"()
+//│ = ["test2", {Lit(1),Lit(2)}]
