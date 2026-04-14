@@ -55,6 +55,7 @@ class Ctx(
     if ctx.has(ps) then Some(ctx.get(ps))
     else None
   fun clone = Ctx(new Map(ctx), new Map(ctorCtx), allocs, currentThis, thisShape)
+  fun clearCtx = Ctx(new Map(), new Map(ctorCtx), allocs, currentThis, thisShape)
   fun add(path, ss) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then
@@ -420,7 +421,8 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         [entry.0.sym.name, entry.1]
     else throw Error("cache error")
 
-fun specializeCtor(cache: FunCache, classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx) =
+fun specializeCtor(cache: FunCache, classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], oldCtx: Ctx) =
+  let ctx = oldCtx.clearCtx
   let newName = specializeName("class$ctor$", [argShapes])
   if cache.getFun(newName) is
     Some(x) then [x.0.sym.name, x.1]
