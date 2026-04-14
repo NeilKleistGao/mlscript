@@ -345,7 +345,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block, false))
       (Scoped(Set(argSyms*), rest))
 
-    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false, f.configOverride)
+    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false, f.configOverride, f.visibility)
 
   def refreshParamList(ps: ParamList) = 
     PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
@@ -362,7 +362,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       tuple(tups): args =>
         call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
           Return(res, false)
-    FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride)
+    FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride, f.visibility)
   
   def stageCtor(ctorFun: FunDefn): FunDefn = 
     // refresh VarSymbols for ctor
@@ -444,7 +444,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val suffix = "$" + sym.nme
       val cacheNme = "cache" + suffix
       val generatorMapNme = "generatorMap" + suffix
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(false, N)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(false, N, Visibility.Public)
 
       val (newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme)(methods)
       companion.copy(
@@ -482,8 +482,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val cacheNme = "class$cache" + suffix
       val generatorMapNme = "class$generatorMap" + suffix
 
-      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N)
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(false, N)
+      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N, Visibility.Public)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(false, N, Visibility.Public)
       
       val (newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme)(methods)
 
