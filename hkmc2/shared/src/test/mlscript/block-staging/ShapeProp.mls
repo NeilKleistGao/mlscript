@@ -197,18 +197,47 @@ staged module M with
   fun test(b) = 
     let y = twice(new L1(1), 5)
     let m = pick(new L2(2), new L3(3), b)
-    twice(m, 5)
+    m
+    // twice(m, 5)
 
 M."test_gen"(mkLit(true))
-//│ = ["test_Littrue", {Dyn()}]
+//│ = [
+//│   "test_Littrue",
+//│   {Class(ConcreteClassSymbol("L2", fun L2 { class: class L2 { class$cache$L2: class L2(y) with \
+//│       () \
+//│       , class$generatorMap$L2: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(1)]),Class(ConcreteClassSymbol("L2", fun L2 { class: class L2 { class$cache$L2: class L2(y) with \
+//│       () \
+//│       , class$generatorMap$L2: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(2)])}
+//│ ]
 
 M."test_gen"(mkLit(false))
-//│ = ["test_Litfalse", {Dyn()}]
+//│ = [
+//│   "test_Litfalse",
+//│   {Class(ConcreteClassSymbol("L3", fun L3 { class: class L3 { class$cache$L3: class L3(y) with \
+//│       () \
+//│       , class$generatorMap$L3: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(1)]),Class(ConcreteClassSymbol("L3", fun L3 { class: class L3 { class$cache$L3: class L3(y) with \
+//│       () \
+//│       , class$generatorMap$L3: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(2)]),Class(ConcreteClassSymbol("L3", fun L3 { class: class L3 { class$cache$L3: class L3(y) with \
+//│       () \
+//│       , class$generatorMap$L3: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(3)])}
+//│ ]
 
 M."test_gen"(mkDyn())
-//│ = ["test", {Dyn()}]
+//│ = [
+//│   "test",
+//│   {Class(ConcreteClassSymbol("L2", fun L2 { class: class L2 { class$cache$L2: class L2(y) with \
+//│       () \
+//│       , class$generatorMap$L2: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(1)]),Class(ConcreteClassSymbol("L2", fun L2 { class: class L2 { class$cache$L2: class L2(y) with \
+//│       () \
+//│       , class$generatorMap$L2: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(2)]),Class(ConcreteClassSymbol("L3", fun L3 { class: class L3 { class$cache$L3: class L3(y) with \
+//│       () \
+//│       , class$generatorMap$L3: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(1)]),Class(ConcreteClassSymbol("L3", fun L3 { class: class L3 { class$cache$L3: class L3(y) with \
+//│       () \
+//│       , class$generatorMap$L3: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(2)]),Class(ConcreteClassSymbol("L3", fun L3 { class: class L3 { class$cache$L3: class L3(y) with \
+//│       () \
+//│       , class$generatorMap$L3: Map(1) {"call" => fun call_gen} } }, Some([Symbol("y")]), []), [Lit(3)])}
+//│ ]
 
-// FIXME
 print(M."cache$M")
 //│ > module M with
 //│ >   ()
@@ -218,53 +247,31 @@ print(M."cache$M")
 //│ >     y = 11
 //│ >     tmp2 = new L2(2)
 //│ >     tmp3 = new L3(3)
-//│ >     m = M.pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Littrue(tmp2, tmp3, b)
-//│ >     M.twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Lit5(m, 5)
+//│ >     m = M.pick_Union_L2_Lit1_L2_Lit2_end_Union_L3_Lit1_L3_Lit2_L3_Lit3_end_Littrue(tmp2, tmp3, b)
+//│ >     m
 //│ >   fun twice_L1_Lit1_Lit5(f, x) = 11
-//│ >   fun pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Littrue(x, y, b) = x
-//│ >   fun twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Lit5(f, x) =
-//│ >     let {tmp}
-//│ >     tmp = f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Lit5(x)
-//│ >     f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(tmp)
+//│ >   fun pick_Union_L2_Lit1_L2_Lit2_end_Union_L3_Lit1_L3_Lit2_L3_Lit3_end_Littrue(x, y, b) = x
 //│ >   fun test_Litfalse(b) =
 //│ >     let {y, m, tmp1, tmp2, tmp3}
 //│ >     tmp1 = new L1(1)
 //│ >     y = 11
 //│ >     tmp2 = new L2(2)
 //│ >     tmp3 = new L3(3)
-//│ >     m = M.pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Litfalse(tmp2, tmp3, b)
-//│ >     M.twice_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(m, 5)
-//│ >   fun pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Litfalse(x, y, b) = y
-//│ >   fun twice_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(f, x) =
-//│ >     let {tmp}
-//│ >     tmp = f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Lit5(x)
-//│ >     f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(tmp)
+//│ >     m = M.pick_Union_L2_Lit1_L2_Lit2_end_Union_L3_Lit1_L3_Lit2_L3_Lit3_end_Litfalse(tmp2, tmp3, b)
+//│ >     m
+//│ >   fun pick_Union_L2_Lit1_L2_Lit2_end_Union_L3_Lit1_L3_Lit2_L3_Lit3_end_Litfalse(x, y, b) = y
 //│ >   fun test(b) =
 //│ >     let {y, m, tmp1, tmp2, tmp3}
 //│ >     tmp1 = new L1(1)
 //│ >     y = 11
 //│ >     tmp2 = new L2(2)
 //│ >     tmp3 = new L3(3)
-//│ >     m = M.pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Dyn(tmp2, tmp3, b)
-//│ >     M.twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(m, 5)
-//│ >   fun pick_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Dyn(x, y, b) =
+//│ >     m = M.pick_Union_L2_Lit1_L2_Lit2_end_Union_L3_Lit1_L3_Lit2_L3_Lit3_end_Dyn(tmp2, tmp3, b)
+//│ >     m
+//│ >   fun pick_Union_L2_Lit1_L2_Lit2_end_Union_L3_Lit1_L3_Lit2_L3_Lit3_end_Dyn(x, y, b) =
 //│ >     if b is
 //│ >       true then x
 //│ >       else y
-//│ >   fun twice_Union_L2_Lit1_L2_Lit11_L2_Lit2_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_Lit5(f, x) =
-//│ >     let {tmp}
-//│ >     if f is
-//│ >       L2 then
-//│ >         tmp = f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Lit5(x)
-//│ >         if f is
-//│ >           L2 then f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(tmp)
-//│ >           L3 then f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(tmp)
-//│ >       L3 then
-//│ >         tmp = f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Lit5(x)
-//│ >         if f is
-//│ >           L2 then f.call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(tmp)
-//│ >           L3 then f.call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(tmp)
-//│ >     f.call(tmp)
 
 print(L1.class."class$cache$L1")
 print(L2.class."class$cache$L2")
@@ -275,18 +282,10 @@ print(L3.class."class$cache$L3")
 //│ >   fun call_L1_Lit1_dot_Lit8(x) = 11
 //│ > class L2(y) with
 //│ >   ()
-//│ >   fun call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Lit5(x) = x + y
-//│ >   fun call_Union_L2_Lit1_L2_Lit11_L2_Lit2_end_dot_Dyn(x) = x + y
+//│ >   
 //│ > class L3(y) with
 //│ >   ()
-//│ >   fun call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Lit5(x) =
-//│ >     let {tmp1}
-//│ >     tmp1 = 10
-//│ >     tmp1 + y
-//│ >   fun call_Union_L3_Lit1_L3_Lit11_L3_Lit2_L3_Lit3_end_dot_Dyn(x) =
-//│ >     let {tmp1}
-//│ >     tmp1 = *(x, 2)
-//│ >     tmp1 + y
+//│ >   
 
 staged class A(val x: Int) with
   fun f(y: Int) = x + y

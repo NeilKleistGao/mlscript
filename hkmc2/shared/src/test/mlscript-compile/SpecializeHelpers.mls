@@ -44,21 +44,24 @@ fun showCtxPath(p) = if p is // FIXME
     ValueLit(lit) then "Lit(" + lit.toString() + ")"
 
 class Ctx(
+  // ctx tracks shapes of variables during shape prop
   val ctx: Map[String, ShapeSet], 
+  // ctorCtx tracks fields defined by ValDefn during shape prop
   val ctorCtx: Map[String, ShapeSet]
+  // allocs tracks the new variables allocated during shape prop
   val allocs: Array[Block.Symbol],
-  val currentThis: Option[Block.ClassSymbol],
-  val thisShape: ShapeSet,
+  // thisShape stores the shapeset of this, e.g., C1(1) U C1(2)
+  val thisShape: Option[ShapeSet],
 ) with
   fun get(path) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then Some(ctx.get(ps))
     else None
-  fun clone = Ctx(new Map(ctx), new Map(ctorCtx), allocs, currentThis, thisShape)
+  fun clone = Ctx(new Map(ctx), new Map(ctorCtx), allocs, thisShape)
   // For propagation of instantiation of derived class, 
   // we need to keep track of fields defined in parent class,
   // which is stored in ctorCtx
-  fun cloneCtx = Ctx(new Map(ctx), ctorCtx, allocs, currentThis, thisShape)
+  fun clearCtx = Ctx(new Map(), ctorCtx, allocs, thisShape)
   fun add(path, ss) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then
@@ -73,7 +76,7 @@ class Ctx(
       ctorCtx.set(ps, ss)
     this
 module Ctx with
-  fun empty() = Ctx(new Map(), new Map(), mut [], None, mkBot())
+  fun empty() = Ctx(new Map(), new Map(), mut [], None)
 
 // shape of value
 fun sov(v): ShapeSet = 
@@ -102,8 +105,8 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   Some(s) then s
   else if p is 
     Select(qual, Symbol(name)) and
-      ctx.currentThis is Some(t) and qual is ValueRef(sym) and sym is t then
-        selSet(ctx.thisShape, mkLit(name))
+      ctx.thisShape is Some(thisShape) and qual is ValueRef(sym) and sym is t then
+        selSet(thisShape, mkLit(name))
       name is "length" and // special handle array .length
         let qualShape = sop(ctx, qual)
         let vals = qualShape.values()
@@ -158,7 +161,7 @@ fun sor(ctx, r) = if r is
       let cacheName = getCacheName(clsName, true)
       let cache = actualClass.(cacheName)
       not (cache is undefined) then
-        let res = SpecializeHelpers.specializeCtor(cache, clsSymb, argsShape, ctx.cloneCtx)
+        let res = SpecializeHelpers.specializeCtor(cache, clsSymb, argsShape, ctx.clearCtx)
         [End(), r, res]
       else throw Error("cache not found in staged class")
     else [End(), r, mkClass(clsSymb, argsShape)]
@@ -180,7 +183,7 @@ fun sor(ctx, r) = if r is
           let clsName = actualClass.(Symbols.definitionMetadata).1
           let cacheName = getCacheName(clsName, true)
           if not (actualClass.(cacheName) is undefined) then
-            let res = SpecializeHelpers.specializeCtor(actualClass.(cacheName), clsSymb, argShapes, ctx.cloneCtx)
+            let res = SpecializeHelpers.specializeCtor(actualClass.(cacheName), clsSymb, argShapes, ctx.clearCtx)
             [End(), r, res]
           else [End(), r, mkDyn()] // TODO make unstaged object shape
         else [End(), r, mkDyn()] // TODO make unstaged object shape
@@ -315,7 +318,7 @@ fun prop(ctx, b) = if b is
     Scoped(symbols, rest) then
       symbols.forEach((x, _, _) => ctx.add(ValueRef(x), mkBot()))
       let newAllocs = mut []
-      let newCtx = Ctx(new Map(ctx.ctx), ctx.ctorCtx, newAllocs, ctx.currentThis, ctx.thisShape)
+      let newCtx = Ctx(new Map(ctx.ctx), ctx.ctorCtx, newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
     Assign(x, Call(Select(ValueRef(symb), Symbol(f)), args), restBlock) and not (symb is ModuleSymbol) then
@@ -402,9 +405,9 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         let paramShapes = if isMethod then shapes.slice(1) else shapes
         let ctx = if isMethod then
           let clsSymb = cache.owner
-          Ctx(new Map(), new Map(), mut [], Some(clsSymb), shapes.(0).(0))
+          Ctx(new Map(), new Map(), mut [], Some(shapes.(0).(0)))
         else Ctx.empty()
-        if isMethod do ctx.add(ValueRef(Symbol("_this")), shapes.(0).(0))
+        if isMethod do ctx.add(ValueRef(Symbol("_this")), Some(shapes.(0).(0)))
 
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
 
