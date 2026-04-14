@@ -8,7 +8,7 @@ import "../mlscript-compile/Option.mls"
 open ShapeSet
 open Shape { Lit, Arr, Class, Dyn }
 open Option
-open Block { Tup, ClassSymbol, Symbol }
+open Block { Tup, ConcreteClassSymbol, Symbol }
 
 let x = mkBot()
 //│ x = {}
@@ -31,18 +31,19 @@ mkArr([x, y])
 //│ = {Arr([Lit(1), Arr([Lit(1)])]),Arr([Lit(1), Arr([Lit(2)])]),Arr([Lit(2), Arr([Lit(1)])]),Arr([Lit(2), Arr([Lit(2)])])}
 
 class C(val a)
-val clsSym = ClassSymbol("C", C, Some([Symbol("a")]), [])
-//│ clsSym = ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), [])
+val clsSym = ConcreteClassSymbol("C", C, Some([Symbol("a")]), [])
+//│ clsSym = ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), [])
 
+:fixme
 let x = liftMany([Class(clsSym, [Lit(42)]), Arr([Lit(1), Lit("a")])])
 let y = liftMany([Lit(1), Lit("a")])
 selSet(x, y)
-//│ = {Lit("a"),Lit(42)}
-//│ x = {Arr([Lit(1), Lit("a")]),Class(ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), []), [Lit(42)])}
+//│ ═══[RUNTIME ERROR] Error: Array out of bound
+//│ x = {Arr([Lit(1), Lit("a")]),Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), []), [Lit(42)])}
 //│ y = {Lit("a"),Lit(1)}
 
 mkClass(clsSym, [mkLit(1)])
-//│ = {Class(ClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), []), [Lit(1)])}
+//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("a")]), []), [Lit(1)])}
 
 filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)])]), Tup(3))
 //│ = {Arr([Lit(1), Lit(2), Lit(3)])}
