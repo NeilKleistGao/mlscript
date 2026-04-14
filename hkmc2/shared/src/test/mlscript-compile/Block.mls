@@ -230,18 +230,16 @@ class Printer(val owner: Opt[Class]) with
 
   fun printModule(name, methods) = print("module " + name + " with" + indent("\n" + methods.map(showDefn(_)).join("\n")))
 
-  fun codegen(name, cache, source, file) =
-    let methods = cache.dump()
-    let ctorBody = cache.getFun("ctor").value.0.body
-    let fullpath = path.join of process.cwd(), file
-    let code = "import \"" + source + "\"\nmodule " + name + " with" + indent("\n" + showBlock(ctorBody) + "\n" + methods.map(showDefn(_)).join("\n"))
-    if not fs.existsSync(fullpath) do
-      fs.mkdirSync(path.dirname(fullpath), recursive: true)
-      fs.writeFileSync(fullpath, "", "utf8")
-    let originData = fs.readFileSync(fullpath, "utf8")
-    let newData = code
-    if newData != originData do
-      fs.writeFileSync(fullpath, newData, "utf8")
-
 module Printer with
   val default = Printer(None)
+
+fun codegen(name, cache, source, file) =
+  let fullpath = path.join of process.cwd(), file
+  let code = "import \"" + source + "\"\n" + cache.toString() // + name + " with" + indent("\n" + showBlock(ctorBody) + "\n" + methods.map(showDefn(_)).join("\n"))
+  if not fs.existsSync(fullpath) do
+    fs.mkdirSync(path.dirname(fullpath), recursive: true)
+    fs.writeFileSync(fullpath, "", "utf8")
+  let originData = fs.readFileSync(fullpath, "utf8")
+  let newData = code
+  if newData != originData do
+    fs.writeFileSync(fullpath, newData, "utf8")
