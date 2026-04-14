@@ -8,87 +8,164 @@ module NaiveRegExp with
     fun match(s) = ???
     fun canBeEmpty() = ???
 
-  class Exact(val p) extends RegExp with // single character
-    fun match(s) = if s.length > 0 and s.0 === p then Some(p) else None
+  val alphabet = [
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+  ]
+  val space = [" ", "\n", "\t", "\r"]
+  val digit = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  class Empty() extends RegExp with // tail of the regexp
+    fun match(s) = Some("")
+    fun canBeEmpty() = true
+
+  class Exact(val c, val next) extends RegExp with // single character
+    fun match(s) =
+      if s.length > 0 and s.0 === c then
+        if next.match(s.slice(1)) is
+          Some(s') then Some(c + s')
+          else None
+      else None
     fun canBeEmpty() = false
 
-  class Any() extends RegExp with // pattern `.`
-    fun match(s) = if s.length > 0 then Some(s.0) else None
+  fun exact(c) = Exact(c, Empty())
+
+  class Any(val next) extends RegExp with // pattern `.`
+    fun match(s) =
+      if s.length > 0 then
+        if next.match(s.slice(1)) is
+          Some(s') then Some(s.0 + s')
+          else None
+      else None
     fun canBeEmpty() = false
 
-  class Not(val chars) extends RegExp with // pattern `[^...]`
+  val any = Any(Empty())
+
+  class Not(val chars, val next) extends RegExp with // pattern `[^...]`
     fun check(c, i) =
       if i === chars.length then true
       else if chars.(i) === c then false
       else check(c, i + 1)
-    fun match(s) = if s.length > 0 and check(s.0, 0) then Some(s.0) else None
+    fun match(s) =
+      if s.length > 0 and check(s.0, 0) then
+        if next.match(s.slice(1)) is
+          Some(s') then Some(s.0 + s')
+          else None
+      else None
     fun canBeEmpty() = false
 
-  val notWord = Not(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"])
+  fun notOf(chars) = Not(chars, Empty())
+  fun notWordAnd(next) = Not(alphabet, next)
+  val notWord = notWordAnd(Empty())
+  fun notSpaceAnd(next) = Not(space, next)
+  val notSpace = notSpaceAnd(Empty())
+  fun notDigitAnd(next) = Not(digit, next)
+  val notDigit = notDigitAnd(Empty())
 
-  class Star(val r) extends RegExp with // pattern (...)*
+  class Star(val r, val next) extends RegExp with // pattern (...)*
     fun match(s) =
       if r.match(s) is
         Some(ss) and ss.length > 0 then
           let rst = s.slice(ss.length)
           if match(rst) is
             Some(ss2) then Some(ss + ss2)
-            else Some(ss)
-        else Some("")
+            else next.match(s)
+        else next.match(s)
     fun canBeEmpty() = true
 
-  class Question(val r) extends RegExp with // pattern (...)?
+  fun star(r) = Star(r, Empty())
+
+  class Question(val r, val next) extends RegExp with // pattern (...)?
     fun match(s) =
       if r.match(s) is
-        Some(ss) then Some(ss)
-        None then Some("")
+        Some(ss) then
+          let rst = s.slice(ss.length)
+          if next.match(rst) is
+            Some(ss2) then Some(ss + ss2)
+            else next.match(s)
+        None then next.match(s)
     fun canBeEmpty() = true
 
-  class Union(val r1, val r2) extends RegExp with // pattern (r1 | r2)
-    fun match(s) =
-      if r1.match(s) is
-        Some(ss) then Some(ss)
-        else r2.match(s)
-    fun canBeEmpty() = r1.canBeEmpty() || r2.canBeEmpty()
+  fun question(r) = Question(r, Empty())
 
-  fun setOf(arr) =
-    fun impl(res, arr) =
-      if arr is
-        [] then res
-        else impl(Union(Exact(arr.0), res), arr.slice(1))
-    if arr.length >= 1 then
-      impl(Exact(arr.0), arr.slice(1))
-    else ??? // fail
-
-  val words = setOf(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"])
-
-  // FIXME
-  class Concat(val r1, val r2) extends RegExp with // pattern r1 r2
-    fun match(s) =
-      if r1.match(s) is
-        Some(ss1) then
-          let rst = s.slice(ss1.length)
-          if r2.match(rst) is
-            Some(ss2) then Some(ss1 + ss2)
+  class Union(val r1, val r2, val next) extends RegExp with // pattern (r1 | r2)
+    fun matchOne(r, s) =
+      if r.match(s) is
+        Some(ss) then
+          let rst = s.slice(ss.length)
+          if next.match(rst) is
+            Some(ss2) then Some(ss + ss2)
             else None
         else None
-    fun canBeEmpty() = r1.canBeEmpty() && r2.canBeEmpty()
+    fun match(s) =
+      if matchOne(r1, s) is
+        Some(ss) then Some(ss)
+        else
+          if matchOne(r2, s) is
+            Some(ss) then Some(ss)
+            else
+              if canBeEmpty() then next.match(s)
+              else None
+    fun canBeEmpty() = r1.canBeEmpty() || r2.canBeEmpty()
 
-  fun plus(r) = Concat(r, Star(r)) // pattern (...)+ 
-  fun nTimes(r, i) =
-    if i === 1 then r
-    else Concat(r, nTimes(r, i - 1))
+  fun union(r1, r2) = Union(r1, r2, Empty())
+
+  fun setOf(arr, next) =
+    fun impl(res, arr) =
+      if arr is
+        [] then
+          if res is
+            Union(r1, r2, _) then Union(r1, r2, next)
+        else impl(Union(res, Exact(arr.0, Empty()), Empty()), arr.slice(1))
+    if arr.length >= 2 then
+      impl(Exact(arr.0, Empty()), arr.slice(1))
+    else ??? // fail
+
+  fun wordsAnd(next) = setOf(alphabet, next)
+  val words = wordsAnd(Empty())
+  fun spacesAnd(next) = setOf(space, next)
+  val spaces = spacesAnd(Empty())
+  fun digitsAnd(next) = setOf(digit, next)
+  val digist = digitsAnd(Empty())
+
+  fun concat(p, q) = if p is
+    Empty() then q
+    Exact(c, n) then Exact(c, concat(n, q))
+    Any(n) then Any(concat(n, q))
+    Not(cs, n) then Not(cs, concat(n, q))
+    Star(p, n) then Star(p, concat(n, q))
+    Question(p, n) then Question(p, concat(n, q))
+    Union(r1, r2, n) then Union(r1, r2, concat(n, q))
+
+  fun plusAnd(r, next) = concat(r, Star(r, next)) // pattern (...)+ 
+  fun plus(r) = plusAnd(r, Empty())
+  fun nTimesAnd(r, i, next) = // pattern r{i}
+    if i === 1 then concat(r, next)
+    else concat(r, nTimesAnd(r, i - 1, next))
+  fun nTimes(r, i) = nTimesAnd(r, i, Empty())
+
+  fun seqAnd(s, next) = // TODO: check empty string
+    if s.length === 1 then Exact(s.0, next)
+    else Exact(s.0, seqAnd(s.slice(1), next))
+  fun seq(s) = seqAnd(s, Empty())
+    
 
   fun matchAll(p, s) =
     fun impl(s, res) = 
       if s === "" then res
       else
         if p.match(s) is
-          Some(ss) then
-            let sc = if ss.length === 0 then 1 else ss.length
-            let rst = s.slice(sc)
+          Some(ss) and ss.length > 0 then
+            let rst = s.slice(ss.length)
             impl(rst, res.concat(ss))
           else
-            let rst = s.slice(1) // TODO: improve?
+            let rst = s.slice(1)
             impl(rst, res)
     impl(s, [])
+
+  // p*\w+@p+\w+
+  val email =
+    // p = \w+(-|\.)
+    let p = plusAnd(words, union(exact("-"), exact(".")))
+    Star(p, plusAnd(words, Exact("@", plusAnd(p, plus(words)))))
+
