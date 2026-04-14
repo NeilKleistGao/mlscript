@@ -152,11 +152,10 @@ fun sor(ctx, r) = if r is
       let cacheName = getCacheName(clsName, true)
       let cache = actualClass.(cacheName)
       not (cache is undefined) then
-        let res = SpecializeHelpers.specializeCtor(cache, clsSymb, argsShape, ctx)
+        let res = SpecializeHelpers.specializeCtor(cache, clsSymb, argsShape, ctx.clone)
         [End(), r, res]
-      else [End(), r, mkDyn()]
-    else
-      [End(), r, mkClass(clsSymb, argsShape)]
+      else throw Error("cache not found in staged class")
+    else [End(), r, mkClass(clsSymb, argsShape)]
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args) then 
     fun lit(l) = [End(), ValueLit(l), mkLit(l)]
@@ -177,7 +176,7 @@ fun sor(ctx, r) = if r is
           let cacheName = getCacheName(clsName, true)
 
           if not (actualClass.(cacheName) is undefined) then
-            let res = SpecializeHelpers.specializeCtor(actualClass.(cacheName), clsSymb, argShapes, ctx)
+            let res = SpecializeHelpers.specializeCtor(actualClass.(cacheName), clsSymb, argShapes, ctx.clone)
             [End(), r, res]
           else [End(), r, mkDyn()] // TODO make unstaged object shape
         else [End(), r, mkDyn()] // TODO make unstaged object shape
@@ -239,7 +238,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
   let isRet = xOpt is None
 
   if knownMap.size is 1 and unkShape.isEmpty() and
-    // If it's certainly a known class, generate the generated method call directly without matching
+    // If the object is certainly a known class, generate the generated method call directly without pattern matching
     let entry = [...knownMap.entries()].0
     let C_i = entry.0
     let ss_i = entry.1
@@ -325,8 +324,8 @@ fun prop(ctx, b) = if b is
         if prop(newCtx, restBlock) is [b2, s2] then
           [concat(blk, Define(ValDefn(opt, sym, r1), b2)), s2]
     Assign(x, r, restBlock) and 
-      sor(ctx, r) is [blk, r1, s1] then 
-        if prop(ctx.add(ValueRef(x), s1), restBlock) is [b2, s2] then
+      sor(ctx, r) is [blk, r1, s1] and
+        prop(ctx.add(ValueRef(x), s1), restBlock) is [b2, s2] then
           [concat(blk, Assign(x, r1, b2)), s2]
     Match(p, arms, dflt, restBlock) then
       let s = sop(ctx, p)
