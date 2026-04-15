@@ -149,8 +149,8 @@ fun sor(ctx, r) = if r is
     else [End(), r, s]
   Instantiate(cls, args) and 
     let clsSymb = if cls is
-      ValueRef(symb) and symb is ClassSymbol then symb  // class defined globally
-      Select(_, symb) and symb is ClassSymbol then symb // class defined in a module
+      ValueRef(symb) and symb is ConcreteClassSymbol then symb  // class defined globally
+      Select(_, symb) and symb is ConcreteClassSymbol then symb // class defined in a module
       else throw Error("Instantiate with non-ClassSymbol in shape propagation: " + cls.toString())
     let argsShape = args.map(a => sop(ctx, a.value))
     isStagedClass(clsSymb.value) and
@@ -173,7 +173,7 @@ fun sor(ctx, r) = if r is
           [End(), recovered, sop(ctx, recovered)]
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
         throw Error("runtime.Tuple.slice not handled in shape propagation")
-      Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ClassSymbol then // class within module
+      Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
         [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))] // FIXME
       ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
         isStagedClass(clsSymb.value) then
@@ -234,7 +234,7 @@ fun sor(ctx, r) = if r is
       else throw Error("unknown call in sor: " + r.toString())
   else throw Error("unknown result in sor: " + r.toString())
 
-fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
+fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
   let pss = sop(ctx, ValueRef(symb))
   let argShapes = args.map(a => sop(ctx, a.value))
   let splitted = fsplit(pss)
@@ -260,16 +260,14 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
       [concat(End(), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
     else
       let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-      let resBlock = prop(ctx.add(ValueRef(x), retShape, false), restBlock)
-      [concat(End(), Assign(x, callRes, resBlock.0)), resBlock.1]
+      [concat(End(), Assign(x, callRes, End())), retShape]
   else if knownMap.size is 0 and
     let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
     isRet then
       [concat(End(), Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
     else
       let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-      let resBlock = prop(ctx.add(ValueRef(x), mkDyn()), restBlock)
-      [concat(End(), Assign(x, dfltMatch, resBlock.0)), resBlock.1]
+      [concat(End(), Assign(x, dfltMatch, End())), mkDyn()]
   else
     let armsRet = [...knownMap.entries()].map(entry =>
       let C_i = entry.0
@@ -287,8 +285,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
         [Arm(Cls(C_i, ValueRef(symb)), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-        let resBlock = prop(ctx.add(ValueRef(x), retShape), restBlock)
-        [Arm(Cls(C_i, ValueRef(symb)), Assign(x, callRes, resBlock.0)), resBlock.1]
+        [Arm(Cls(C_i, ValueRef(symb)), Assign(x, callRes, End())), retShape]
     )
     let armsAcc = armsRet.map(_.0)
     let totalStagedRetShape = foldl((acc, x) => union(acc, x.1))(mkBot(), ...armsRet)
@@ -298,19 +295,18 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
         [Some(Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-        let resBlock = prop(ctx.add(ValueRef(x), mkDyn()), restBlock)
-        [Some(Assign(x, dfltMatch, resBlock.0)), resBlock.1]
-    let matchBody = if knownMap.size == 1 and unkShape.isEmpty() then
+        [Some(Assign(x, dfltMatch, End())), mkDyn()]
+    let matchBody = if knownMap.size is 1 and unkShape.isEmpty() then
       armsAcc.0.body
     else
-      Match(ValueRef(symb), armsAcc, dfltRet.0, if isRet then End() else restBlock)
+      Match(ValueRef(symb), armsAcc, dfltRet.0, End())
     let totalRetShape = union(totalStagedRetShape, dfltRet.1)
     [matchBody, totalRetShape]
 
 fun prop(ctx, b) = if b is
     End() then [b, mkBot()]
     Return(Call(Select(ValueRef(symb), Symbol(f)), args), implct) and not (symb is ModuleSymbol) then
-      dispatchMethodCall(ctx, None, Some(implct), symb, f, args, End())
+      dispatchMethodCall(ctx, None, Some(implct), symb, f, args)
     Return(res, implct) and sor(ctx, res) is [blk, r1, s1] then
       [concat(blk, Return(r1, implct)), s1]
     Scoped(symbols, rest) then
@@ -320,7 +316,9 @@ fun prop(ctx, b) = if b is
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
     Assign(x, Call(Select(ValueRef(symb), Symbol(f)), args), restBlock) and not (symb is ModuleSymbol) then
-      dispatchMethodCall(ctx, Some(x), None, symb, f, args, restBlock)
+      let res = dispatchMethodCall(ctx, Some(x), None, symb, f, args)
+      let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
+      [concat(res.0, b2.0), b2.1]
     Define(ValDefn(opt, sym, rhs), restBlock) and
       sor(ctx, rhs) is [blk, r1, s1] and
         do ctx.addValDefn(sym.name, s1)
@@ -501,7 +499,7 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     
     let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
     assert ctor is FunDefn
-    let params = new Set(ctor.params.flat())
+    let params = new Set(ctor.params.flat().map(_.sym))
     let ctorBody = removeExtraValDefn(params, ctor.body)
 
     decl + owner.name + printer.showParamList(paramList)
