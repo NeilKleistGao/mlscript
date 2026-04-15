@@ -1,0 +1,19 @@
+import "fs"
+
+// import "./Transform3D.mjs"
+import "./../out/Transform3D.mls"
+
+let inputFile = "./random_coordinates.csv"
+
+let text = fs.readFileSync(inputFile, "utf-8")
+let coords = text.trim().split("\n").map(line =>
+  let t = line.split(",").map(Number)
+  [[t.0], [t.1], [t.2]]
+)
+
+
+let begin = globalThis.process.hrtime()
+coords.map(coord => Transform3D.model(coord, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0]))
+let diff = globalThis.process.hrtime(begin)
+let diffTime = diff.0 * 1000000000 + diff.1
+console.log("time: " + diffTime)
