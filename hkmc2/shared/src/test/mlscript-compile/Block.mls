@@ -122,7 +122,7 @@ class Printer(val owner: Opt[Class]) with
       Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
-        qual is ValueRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
+        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
         else showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
@@ -223,10 +223,9 @@ class Printer(val owner: Opt[Class]) with
   fun printModule(name, methods) = print("module " + name + " with" + indent("\n" + methods.map(showDefn(_)).join("\n")))
 
   fun codegen(name, cache, source, file) =
-    let methods = cache.dump()
-    let ctorBody = cache.getFun("ctor").value.0.body
+    // let ctorBody = cache.getFun("ctor").value.0.body
     let fullpath = path.join of process.cwd(), file
-    let code = "import \"" + source + "\"\nmodule " + name + " with" + indent("\n" + showBlock(ctorBody) + "\n" + methods.map(showDefn(_)).join("\n"))
+    let code = "import \"" + source + "\"\nopen " + name + "\n" + indent(cache.toString())
     if not fs.existsSync(fullpath) do
       fs.mkdirSync(path.dirname(fullpath), recursive: true)
       fs.writeFileSync(fullpath, "", "utf8")
