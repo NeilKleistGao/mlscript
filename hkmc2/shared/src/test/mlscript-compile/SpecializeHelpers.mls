@@ -206,6 +206,15 @@ fun sor(ctx, r) = if r is
         throw Error("runtime.Tuple.slice not handled in shape propagation")
       Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ClassSymbol then // class within module
         [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
+      Select(p, Symbol("concat")) then
+        if sop(ctx, p).values() is [Shape.Arr(arr)] and args is [e] and sop(ctx, e.value) is [Shape.Arr(arr2)] then
+          [End(), r, mkArr(arr.concat(arr2))]
+        else
+          [End(), r, mkDyn()]
+      Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("sin")) then
+        [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
+      Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("cos")) then
+        [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
       ValueRef(clsSymb) and clsSymb is ClassSymbol then // global class
         [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))]
       ValueRef(Symbol("super")) then
@@ -310,7 +319,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args, restBlock) =
 
 fun prop(ctx, b) = if b is
     End() then [b, mkBot()]
-    Return(Call(Select(ValueRef(symb), Symbol(f)), args), implct) and not (symb is ModuleSymbol) then
+    Return(Call(Select(ValueRef(symb), Symbol(f)), args), implct) and not (symb is ModuleSymbol) and not (f is "concat") then // TODO[later]: Ref -> Path, remove special checks
       dispatchMethodCall(ctx, None, Some(implct), symb, f, args, End())
     Return(res, implct) and sor(ctx, res) is [blk, r1, s1] then
       [concat(blk, Return(r1, implct)), s1]
@@ -320,7 +329,7 @@ fun prop(ctx, b) = if b is
       let newCtx = Ctx(new Map(ctx.ctx), newAllocs, ctx.currentThis, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
-    Assign(x, Call(Select(ValueRef(symb), Symbol(f)), args), restBlock) and not (symb is ModuleSymbol) then
+    Assign(x, Call(Select(ValueRef(symb), Symbol(f)), args), restBlock) and not (symb is ModuleSymbol) and not (f is "concat") then // TODO[later]: Ref -> Path, remove special checks
       dispatchMethodCall(ctx, Some(x), None, symb, f, args, restBlock)
     Assign(x, r, restBlock) and 
       sor(ctx, r) is [blk, r1, s1] then 

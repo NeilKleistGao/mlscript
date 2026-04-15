@@ -1,39 +1,33 @@
-import "./Predef.mls"
-open Predef
-
-fun sin(x) = Math.sin(x)
-fun cos(x) = Math.cos(x)
-
 module NaiveTransform3D with
   fun iter(sum, x, y, colX, i, j, k) =
-    if k < colX then iter(sum + x.(i).(k) * y.(k).(j), x, y, colX, i, j, k + 1)
+    if k > 0 then iter(sum + x.(i).(colX - k) * y.(colX - k).(j), x, y, colX, i, j, k - 1)
     else sum
 
   fun iterCol(vec, x, y, colX, colY, i, j) =
-    if j === colY then vec
-    else iterCol(vec.concat(iter of 0.0, x, y, colX, i, j, 0), x, y, colX, colY, i, j + 1)
+    if j === 0 then vec
+    else iterCol(vec.concat([iter of 0.0, x, y, colX, i, colY - j, colX]), x, y, colX, colY, i, j - 1)
 
   fun iterRow(m, x, y, rowX, colX, colY, i) =
-    if i === rowX then m
-    else iterRow(m.concat([iterCol of [], x, y, colX, colY, i, 0]), x, y, rowX, colX, colY, i + 1)
+    if i === 0 then m
+    else iterRow(m.concat([iterCol of [], x, y, colX, colY, rowX - i, colY]), x, y, rowX, colX, colY, i - 1)
 
   fun genID(v, w, i, j) =
-    if j === w then v
-    else genID(v.concat(if i === j then 1.0 else 0.0), w, i, j + 1)
+    if j === 0 then v
+    else genID(v.concat([if i === w - j then 1.0 else 0.0]), w, i, j - 1)
 
   fun iterID(m, w, i) =
-    if i === w then m
-    else iterID(m.concat([genID([], w, i, 0)]), w, i + 1)
+    if i === 0 then m
+    else iterID(m.concat([genID([], w, w - i, w)]), w, i - 1)
 
   fun updateVec(vec, m, col, j, v, i', j') =
-    if j' === col then vec
-    else if j' === j then updateVec(vec.concat(v), m, col, j, v, i', j' + 1)
-    else updateVec(vec.concat(m.(i').(j')), m, col, j, v, i', j' + 1)
+    if j' === 0 then vec
+    else if col - j' === j then updateVec(vec.concat([v]), m, col, j, v, i', j' - 1)
+    else updateVec(vec.concat([m.(i').(col - j')]), m, col, j, v, i', j' - 1)
 
   fun iterUpdate(res, m, row, col, i, j, v, i') =
-    if i' === row then res
-    else if i === i' then iterUpdate(res.concat([updateVec([], m, col, j, v, i', 0)]), m, row, col, i, j, v, i' + 1)
-    else iterUpdate(res.concat([m.(i')]), m, row, col, i, j, v, i' + 1)
+    if i' === 0 then res
+    else if i === row - i' then iterUpdate(res.concat([updateVec([], m, col, j, v, row - i', col)]), m, row, col, i, j, v, i' - 1)
+    else iterUpdate(res.concat([m.(row - i')]), m, row, col, i, j, v, i' - 1)
 
   // TODO: remove manual lifting above after we can stage them correctly
 
@@ -42,14 +36,12 @@ module NaiveTransform3D with
     let colX = x.0.length
     let rowY = y.length
     let colY = y.0.length
-    check(colX === rowY)
-    iterRow([], x, y, rowX, colX, colY, 0)
+    iterRow([], x, y, rowX, colX, colY, rowX)
   // fun multiply(x, y) =
   //   let rowX = x.length
   //   let colX = x.0.length
   //   let rowY = y.length
   //   let colY = y.0.length
-  //   check(colX === rowY)
   //   fun iterRow(m, i) =
   //     if i === rowX then m
   //     else
@@ -63,7 +55,7 @@ module NaiveTransform3D with
   //       iterRow(m.concat([iterCol of [], 0]), i + 1)
   //   iterRow([], 0)
 
-  fun ident(w) = iterID([], w, 0)
+  fun ident(w) = iterID([], w, w)
   // fun ident(w) =
   //   fun iter(m, i) =
   //     if i === w then m
@@ -77,7 +69,7 @@ module NaiveTransform3D with
   fun update(m, i, j, v) =
     let row = m.length
     let col = m.0.length
-    iterUpdate([], m, row, col, i, j, v, 0)
+    iterUpdate([], m, row, col, i, j, v, row)
   // fun update(m, i, j, v) =
   //   let row = m.length
   //   let col = m.0.length
@@ -107,8 +99,8 @@ module NaiveTransform3D with
     )
 
   fun rotateX(angle) =
-    let s = sin(angle)
-    let c = cos(angle)
+    let s = Math.sin(angle)
+    let c = Math.cos(angle)
     update(
       update(
         update(
@@ -118,8 +110,8 @@ module NaiveTransform3D with
     )
 
   fun rotateY(angle) =
-    let s = sin(angle)
-    let c = cos(angle)
+    let s = Math.sin(angle)
+    let c = Math.cos(angle)
     update(
       update(
         update(
@@ -129,8 +121,8 @@ module NaiveTransform3D with
     )
 
   fun rotateZ(angle) =
-    let s = sin(angle)
-    let c = cos(angle)
+    let s = Math.sin(angle)
+    let c = Math.cos(angle)
     update(
       update(
         update(
@@ -140,16 +132,16 @@ module NaiveTransform3D with
     )
 
   fun model(local, position, scaling, rotation) =
-    if position is [dx, dy, dz] and scaling is [sx, sy, sz] and rotation is [rx, ry, rz] and local is [x, y, z] then
-      let rot = multiply(
-          rotateZ(rz), multiply(
-            rotateY(ry), multiply(
-              rotateX(rx), ident(4)
-            )
+    let rot = multiply(
+        rotateZ(rotation.2), multiply(
+          rotateY(rotation.1), multiply(
+            rotateX(rotation.0), ident(4)
           )
         )
-      if multiply(
-        transform(dx, dy, dz), multiply(
-          rot, multiply(scale(sx, sy, sz), [[x], [y], [z], [1]])
-        )
-      ) is [x', y', z', w] then [x', y', z']
+      )
+    let res = multiply(
+      transform(position.0, position.1, position.2), multiply(
+        rot, multiply(scale(scaling.0, scaling.1, scaling.2), [[local.0], [local.1], [local.2], [1]])
+      )
+    )
+    [res.0, res.1, res.2]
