@@ -404,7 +404,13 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else Ctx.empty()
         if isMethod do ctx.add(ValueRef(Symbol("_this")), Some(shapes.(0).(0)))
 
-        ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
+        ps.forEach((p, i, _) => p.forEach((p2, j, _) =>
+          let shape = if p2.constraint is
+            Some(Dynamic) then mkDyn()
+            Some(Static) and not staticSet(paramShapes.(i).(j)) then throw Error("Non-static shape given to static parameter " + p2)
+            None then paramShapes.(i).(j)
+          ctx.add(ValueRef(p2.sym), shape)
+        ))
 
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
 
@@ -428,7 +434,7 @@ fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], c
   let actualClass = getActualClass(classSymb.value)
   let defn = actualClass."class$ctor$_instr"()
   if defn is FunDefn(Symbol(_), ps, body) then
-    ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), argShapes.(j))))
+    ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2.sym), argShapes.(j))))
 
     if not (actualClass."preCtor$_instr" is undefined) and actualClass."preCtor$_instr"() is FunDefn(_, _, preCtorBody) then do 
       prop(ctx, preCtorBody)
