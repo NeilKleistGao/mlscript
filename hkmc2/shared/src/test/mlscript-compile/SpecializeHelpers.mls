@@ -62,18 +62,16 @@ class Ctx(
   // we need to keep track of fields defined in parent class,
   // which is stored in ctorCtx
   fun clearCtx = Ctx(new Map(), ctorCtx, allocs, thisShape)
-  fun add(path, ss) =
+  fun add(path: Path, ss: ShapeSet) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then
       ctx.set(ps, union(ctx.get(ps), ss))
     else
       ctx.set(ps, ss)
     this
-  fun addCtor(ps, ss) =
-    if ctorCtx.has(ps) then
-      ctorCtx.set(ps, union(ctorCtx.get(ps), ss))
-    else
-      ctorCtx.set(ps, ss)
+  // Later ValDefn (in derived class) shadows earlier ValDefn (in base class)
+  fun addValDefn(ps: String, ss: ShapeSet) =
+    ctorCtx.set(ps, ss)
     this
 module Ctx with
   fun empty() = Ctx(new Map(), new Map(), mut [], None)
@@ -161,7 +159,7 @@ fun sor(ctx, r) = if r is
       let cacheName = getCacheName(clsName, true)
       let cache = actualClass.(cacheName)
       not (cache is undefined) then
-        let res = SpecializeHelpers.specializeCtor(cache, clsSymb, argsShape, ctx.clearCtx)
+        let res = SpecializeHelpers.specializeCtor(clsSymb, argsShape, ctx.clearCtx)
         [End(), r, res]
       else throw Error("cache not found in staged class")
     else [End(), r, mkClass(clsSymb, argsShape)]
@@ -177,16 +175,16 @@ fun sor(ctx, r) = if r is
         throw Error("runtime.Tuple.slice not handled in shape propagation")
       Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ClassSymbol then // class within module
         [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))] // FIXME
-      ValueRef(clsSymb) and clsSymb is ClassSymbol then // global class
-        if isStagedClass(clsSymb.value) then
+      ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
+        isStagedClass(clsSymb.value) then
           let actualClass = getActualClass(clsSymb.value)
           let clsName = actualClass.(Symbols.definitionMetadata).1
           let cacheName = getCacheName(clsName, true)
           if not (actualClass.(cacheName) is undefined) then
-            let res = SpecializeHelpers.specializeCtor(actualClass.(cacheName), clsSymb, argShapes, ctx.clearCtx)
+            let res = SpecializeHelpers.specializeCtor(clsSymb, argShapes, ctx.clearCtx)
             [End(), r, res]
-          else [End(), r, mkDyn()] // TODO make unstaged object shape
-        else [End(), r, mkDyn()] // TODO make unstaged object shape
+          else throw Error("class is staged but cache not found")
+        else [End(), r, mkClass(clsSymb, argShapes)] // TODO make unstaged object shape
       ValueRef(symb) and  // built-in or top-level
         let name = symb.name
         args is
@@ -210,7 +208,7 @@ fun sor(ctx, r) = if r is
             "!==" then lit(l1 !== l2)
             "&&" then lit(l1 && l2)
             "||" then lit(l1 || l2)
-          else [End(), r, mkDyn()]
+          else [End(), r, mkDyn()] // FIXME: evaluate path
       Select(ValueRef(ModuleSymbol(name, value)), Symbol(fld)) and
         let mapPropName = getGenMapName(name, false)
         let cachePropName = getCacheName(name, false)
@@ -324,11 +322,9 @@ fun prop(ctx, b) = if b is
     Assign(x, Call(Select(ValueRef(symb), Symbol(f)), args), restBlock) and not (symb is ModuleSymbol) then
       dispatchMethodCall(ctx, Some(x), None, symb, f, args, restBlock)
     Define(ValDefn(opt, sym, rhs), restBlock) and
-      sor(ctx, rhs) is [blk, r1, s1] then
-        let newCtx = ctx.add(ValueRef(sym), s1)
-        if opt is Some(c) do
-          newCtx.addCtor(sym.name, s1)
-        if prop(newCtx, restBlock) is [b2, s2] then
+      sor(ctx, rhs) is [blk, r1, s1] and
+        do ctx.addValDefn(sym.name, s1)
+        prop(ctx, restBlock) is [b2, s2] then
           [concat(blk, Define(ValDefn(opt, sym, r1), b2)), s2]
     Assign(x, r, restBlock) and 
       sor(ctx, r) is [blk, r1, s1] and
@@ -374,16 +370,15 @@ fun prop(ctx, b) = if b is
 fun propStub(ctx, body) = 
   [body, mkDyn()]
 
-fun buildShapeName(s: Shape): Str =
-  if s is
-    Dyn then "Dyn"
-    Lit(lit) and lit is Str then "Str" + lit
-    Lit(lit) then "Lit" + lit.toString()
-    Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
-    Class(sym, params) and params.length is
-      0 then sym.name
-      else sym.name + "_" + params.map(buildShapeName).join("_")
-    else throw Error("unknown shape when building shape name" + s.toString())
+fun buildShapeName(s: Shape): Str = if s is
+  Dyn then "Dyn"
+  Lit(lit) and lit is Str then "Str" + lit
+  Lit(lit) then "Lit" + lit.toString()
+  Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
+  Class(sym, params) and params.length is
+    0 then sym.name
+    else sym.name + "_" + params.map(buildShapeName).join("_")
+  else throw Error("unknown shape when building shape name" + s.toString())
 
 fun buildShapeSetName(ss: ShapeSet): Str =
   let vals = ss.values()
@@ -412,6 +407,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), paramShapes.(i).(j))))
 
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
+
         let res = prop(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         
@@ -424,30 +420,26 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else bodyWithScoped
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, finalBody), actualRetShape])
         [entry.0.sym.name, entry.1]
+      else throw Error("instrumented function is not a FunDefn")
     else throw Error("cache error")
 
-fun specializeCtor(cache: FunCache, classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx) =
+fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx) =
   let newName = specializeName("class$ctor$", [argShapes])
-  if cache.getFun(newName) is
-    Some(x) then [x.0.sym.name, x.1]
-    None and 
-      let actualClass = getActualClass(classSymb.value)
-      let defn = actualClass."class$ctor$_instr"()
-      defn is FunDefn(Symbol(_), ps, body) then
-        ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), argShapes.(j))))
+  let actualClass = getActualClass(classSymb.value)
+  let defn = actualClass."class$ctor$_instr"()
+  if defn is FunDefn(Symbol(_), ps, body) then
+    ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2), argShapes.(j))))
 
-        if not (actualClass."preCtor$_instr" is undefined) and actualClass."preCtor$_instr"() is FunDefn(_, _, preCtorBody) then do 
-          prop(ctx, preCtorBody)
-        else throw Error("preCtor not found in staged class")
-        if not (actualClass."class$ctor$_instr" is undefined) and actualClass."class$ctor$_instr"() is FunDefn(_, _, ctorBody) then do
-          prop(ctx, ctorBody)
-        else throw Error("ctor not found in staged class")
+    if not (actualClass."preCtor$_instr" is undefined) and actualClass."preCtor$_instr"() is FunDefn(_, _, preCtorBody) then do 
+      prop(ctx, preCtorBody)
+    else throw Error("preCtor not found in staged class")
+    if not (actualClass."class$ctor$_instr" is undefined) and actualClass."class$ctor$_instr"() is FunDefn(_, _, ctorBody) then do
+      prop(ctx, ctorBody)
+    else throw Error("ctor not found in staged class")
 
-        mkClassFromMap(cache.owner, ctx.ctorCtx)
-
-    else throw Error("cache error")
-
-
+    mkClassFromMap(classSymb, ctx.ctorCtx)
+  else throw Error("instrumeted method is not a FunDefn")
+  
 class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, [Block.Block, Shape]]) with
   val printer = Printer(Some(owner))
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
@@ -510,4 +502,4 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody))
-      + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().join("\n"))
+      + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().sort().join("\n"))
