@@ -5,7 +5,7 @@ import "./Predef.mls"
 import "./Shape.mls"
 import "./StrOps.mls"
 
-open Block {ConcreteClassSymbol}
+open Block {ConcreteClassSymbol, Path, Symbol}
 open Shape {Dyn, Lit, Arr, Class}
 open Predef
 open Option
@@ -68,6 +68,18 @@ fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) =
     |> prod
     .map(Class(sym, _))
     |> liftMany
+
+fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet]) =
+  if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams) then
+    let entries = [...paramsMap.entries()]
+    let keys = entries.map(a => Symbol(a.0))
+    let params = entries.map(_.1)
+    let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams)
+    params 
+      .map(_.shapeset.values().toArray())
+      |> prod
+      .map(Class(newSym, _))
+      |> liftMany
 
 // helper functions
 
