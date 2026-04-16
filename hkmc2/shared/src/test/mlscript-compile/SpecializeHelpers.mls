@@ -390,7 +390,7 @@ fun buildShapeSetName(ss: ShapeSet): Str =
 
 fun specializeName(funName, isMethod, ps, shapes) =
   let mappedShapes = shapes.map((ss, i, _) =>
-    if isMethod and i == 0 then ss
+    if isMethod and i is 0 then ss
     else ss.map((s, j, _) =>
       let psIdx = if isMethod then i - 1 else i
       if ps.(psIdx).(j).constraint is Some(Dynamic) then mkDyn() else s
@@ -418,7 +418,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
           let shape = if p2.constraint is
             Some(Dynamic) then mkDyn()
             Some(Static) and not staticSet(paramShapes.(i).(j)) then throw Error("Non-static shape given to static parameter " + p2)
-            None then paramShapes.(i).(j)
+            else paramShapes.(i).(j)
           ctx.add(ValueRef(p2.sym), shape)
         ))
 
