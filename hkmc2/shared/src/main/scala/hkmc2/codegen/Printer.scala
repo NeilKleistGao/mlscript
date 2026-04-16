@@ -177,7 +177,7 @@ class Printer(using Raise, ShowCfg, SymbolPrinter, Config):
           params.params.map(x => scope.allocateName(x.sym)) ++
           params.restParam.map(x => "..." + scope.allocateName(x.sym))
         val docParams = allParams.mkDocument("(", ", ", ")")
-        doc"$docParams => ${print(body)}"
+        doc"$docParams => ${bracedbk(print(body))}"
     case Tuple(mut, elems) =>
       val docElems = elems.map(x => print(x)).mkDocument(", ")
       doc"${if mut then "mut " else ""}[${docElems}]"
