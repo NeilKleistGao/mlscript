@@ -103,11 +103,11 @@ fun sov(v): ShapeSet =
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   Some(s) then s
   else if p is 
-    Select(ValueRef(clsSymb), Symbol(name)) and clsSymb is ClassSymbol and // variables defined in valdefn
+    Select(ValueRef(clsSymb), Symbol(name)) and clsSymb is ClassSymbol and // variables defined in valdefn (for constructor propagation)
       ctx.getValDefn(name) is Some(s) then
         s
-    Select(qual, Symbol(name)) and
-      ctx.thisShape is Some(thisShape) and qual is ValueRef(sym) and sym is t then
+    Select(qual, Symbol(name)) and // this.name
+      ctx.thisShape is Some(thisShape) then
         selSet(thisShape, mkLit(name))
       name is "length" and // special handle array .length
         let qualShape = sop(ctx, qual)
@@ -388,18 +388,25 @@ fun buildShapeSetName(ss: ShapeSet): Str =
   if vals.length is 1 then buildShapeName(vals.0)
   else "Union_" + vals.map(buildShapeName).join("_") + "_end"
 
-fun specializeName(funName, shapes) =
-  if shapes.every(_.every(_.isDyn())) then funName
-  else funName + "_" + shapes.map(ps => ps.map(buildShapeSetName).join("_")).join("_dot_")
+fun specializeName(funName, isMethod, ps, shapes) =
+  let mappedShapes = shapes.map((ss, i, _) =>
+    if isMethod and i == 0 then ss
+    else ss.map((s, j, _) =>
+      let psIdx = if isMethod then i - 1 else i
+      if ps.(psIdx).(j).constraint is Some(Dynamic) then mkDyn() else s
+    )
+  )
+  if mappedShapes.every(_.every(_.isDyn())) then funName
+  else funName + "_" + mappedShapes.map(pss => pss.map(buildShapeSetName).join("_")).join("_dot_")
 
 fun specialize(cache: FunCache, funName, dflt, shapes) =
-  let newName = specializeName(funName, shapes)
-  if cache.getFun(newName) is
-    Some(x) then [x.0.sym.name, x.1]
-    None and 
-      let defn = dflt()
-      defn is FunDefn(Symbol(_), ps, body) then
-        let isMethod = cache.owner is ConcreteClassSymbol
+  let defn = dflt()
+  if defn is FunDefn(Symbol(_), ps, body) then
+    let isMethod = cache.owner is ConcreteClassSymbol
+    let newName = specializeName(funName, isMethod, ps, shapes)
+    if cache.getFun(newName) is
+      Some(x) then [x.0.sym.name, x.1]
+      None then
         let paramShapes = if isMethod then shapes.slice(1) else shapes
         let ctx = if isMethod then
           let clsSymb = cache.owner
@@ -429,14 +436,13 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else bodyWithScoped
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, finalBody), actualRetShape])
         [entry.0.sym.name, entry.1]
-      else throw Error("instrumented function is not a FunDefn")
-    else throw Error("cache error")
+  else throw Error("instrumented function is not a FunDefn")
 
 fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx) =
-  let newName = specializeName("class$ctor$", [argShapes])
   let actualClass = getActualClass(classSymb.value)
   let defn = actualClass."class$ctor$_instr"()
   if defn is FunDefn(Symbol(_), ps, body) then
+    let newName = specializeName("class$ctor$", false, ps, [argShapes])
     ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2.sym), argShapes.(j))))
     if not (actualClass."preCtor$_instr" is undefined) and actualClass."preCtor$_instr"() is FunDefn(_, _, preCtorBody) then do 
       prop(ctx, preCtorBody)

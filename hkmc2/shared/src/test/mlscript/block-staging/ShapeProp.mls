@@ -296,3 +296,14 @@ M."test3_gen"()
 
 M."test4_gen"()
 //│ = ["test4", {Lit(8)}]
+
+print(D.class."class$cache$D")
+//│ > class D(x) extends B(x + 1, x + 2) with
+//│ >   ()
+//│ >   fun f_D_Lit2_Lit4_Lit12_dot_() = 8
+
+staged module M with
+  fun f(@dynamic x, y) = x + y
+
+M."f_gen"(mkLit(1), mkLit(2))
+//│ = ["f_Dyn_Lit2", {Dyn()}]
