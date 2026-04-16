@@ -16,14 +16,14 @@ class Shape extends CachedHash with
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape])
-    Class(val sym: ConcreteClassSymbol, val params: Array[Shape]) // TODO: track the auxParams as well
+    Class(val sym: ConcreteClassSymbol, val fields: Array[Shape]) // TODO: track the auxParams as well
 
 fun show(s: Shape) =
   if s is
     Dyn then "Dyn"
     Lit(lit) then "Lit(" + printer.showLiteral(lit) + ")"
     Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
-    Class(sym, params) then "Class(" + printer.showSymbol(sym) + ", [" + params.map(show).join(", ") + "])"
+    Class(sym, fields) then "Class(" + printer.showSymbol(sym) + ", {" + [...fields.entries()].map(e => e.0 + ": " + show(e.1)).join(", ") + "})" 
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
