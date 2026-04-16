@@ -103,10 +103,9 @@ fun sov(v): ShapeSet =
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   Some(s) then s
   else if p is 
-    Select(ValueRef(clsSymb), Symbol(name)) and clsSymb is ClassSymbol and // constructor
+    Select(ValueRef(clsSymb), Symbol(name)) and clsSymb is ClassSymbol and // variables defined in valdefn
       ctx.getValDefn(name) is Some(s) then
         s
-      else mkDyn()
     Select(qual, Symbol(name)) and
       ctx.thisShape is Some(thisShape) and qual is ValueRef(sym) and sym is t then
         selSet(thisShape, mkLit(name))
