@@ -32,7 +32,7 @@ a.A#x
 :sir
 A::x
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let lambda⁰; define lambda⁰ as fun lambda¹(self) { return self.x¹(...args⁰) }; lambda¹
+//│ let lambda⁰; define lambda⁰ as fun lambda¹(self, ...args) { return self.x¹(...args) }; lambda¹
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun
 
@@ -60,7 +60,7 @@ case A(x) then x
 :sir
 class A()(val x)
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let A³; define A³ as class A⁵()(x) { val x²; constructor A⁴ { define x² as val x³ = x; end } }; end
+//│ let A³; define A³ as class A⁵() { val x²; constructor A⁴(x) { define x² as val x³ = x; end } }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let a = A()(1)
@@ -83,7 +83,7 @@ a.A#x
 :sir
 A::x
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let lambda⁴; define lambda⁴ as fun lambda⁵(self) { return self.x³(...args¹) }; lambda⁵
+//│ let lambda⁴; define lambda⁴ as fun lambda⁵(self, ...args) { return self.x³(...args) }; lambda⁵
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun
 
@@ -127,12 +127,11 @@ fun foo(x, y) =
 //│       return tmp(y)
 //│   end
 //│ };
-//│ define A⁶ as class A⁷(u)(y) {
-//│   private val A$cap⁰;
+//│ define A⁶ as class A⁷(u) {
 //│   private val y⁰;
 //│   val u⁰;
 //│   val v⁰;
-//│   constructor A⁸ {
+//│   constructor A⁸(y) {
 //│     set y⁰ = y;
 //│     define u⁰ as val u¹ = u;
 //│     define v⁰ as val v¹ = y⁰;
