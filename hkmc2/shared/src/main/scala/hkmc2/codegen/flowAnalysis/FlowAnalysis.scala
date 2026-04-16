@@ -45,9 +45,9 @@ object FlowAnalysis:
         case Some(id) => id
   
   
-  def apply(b: Block, mono: Bool)(using TraceLogger, Elaborator.State, Raise) =
+  def apply(pgrm: Program, mono: Bool)(using TraceLogger, Elaborator.State, Raise) =
     given State = new State
-    val pre = new FlowPreAnalyzer(b)
+    val pre = new FlowPreAnalyzer(pgrm)
     val constrCol = new FlowConstraintsCollector(pre, mono)
     new FlowConstraintSolver(constrCol)
     
@@ -230,7 +230,7 @@ type ConcreteConsumer = Dtor | FieldSel
 
 class ProdStratScheme(val s: StratVarState, val constraints: Ls[ProdStrat -> ConsStrat])
 
-class FlowPreAnalyzer(val b: Block)(using
+class FlowPreAnalyzer(val pgrm: Program)(using
   val tl: TraceLogger,
   val eState: Elaborator.State,
   val fState: FlowAnalysis.State,
@@ -240,7 +240,7 @@ class FlowPreAnalyzer(val b: Block)(using
   import StratVarState.freshVar
   
   ctxTracker.inTopLvl:
-    applyBlock(b)
+    applyBlock(pgrm.main)
   
   object res:
     val primitiveStratVar = StratVarState.freshVar("unknown")
@@ -565,7 +565,7 @@ class FlowConstraintsCollector(val preAnalyzer: FlowPreAnalyzer, val mono: Bool)
     globalCollector.givenIn: cc ?=>
       cc.constrain(preAnalyzer.res.primitiveStratVar.asProdStrat, NoCons)
       cc.constrain(NoProd, preAnalyzer.res.primitiveStratVar.asConsStrat)
-      processBlock(preAnalyzer.b)(using cc, NoCons)
+      processBlock(preAnalyzer.pgrm.main)(using cc, NoCons)
 
       if mono then
         for

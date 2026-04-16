@@ -357,14 +357,13 @@ object Label:
 object Scoped:
   def apply(syms: collection.Set[Local], body: Block): Block = body match
     case _: Unreachable => body
+    case _ if syms.isEmpty => body
     case Scoped(syms2, body) =>
-      if syms2.isEmpty && syms.isEmpty then Scoped(Set.empty, body)
-      else
-        whenValidatingIR:
-          assert(!syms2.exists(syms.contains), "overlapping symbols in nested Scoped")
-        Scoped(syms ++ syms2, body)
+      whenValidatingIR:
+        assert(!syms2.exists(syms.contains), "overlapping symbols in nested Scoped")
+      Scoped(syms ++ syms2, body)
     case _ =>
-      if syms.isEmpty then body else new Scoped(syms, body)
+      new Scoped(syms, body)
 object TryBlock:
   def apply(body: Block, finallyDo: Block, rest: Block): Block =
     body match

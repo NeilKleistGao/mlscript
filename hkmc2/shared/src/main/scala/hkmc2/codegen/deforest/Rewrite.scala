@@ -13,6 +13,11 @@ import hkmc2.codegen.flowAnalysis.*
 
 
 class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
+  
+  def apply(): Program =
+    if newBody is pre.pgrm.main then pre.pgrm
+    else Program(pre.pgrm.imports, newBody)
+  
   val collector = solver.constraintSolver.collector
   given tl: TraceLogger = solver.tl
   given fState: FlowAnalysis.State = solver.fState
@@ -245,7 +250,7 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
         ++ eState.builtinOpsMap.values
         ++ (eState.globalThisSymbol :: eState.runtimeSymbol :: eState.noSymbol :: Nil)
         ++ locally:
-          pre.b match
+          pre.pgrm.main match
           case Scoped(syms, _) => syms
           case _ => Nil
       val freeVars = MutSet.empty[Symbol]
@@ -345,6 +350,7 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
   
   // compute new program body
   val newBody =
+    
     extension (a: Symbol) def toValueRef =
       a match
       case bms: BlockMemberSymbol => Value.Ref(bms, bms.tsym)
@@ -569,10 +575,12 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
           case _ => super.applyBlock(b)
       Scoped(
         Set.from(newPolyFuns.map(_.sym) ++ newBranchFuns.map(_.sym) ++ newRestFuns.map(_.sym)),
-        implicitRetPass.applyBlock(mainRewriter.applyBlock(pre.b)))
+        implicitRetPass.applyBlock(mainRewriter.applyBlock(pre.pgrm.main)))
     
     (newPolyFuns ++ newBranchFuns ++ newRestFuns).foldRight(newMainBody): (fdef, rest) =>
       Define(fdef, rest)
+    
   end newBody
+  
 end DeforestRewriter
 

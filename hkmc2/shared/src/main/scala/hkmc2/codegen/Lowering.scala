@@ -624,7 +624,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             val res = block(Nil, R(body))(k)
             val scopedSyms = loweringCtx.getCollectedSym
             // Put the Scoped in the rest, so that the returned result can be found correctly
-            new Scoped(scopedSyms, res)
+            Scoped(scopedSyms, res)
         case _ => return fail:
           ErrorReport(
             msg"Unsupported form for scope.locally." ->
