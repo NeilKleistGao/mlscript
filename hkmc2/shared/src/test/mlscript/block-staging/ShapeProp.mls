@@ -212,12 +212,15 @@ print(M."cache$M")
 //│ >   fun test(b) =
 //│ >     let {y, m, tmp1, tmp2, tmp3}
 //│ >     tmp1 = new L1(1)
-//│ >     y = 11
+//│ >     y = M.twice_L1_Lit1_Lit5(tmp1, 5)
 //│ >     tmp2 = new L2(2)
 //│ >     tmp3 = new L3(3)
 //│ >     m = M.pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
 //│ >     M.twice_Union_L2_Lit2_L3_Lit3_end_Lit5(m, 5)
-//│ >   fun twice_L1_Lit1_Lit5(f, x) = 11
+//│ >   fun twice_L1_Lit1_Lit5(f, x) =
+//│ >     let {tmp}
+//│ >     tmp = f.call_L1_Lit1_dot_Lit5(x)
+//│ >     f.call_L1_Lit1_dot_Dyn(tmp)
 //│ >   fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f, x) =
 //│ >     let {tmp}
 //│ >     if f is
@@ -226,26 +229,35 @@ print(M."cache$M")
 //│ >       L3 then
 //│ >         tmp = f.call_L3_Lit3_dot_Lit5(x)
 //│ >     if f is
-//│ >       L2 then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
-//│ >       L3 then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
+//│ >       L2 then f.call_L2_Lit2_dot_Dyn(tmp)
+//│ >       L3 then f.call_L3_Lit3_dot_Dyn(tmp)
 
 print(L1.class."class$cache$L1")
 print(L2.class."class$cache$L2")
 print(L3.class."class$cache$L3")
 //│ > class L1(y) with
 //│ >   ()
-//│ >   fun call_L1_Lit1_dot_Lit5(x) = 8
-//│ >   fun call_L1_Lit1_dot_Lit8(x) = 11
+//│ >   fun call_L1_Lit1_dot_Dyn(x) =
+//│ >     let {tmp}
+//│ >     tmp = x + 2
+//│ >     tmp + y
+//│ >   fun call_L1_Lit1_dot_Lit5(x) =
+//│ >     let {tmp}
+//│ >     tmp = 7
+//│ >     tmp + y
 //│ > class L2(y) with
 //│ >   ()
-//│ >   fun call_L2_Lit2_dot_Lit5(x) = 7
-//│ >   fun call_L2_Lit2_dot_Union_Lit7_Lit13_end(x) = x + y
+//│ >   fun call_L2_Lit2_dot_Dyn(x) = x + y
+//│ >   fun call_L2_Lit2_dot_Lit5(x) = x + y
 //│ > class L3(y) with
 //│ >   ()
-//│ >   fun call_L3_Lit3_dot_Lit5(x) = 13
-//│ >   fun call_L3_Lit3_dot_Union_Lit7_Lit13_end(x) =
+//│ >   fun call_L3_Lit3_dot_Dyn(x) =
 //│ >     let {tmp1}
 //│ >     tmp1 = *(x, 2)
+//│ >     tmp1 + y
+//│ >   fun call_L3_Lit3_dot_Lit5(x) =
+//│ >     let {tmp1}
+//│ >     tmp1 = 10
 //│ >     tmp1 + y
 
 staged class A(val x: Int) with
@@ -254,50 +266,47 @@ staged class B(val x: Int) with
   fun f(y: A) = x + y.f(x)
 
 staged module TestThis with
-  fun test2(y) = B(1).x + y // FIXME
   fun test(x) = B(x).f(A(1))
 
-TestThis."test2_gen"(mkLit(1))
-//│ = ["test2_Lit1", {Lit(2)}]
-
 TestThis."test_gen"(mkLit(1))
+//│ = ["test_Lit1", {Dyn()}]
+
 print(TestThis."cache$TestThis")
 //│ > module TestThis with
 //│ >   ()
-//│ >   fun test2_Lit1(y) = 2
-//│ >   fun test_Lit1(x) = 3
+//│ >   fun test_Lit1(x) =
+//│ >     let {tmp, tmp1}
+//│ >     tmp = B(x)
+//│ >     tmp1 = A(1)
+//│ >     tmp.f_B_Lit1_dot_A_Lit1(tmp1)
 
 print(A.class."class$cache$A")
 print(B.class."class$cache$B")
 //│ > class A(x) with
 //│ >   ()
-//│ >   fun f_A_Lit1_dot_Lit1(y) = 2
+//│ >   fun f_A_Lit1_dot_Dyn(y) = x + y
 //│ > class B(x) with
 //│ >   ()
-//│ >   fun f_B_Lit1_dot_A_Lit1(y) = 3
+//│ >   fun f_B_Lit1_dot_A_Lit1(y) =
+//│ >     let {tmp}
+//│ >     tmp = y.f_A_Lit1_dot_Dyn(x)
+//│ >     x + tmp
 
-staged class B(val x, val y)
+staged class B(val x, val y) with
+  val z = x * y
 
 staged class D(val x) extends B(x + 1, x + 2)
 
 staged module M with
-  fun test() = new D(1, 2).y
-  fun test2() = new D(1, 2).x
+  fun test() = new D(1).x
+  fun test2() = new D(1).y
+  fun test3() = new D(1).z
 
 M."test_gen"()
-//│ = ["test", {Lit(3)}]
+//│ = ["test", {Lit(1)}]
 
 M."test2_gen"()
-//│ = ["test2", {Lit(1)}]
+//│ = ["test2", {Lit(3)}]
 
-staged module M with
-  fun f(x, y) = x + y
-  fun test(x) = f(x, 2)
-
-M."test_gen"(mkLit(1))
-//│ = ["test_Lit1", {Lit(3)}]
-
-staged class C(val n)
-
-staged module M with
-  fun f() = new C(1)
+M."test3_gen"()
+//│ = ["test3", {Lit(6)}]
