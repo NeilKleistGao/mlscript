@@ -246,34 +246,10 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
   let unkShape = splitted.1
   let isRet = xOpt is None
 
-  if knownMap.size is 1 and unkShape.isEmpty() and
-    // If the object is certainly a known class, generate the generated method call directly without pattern matching
-    let entry = [...knownMap.entries()].0
-    let C_i = entry.0
-    let ss_i = entry.1
-    let actualClass = getActualClass(C_i.value)
-    let clsName = actualClass.(Symbols.definitionMetadata).1
-    let genMapName = getGenMapName(clsName, true)
-    let genMap = actualClass.(genMapName)
-    let f_gen = genMap.get(f)
-    let generated = f_gen(ss_i)(...argShapes)
-    let retSym = generated.0
-    let retShape = generated.1
-    let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
-    isRet then
-      [concat(End(), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
-    else
-      let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-      [concat(End(), Assign(x, callRes, End())), retShape]
-  else if knownMap.size is 0 and
-    let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
-    isRet then
-      [concat(End(), Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
-    else
-      let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-      [concat(End(), Assign(x, dfltMatch, End())), mkDyn()]
-  else
-    let armsRet = [...knownMap.entries()].map(entry =>
+  if knownMap.size is 
+    1 and unkShape.isEmpty() and
+      // If the object is certainly a known class, generate the generated method call directly without pattern matching
+      let entry = [...knownMap.entries()].0
       let C_i = entry.0
       let ss_i = entry.1
       let actualClass = getActualClass(C_i.value)
@@ -285,27 +261,52 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
       let retSym = generated.0
       let retShape = generated.1
       let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
-      if isRet then
-        [Arm(Cls(C_i, ValueRef(symb)), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
+      isRet then
+        [concat(End(), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-        [Arm(Cls(C_i, ValueRef(symb)), Assign(x, callRes, End())), retShape]
-    )
-    let armsAcc = armsRet.map(_.0)
-    let totalStagedRetShape = foldl((acc, x) => union(acc, x.1))(mkBot(), ...armsRet)
-    let dfltRet = if unkShape.isEmpty() then [None, mkBot()] else
+        [concat(End(), Assign(x, callRes, End())), retShape]
+    0 and
       let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
-      if isRet then
-        [Some(Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
+      isRet then
+        [concat(End(), Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-        [Some(Assign(x, dfltMatch, End())), mkDyn()]
-    let matchBody = if knownMap.size is 1 and unkShape.isEmpty() then
-      armsAcc.0.body
+        [concat(End(), Assign(x, dfltMatch, End())), mkDyn()]
     else
-      Match(ValueRef(symb), armsAcc, dfltRet.0, End())
-    let totalRetShape = union(totalStagedRetShape, dfltRet.1)
-    [matchBody, totalRetShape]
+      let armsRet = [...knownMap.entries()].map(entry =>
+        let C_i = entry.0
+        let ss_i = entry.1
+        let actualClass = getActualClass(C_i.value)
+        let clsName = actualClass.(Symbols.definitionMetadata).1
+        let genMapName = getGenMapName(clsName, true)
+        let genMap = actualClass.(genMapName)
+        let f_gen = genMap.get(f)
+        let generated = f_gen(ss_i)(...argShapes)
+        let retSym = generated.0
+        let retShape = generated.1
+        let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
+        if isRet then
+          [Arm(Cls(C_i, ValueRef(symb)), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
+        else
+          let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
+          [Arm(Cls(C_i, ValueRef(symb)), Assign(x, callRes, End())), retShape]
+      )
+      let armsAcc = armsRet.map(_.0)
+      let totalStagedRetShape = foldl((acc, x) => union(acc, x.1))(mkBot(), ...armsRet)
+      let dfltRet = if unkShape.isEmpty() then [None, mkBot()] else
+        let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
+        if isRet then
+          [Some(Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
+        else
+          let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
+          [Some(Assign(x, dfltMatch, End())), mkDyn()]
+      let matchBody = if knownMap.size is 1 and unkShape.isEmpty() then
+        armsAcc.0.body
+      else
+        Match(ValueRef(symb), armsAcc, dfltRet.0, End())
+      let totalRetShape = union(totalStagedRetShape, dfltRet.1)
+      [matchBody, totalRetShape]
 
 fun prop(ctx, b) = if b is
     End() then [b, mkBot()]
