@@ -28,7 +28,7 @@ fun show(s: Shape) =
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
     [Class(ConcreteClassSymbol(_, _, paramsOpt, auxParams), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
-      paramsSymb.map(_.name).indexOf(n) is
+      paramsSymb.map(_.sym.name).indexOf(n) is
         -1 then []
         n then [params.(n)]
     [Class(ConcreteClassSymbol, p), Dyn] then [Dyn()]
@@ -60,13 +60,18 @@ fun silh(p: Case): Shape = if p is
     Class(clsSymb, Array(paramsSize).fill(Dyn()))
   Block.Tup(n) then Arr(Array(n).fill(Dyn()))
 
-// TODO: use Option instead, since all of them return at most one shape
+fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
+fun isSubClassOf(d, b) = getActualClass(b).isPrototypeOf(getActualClass(d))
+
 fun filter(s: Shape, p: Case): Array[Shape] =
   if [s, p] is
     [Lit(l1), Block.Lit(l2)] and l1 == l2 then [s]
-    [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s]
+    [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s] 
     [Arr(ls), Block.Tup(n)] and ls.length == n then [s]
-    [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
+    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+      c1.value == c2.value then [s]
+    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+      isSubClassOf(c1.value, c2.value) then [s]
     [Dyn, _] then [silh(p)]
     else []
 
@@ -75,6 +80,10 @@ fun rest(s: Shape, p: Case): Array[Shape] =
     [Lit(l1), Block.Lit(l2)] and l1 == l2 then []
     [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then []
     [Arr(ls), Block.Tup(n)] and ls.length == n then []
-    [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then []
+    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+      c1.value == c2.value then []
+    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+      isSubClassOf(c1.value, c2.value) then []
+    [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
     [Dyn, _] then [s]
     else [s]
