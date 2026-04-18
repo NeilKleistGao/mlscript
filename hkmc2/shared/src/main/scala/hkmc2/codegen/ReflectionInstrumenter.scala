@@ -428,10 +428,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
             Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
     
-    def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
-      val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
-
-      call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
+    val propFunDef =
+      val sym = BlockMemberSymbol("propagate", Nil)
+      val params = PlainParamList(Nil)
+      val body = call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
         def callGenCont(rest: Block) =
           generatorMethods.foldRight(rest)((gen, rest) =>
             val genPath = modSym.asPath.selSN(gen.sym.nme)
@@ -440,8 +440,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               ((args, k) => call(_, args, true, "gen_call")(k))
               (genPath)
           )
-        callGenCont(call(blockMod("Printer").selSN("class").selSN("default").selSN("codegen"), toValue(modSym.nme) :: cachePath :: sourceSym.asPath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
+        callGenCont(End())
+      FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(false, N, Visibility.Public)
 
+    def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
+      call(modSym.asPath.selSN(propFunDef.sym.nme), Nil, true, "tmp")(_ =>
+        call(blockMod("codegen"), toValue(modSym.nme) :: cachePath :: sourceSym.asPath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
     val entryFunDef =
       val sym = BlockMemberSymbol("generate", Nil)
       val sourceSym = VarSymbol(Ident("source"))
@@ -449,7 +453,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val params = PlainParamList(Param.simple(sourceSym) :: Param.simple(psym) :: Nil)
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(sourceSym, psym))(false, N, Visibility.Public)
 
-    (entryFunDef, stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(b)))
+    (entryFunDef, propFunDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(b)))
 
   override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
     // staged modules

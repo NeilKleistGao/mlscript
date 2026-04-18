@@ -243,3 +243,18 @@ fun codegen(name, cache, source, file) =
   let newData = code
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")
+
+fun generateAll(name, file, ...modules) =
+  let fullpath = path.join of process.cwd(), file
+  if not fs.existsSync(fullpath) do
+    fs.mkdirSync(path.dirname(fullpath), recursive: true)
+    fs.writeFileSync(fullpath, "", "utf8")
+  let code = fold((res, p) => if p is
+    [mod, name, source] then
+      mod.propagate()
+      [res.0 + "import \"" + source + "\"\n", res.1 + "open " + name + "\n", res.2 + indent(mod.("cache$" + name).toString()) + "\n"]
+  )(["", "", ""], ...modules)
+  let originData = fs.readFileSync(fullpath, "utf8")
+  let newData = code.0 + "\n" + code.1 + "\n" + "module " + name + " with" + indent("\n" + code.2)
+  if newData != originData do
+    fs.writeFileSync(fullpath, newData, "utf8")
