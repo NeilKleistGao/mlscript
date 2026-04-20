@@ -265,7 +265,9 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
       
       /** Match multiple argument lists against multiple parameter lists.
         * Returns None if any arg list fails to match its corresponding param list,
-        * or if there are fewer arg lists than param lists (partial application). */
+        * or if there are fewer arg lists than param lists (partial application).
+        * Extra arg lists beyond the param lists are ignored here and should be
+        * handled by the caller (e.g., applied as a chained call on the result). */
       def matchAllArgs(argss: List[List[Arg]], params: List[ParamList]): Option[List[(VarSymbol, Result)]] =
         if argss.length < params.length then return N
         val matchedPairs = argss.zip(params)
