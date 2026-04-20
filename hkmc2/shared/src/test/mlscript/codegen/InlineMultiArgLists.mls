@@ -1,0 +1,90 @@
+:js
+
+// Test: Curried function with two parameter lists — currently lowered as
+// separate calls (first call gets 1 arg list), so the function is inlined
+// for the first call, then the result lambda handles the second call.
+:sjs
+private fun add(x)(y) = x + y
+add(1)(2)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let add, tmp;
+//│ add = function add(x) { return (y) => { return x + y } };
+//│ tmp = add(1);
+//│ runtime.safeCall(tmp(2))
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 3
+
+// Test: Function returning a lambda, called with 2 arg lists at use site.
+// Since lowering produces separate calls, this behaves like a single-param
+// function that returns a lambda.
+:sjs
+private fun mkAdder(x) =
+  (y) => x + y
+mkAdder(10)(20)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let mkAdder, tmp1;
+//│ mkAdder = function mkAdder(x) {
+//│   let lambda;
+//│   lambda = (undefined, function (y) {
+//│     return x + y
+//│   });
+//│   return lambda
+//│ };
+//│ tmp1 = mkAdder(10);
+//│ runtime.safeCall(tmp1(20))
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 30
+
+// Test: Partial application — call with fewer arg lists than param lists
+:sjs
+private fun add2(x)(y) = x + y
+let f = add2(10)
+f(5)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let add2, f;
+//│ add2 = function add2(x) { return (y) => { return x + y } };
+//│ f = add2(10);
+//│ runtime.safeCall(f(5))
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 15
+//│ f = fun
+
+// Test: Three parameter lists — all correctly passed through
+:sjs
+private fun triple(x)(y)(z) = x + y + z
+triple(1)(2)(3)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let triple, tmp2, tmp3;
+//│ triple = function triple(x) {
+//│   return (y) => {
+//│     return (z) => {
+//│       let tmp4;
+//│       tmp4 = x + y;
+//│       return tmp4 + z
+//│     }
+//│   }
+//│ };
+//│ tmp2 = triple(1);
+//│ tmp3 = runtime.safeCall(tmp2(2));
+//│ runtime.safeCall(tmp3(3))
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 6
+
+// Test: Single-param function returning lambda, called with 2 arg lists
+:sjs
+private fun wrap(x) = (y) => x * y
+wrap(3)(7)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let wrap, tmp4;
+//│ wrap = function wrap(x) {
+//│   let lambda;
+//│   lambda = (undefined, function (y) {
+//│     return x * y
+//│   });
+//│   return lambda
+//│ };
+//│ tmp4 = wrap(3);
+//│ runtime.safeCall(tmp4(7))
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 21
+

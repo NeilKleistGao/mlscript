@@ -1,0 +1,73 @@
+:js
+:noInline
+
+// Test: Dead parameter elimination with multiple parameter lists
+:deadParamElim
+:soir
+private fun f(a)(b) = a
+f(42)(99)
+//│ dead-param-elim > >>> dead-param-elim results >>>
+//│ dead-param-elim > prodfun f#1 @ <root> -> eliminable: {0}
+//│ dead-param-elim > <<< dead-param-elim results <<<
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let f⁰, tmp; define f⁰ as fun f¹(a)() { return a }; set tmp = f¹(42); tmp()
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 42
+
+// Test: Both params dead across two parameter lists
+:deadParamElim
+:soir
+private fun g(x)(y) = 0
+g(1)(2)
+//│ dead-param-elim > >>> dead-param-elim results >>>
+//│ dead-param-elim > prodfun g#0 @ <root> -> eliminable: {0}
+//│ dead-param-elim > prodfun g#1 @ <root> -> eliminable: {0}
+//│ dead-param-elim > <<< dead-param-elim results <<<
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let g⁰, tmp; define g⁰ as fun g¹()() { return 0 }; set tmp = g¹(); tmp()
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 0
+
+// Test: Dead param in second list only
+:deadParamElim
+:soir
+private fun h(x)(y) = x
+h(5)(10)
+//│ dead-param-elim > >>> dead-param-elim results >>>
+//│ dead-param-elim > prodfun h#1 @ <root> -> eliminable: {0}
+//│ dead-param-elim > <<< dead-param-elim results <<<
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let h⁰, tmp; define h⁰ as fun h¹(x)() { return x }; set tmp = h¹(5); tmp()
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 5
+
+// Test: Dead param in first list only
+:deadParamElim
+:soir
+private fun j(x)(y) = y
+j(5)(10)
+//│ dead-param-elim > >>> dead-param-elim results >>>
+//│ dead-param-elim > prodfun j#0 @ <root> -> eliminable: {0}
+//│ dead-param-elim > <<< dead-param-elim results <<<
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let j⁰, tmp; define j⁰ as fun j¹()(y) { return y }; set tmp = j¹(); tmp(10)
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 10
+
+// Test: Three parameter lists, middle one dead
+:deadParamElim
+:soir
+private fun k(a)(b)(c) = a + c
+k(1)(2)(3)
+//│ dead-param-elim > >>> dead-param-elim results >>>
+//│ dead-param-elim > prodfun k#1 @ <root> -> eliminable: {0}
+//│ dead-param-elim > <<< dead-param-elim results <<<
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let k⁰, tmp, tmp1;
+//│ define k⁰ as fun k¹(a)()(c) { return +⁰(a, c) };
+//│ set tmp = k¹(1);
+//│ set tmp1 = tmp();
+//│ tmp1(3)
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 4
+
