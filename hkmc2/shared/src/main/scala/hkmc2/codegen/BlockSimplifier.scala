@@ -371,7 +371,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
             calls.foreach: (caller, call) =>
               if map.contains(sym) then
                 map(sym).hasNakedRef = map(sym).hasNakedRef ||
-                  call.argss.length < map(sym).defn.params.length || matchAllArgs(call.argss, map(sym).defn.params).isEmpty
+                  matchAllArgs(call.argss.take(call.argss.length min map(sym).defn.params.length), map(sym).defn.params.take(call.argss.length min map(sym).defn.params.length)).isEmpty
                 caller.foreach: caller =>
                   edges.append((caller, sym))
           
@@ -464,10 +464,11 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
               S(newBdy)
             .fold(super.applyResult(r)(k)): blk =>
               val info = m(ts)
-              if !info.shouldBeInlined(blk) || argss.length < info.defn.params.length then
+              if !info.shouldBeInlined(blk) then
                 super.applyResult(r)(k)
               else
-                val matchedArgs = matchAllArgs(argss, info.defn.params)
+                val matchedParamCount = argss.length min info.defn.params.length
+                val matchedArgs = matchAllArgs(argss.take(matchedParamCount), info.defn.params.take(matchedParamCount))
                 matchedArgs match
                 case N =>
                   super.applyResult(r)(k)
@@ -475,14 +476,32 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
                   registerChange
                   tl.log(s"Inline call for ${ts}, with args ${argss}")
                   val extraArgss = argss.drop(info.defn.params.length)
+                  val remainingParams = info.defn.params.drop(matchedParamCount)
                   def go(acc: Block => Block, args: List[(VarSymbol, Result)], mapping: Map[Symbol, Symbol]): Block =
                     args match
                     case Nil =>
                       val resSym = TempSymbol(N, "inlinedVal")
                       val copier = Copier(resSym, mapping)
                       val newBlk = copier.applyBlock(blk)
-                      if extraArgss.isEmpty then
+                      if remainingParams.isEmpty && extraArgss.isEmpty then
                         acc(Scoped(Set.single(resSym), newBlk(k(Value.Ref(resSym)))))
+                      else if remainingParams.nonEmpty then
+                        // Fewer arg lists than param lists: wrap body in a function with remaining params
+                        val lambdaSym = BlockMemberSymbol("inlinedLambda", Nil, true)
+                        val lambdaDefn = FunDefn.withFreshSymbol(N, lambdaSym,
+                          remainingParams, newBlk(Return(Value.Ref(resSym), false)))(false, N, Visibility.Private)
+                        if extraArgss.isEmpty then
+                          acc(Scoped(Set(resSym, lambdaSym),
+                            Define(lambdaDefn,
+                              k(lambdaDefn.asPath))))
+                        else
+                          val extraSym = TempSymbol(N, "inlinedCallBase")
+                          acc(Scoped(Set(resSym, lambdaSym, extraSym),
+                            Define(lambdaDefn,
+                              Assign(extraSym, Call(lambdaDefn.asPath, extraArgss.take(remainingParams.length))(c.isMlsFun, c.mayRaiseEffects, false),
+                                k(if extraArgss.length > remainingParams.length then
+                                  Call(extraSym.asPath, extraArgss.drop(remainingParams.length))(c.isMlsFun, c.mayRaiseEffects, false)
+                                else Value.Ref(extraSym))))))
                       else
                         val extraSym = TempSymbol(N, "inlinedCallBase")
                         acc(Scoped(Set(resSym, extraSym), newBlk(
