@@ -44,7 +44,7 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
         val clsDef = generateFCFunctionClass(ref, params)
         val tmp = new TempSymbol(None)
         val cls = Value.Ref(clsDef.sym, Some(clsDef.isym))
-        Scoped(Set(clsDef.sym, tmp), Define(clsDef, Assign(tmp, Instantiate(false, cls, Nil), k(Value.Ref(tmp, None)))))
+        Scoped(Set(clsDef.sym, tmp), Define(clsDef, Assign(tmp, Instantiate(false, cls, Nil :: Nil), k(Value.Ref(tmp, None)))))
       case Some(_) => k(p)
       case None => lastWords(s"${l.nme}'s disamb cannot be empty.")
     case sel: Select => sel.symbol match
@@ -53,7 +53,7 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
         val clsDef = generateFCFunctionClass(sel, params)
         val tmp = new TempSymbol(None)
         val cls = Value.Ref(clsDef.sym, Some(clsDef.isym))
-        Scoped(Set(clsDef.sym, tmp), Define(clsDef, Assign(tmp, Instantiate(false, cls, Nil), k(Value.Ref(tmp, None)))))
+        Scoped(Set(clsDef.sym, tmp), Define(clsDef, Assign(tmp, Instantiate(false, cls, Nil :: Nil), k(Value.Ref(tmp, None)))))
       case Some(_) => k(p)
       case _ =>
         raise(ErrorReport(msg"Cannot determine if ${sel.name.name} is a function." -> sel.toLoc :: Nil,

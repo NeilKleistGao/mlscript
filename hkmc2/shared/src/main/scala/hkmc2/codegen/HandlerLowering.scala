@@ -782,7 +782,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     blockBuilder
       .scopedVars(Set(clsDefn.sym, sym))
       .define(clsDefn)
-      .assign(h.lhs, Instantiate(mut = true, Value.Ref(clsDefn.sym, S(h.cls)), Nil))
+      .assign(h.lhs, Instantiate(mut = true, Value.Ref(clsDefn.sym, S(h.cls)), Nil :: Nil))
       .define(bodyDefn)
       .assign(h.res, Call(paths.enterHandleBlockPath, List(List(h.lhs.asPath.asArg, Value.Ref(sym, S(bodyDefn.dSym)).asArg)))(true, true, false))
       .rest(h.rest)
@@ -804,7 +804,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     val ctx = HandlerCtx.TopLevel
     val transformed = translateBlock(preTransformed, ctx, Set.empty)
     val blk = blockBuilder
-      .assign(State.noSymbol, Call(paths.resetEffects, Nil)(true, false, false))
+      .assign(State.noSymbol, Call(paths.resetEffects, Nil :: Nil)(true, false, false))
       .rest(transformed)
     (blk, stackSafetyMap)
     

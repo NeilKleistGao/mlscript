@@ -26,7 +26,7 @@ x => x
 //│ define Function$⁰ as class Function$¹ {
 //│   method call⁰ = fun call¹(x) { return lambda¹(x) }
 //│ };
-//│ set tmp = new Function$¹;
+//│ set tmp = new Function$¹();
 //│ tmp
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = class anonymous
@@ -46,10 +46,7 @@ fun f(x, y, b) =
 
 :expect 121
 f(0, 0, true)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '121', got: 'NaN'
-//│ = NaN
+//│ = 121
 
 
 :sir
@@ -79,7 +76,7 @@ bar(foo)
 //│ define Function$² as class Function$³ {
 //│   method call² = fun call³(x) { return foo¹(x) }
 //│ };
-//│ set tmp = new Function$³;
+//│ set tmp = new Function$³();
 //│ bar¹(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
@@ -99,13 +96,13 @@ let f = foo in bar(f)
 bar([foo].0)
 bar([foo, x => x].1)
 //│ ╔══[COMPILATION ERROR] Cannot determine if 0 is a function.
-//│ ║  l.99: 	bar([foo].0)
+//│ ║  l.96: 	bar([foo].0)
 //│ ╙──      	         ^^
 //│ ═══[COMPILATION ERROR] Cannot determine if 0$__checkNotMethod is a function.
 //│ ═══[COMPILATION ERROR] Cannot determine if Error is a function.
 //│ ╔══[COMPILATION ERROR] Cannot determine if 1 is a function.
-//│ ║  l.100: 	bar([foo, x => x].1)
-//│ ╙──       	                 ^^
+//│ ║  l.97: 	bar([foo, x => x].1)
+//│ ╙──      	                 ^^
 //│ ═══[COMPILATION ERROR] Cannot determine if 1$__checkNotMethod is a function.
 //│ ═══[COMPILATION ERROR] Cannot determine if Error is a function.
 //│ = 0
@@ -121,7 +118,7 @@ bar([foo, x => x].(i))
 :ge
 [foo, x => x].(i)(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.122: 	[foo, x => x].(i)(0)
+//│ ║  l.119: 	[foo, x => x].(i)(0)
 //│ ╙──       	               ^
 
 
@@ -135,10 +132,10 @@ let foo = Foo()
 foo.("f")(0)
 foo.("h")(1)
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.135: 	foo.("f")(0)
+//│ ║  l.132: 	foo.("f")(0)
 //│ ╙──       	^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.136: 	foo.("h")(1)
+//│ ║  l.133: 	foo.("h")(1)
 //│ ╙──       	^^^^^^^^
 //│ = 0
 //│ foo = Foo()
@@ -160,7 +157,7 @@ Foo(1).foo(x => x - 1)
 //│ define Function$⁴ as class Function$⁵ {
 //│   method call⁴ = fun call⁵(x) { return lambda⁵(x) }
 //│ };
-//│ set tmp1 = new Function$⁵;
+//│ set tmp1 = new Function$⁵();
 //│ tmp.foo²(tmp1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
@@ -182,7 +179,7 @@ foo()(1)
 //│ };
 //│ define foo³ as fun foo⁴() {
 //│   let tmp1;
-//│   set tmp1 = new Function$⁷;
+//│   set tmp1 = new Function$⁷();
 //│   return tmp1
 //│ };
 //│ set tmp = foo⁴();
@@ -206,10 +203,7 @@ class Baz(b) with
 
 :expect 42
 Baz(42).baz()(0)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '42', got: 'NaN'
-//│ = NaN
+//│ = 42
 
 
 module Foo with
@@ -220,10 +214,7 @@ module Foo with
 
 :expect 121
 Foo.f(0, 0, true)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '121', got: 'NaN'
-//│ = NaN
+//│ = 121
 
 
 :sir
@@ -259,7 +250,11 @@ module Foo with
 //│         set y¹ = y;
 //│         end
 //│       }
-//│       method bar² = fun bar³(z) { let tmp; set tmp = new Function$⁹; return tmp }
+//│       method bar² = fun bar³(z) {
+//│         let tmp;
+//│         set tmp = new Function$⁹(y¹, z);
+//│         return tmp
+//│       }
 //│     };
 //│     end
 //│   }
@@ -270,10 +265,7 @@ module Foo with
 
 :expect 3
 Foo.Bar(1).bar(1)(1)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '3', got: 'NaN'
-//│ = NaN
+//│ = 3
 
 
 let x = 1
@@ -290,7 +282,7 @@ y => x + y
 //│ define Function$¹⁰ as class Function$¹¹ {
 //│   method call¹⁰ = fun call¹¹(y) { return lambda¹¹(y) }
 //│ };
-//│ set tmp = new Function$¹¹;
+//│ set tmp = new Function$¹¹();
 //│ tmp
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = class anonymous
@@ -382,7 +374,7 @@ foo.Foo#x
 :ge
 foo.f(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if f is a function object.
-//│ ║  l.383: 	foo.f(0)
+//│ ║  l.375: 	foo.f(0)
 //│ ╙──       	^^^^^
 //│ = 1
 
@@ -400,7 +392,7 @@ foo.Foo#f(0)
 :ge
 foo.x(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if x is a function object.
-//│ ║  l.401: 	foo.x(0)
+//│ ║  l.393: 	foo.x(0)
 //│ ╙──       	^^^^^
 
 
@@ -444,19 +436,7 @@ module Bar with
   fun f(x) = w(h) + x
 
 Bar.f(0)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'h')
-//│     at Function$66.call (REPL202:1:397)
-//│     at Bar5.w (REPL202:1:782)
-//│     at Bar5.f (REPL202:1:982)
-//│     at REPL205:1:44
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:552:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:887:10)
-//│     at REPLServer.emit (node:events:508:28)
+//│ = 1
 
 module Foo with
   fun f(x) = x + 1
@@ -474,10 +454,7 @@ let f = x => y => x + y
 
 :expect 3
 f(1)(2)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '3', got: 'NaN'
-//│ = NaN
+//│ = 3
 
 
 :sir
@@ -498,27 +475,21 @@ fun foo(x)(y) = x + y
 //│     return lambda$¹(x², y)
 //│   }
 //│ };
-//│ define foo⁵ as fun foo⁶(x) { let tmp; set tmp = new Function$¹³; return tmp };
+//│ define foo⁵ as fun foo⁶(x) { let tmp; set tmp = new Function$¹³(x); return tmp };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
 :expect 1
 let bar = foo(1) in bar(0)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '1', got: 'NaN'
-//│ = NaN
+//│ = 1
 
 fun foo(x)(y)(z) = x + y + z
 
 
 :expect 2
 let bar = foo(1) in let baz = bar(0) in baz(1)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '2', got: 'NaN'
-//│ = NaN
+//│ = 2
 
 
 fun foo(x) =
@@ -546,7 +517,7 @@ foo(tuple)
 //│     return Predef⁰.tuple⁰()
 //│   }
 //│ };
-//│ set tmp = new Function$¹⁵;
+//│ set tmp = new Function$¹⁵();
 //│ foo⁷(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ═══[RUNTIME ERROR] Expected: '["abc"]', got: '[]'
