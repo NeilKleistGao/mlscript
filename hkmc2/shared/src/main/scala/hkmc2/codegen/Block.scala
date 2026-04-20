@@ -700,8 +700,8 @@ sealed abstract class Result extends AutoLocated:
     case _: Value => true
     case sel @ Select(q, n) =>
       q.isPure && sel.symbol.exists(_.isPure)
-    case Call(Value.Ref(bs: BuiltinSymbol, _), as) if bs.isPure =>
-      as.forall(_.value.isPure)
+    case Call(Value.Ref(bs: BuiltinSymbol, _), ass) if bs.isPure =>
+      ass.forall(_.forall(_.value.isPure))
     case Record(mut, args) => args.forall(_.value.isPure)
     case Tuple(mut, elems) => elems.forall(_.value.isPure)
     // case Instantiate(mut, cls, args) => // TODO?
@@ -712,8 +712,8 @@ sealed abstract class Result extends AutoLocated:
   // * is from some different place (with a different Origin), such as the location attached to symbols.
   // * That's why for example, we're not adding the `l` of `Value.Ref` to the children list.
   protected def children: Vector[Located] = this match
-    case Call(fun, args) => fun +: args.iterator.map(_.value).toVector
-    case Instantiate(mut, cls, args) => cls +: args.iterator.map(_.value).toVector
+    case Call(fun, argss) => fun +: argss.iterator.flatten.map(_.value).toVector
+    case Instantiate(mut, cls, argss) => cls +: argss.iterator.flatten.map(_.value).toVector
     case Select(qual, name) => Vector.double(qual, name)
     case DynSelect(qual, fld, arrayIdx) => Vector.double(qual, fld)
     case Lambda(params, body) => Vector.single(params)
@@ -725,16 +725,16 @@ sealed abstract class Result extends AutoLocated:
   
   // TODO rm Lam from values and thus the need for this method
   def subBlocks: Ls[Block] = this match
-    case Call(fun, args) => fun.subBlocks ::: args.flatMap(_.value.subBlocks)
-    case Instantiate(mut, cls, args) => args.flatMap(_.value.subBlocks)
+    case Call(fun, argss) => fun.subBlocks ::: argss.flatten.flatMap(_.value.subBlocks)
+    case Instantiate(mut, cls, argss) => argss.flatten.flatMap(_.value.subBlocks)
     case Select(qual, name) => qual.subBlocks
     case Lambda(params, body) => body :: Nil
     case Tuple(mut, elems) => elems.flatMap(_.value.subBlocks)
     case _ => Nil
   
   lazy val freeVars: Set[Local] = this match
-    case Call(fun, args) => fun.freeVars ++ args.flatMap(_.value.freeVars).toSet
-    case Instantiate(mut, cls, args) => cls.freeVars ++ args.flatMap(_.value.freeVars).toSet
+    case Call(fun, argss) => fun.freeVars ++ argss.flatten.flatMap(_.value.freeVars).toSet
+    case Instantiate(mut, cls, argss) => cls.freeVars ++ argss.flatten.flatMap(_.value.freeVars).toSet
     case Select(qual, name) => qual.freeVars 
     case Lambda(params, body) => body.freeVars -- params.paramSyms
     case Tuple(mut, elems) => elems.flatMap(_.value.freeVars).toSet
@@ -746,8 +746,8 @@ sealed abstract class Result extends AutoLocated:
     case DynSelect(qual, fld, arrayIdx) => qual.freeVars ++ fld.freeVars
   
   lazy val freeVarsLLIR: Set[Local] = this match
-    case Call(fun, args) => fun.freeVarsLLIR ++ args.flatMap(_.value.freeVarsLLIR).toSet
-    case Instantiate(mut, cls, args) => cls.freeVarsLLIR ++ args.flatMap(_.value.freeVarsLLIR).toSet
+    case Call(fun, argss) => fun.freeVarsLLIR ++ argss.flatten.flatMap(_.value.freeVarsLLIR).toSet
+    case Instantiate(mut, cls, argss) => cls.freeVarsLLIR ++ argss.flatten.flatMap(_.value.freeVarsLLIR).toSet
     case Select(qual, name) => qual.freeVarsLLIR 
     case Lambda(params, body) => body.freeVarsLLIR -- params.paramSyms
     case Tuple(mut, elems) => elems.flatMap(_.value.freeVarsLLIR).toSet
@@ -774,9 +774,9 @@ type Local = Symbol
  * regardless of whether the check for effect is inserted or not.
  * Note that the check for effect is inserted during HandlerLowering and setting this to true
  * after handler is lowered does not have any effect on the code generation. */
-case class Call(fun: Path, args: Ls[Arg])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result
+case class Call(fun: Path, argss: Ls[Ls[Arg]])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result
 
-case class Instantiate(mut: Bool, cls: Path, args: Ls[Arg]) extends Result
+case class Instantiate(mut: Bool, cls: Path, argss: Ls[Ls[Arg]]) extends Result
 
 case class Lambda(params: ParamList, body: Block) extends Result
 
