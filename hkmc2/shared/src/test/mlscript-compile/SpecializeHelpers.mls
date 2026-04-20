@@ -26,6 +26,19 @@ fun getCacheName(name, isClass) =
 
 fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
 
+fun getStagedClassInfo(c) =
+  let actualClass = getActualClass(c)
+  let clsName = actualClass.(Symbols.definitionMetadata).1
+  [actualClass, clsName]
+
+fun getClassGenMap(c) =
+  let info = getStagedClassInfo(c)
+  info.0.(getGenMapName(info.1, true))
+
+fun getClassCache(c) =
+  let info = getStagedClassInfo(c)
+  info.0.(getCacheName(info.1, true))
+
 fun wrapScoped(symbols, block) =
   if symbols.length is 0 then block
   else if block is Scoped(oldSymbols, rest) then Scoped([...symbols, ...oldSymbols], rest)
@@ -78,7 +91,7 @@ module Ctx with
 class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, [Block.Block, Shape]]) with
   val printer = Printer(Some(owner))
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
-  // NOTE: this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
+  // this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
   fun setFun(k, v) = cache.set(k, v); v
   fun toString() =
     let decl = if owner is
@@ -188,10 +201,7 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
     ValueRef(l) then mkDyn()
 
 fun isStagedClass(c) = 
-  let actualClass = getActualClass(c)
-  let clsName = actualClass.(Symbols.definitionMetadata).1
-  let genMapName = getGenMapName(clsName, true)
-  not (actualClass.(genMapName) is undefined)
+  not (getClassGenMap(c) is undefined)
 
 // split a shapeset of class symbols into known ones and unknown ones
 fun fsplit(pss) = 
@@ -222,10 +232,7 @@ fun sor(ctx, r) = if r is
       else throw Error("Instantiate with non-ClassSymbol in shape propagation: " + cls.toString())
     let argsShape = args.map(a => sop(ctx, a.value))
     isStagedClass(clsSymb.value) and
-      let actualClass = getActualClass(clsSymb.value)
-      let clsName = clsSymb.name 
-      let cacheName = getCacheName(clsName, true)
-      let cache = actualClass.(cacheName)
+      let cache = getClassCache(clsSymb.value)
       not (cache is undefined) then
         let res = SpecializeHelpers.specializeCtor(clsSymb, argsShape, ctx.clearCtx)
         [End(), r, res]
@@ -245,10 +252,8 @@ fun sor(ctx, r) = if r is
         [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))] // FIXME
       ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
         isStagedClass(clsSymb.value) then
-          let actualClass = getActualClass(clsSymb.value)
-          let clsName = actualClass.(Symbols.definitionMetadata).1
-          let cacheName = getCacheName(clsName, true)
-          if not (actualClass.(cacheName) is undefined) then
+          let cache = getClassCache(clsSymb.value)
+          if not (cache is undefined) then
             let res = SpecializeHelpers.specializeCtor(clsSymb, argShapes, ctx.clearCtx)
             [End(), r, res]
           else throw Error("class is staged but cache not found")
@@ -316,10 +321,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
       let entry = [...knownMap.entries()].0
       let C_i = entry.0
       let ss_i = entry.1
-      let actualClass = getActualClass(C_i.value)
-      let clsName = actualClass.(Symbols.definitionMetadata).1
-      let genMapName = getGenMapName(clsName, true)
-      let genMap = actualClass.(genMapName)
+      let genMap = getClassGenMap(C_i.value)
       let f_gen = genMap.get(f)
       let generated = f_gen(ss_i)(...argShapes)
       let retSym = generated.0
@@ -341,10 +343,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
       let armsRet = [...knownMap.entries()].map(entry =>
         let C_i = entry.0
         let ss_i = entry.1
-        let actualClass = getActualClass(C_i.value)
-        let clsName = actualClass.(Symbols.definitionMetadata).1
-        let genMapName = getGenMapName(clsName, true)
-        let genMap = actualClass.(genMapName)
+        let genMap = getClassGenMap(C_i.value)
         let f_gen = genMap.get(f)
         let generated = f_gen(ss_i)(...argShapes)
         let retSym = generated.0

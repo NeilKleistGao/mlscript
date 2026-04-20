@@ -4,6 +4,7 @@ import "./Option.mls"
 import "./Predef.mls"
 import "./Shape.mls"
 import "./StrOps.mls"
+import "./Runtime.mls"
 
 open Block {ConcreteClassSymbol, Path, Symbol, Param}
 open Shape {Dyn, Lit, Arr, Class}
@@ -74,10 +75,9 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
     let entries = [...paramsMap.entries()]
     let keys = entries.map(a =>
       let s = Symbol(a.0)
-      if psOpt is Some(pss) then
+      if psOpt is Some(pss) then 
         let found = pss.flat().find(p => p.sym.name === a.0)
-        if found is undefined then
-          Param(None, s)
+        if found is Runtime.Unit then Param(None, s)
         else found
       else Param(None, s)
     )
@@ -136,7 +136,7 @@ fun val2path(v, allocs) =
     let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
     let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
-  else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
+  else if not(v is undefined) and not (v is null) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
     let meta = v.constructor.(Symbols.definitionMetadata)
     let clsName = meta.1
     // class may have no parameters

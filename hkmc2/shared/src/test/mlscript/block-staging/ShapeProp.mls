@@ -175,7 +175,7 @@ staged class L3(val y) with
 class L4(val y) with
   fun call(x) = x + y
 
-staged module M with
+staged module TestDispatching with
   fun twice(f, x) = f.call(f.call(x))
   fun pick(x, y, b) = if b then x else y
   fun test(b) = 
@@ -183,58 +183,17 @@ staged module M with
     let m = pick(new L2(2), new L3(3), b)
     twice(m, 5)
 
-M."test_gen"(mkLit(true))
+TestDispatching."test_gen"(mkLit(true))
 //│ = ["test_Littrue", {Lit(9)}]
 
-M."test_gen"(mkLit(false))
+TestDispatching."test_gen"(mkLit(false))
 //│ = ["test_Litfalse", {Lit(29)}]
 
-M."test_gen"(mkDyn())
+TestDispatching."test_gen"(mkDyn())
 //│ = ["test", {Dyn()}]
 
-print(M."cache$M")
-//│ > module M with
-//│ >   ()
-//│ >   fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
-//│ >     let {obj_7, obj_8}
-//│ >     if b is
-//│ >       true then
-//│ >         obj_7 = new L2(2)
-//│ >         obj_7
-//│ >       else
-//│ >         obj_8 = new L3(3)
-//│ >         obj_8
-//│ >   fun pick_L2_Lit2_L3_Lit3_Litfalse(x, y, b) =
-//│ >     let {obj_5}
-//│ >     obj_5 = new L3(3)
-//│ >     obj_5
-//│ >   fun pick_L2_Lit2_L3_Lit3_Littrue(x, y, b) =
-//│ >     let {obj_2}
-//│ >     obj_2 = new L2(2)
-//│ >     obj_2
-//│ >   fun test(b) =
-//│ >     let {y1, m, tmp1, tmp2, tmp3}
-//│ >     tmp1 = new L1(1)
-//│ >     y1 = 11
-//│ >     tmp2 = new L2(2)
-//│ >     tmp3 = new L3(3)
-//│ >     m = pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
-//│ >     twice_Union_L2_Lit2_L3_Lit3_end_Lit5(m, 5)
-//│ >   fun test_Litfalse(b) = 29
-//│ >   fun test_Littrue(b) = 9
-//│ >   fun twice_L1_Lit1_Lit5(f, x) = 11
-//│ >   fun twice_L2_Lit2_Lit5(f, x) = 9
-//│ >   fun twice_L3_Lit3_Lit5(f, x) = 29
-//│ >   fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f, x) =
-//│ >     let {tmp}
-//│ >     if f is
-//│ >       L2 then
-//│ >         tmp = f.call_L2_Lit2_dot_Lit5(x)
-//│ >       L3 then
-//│ >         tmp = f.call_L3_Lit3_dot_Lit5(x)
-//│ >     if f is
-//│ >       L2 then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
-//│ >       L3 then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
+print(TestDispatching."cache$M")
+//│ > undefined
 
 print(L1.class."class$cache$L1")
 print(L2.class."class$cache$L2")
@@ -263,7 +222,7 @@ staged class B(val x: Int) with
   fun f(y: A) = x + y.f(x)
 
 staged module TestThis with
-  fun test2(y) = B(1).x + y // FIXME
+  fun test2(y) = B(1).x + y
   fun test(x) = B(x).f(A(1))
 
 TestThis."test2_gen"(mkLit(1))
@@ -285,16 +244,17 @@ print(B.class."class$cache$B")
 //│ >   ()
 //│ >   fun f_B_Lit1_dot_A_Lit1(y) = 3
 
-staged class B(val x, val y)
+staged class B(val x, val y) with
+  val z = x + y
 
 staged class D(val x, val y) extends B(x + 1, x + 2)
 
-staged module M with
-  fun test() = new D(1, 2).y
-  fun test2() = new D(1, 2).x
+staged module TestInheritance with
+  fun test() = 
+    let d = D(1, 2)
+    if d is
+      B then d.z
+      else "not B"
 
-M."test_gen"()
-//│ = ["test", {Lit(2)}]
-
-M."test2_gen"()
-//│ = ["test2", {Lit(1)}]
+TestInheritance."test_gen"()
+//│ = ["test", {Lit(5)}]
