@@ -453,7 +453,30 @@ class TailRecOpt(using State, TL, Raise):
       PlainParamList(params) :: Nil,
       loop)(false, N, Visibility.Public) // Q: maybe should be Private?
     
-    if funs.size === 1 then (N, loopDefn :: Nil)
+    if funs.size === 1 then
+      val f = funs.head
+      if f.params.length > 1 then
+        // When a function has multiple param lists, TailRecOpt flattens them into a single
+        // param list for the internal loop. We need a wrapper function that preserves the
+        // original multi-param-list interface and delegates to the flattened internal loop.
+        val loopBms = BlockMemberSymbol(bms.nme + "$tailrec", Nil, true)
+        val loopDSym = TermSymbol(syntax.Fun, owner, Tree.Ident(loopBms.nme))
+        val internalLoopDefn = FunDefn(
+          owner, loopBms, loopDSym,
+          PlainParamList(params) :: Nil,
+          loop)(false, N, Visibility.Private)
+        val paramArgs = getParamSyms(f).map(_.asPath.asArg)
+        val internalSel = owner match
+          case Some(value) => Select(Value.Ref(value, N), Tree.Ident(loopBms.nme))(S(loopDSym))
+          case None => Value.Ref(loopBms, S(loopDSym))
+        val wrapperBod = Return(
+          Call(internalSel, paramArgs :: Nil)(true, false, false),
+          false
+        )
+        val wrapperDefn = FunDefn(f.owner, f.sym, f.dSym, f.params, wrapperBod)(false, N, f.visibility)
+        (S(internalLoopDefn), wrapperDefn :: Nil)
+      else
+        (N, loopDefn :: Nil)
     else (S(loopDefn), rewrittenFuns)
   
   def optFunctions(fs: List[FunDefn], owner: Opt[InnerSymbol])(using (ScopeData, AccessMap)) =
