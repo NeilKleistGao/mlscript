@@ -1,3 +1,5 @@
+#config(liftDefns: true)
+
 import "./Predef.mls"
 import "./Option.mls"
 open Predef
@@ -118,8 +120,27 @@ module SimpleRegExp with
           else impl(p, s.slice(1), res)
     impl(p, s, [])
 
-  // p*\w+@p+\w+
+  // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
   val email =
-    // p = \w+(-|\.)
     let p = Concat(plus(words), Union(Exact("-"), Exact(".")))
     Concat(Concat(Concat(Star(p), plus(words)), Exact("@")), Concat(plus(p), plus(words)))
+
+  // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
+  val uri =
+    let n1 = Not(["/", "?", "#"].concat(space))
+    let n2 = Not(["?", "#"].concat(space))
+    let n3 = Not(["#".concat(space)])
+    let head = Concat(plus(words), Concat(Exact(":"), Concat(Exact("/"), Exact("/"))))
+    let body = Concat(plus(n1), plus(n2))
+    let params = Concat(question(Concat(Exact("?"), Star(Union(words, Union(digits, Union(Exact("-"), Exact("_"))))))), question(Concat(Exact("#"), Star(Union(words, Union(digits, Union(Exact("-"), Exact("_"))))))))
+    Concat(head, Concat(body, params))
+
+  // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
+  val ipv4 =
+    let fo = In(["0", "1", "2", "3", "4"])
+    let fi = In(["0", "1", "2", "3", "4", "5"])
+    let s = Union(Concat(Exact("2"), Concat(Exact("5"), fi)), Union(
+      Concat(Exact("2"), Concat(fo, digits)),
+      Concat(question(Exact("1")), Concat(question(digits), digits))
+    ))
+    Concat(nTimes(Concat(s, Exact(".")), 3), s)

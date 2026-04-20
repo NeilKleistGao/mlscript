@@ -167,6 +167,29 @@ match(email, "f@a")
 //│ = None
 
 
+match(uri, "http://foo.bar.com")
+//│ = Some("http://foo.bar.com")
+
+
+match(uri, "http://foo.bar.com?xxx")
+//│ = Some("http://foo.bar.com?xxx")
+
+
+match(uri, "http://foo.bar.com?xxx#42")
+//│ = Some("http://foo.bar.com?xxx#42")
+
+
+match(uri, "http://foo.bar.com#42")
+//│ = Some("http://foo.bar.com#42")
+
+
+match(ipv4, "8.8.8.8")
+//│ = Some("8.8.8.8")
+
+match(ipv4, "192.168.1.1")
+//│ = Some("192.168.1.1")
+
+
 :silent
 import "fs"
 
@@ -175,4 +198,11 @@ import "fs"
 let text = fs.readFileSync("./hkmc2/shared/src/test/mlscript-compile/staging/benchmark/input-text.txt", "utf8")
 
 
+// :expect 6
 // matchAll(email, text).length
+
+// :expect 531
+// matchAll(uri, text).length
+
+// :expect 4
+// matchAll(ipv4, text).length
