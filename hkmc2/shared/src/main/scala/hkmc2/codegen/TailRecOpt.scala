@@ -99,15 +99,9 @@ class TailRecOpt(using State, TL, Raise):
     var edges: List[CallEdge] = Nil
     
     def find =
-      // Ignore functions with multiple parameter lists
-      if f.params.length > 1 then
-        if f.forceTailRec then
-          raise(ErrorReport(msg"Functions with more than one parameter list may not be marked @tailrec." -> f.dSym.toLoc :: Nil))
-        Nil
-      else
-        edges = Nil
-        applyBlock(f.body)
-        edges
+      edges = Nil
+      applyBlock(f.body)
+      edges
     
     override def applyBlock(b: Block): Unit = b match
       case TailCallShape(r, c) => edges ::= CallEdge.TailCall(f.dSym, r)(c)
@@ -176,26 +170,24 @@ class TailRecOpt(using State, TL, Raise):
       val x = f(item)
       if x > l then x else l
   
-  def getParamSyms(f: FunDefn) = f.params.headOption match
-    case Some(ParamList(_, params, S(rest))) =>
+  def getParamSyms(f: FunDefn) = f.params.flatMap:
+    case ParamList(_, params, S(rest)) =>
       params.map(_.sym).appended(rest.sym)
-    case Some(p) => p.params.map(_.sym)
-    case None => Nil
+    case p => p.params.map(_.sym)
   
-  // assume only one parameter list
-  def paramsLen(f: FunDefn): Int = f.params match
-    case head :: next =>
-      if head.restParam.isDefined then 1 + head.params.length
-      else head.params.length
-    case Nil => 0
+  def paramsLen(f: FunDefn): Int = f.params.foldLeft(0): (acc, head) =>
+    acc + (if head.restParam.isDefined then 1 + head.params.length
+    else head.params.length)
   
   def rewriteCallArgs(f: FunDefn, c: Call): Opt[List[Result]] =
     // need to be careful in handling restParams
     // if any arg is a spread that spreads across multiple parameters, then
     // we ignore it for now
-    val ret = f.params match
-      case head :: Nil =>
-        val cArgs = c.argss.headOption.getOrElse(Nil)
+    // The call must supply exactly as many arg lists as the function has param lists
+    if c.argss.length =/= f.params.length then return N
+    val allResults = f.params.zip(c.argss).foldLeft[Opt[List[Result]]](S(Nil)):
+      case (N, _) => N
+      case (S(acc), (head, cArgs)) =>
         val (headArgs, restArgs) = head.restParam match
           case Some(value) => cArgs.splitAt(head.params.length)
           case None => (cArgs, Nil)
@@ -215,12 +207,10 @@ class TailRecOpt(using State, TL, Raise):
             restArgs match
               case Arg(S(SpreadKind.Eager), value) :: Nil => value
               case _ => Tuple(true, restArgs)
-          hd.appended(rest)
+          S(acc ::: hd.appended(rest))
         else
-          hd
-      case Nil => c.argss.headOption.getOrElse(Nil).map(_.value)
-      case _ => return N
-    S(ret)
+          S(acc ::: hd)
+    allResults
     
   def optScc(scc: SccOfCalls, owner: Opt[InnerSymbol])(using accessInfo: (ScopeData, AccessMap)): (Opt[FunDefn], List[FunDefn]) =
     // sort the functions so the order is more predictable
@@ -259,6 +249,7 @@ class TailRecOpt(using State, TL, Raise):
       .toList
     val paramSymsArr = ArrayBuffer.from(paramSyms)
     val dSymIds = funs.map(_.dSym).zipWithIndex.toMap
+    val dSymToDefn = funs.map(f => f.dSym -> f).toMap
     val bms =
       if funs.size === 1 then funs.head.sym
       else BlockMemberSymbol(funs.map(_.sym.nme).mkString("_"), Nil, true)
@@ -310,14 +301,15 @@ class TailRecOpt(using State, TL, Raise):
       val symRewriter = new BlockTransformer(subst)
       
       override def applyBlock(b: Block): Block = b match
-        case TailCallShape(dSym, c) => dSymIds.get(dSym) match
+        case TailCallShape(calleeSym, c) => dSymIds.get(calleeSym) match
           case Some(id) =>
-            val argVals = rewriteCallArgs(f, c) match
+            val callee = dSymToDefn(calleeSym)
+            val argVals = rewriteCallArgs(callee, c) match
               case Some(value) => value
               case None => return super.applyBlock(b)
             val cont =
               if scc.funs.size === 1 then Continue(loopSym)
-              else Assign(curIdSym, Value.Lit(Tree.IntLit(dSymIds(dSym))), Continue(loopSym))
+              else Assign(curIdSym, Value.Lit(Tree.IntLit(dSymIds(calleeSym))), Continue(loopSym))
             
             // In some cases, we could have assignments like this:
             // param0 = whatever

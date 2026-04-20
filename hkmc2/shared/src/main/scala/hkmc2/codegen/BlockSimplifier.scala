@@ -262,6 +262,18 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
             val (fixedArgs, restArgs) = args.splitAt(params.params.size)
             S(fixedArgs.zip(params.params).map((arg, param) => (param.sym, arg.value)) ++
               List((params.restParam.get.sym, Tuple(true, restArgs))))
+      
+      /** Match multiple argument lists against multiple parameter lists.
+        * Returns None if any arg list fails to match its corresponding param list,
+        * or if there are fewer arg lists than param lists (partial application). */
+      def matchAllArgs(argss: List[List[Arg]], params: List[ParamList]): Option[List[(VarSymbol, Result)]] =
+        if argss.length < params.length then return N
+        val matchedPairs = argss.zip(params)
+        val allMatched = matchedPairs.foldLeft[Option[List[(VarSymbol, Result)]]](S(Nil)):
+          case (N, _) => N
+          case (S(acc), (args, paramList)) =>
+            matchArgs(args, paramList).map(acc ::: _)
+        allMatched
     
     import Inliner.*
     
@@ -357,7 +369,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
             calls.foreach: (caller, call) =>
               if map.contains(sym) then
                 map(sym).hasNakedRef = map(sym).hasNakedRef ||
-                  map(sym).defn.params.sizeCompare(1) =/= 0 || call.argss.headOption.flatMap(matchArgs(_, map(sym).defn.params.head)).isEmpty
+                  call.argss.length < map(sym).defn.params.length || matchAllArgs(call.argss, map(sym).defn.params).isEmpty
                 caller.foreach: caller =>
                   edges.append((caller, sym))
           
@@ -441,7 +453,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
               FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, blk)(fun.forceTailRec, fun.configOverride, fun.visibility)
         
         override def applyResult(r: Result)(k: Result => Block): Block = r match
-          case Call(TermSymbolPath(ts), args :: _) if m.contains(ts) =>
+          case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
             newFunctionBody.get(ts)
             .getOrElse:
               newFunctionBody(ts) = N
@@ -450,23 +462,30 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
               S(newBdy)
             .fold(super.applyResult(r)(k)): blk =>
               val info = m(ts)
-              if !info.shouldBeInlined(blk) || info.defn.params.size =/= 1 then
+              if !info.shouldBeInlined(blk) || argss.length < info.defn.params.length then
                 super.applyResult(r)(k)
               else
-                val matchedArgs = matchArgs(args, info.defn.params.head)
+                val matchedArgs = matchAllArgs(argss, info.defn.params)
                 matchedArgs match
                 case N =>
                   super.applyResult(r)(k)
                 case S(matchedArgs) =>
                   registerChange
-                  tl.log(s"Inline call for ${ts}, with args ${args}")
+                  tl.log(s"Inline call for ${ts}, with args ${argss}")
+                  val extraArgss = argss.drop(info.defn.params.length)
                   def go(acc: Block => Block, args: List[(VarSymbol, Result)], mapping: Map[Symbol, Symbol]): Block =
                     args match
                     case Nil =>
                       val resSym = TempSymbol(N, "inlinedVal")
                       val copier = Copier(resSym, mapping)
                       val newBlk = copier.applyBlock(blk)
-                      acc(Scoped(Set.single(resSym), newBlk(k(Value.Ref(resSym)))))
+                      if extraArgss.isEmpty then
+                        acc(Scoped(Set.single(resSym), newBlk(k(Value.Ref(resSym)))))
+                      else
+                        val extraSym = TempSymbol(N, "inlinedCallBase")
+                        acc(Scoped(Set(resSym, extraSym), newBlk(
+                          Assign(extraSym, Value.Ref(resSym),
+                            k(Call(extraSym.asPath, extraArgss)(c.isMlsFun, c.mayRaiseEffects, false))))))
                     case (sym, value) :: argRest =>
                       val newSym = VarSymbol(sym.id)
                       go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
