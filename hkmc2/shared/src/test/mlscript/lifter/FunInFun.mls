@@ -122,9 +122,9 @@ f1()
 let y = f2().toString()
 x + y
 //│ = "01"
-//│ f1 = fun
-//│ f2 = fun
-//│ ret = Tuple(fun, fun)
+//│ f1 = fun inlinedLambda
+//│ f2 = fun inlinedLambda
+//│ ret = Tuple(fun inlinedLambda, fun inlinedLambda)
 //│ x = "0"
 //│ y = "1"
 
@@ -157,11 +157,11 @@ a.toString() + b + c + d
 //│ b = 1
 //│ c = 10
 //│ d = 110
-//│ g2 = fun
-//│ gRet = Tuple(fun, fun)
-//│ hFun = fun
-//│ iFun = fun
-//│ ret = Tuple(Tuple(fun, fun), fun)
+//│ g2 = fun inlinedLambda
+//│ gRet = Tuple(fun inlinedLambda, fun inlinedLambda)
+//│ hFun = fun inlinedLambda
+//│ iFun = fun inlinedLambda
+//│ ret = Tuple(Tuple(fun inlinedLambda, fun inlinedLambda), fun inlinedLambda)
 
 // some variables mutated, some not
 :sir
@@ -261,7 +261,7 @@ fun g() =
   f
 g()(1)
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let h², f⁶, g⁶, tmp, Capture$scope0⁰, f$⁰;
+//│ let h², f⁶, g⁶, Capture$scope0⁰, f$⁰;
 //│ define Capture$scope0⁰ as class Capture$scope0² {
 //│   constructor Capture$scope0¹(y$0) {
 //│     define y$0⁰ as val y$0¹ = y$0;
@@ -289,8 +289,7 @@ g()(1)
 //│   set f$here = f$¹(scope0$cap);
 //│   return f$here
 //│ };
-//│ set tmp = g⁷();
-//│ tmp(1)
+//│ g⁷()(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
@@ -305,7 +304,7 @@ let ret = f()
 ret()
 ret()
 //│ = 2
-//│ ret = fun
+//│ ret = fun inlinedLambda
 
 :expect 6
 fun f(x, y, z) =

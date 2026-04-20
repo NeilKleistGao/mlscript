@@ -31,10 +31,9 @@ private fun f(a)(b) = 0
 f(1)(2)
 //│ dead-param-elim > >>> dead-param-elim results >>>
 //│ dead-param-elim > prodfun f#0 @ <root> -> eliminable: {0}
-//│ dead-param-elim > prodfun f#1 @ <root> -> eliminable: {0}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f⁴, tmp; define f⁴ as fun f⁵()() { return 0 }; set tmp = f⁵(); tmp()
+//│ let f⁴; define f⁴ as fun f⁵()(b) { return 0 }; f⁵()(2)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
 
@@ -93,13 +92,18 @@ f(1, 2)
 :soir
 private fun f(a)(b) = a
 f(1)(2)
-//│ dead-param-elim > >>> dead-param-elim results >>>
-//│ dead-param-elim > prodfun f#1 @ <root> -> eliminable: {0}
-//│ dead-param-elim > <<< dead-param-elim results <<<
-//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f¹⁴, tmp; define f¹⁴ as fun f¹⁵(a)() { return a }; set tmp = f¹⁵(1); tmp()
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 1
+//│ FAILURE: Unexpected exception
+//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
+//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
+//│ 	at: hkmc2.codegen.DeadParamElimSolver.<init>(DeadParamElim.scala:134)
+//│ 	at: hkmc2.codegen.DeadParamElim$.apply(DeadParamElim.scala:408)
+//│ 	at: hkmc2.JSBackendDiffMaker.processTerm(JSBackendDiffMaker.scala:153)
+//│ 	at: hkmc2.InvalMLDiffMaker.processTerm(InvalmlDiffMaker.scala:36)
+//│ 	at: hkmc2.LlirDiffMaker.processTerm(LlirDiffMaker.scala:63)
+//│ 	at: hkmc2.MLsDiffMaker.processTrees(MLsDiffMaker.scala:350)
+//│ 	at: hkmc2.MLsDiffMaker.processOrigin(MLsDiffMaker.scala:314)
+//│ 	at: hkmc2.DiffMaker.processBlock(DiffMaker.scala:249)
+//│ 	at: hkmc2.DiffMaker.rec(DiffMaker.scala:363)
 
 :deadParamElim
 :soir
@@ -109,7 +113,7 @@ f(1)(2)
 //│ dead-param-elim > prodfun f#0 @ <root> -> eliminable: {0}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f¹⁶, tmp; define f¹⁶ as fun f¹⁷()(b) { return b }; set tmp = f¹⁷(); tmp(2)
+//│ let f¹⁴; define f¹⁴ as fun f¹⁵()(b) { return b }; f¹⁵()(2)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 2
 
@@ -125,7 +129,7 @@ f(3)
 //│ dead-param-elim > prodfun f#0 @ <root> -> eliminable: {0}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f¹⁸; define f¹⁸ as fun f¹⁹() { return 0 }; do f¹⁹(); do f¹⁹(); f¹⁹()
+//│ let f¹⁶; define f¹⁶ as fun f¹⁷() { return 0 }; do f¹⁷(); do f¹⁷(); f¹⁷()
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
 
@@ -139,7 +143,7 @@ private fun g() =
 //│ dead-param-elim > prodfun f#0 @ <root> -> eliminable: {0}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let g⁰; define g⁰ as fun g¹() { let f; define f as fun f²⁰() { return 3 }; return f²⁰() }; end
+//│ let g⁰; define g⁰ as fun g¹() { let f; define f as fun f¹⁸() { return 3 }; return f¹⁸() }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 

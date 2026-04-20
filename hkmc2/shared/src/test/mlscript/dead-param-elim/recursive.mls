@@ -159,40 +159,18 @@ pong(5, 0)
 private fun ping(n)(unused) = if n == 0 then 0 else pong(n - 1)(unused)
 private fun pong(n)(unused) = if n == 0 then 0 else ping(n - 1)(unused)
 ping(5)(99)
-//│ dead-param-elim > >>> dead-param-elim results >>>
-//│ dead-param-elim > prodfun ping#1 @ <root> -> eliminable: {0}
-//│ dead-param-elim > prodfun pong#1 @ <root> -> eliminable: {0}
-//│ dead-param-elim > <<< dead-param-elim results <<<
-//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let ping⁴, pong⁴, tmp;
-//│ define ping⁴ as fun ping⁵(n)() {
-//│   let scrut, tmp1, tmp2;
-//│   set scrut = Predef⁰.equals⁰(n, 0);
-//│   match scrut
-//│     true =>
-//│       return 0
-//│     else
-//│       set tmp1 = -⁰(n, 1);
-//│       set tmp2 = pong⁵(tmp1);
-//│       return tmp2()
-//│   end
-//│ };
-//│ define pong⁴ as fun pong⁵(n)() {
-//│   let scrut, tmp1, tmp2;
-//│   set scrut = Predef⁰.equals⁰(n, 0);
-//│   match scrut
-//│     true =>
-//│       return 0
-//│     else
-//│       set tmp1 = -⁰(n, 1);
-//│       set tmp2 = ping⁵(tmp1);
-//│       return tmp2()
-//│   end
-//│ };
-//│ set tmp = ping⁵(5);
-//│ tmp()
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 0
+//│ FAILURE: Unexpected exception
+//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
+//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
+//│ 	at: hkmc2.codegen.DeadParamElimSolver.<init>(DeadParamElim.scala:134)
+//│ 	at: hkmc2.codegen.DeadParamElim$.apply(DeadParamElim.scala:408)
+//│ 	at: hkmc2.JSBackendDiffMaker.processTerm(JSBackendDiffMaker.scala:153)
+//│ 	at: hkmc2.InvalMLDiffMaker.processTerm(InvalmlDiffMaker.scala:36)
+//│ 	at: hkmc2.LlirDiffMaker.processTerm(LlirDiffMaker.scala:63)
+//│ 	at: hkmc2.MLsDiffMaker.processTrees(MLsDiffMaker.scala:350)
+//│ 	at: hkmc2.MLsDiffMaker.processOrigin(MLsDiffMaker.scala:314)
+//│ 	at: hkmc2.DiffMaker.processBlock(DiffMaker.scala:249)
+//│ 	at: hkmc2.DiffMaker.rec(DiffMaker.scala:363)
 
 
 :deadParamElim
@@ -200,15 +178,79 @@ ping(5)(99)
 fun ping(n)(unused) = if n == 0 then 0 else pong(n - 1)(unused)
 fun pong(n)(unused) = if n == 0 then 0 else ping(n - 1)(unused)
 ping(5)(99)
-//│ dead-param-elim > >>> dead-param-elim results >>>
-//│ dead-param-elim > <<< dead-param-elim results <<<
-//│ = 0
+//│ FAILURE: Unexpected exception
+//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
+//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
+//│ 	at: hkmc2.codegen.DeadParamElimSolver.<init>(DeadParamElim.scala:134)
+//│ 	at: hkmc2.codegen.DeadParamElim$.apply(DeadParamElim.scala:408)
+//│ 	at: hkmc2.JSBackendDiffMaker.processTerm(JSBackendDiffMaker.scala:153)
+//│ 	at: hkmc2.InvalMLDiffMaker.processTerm(InvalmlDiffMaker.scala:36)
+//│ 	at: hkmc2.LlirDiffMaker.processTerm(LlirDiffMaker.scala:63)
+//│ 	at: hkmc2.MLsDiffMaker.processTrees(MLsDiffMaker.scala:350)
+//│ 	at: hkmc2.MLsDiffMaker.processOrigin(MLsDiffMaker.scala:314)
+//│ 	at: hkmc2.DiffMaker.processBlock(DiffMaker.scala:249)
+//│ 	at: hkmc2.DiffMaker.rec(DiffMaker.scala:363)
 
 
 :expect 0
 ping(5)(0)
 pong(5)(0)
-//│ = 0
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
+//│ FAILURE INFO: Tuple2:
+//│   _1 = Tuple2:
+//│     _1 = member:ping⁴
+//│     _2 = class hkmc2.semantics.BlockMemberSymbol
+//│   _2 = Scope:
+//│     parentOrCfg = Left of Cfg:
+//│       escapeChars = true
+//│       useSuperscripts = false
+//│       includeZero = false
+//│       defaultName = "tmp"
+//│     curThis = S of S of globalThis:globalThis⁰
+//│     bindings = HashMap(tmp:block$res -> block$res5, tmp:block$res -> block$res7, member:isEven_isOdd -> isEven_isOdd, tmp:block$res -> block$res6, member:Predef -> Predef, tmp:runtime -> runtime, n -> n, tmp:definitionMetadata -> definitionMetadata, tmp:inlinedVal -> inlinedVal, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:block$res -> block$res, tmp:block$res -> block$res3, tmp:Block -> Block, tmp:option -> option, member:countdown -> countdown, member:ping -> ping, member:pong -> pong, tmp:block$res -> block$res1, member:countdown -> countdown1, tmp:block$res -> block$res4, member:ping -> ping1, member:pong -> pong1, tmp:block$res -> block$res2, member:isEven -> isEven, member:isOdd -> isOdd)
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'ping'
+//│ ║  l.196: 	ping(5)(0)
+//│ ║         	^^^^
+//│ ╟── which references the symbol introduced here
+//│ ║  l.178: 	fun ping(n)(unused) = if n == 0 then 0 else pong(n - 1)(unused)
+//│ ╙──       	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
+//│ FAILURE INFO: Tuple2:
+//│   _1 = Tuple2:
+//│     _1 = member:pong⁴
+//│     _2 = class hkmc2.semantics.BlockMemberSymbol
+//│   _2 = Scope:
+//│     parentOrCfg = Left of Cfg:
+//│       escapeChars = true
+//│       useSuperscripts = false
+//│       includeZero = false
+//│       defaultName = "tmp"
+//│     curThis = S of S of globalThis:globalThis⁰
+//│     bindings = HashMap(tmp:block$res -> block$res5, tmp:block$res -> block$res7, member:isEven_isOdd -> isEven_isOdd, tmp:block$res -> block$res6, member:Predef -> Predef, tmp:runtime -> runtime, n -> n, tmp:definitionMetadata -> definitionMetadata, tmp:inlinedVal -> inlinedVal, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:block$res -> block$res, tmp:block$res -> block$res3, tmp:Block -> Block, tmp:option -> option, member:countdown -> countdown, member:ping -> ping, member:pong -> pong, tmp:block$res -> block$res1, member:countdown -> countdown1, tmp:block$res -> block$res4, member:ping -> ping1, member:pong -> pong1, tmp:block$res -> block$res2, member:isEven -> isEven, member:isOdd -> isOdd)
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'pong'
+//│ ║  l.197: 	pong(5)(0)
+//│ ║         	^^^^
+//│ ╟── which references the symbol introduced here
+//│ ║  l.179: 	fun pong(n)(unused) = if n == 0 then 0 else ping(n - 1)(unused)
+//│ ╙──       	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
+//│ ═══[RUNTIME ERROR] TypeError: runtime.checkCall(...) is not a function
+//│     at REPL28:1:33
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:552:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:887:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:465:12)
+//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:647:22)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
+//│ ═══[RUNTIME ERROR] Expected: '0', got: 'undefined'
 
 
 
@@ -224,8 +266,8 @@ class Test(a) with
 //│ dead-param-elim > prodfun pong#0 @ <root> -> eliminable: {1}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let Test⁰, pong⁶, M⁰;
-//│ define pong⁶ as fun pong⁷(n) {
+//│ let Test⁰, pong⁵, M⁰;
+//│ define pong⁵ as fun pong⁶(n) {
 //│   let scrut, tmp;
 //│   set scrut = Predef⁰.equals⁰(n, 0);
 //│   match scrut
@@ -233,12 +275,12 @@ class Test(a) with
 //│       return 0
 //│     else
 //│       set tmp = -⁰(n, 1);
-//│       return M¹.ping⁶(tmp, undefined)
+//│       return M¹.ping⁵(tmp, undefined)
 //│   end
 //│ };
 //│ define M⁰ as class M²
 //│ module M¹ {
-//│   method ping⁷ = fun ping⁶(n, unused) {
+//│   method ping⁶ = fun ping⁵(n, unused) {
 //│     let scrut, tmp;
 //│     set scrut = Predef⁰.equals⁰(n, 0);
 //│     match scrut
@@ -246,11 +288,11 @@ class Test(a) with
 //│         return 0
 //│       else
 //│         set tmp = -⁰(n, 1);
-//│         return pong⁷(tmp)
+//│         return pong⁶(tmp)
 //│     end
 //│   }
 //│ };
-//│ define Test⁰ as class Test¹(a) { private val a⁰; method f⁰ = fun f¹() { return pong⁷(3) } };
+//│ define Test⁰ as class Test¹(a) { private val a⁰; method f⁰ = fun f¹() { return pong⁶(3) } };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 

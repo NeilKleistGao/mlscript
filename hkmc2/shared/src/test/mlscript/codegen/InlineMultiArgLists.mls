@@ -7,10 +7,14 @@
 private fun add(x)(y) = x + y
 add(1)(2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let add, tmp;
-//│ add = function add(x) { return (y) => { return x + y } };
-//│ tmp = add(1);
-//│ runtime.safeCall(tmp(2))
+//│ let add, x, y, inlinedVal;
+//│ add = function add(x1) {
+//│   return (y1) => { return x1 + y1 }
+//│ };
+//│ x = 1;
+//│ y = 2;
+//│ inlinedVal = x + y;
+//│ inlinedVal
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 3
 
@@ -22,16 +26,13 @@ private fun mkAdder(x) =
   (y) => x + y
 mkAdder(10)(20)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let mkAdder, tmp1;
-//│ mkAdder = function mkAdder(x) {
+//│ let mkAdder;
+//│ mkAdder = function mkAdder(x1) {
 //│   let lambda;
-//│   lambda = (undefined, function (y) {
-//│     return x + y
-//│   });
+//│   lambda = (undefined, function (y1) { return x1 + y1 });
 //│   return lambda
 //│ };
-//│ tmp1 = mkAdder(10);
-//│ runtime.safeCall(tmp1(20))
+//│ mkAdder(10)(20)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 30
 
@@ -41,32 +42,33 @@ private fun add2(x)(y) = x + y
 let f = add2(10)
 f(5)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let add2, f;
-//│ add2 = function add2(x) { return (y) => { return x + y } };
-//│ f = add2(10);
+//│ let add2, f, x1, inlinedVal1, inlinedLambda;
+//│ add2 = function add2(x2) {
+//│   return (y1) => {
+//│     return x2 + y1
+//│   }
+//│ };
+//│ x1 = 10;
+//│ inlinedLambda = function inlinedLambda(y1) {
+//│   inlinedVal1 = x1 + y1;
+//│   return inlinedVal1
+//│ };
+//│ f = inlinedLambda;
 //│ runtime.safeCall(f(5))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 15
-//│ f = fun
+//│ f = fun inlinedLambda
 
 // Test: Three parameter lists — all correctly passed through
 :sjs
 private fun triple(x)(y)(z) = x + y + z
 triple(1)(2)(3)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let triple, tmp2, tmp3;
-//│ triple = function triple(x) {
-//│   return (y) => {
-//│     return (z) => {
-//│       let tmp4;
-//│       tmp4 = x + y;
-//│       return tmp4 + z
-//│     }
-//│   }
+//│ let triple;
+//│ triple = function triple(x2) {
+//│   return (y1) => { return (z) => { let tmp; tmp = x2 + y1; return tmp + z } }
 //│ };
-//│ tmp2 = triple(1);
-//│ tmp3 = runtime.safeCall(tmp2(2));
-//│ runtime.safeCall(tmp3(3))
+//│ triple(1)(2)(3)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 6
 
@@ -75,16 +77,13 @@ triple(1)(2)(3)
 private fun wrap(x) = (y) => x * y
 wrap(3)(7)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let wrap, tmp4;
-//│ wrap = function wrap(x) {
+//│ let wrap;
+//│ wrap = function wrap(x2) {
 //│   let lambda;
-//│   lambda = (undefined, function (y) {
-//│     return x * y
-//│   });
+//│   lambda = (undefined, function (y1) { return x2 * y1 });
 //│   return lambda
 //│ };
-//│ tmp4 = wrap(3);
-//│ runtime.safeCall(tmp4(7))
+//│ wrap(3)(7)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 21
 

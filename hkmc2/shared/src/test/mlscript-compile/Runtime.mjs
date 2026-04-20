@@ -93,9 +93,7 @@ let Runtime1;
         let lambda;
         const this$EffectHandle = this;
         lambda = (undefined, function () {
-          let tmp1;
-          tmp1 = Runtime.resume(this$EffectHandle.reified.contTrace);
-          return runtime.safeCall(tmp1(value))
+          return Runtime.resume(this$EffectHandle.reified.contTrace)(value)
         });
         return Runtime1.try(lambda)
       } 
@@ -146,9 +144,7 @@ let Runtime1;
         return xs.slice(i, tmp1)
       } 
       static lazySlice(xs, i, j) {
-        let tmp1;
-        tmp1 = LazyArray.dropLeftRight(i, j);
-        return runtime.safeCall(tmp1(xs))
+        return runtime.safeCall(LazyArray.dropLeftRight(i, j))(xs)
       } 
       static lazyConcat(...args) {
         return runtime.safeCall(LazyArray.__concat(...args))
@@ -736,16 +732,15 @@ let Runtime1;
     tr = Runtime.curEffect;
     v = null;
     lbl: while (true) {
-      let scrut, tmp2, tmp3, tmp4;
+      let scrut, tmp2, tmp3;
       if (tr instanceof Runtime.EffectSig.class) {
         scrut = tr.handler === Runtime.PrintStackEffect;
         if (scrut === true) {
           tmp2 = Runtime.showStackTrace("Stack Trace:", tr, debug, tr.handlerFun);
           runtime.safeCall(globalThis.console.log(tmp2));
           Runtime.curEffect = null;
-          tmp3 = Runtime.resume(tr.contTrace);
-          tmp4 = runtime.safeCall(tmp3(runtime.Unit));
-          v = tmp4;
+          tmp3 = Runtime.resume(tr.contTrace)(runtime.Unit);
+          v = tmp3;
           tr = Runtime.curEffect;
           continue lbl
         }

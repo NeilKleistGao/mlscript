@@ -30,13 +30,12 @@ add(1)(2)
 //│     let x5 = Lambda(x4) in
 //│     x5
 //│   def entry() =
-//│     let* (x6) = add(1) in
-//│     let x7 = Callable.apply1(x6,2) in
-//│     x7
+//│     let* (x6) = add(1,2) in
+//│     x6
 //│   entry = entry
 //│ 
 //│ Interpreted:
-//│ 3
+//│ Lambda_lambda(1)
 
 fun add4(a, b) = (c, d) => a + b + c + d
 fun add4_curried(a, b)(c, d) = a + b + c + d
@@ -44,7 +43,7 @@ add4(1, 2)(3, 4)
 //│ = 10
 //│ 
 //│ Interpreted:
-//│ 10
+//│ Lambda_lambda(1,2)
 
 fun add(a, b) = a + b
 fun dummy() = add
@@ -52,7 +51,7 @@ dummy()(1, 2)
 //│ = 3
 //│ 
 //│ Interpreted:
-//│ 3
+//│ Lambda_add()
 
 abstract class List[out T]: Cons[T] | Nil
 data class (::) Cons[out T](head: T, tail: List[T]) extends List[T]

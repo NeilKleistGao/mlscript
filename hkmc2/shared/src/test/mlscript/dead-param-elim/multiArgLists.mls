@@ -6,13 +6,18 @@
 :soir
 private fun f(a)(b) = a
 f(42)(99)
-//│ dead-param-elim > >>> dead-param-elim results >>>
-//│ dead-param-elim > prodfun f#1 @ <root> -> eliminable: {0}
-//│ dead-param-elim > <<< dead-param-elim results <<<
-//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f⁰, tmp; define f⁰ as fun f¹(a)() { return a }; set tmp = f¹(42); tmp()
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 42
+//│ FAILURE: Unexpected exception
+//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
+//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
+//│ 	at: hkmc2.codegen.DeadParamElimSolver.<init>(DeadParamElim.scala:134)
+//│ 	at: hkmc2.codegen.DeadParamElim$.apply(DeadParamElim.scala:408)
+//│ 	at: hkmc2.JSBackendDiffMaker.processTerm(JSBackendDiffMaker.scala:153)
+//│ 	at: hkmc2.InvalMLDiffMaker.processTerm(InvalmlDiffMaker.scala:36)
+//│ 	at: hkmc2.LlirDiffMaker.processTerm(LlirDiffMaker.scala:63)
+//│ 	at: hkmc2.MLsDiffMaker.processTrees(MLsDiffMaker.scala:350)
+//│ 	at: hkmc2.MLsDiffMaker.processOrigin(MLsDiffMaker.scala:314)
+//│ 	at: hkmc2.DiffMaker.processBlock(DiffMaker.scala:249)
+//│ 	at: hkmc2.DiffMaker.rec(DiffMaker.scala:363)
 
 // Test: Both params dead across two parameter lists
 :deadParamElim
@@ -21,10 +26,9 @@ private fun g(x)(y) = 0
 g(1)(2)
 //│ dead-param-elim > >>> dead-param-elim results >>>
 //│ dead-param-elim > prodfun g#0 @ <root> -> eliminable: {0}
-//│ dead-param-elim > prodfun g#1 @ <root> -> eliminable: {0}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let g⁰, tmp; define g⁰ as fun g¹()() { return 0 }; set tmp = g¹(); tmp()
+//│ let g⁰; define g⁰ as fun g¹()(y) { return 0 }; g¹()(2)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
 
@@ -33,13 +37,18 @@ g(1)(2)
 :soir
 private fun h(x)(y) = x
 h(5)(10)
-//│ dead-param-elim > >>> dead-param-elim results >>>
-//│ dead-param-elim > prodfun h#1 @ <root> -> eliminable: {0}
-//│ dead-param-elim > <<< dead-param-elim results <<<
-//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let h⁰, tmp; define h⁰ as fun h¹(x)() { return x }; set tmp = h¹(5); tmp()
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 5
+//│ FAILURE: Unexpected exception
+//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
+//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
+//│ 	at: hkmc2.codegen.DeadParamElimSolver.<init>(DeadParamElim.scala:134)
+//│ 	at: hkmc2.codegen.DeadParamElim$.apply(DeadParamElim.scala:408)
+//│ 	at: hkmc2.JSBackendDiffMaker.processTerm(JSBackendDiffMaker.scala:153)
+//│ 	at: hkmc2.InvalMLDiffMaker.processTerm(InvalmlDiffMaker.scala:36)
+//│ 	at: hkmc2.LlirDiffMaker.processTerm(LlirDiffMaker.scala:63)
+//│ 	at: hkmc2.MLsDiffMaker.processTrees(MLsDiffMaker.scala:350)
+//│ 	at: hkmc2.MLsDiffMaker.processOrigin(MLsDiffMaker.scala:314)
+//│ 	at: hkmc2.DiffMaker.processBlock(DiffMaker.scala:249)
+//│ 	at: hkmc2.DiffMaker.rec(DiffMaker.scala:363)
 
 // Test: Dead param in first list only
 :deadParamElim
@@ -50,7 +59,7 @@ j(5)(10)
 //│ dead-param-elim > prodfun j#0 @ <root> -> eliminable: {0}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let j⁰, tmp; define j⁰ as fun j¹()(y) { return y }; set tmp = j¹(); tmp(10)
+//│ let j⁰; define j⁰ as fun j¹()(y) { return y }; j¹()(10)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 10
 
@@ -59,15 +68,16 @@ j(5)(10)
 :soir
 private fun k(a)(b)(c) = a + c
 k(1)(2)(3)
-//│ dead-param-elim > >>> dead-param-elim results >>>
-//│ dead-param-elim > prodfun k#1 @ <root> -> eliminable: {0}
-//│ dead-param-elim > <<< dead-param-elim results <<<
-//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let k⁰, tmp, tmp1;
-//│ define k⁰ as fun k¹(a)()(c) { return +⁰(a, c) };
-//│ set tmp = k¹(1);
-//│ set tmp1 = tmp();
-//│ tmp1(3)
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 4
+//│ FAILURE: Unexpected exception
+//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
+//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
+//│ 	at: hkmc2.codegen.DeadParamElimSolver.<init>(DeadParamElim.scala:134)
+//│ 	at: hkmc2.codegen.DeadParamElim$.apply(DeadParamElim.scala:408)
+//│ 	at: hkmc2.JSBackendDiffMaker.processTerm(JSBackendDiffMaker.scala:153)
+//│ 	at: hkmc2.InvalMLDiffMaker.processTerm(InvalmlDiffMaker.scala:36)
+//│ 	at: hkmc2.LlirDiffMaker.processTerm(LlirDiffMaker.scala:63)
+//│ 	at: hkmc2.MLsDiffMaker.processTrees(MLsDiffMaker.scala:350)
+//│ 	at: hkmc2.MLsDiffMaker.processOrigin(MLsDiffMaker.scala:314)
+//│ 	at: hkmc2.DiffMaker.processBlock(DiffMaker.scala:249)
+//│ 	at: hkmc2.DiffMaker.rec(DiffMaker.scala:363)
 
