@@ -676,8 +676,8 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
 
     def splitSuperTail(block: Block): Opt[Block -> Ls[Arg]] = block match
       case End(_) => N
-      case Return(Call(Value.Ref(bs: BuiltinSymbol, _), args), true) if bs eq State.builtinOpsMap("super") =>
-        S(End("") -> args)
+      case Return(Call(Value.Ref(bs: BuiltinSymbol, _), argss), true) if bs eq State.builtinOpsMap("super") =>
+        S(End("") -> argss.flatten)
       case b: NonBlockTail =>
         splitSuperTail(b.rest).map: (prefix, args) =>
           withRest(b, prefix) -> args
@@ -984,7 +984,8 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
       else
         errExpr(Ls(msg"Cannot call non-binary builtin symbol '${l.nme}'" -> r.toLoc))
 
-    case c @ Call(fun, args) =>
+    case c @ Call(fun, argss) =>
+      val args = argss.flatten
       wasmIntrinsicName(fun) match
         case S(intrName) =>
           val expectedArity = wasmIntrinsicArities(intrName)
@@ -1103,7 +1104,8 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
           extraInfo = S(dyn),
         )
 
-    case Instantiate(_, cls, as) =>
+    case Instantiate(_, cls, argss) =>
+      val as = argss.flatten
       cls match
         // TODO: Implement proper lowering for Errors with unit payloads.
         case Select(Value.Ref(sym, _), id)

@@ -195,9 +195,10 @@ class TailRecOpt(using State, TL, Raise):
     // we ignore it for now
     val ret = f.params match
       case head :: Nil =>
+        val cArgs = c.argss.headOption.getOrElse(Nil)
         val (headArgs, restArgs) = head.restParam match
-          case Some(value) => c.args.splitAt(head.params.length)
-          case None => (c.args, Nil)
+          case Some(value) => cArgs.splitAt(head.params.length)
+          case None => (cArgs, Nil)
         
         var bad = false
         val hd = for a <- headArgs yield a.spread match
@@ -217,7 +218,7 @@ class TailRecOpt(using State, TL, Raise):
           hd.appended(rest)
         else
           hd
-      case Nil => c.args.map(_.value)
+      case Nil => c.argss.headOption.getOrElse(Nil).map(_.value)
       case _ => return N
     S(ret)
     
@@ -385,7 +386,7 @@ class TailRecOpt(using State, TL, Raise):
             :: paramArgs
             ::: List.fill(maxParamLen - paramArgs.length)(Value.Lit(Tree.UnitLit(false)).asArg)
         val newBod = Return(
-          Call(sel, args)(true, false, false),
+          Call(sel, args :: Nil)(true, false, false),
           false
         )
         FunDefn(f.owner, f.sym, f.dSym, f.params, newBod)(false, N, f.visibility)

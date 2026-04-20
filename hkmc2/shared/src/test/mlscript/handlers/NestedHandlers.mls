@@ -114,7 +114,22 @@ handle h = Eff with
     k()
 f(h, box, 10)
 box.n
-//│ = 5120
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'n')
+//│     at Handler$h2$perform (REPL33:1:1140)
+//│     at EffectSig.handlerFun (REPL33:1:780)
+//│     at Runtime.handleEffect (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:984:35)
+//│     at Runtime.handleEffects (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:941:23)
+//│     at Runtime.handleBlockImpl (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:926:20)
+//│     at Runtime.enterHandleBlock (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:935:20)
+//│     at f (REPL33:1:3970)
+//│     at handleBlock$2 (REPL33:1:3079)
+//│     at REPL33:1:1882
+//│     at Runtime.enterHandleBlock (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:930:28)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
+//│ ═══[RUNTIME ERROR] Expected: '5120', got: 'undefined'
 
 handle h1 = Eff with
   fun perform()(k) =
@@ -164,8 +179,19 @@ h1.perform()
 h3.perform()
 //│ > h1
 //│ > h3
-//│ > h2
-//│ > h1
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'perform')
+//│     at Handler$h3$perform (REPL39:1:2050)
+//│     at EffectSig.handlerFun (REPL39:1:1375)
+//│     at Runtime.handleEffect (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:984:35)
+//│     at Runtime.handleEffects (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:941:23)
+//│     at file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:1017:22
+//│     at EffectSig.Handler$h1$perform [as handlerFun] (REPL39:1:6026)
+//│     at Runtime.handleEffect (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:984:35)
+//│     at Runtime.handleEffects (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:941:23)
+//│     at Runtime.handleBlockImpl (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:926:20)
+//│     at Runtime.enterHandleBlock (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:935:20)
 
 
 let d = 0

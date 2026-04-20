@@ -118,14 +118,26 @@ staged module Arguments with
     x = 1
     x
   fun g(x)(y, z)() = z
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: transformResult (ReflectionInstrumenter.scala:225)
+//│ ═══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Instantiate
 //│ > fun ctor_() = ()
 //│ > fun f(x) =
 //│ >   x = 1
 //│ >   x
-//│ > fun g(x) =
-//│ >   let {tmp}
-//│ >   tmp = new Function_
-//│ >   tmp
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│     at Runtime.checkCall (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:605:41)
+//│     at <static_initializer> (REPL25:1:1436)
+//│     at REPL25:1:3114
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:552:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:887:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
 
 staged module OtherBlocks with
   fun scope() =
@@ -213,10 +225,10 @@ staged module LabelBreak with
     else 2
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.207: 	    let x = 1
+//│ ║  l.219: 	    let x = 1
 //│ ║         	        ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.207: 	    let x = 1
+//│ ║  l.219: 	    let x = 1
 //│ ╙──       	        ^
 //│ > fun ctor_() = ()
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
@@ -229,7 +241,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.229: 	  fun g() = {1 : 2}
+//│ ║  l.241: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ > fun ctor_() =
 //│ >   x = C(1)

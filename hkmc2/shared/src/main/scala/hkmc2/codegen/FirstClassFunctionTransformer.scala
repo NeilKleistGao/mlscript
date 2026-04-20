@@ -26,10 +26,10 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
     )
     val defSym = new BlockMemberSymbol("Function$", Nil, false)
     val callDef = FunDefn.withFreshSymbol(Some(clsSym), new BlockMemberSymbol("call", Nil, true), params :: Nil,
-      Return(Call(p, params.params.map(_.sym.asPath.asArg))(true, false, false), false))(false, N, Visibility.Public)
+      Return(Call(p, params.params.map(_.sym.asPath.asArg) :: Nil)(true, false, false), false))(false, N, Visibility.Public)
     ClsLikeDefn(None, clsSym, defSym, None, syntax.Cls, None, Nil,
       Some(Select(Value.Ref(State.globalThisSymbol, Some(State.globalThisSymbol)), Tree.Ident("Function"))(Some(ctx.builtins.Function))),
-      callDef :: Nil, Nil, Nil, Return(Call(Value.Ref(State.builtinOpsMap("super")), Nil)(false, false, false), true), End(), None, None)(N)
+      callDef :: Nil, Nil, Nil, Return(Call(Value.Ref(State.builtinOpsMap("super")), Nil :: Nil)(false, false, false), true), End(), None, None)(N)
 
   private def getParamList(l: BlockMemberSymbol): Option[ParamList] = funDefns.get(l) match
     case Some(fd) => fd.params.headOption
@@ -68,8 +68,8 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
     case _ => false
 
   override def applyResult(r: Result)(k: Result => Block): Block = r match
-    case c @ Call(fun, args) => applyArgs(args): args2 =>
-      def call(f: Path) = Call(f, args2)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall)
+    case c @ Call(fun, argss) => applyListOf(argss, (args, k2) => applyArgs(args)(k2)): argss2 =>
+      def call(f: Path) = Call(f, argss2)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall)
       fun match
         case ref @ Value.Ref(sym, _) => sym match
           case _: VarSymbol |  _: TempSymbol => k(call(ref.selSN("call")))
@@ -85,7 +85,7 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
         case s: DynSelect =>
           raise(ErrorReport(msg"Cannot determine if the dynamic selection is a function object." -> s.toLoc :: Nil,
               source = Diagnostic.Source.Compilation))
-            k(call(fun))
+          k(call(fun))
         case _ => k(call(fun))
     case _: Lambda => lastWords("Lambda functions should be rewritten into function definitions first.")
     case _ => super.applyResult(r)(k)

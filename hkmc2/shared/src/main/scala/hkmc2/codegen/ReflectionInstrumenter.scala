@@ -62,7 +62,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
 
   // isMlsFun is probably always true?
   def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
+    assign(Call(fun, args.map(asArg) :: Nil)(isMlsFun, false, false), symName)(k)
 
   // helpers for instrumenting Block
 
@@ -195,16 +195,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
       transformArgs(elems): xs =>
         tuple(xs.map(_._1)): codes =>
           blockCtor("Tuple", Ls(codes), "tup")(k)
-    case Instantiate(mut, cls, args) =>
+    case Instantiate(mut, cls, args :: _) =>
       assert(!mut, "mutable instantiation not supported")
       transformArgs(args): xs =>
         transformPath(cls): cls =>
           tuple(xs.map(_._1)): codes =>
             blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
     // desugar Runtime.Tuple.get into Select
-    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx))))) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
+    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
       transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
-    case Call(fun, args) =>
+    case Call(fun, args :: _) =>
       val stagedFunPath = fun match
         case s @ Select(qual, Tree.Ident(name)) => s.symbol.flatMap({
             case t: TermSymbol => t.owner.flatMap({ case sym: DefinitionSymbol[?] =>

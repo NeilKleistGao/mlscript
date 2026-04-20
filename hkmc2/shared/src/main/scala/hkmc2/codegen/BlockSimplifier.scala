@@ -336,10 +336,10 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
           case _ => super.applyDefn(defn)
         
         override def applyResult(r: Result): Unit = r match
-          case c @ Call(TermSymbolPath(ts), args) =>
+          case c @ Call(TermSymbolPath(ts), argss) =>
             useCnt(ts) += 1
             usages(ts) ::= (currentFunSym, c)
-            args.foreach(applyArg)
+            argss.foreach(_.foreach(applyArg))
           case _ => super.applyResult(r)
         
         override def applySymbol(sym: Symbol): Unit =
@@ -357,7 +357,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
             calls.foreach: (caller, call) =>
               if map.contains(sym) then
                 map(sym).hasNakedRef = map(sym).hasNakedRef ||
-                  map(sym).defn.params.sizeCompare(1) =/= 0 || matchArgs(call.args, map(sym).defn.params.head).isEmpty
+                  map(sym).defn.params.sizeCompare(1) =/= 0 || call.argss.headOption.flatMap(matchArgs(_, map(sym).defn.params.head)).isEmpty
                 caller.foreach: caller =>
                   edges.append((caller, sym))
           
@@ -441,7 +441,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
               FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, blk)(fun.forceTailRec, fun.configOverride, fun.visibility)
         
         override def applyResult(r: Result)(k: Result => Block): Block = r match
-          case Call(TermSymbolPath(ts), args) if m.contains(ts) =>
+          case Call(TermSymbolPath(ts), args :: _) if m.contains(ts) =>
             newFunctionBody.get(ts)
             .getOrElse:
               newFunctionBody(ts) = N

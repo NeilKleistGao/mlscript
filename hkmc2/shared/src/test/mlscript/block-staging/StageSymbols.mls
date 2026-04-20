@@ -72,21 +72,57 @@ staged module M with
 staged module M with
   fun f() = x => x
   fun g()() = 1
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: transformResult (ReflectionInstrumenter.scala:225)
+//│ ═══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Instantiate
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: transformResult (ReflectionInstrumenter.scala:225)
+//│ ═══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Instantiate
 //│ > fun ctor_() = ()
-//│ > fun f() =
-//│ >   let {tmp}
-//│ >   tmp = new Function_
-//│ >   tmp
-//│ > fun g() =
-//│ >   let {tmp1}
-//│ >   tmp1 = new Function_1
-//│ >   tmp1
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+//│     at Runtime.checkCall (file:///home/runner/work/mlscript/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:605:41)
+//│     at <static_initializer> (REPL24:1:1214)
+//│     at REPL24:1:2433
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:552:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:887:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
 
 // TODO: these need to be printed, somehow:
 :noModuleCheck
 let x = M."f_instr"().body.rest.rhs.cls.l.value
 let y = M."g_instr"().body.rest.rhs.cls.l.value
-//│ x = class Function$
-//│ y = class Function$
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
+//│ ═══[RUNTIME ERROR] Error: Access to required field 'body' yielded 'undefined'
+//│     at REPL27:1:284
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:552:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:887:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:465:12)
+//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:647:22)
+//│ x = undefined
+//│ y = undefined
 (new x).call(2)
-//│ = 2
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:242)
+//│ ═══[RUNTIME ERROR] TypeError: x is not a constructor
+//│     at REPL32:1:48
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:552:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:887:10)
+//│     at REPLServer.emit (node:events:508:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:465:12)
+//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:647:22)

@@ -71,7 +71,7 @@ object HandlerLowering:
         resumeInfo.argLists ++:
         (intLit(restoreList.length) ::
         restoreList.map(_.asPath))
-      ).map(_.asArg))(true, true, false), false)
+      ).map(_.asArg) :: Nil)(true, true, false), false)
   
   // argLists: length-encoded argument list used for resumption.
   // currentLocals: All locals to be saved and reloaded, this cannot include any variables in outer scopes
@@ -121,13 +121,13 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
   
   private def rtThrowMsg(msg: Str) = Throw(
     Instantiate(mut = false, State.globalThisSymbol.asPath.selN(Tree.Ident("Error")),
-    Value.Lit(Tree.StrLit(msg)).asArg :: Nil)
+    List(Value.Lit(Tree.StrLit(msg)).asArg) :: Nil)
   )
   
   object PureCall:
-    def apply(fun: Path, args: List[Path]) = Call(fun, args.map(Arg(N, _)))(true, false, false)
+    def apply(fun: Path, args: List[Path]) = Call(fun, args.map(Arg(N, _)) :: Nil)(true, false, false)
     def unapply(res: Result) = res match
-      case Call(fun, args) => args.foldRight[Opt[List[Path]]](S(Nil)): (arg, acc) =>
+      case Call(fun, args :: Nil) => args.foldRight[Opt[List[Path]]](S(Nil)): (arg, acc) =>
           acc.flatMap: acc =>
             arg match
               case Arg(N, p) => S(p :: acc)
@@ -596,12 +596,12 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
         case _ => super.applyDefn(defn)(k)
     val b = subblockTransform.applyBlock(blk)
     if h.inCtor then
-      return translateIllegalEffectCtx(b, Call(paths.illegalEffectPath, Value.Lit(Tree.StrLit("in a constructor")).asArg :: Nil)(true, true, false))
+      return translateIllegalEffectCtx(b, Call(paths.illegalEffectPath, List(Value.Lit(Tree.StrLit("in a constructor")).asArg) :: Nil)(true, true, false))
     if h.inTopLevel then
-      return translateIllegalEffectCtx(b, Call(paths.topLevelEffectPath, Value.Lit(Tree.BoolLit(opt.debug)).asArg :: Nil)(true, false, false))
+      return translateIllegalEffectCtx(b, Call(paths.topLevelEffectPath, List(Value.Lit(Tree.BoolLit(opt.debug)).asArg) :: Nil)(true, false, false))
     val ctx = h.asInstanceOf[HandlerCtx.FunctionLike].ctx
     if ctx.inGetter then
-      return translateIllegalEffectCtx(b, Call(paths.illegalEffectPath, Value.Lit(Tree.StrLit("in a getter")).asArg :: Nil)(true, false, false))
+      return translateIllegalEffectCtx(b, Call(paths.illegalEffectPath, List(Value.Lit(Tree.StrLit("in a getter")).asArg) :: Nil)(true, false, false))
     given FunctionCtx = ctx
     val parts = partitionBlock(b)
     stackSafetyMap += ctx.resumeInfo.currentStackSafetySym ->
@@ -692,7 +692,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     def getSaved(off: BigInt): (Block => Block, Path) =
       if off == 0 then
         return (id, DynSelect(paths.runtimePath.selSN("resumeArr"), paths.runtimePath.selSN("resumeIdx"), true))
-      val addOne = Assign(getSavedTmp, Call(State.builtinOpsMap("+").asPath, paths.runtimePath.selSN("resumeIdx").asArg :: intLit(off).asArg :: Nil)(false, false, false), _)
+      val addOne = Assign(getSavedTmp, Call(State.builtinOpsMap("+").asPath, List(paths.runtimePath.selSN("resumeIdx").asArg, intLit(off).asArg) :: Nil)(false, false, false), _)
       (addOne, DynSelect(paths.runtimePath.selSN("resumeArr"), getSavedTmp.asPath, true))
 
     val resumeArrIndexed = DynSelect(paths.runtimePath.selSN("resumeArr"), getSavedTmp.asPath, true)
@@ -702,7 +702,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
         .scopedVars(Set(getSavedTmp))
     val restoreVars = vars.zipWithIndex.foldLeft(preRestore):
       case (builder, (local, idx)) => builder
-        .assign(getSavedTmp, if idx == 0 then paths.resumeIdx else Call(plus, getSavedTmp.asPath.asArg :: intLit(1).asArg :: Nil)(false, false, false))
+        .assign(getSavedTmp, if idx == 0 then paths.resumeIdx else Call(plus, List(getSavedTmp.asPath.asArg, intLit(1).asArg) :: Nil)(false, false, false))
         .assign(local, resumeArrIndexed)
 
     Scoped(
@@ -773,7 +773,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
       N, Nil,
       S(h.par), handlerMtds, Nil, Nil,
       // Apparently, the lifter is not happy with any assignment in the preCtor...
-      Return(Call(Value.Ref(State.builtinOpsMap("super")), h.args.map(_.asArg))(true, true, false), true),
+      Return(Call(Value.Ref(State.builtinOpsMap("super")), h.args.map(_.asArg) :: Nil)(true, true, false), true),
       End(),
       N,
       N,
@@ -784,7 +784,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
       .define(clsDefn)
       .assign(h.lhs, Instantiate(mut = true, Value.Ref(clsDefn.sym, S(h.cls)), Nil))
       .define(bodyDefn)
-      .assign(h.res, Call(paths.enterHandleBlockPath, List(h.lhs.asPath.asArg, Value.Ref(sym, S(bodyDefn.dSym)).asArg))(true, true, false))
+      .assign(h.res, Call(paths.enterHandleBlockPath, List(List(h.lhs.asPath.asArg, Value.Ref(sym, S(bodyDefn.dSym)).asArg)))(true, true, false))
       .rest(h.rest)
   
   def translateHandleBlocks(b: Block): Block =

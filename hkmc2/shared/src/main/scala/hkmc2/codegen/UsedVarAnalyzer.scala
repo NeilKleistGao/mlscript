@@ -401,11 +401,11 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
 
         override def applyResult(r: Result): Unit = 
           r match
-          case Call(RefOfBms(_, SDSym(d), _), args) =>
-            args.foreach(super.applyArg(_))
+          case Call(RefOfBms(_, SDSym(d), _), argss) =>
+            argss.foreach(_.foreach(super.applyArg(_)))
             handleCalledScope(d)
-          case Instantiate(mut, RefOfBms(_, SDSym(d), _), args) =>
-            args.foreach(super.applyArg)
+          case Instantiate(mut, RefOfBms(_, SDSym(d), _), argss) =>
+            argss.foreach(_.foreach(super.applyArg(_)))
             handleCalledScope(d)
           case _ => super.applyResult(r)
         
