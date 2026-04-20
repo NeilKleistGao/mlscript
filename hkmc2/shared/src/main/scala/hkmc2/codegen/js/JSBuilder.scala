@@ -119,36 +119,41 @@ class JSBuilder(using TL, State, Ctx, Config) extends CodeBuilder:
         doc"${getVar(l, l.toLoc)}.class"
       case _ =>
         getVar(l, r.toLoc)
-    case Call(Value.Ref(l: BuiltinSymbol, _), lhs :: rhs :: Nil) if !l.functionLike =>
+    case Call(Value.Ref(l: BuiltinSymbol, _), List(lhs :: rhs :: Nil)) if !l.functionLike =>
       if l.binary then
         val res = doc"${operand(lhs)} ${l.nme} ${operand(rhs)}"
         if needsParens(l.nme) then doc"(${res})" else res
       else errExpr(msg"Cannot call non-binary builtin symbol '${l.nme}'")
-    case Call(Value.Ref(l: BuiltinSymbol, _), rhs :: Nil) if !l.functionLike =>
+    case Call(Value.Ref(l: BuiltinSymbol, _), List(rhs :: Nil)) if !l.functionLike =>
       if l.unary then
         val res = doc"${l.nme} ${operand(rhs)}"
         if needsParens(l.nme) then doc"(${res})" else res
       else errExpr(msg"Cannot call non-unary builtin symbol '${l.nme}'")
-    case Call(Value.Ref(l: BuiltinSymbol, _), args) =>
+    case Call(Value.Ref(l: BuiltinSymbol, _), List(args)) =>
       if l.functionLike then
         val argsDoc = args.map(argument).mkDocument(", ")
         doc"${l.nme}(${argsDoc})"
       else errExpr(msg"Illegal arity for builtin symbol '${l.nme}'")
     
-    case Call(s @ Select(_, id), lhs :: rhs :: Nil) =>
+    case Call(s @ Select(_, id), List(lhs :: rhs :: Nil)) =>
       Elaborator.ctx.builtins.getBuiltinOp(id.name) match
         case S(jsOp) =>
           val res = doc"${operand(lhs)} ${jsOp} ${operand(rhs)}"
           if needsParens(jsOp) then doc"(${res})" else res
         case N => doc"${result(s)}(${(argument(lhs) :: argument(rhs) :: Nil).mkDocument(", ")})"
-    case c @ Call(fun, args) =>
+    case c @ Call(fun, argss) =>
       val base = subexpression(fun)
-      val argsDoc = args.map(argument).mkDocument(", ")
-      if c.isMlsFun
-      then if checkMLsCalls
-        then doc"$runtimeVar.checkCall(${base}(${argsDoc}))"
-        else doc"${base}(${argsDoc})"
-      else doc"$runtimeVar.safeCall(${base}(${argsDoc}))"
+      val firstArgs = argss.headOption.getOrElse(Nil)
+      val firstArgsDoc = firstArgs.map(argument).mkDocument(", ")
+      val firstCall =
+        if c.isMlsFun
+        then if checkMLsCalls
+          then doc"$runtimeVar.checkCall(${base}(${firstArgsDoc}))"
+          else doc"${base}(${firstArgsDoc})"
+        else doc"$runtimeVar.safeCall(${base}(${firstArgsDoc}))"
+      argss.drop(1).foldLeft(firstCall): (acc, args) =>
+        val argsDoc = args.map(argument).mkDocument(", ")
+        doc"${acc}(${argsDoc})"
     case Lambda(ps, bod) => scope.nest givenIn:
       val (params, bodyDoc) = setupFunction(none, ps, bod, isLambda = true)
       doc"($params) => ${ braced(bodyDoc) }"
@@ -168,8 +173,11 @@ class JSBuilder(using TL, State, Ctx, Config) extends CodeBuilder:
       if ai
       then doc"${result(qual)}.at(${result(fld)})"
       else doc"${result(qual)}[${result(fld)}]"
-    case Instantiate(mut, cls, as) =>
-      val inner = doc"new ${result(cls)}(${as.map(argument).mkDocument(", ")})"
+    case Instantiate(mut, cls, argss) =>
+      val firstArgs = argss.headOption.getOrElse(Nil)
+      val firstCall = doc"new ${result(cls)}(${firstArgs.map(argument).mkDocument(", ")})"
+      val inner = argss.drop(1).foldLeft(firstCall): (acc, args) =>
+        doc"${acc}(${args.map(argument).mkDocument(", ")})"
       if mut then inner else doc"$freeze(${inner})"
     case Tuple(mut, es) if es.isEmpty => if mut then "[]" else doc"$freeze([])"
     case Tuple(mut, es) =>
