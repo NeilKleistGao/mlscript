@@ -1142,8 +1142,28 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       if lift then Lifter(scopeFlattened).transform
       else scopeFlattened
     
-    val (withHandlers2, stackSafetyInfo) = effectiveConfig.effectHandlers.fold((lifted, Map.empty)): opt =>
-      HandlerLowering(handlerPaths, opt).translateTopLevel(lifted)
+    // When effect handlers are enabled, split multi-arg-list calls into
+    // chained single-arg-list calls so that handler lowering and stack-safe
+    // transforms properly handle each intermediate call result.
+    // Only split at the function body level, not inside lambdas, to avoid
+    // creating Scoped blocks that conflict when inlined into switch cases.
+    val splitCalls =
+      if effectiveConfig.effectHandlers.isDefined then
+        val splitter = new BlockTransformer(SymbolSubst.Id):
+          override def applyLam(lam: Lambda): Lambda = lam // Don't recurse into lambdas
+          override def applyResult(r: Result)(k: Result => Block): Block = r match
+            case c @ Call(fun, firstArgs :: restArgss) if restArgss.nonEmpty =>
+              val firstCall = Call(fun, firstArgs :: Nil)(c.isMlsFun, c.mayRaiseEffects, false)
+              val tmp = TempSymbol(N, "res")
+              super.applyResult(firstCall): res1 =>
+                val remainingCall = Call(tmp.asPath, restArgss)(false, c.mayRaiseEffects, c.explicitTailCall)
+                Scoped(Set.single(tmp), Assign(tmp, res1, applyResult(remainingCall)(k)))
+            case _ => super.applyResult(r)(k)
+        splitter.applyBlock(lifted)
+      else lifted
+    
+    val (withHandlers2, stackSafetyInfo) = effectiveConfig.effectHandlers.fold((splitCalls, Map.empty)): opt =>
+      HandlerLowering(handlerPaths, opt).translateTopLevel(splitCalls)
       
     val stackSafe = effectiveConfig.stackSafety match
       case N => withHandlers2

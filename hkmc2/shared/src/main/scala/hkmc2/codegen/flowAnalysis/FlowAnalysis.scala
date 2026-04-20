@@ -792,19 +792,16 @@ class FlowConstraintsCollector(val preAnalyzer: FlowPreAnalyzer, val mono: Bool)
           argss match
             case args :: Nil => handleCallLike(c.uid, fun, args)
             case args :: rest =>
-              // Process multi-arg-list calls as chained applications matching
-              // the nested ProdFun structure created by mkFunProdStrat
+              // For multi-arg-list calls, handle the first arg list normally for
+              // dead-param-elim, then constrain subsequent arg lists opaquely.
+              // We cannot reuse c.uid for subsequent ConsFuns because the
+              // DeadParamElim rewriter only rewrites the first arg list,
+              // and sharing the same exprId would cause conflicting eliminable sets.
               val firstResult = handleCallLike(c.uid, fun, args)
-              rest.foldLeft(firstResult): (acc, nextArgs) =>
-                val nextArgsStrat = nextArgs.map(a => processResult(a.value))
-                if nextArgs.exists(_.spread.isDefined) then
-                  cc.constrain(acc, NoCons)
-                  nextArgsStrat.foreach(arg => cc.constrain(arg, NoCons))
-                  NoProd
-                else
-                  val callRes = freshVar("call_res", cc.forFunGroup)
-                  cc.constrain(acc, new ConsFun(c.uid, instId)(nextArgsStrat, callRes.asConsStrat))
-                  callRes.asProdStrat
+              cc.constrain(firstResult, NoCons)
+              rest.foreach: nextArgs =>
+                nextArgs.foreach(a => cc.constrain(processResult(a.value), NoCons))
+              NoProd
             case Nil => handleCallLike(c.uid, fun, Nil)
         case i@Instantiate(_, cls, argss) => handleCallLike(i.uid, cls, argss.flatten)
         case lam@Lambda(ps, body) =>
