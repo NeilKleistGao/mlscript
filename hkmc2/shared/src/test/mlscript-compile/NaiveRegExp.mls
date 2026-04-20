@@ -75,19 +75,6 @@ module NaiveRegExp with
 
   fun star(r) = Star(r, Empty())
 
-  class Question(val r, val next) extends RegExp with // pattern (...)?
-    fun match(s) =
-      if r.match(s) is
-        Some(ss) then
-          let rst = s.slice(ss.length)
-          if next.match(rst) is
-            Some(ss2) then Some(ss + ss2)
-            else next.match(s)
-        None then next.match(s)
-    fun canBeEmpty() = true
-
-  fun question(r) = Question(r, Empty())
-
   class Union(val r1, val r2, val next) extends RegExp with // pattern (r1 | r2)
     fun matchOne(r, s) =
       if r.match(s) is
@@ -109,6 +96,9 @@ module NaiveRegExp with
     fun canBeEmpty() = r1.canBeEmpty() || r2.canBeEmpty()
 
   fun union(r1, r2) = Union(r1, r2, Empty())
+
+  fun questionAnd(r, next) = Union(r, Empty(), next)
+  fun question(r) = questionAnd(r, Empty())
 
   fun setOf(arr, next) =
     fun impl(res, arr) =
@@ -134,7 +124,6 @@ module NaiveRegExp with
     Any(n) then Any(concat(n, q))
     Not(cs, n) then Not(cs, concat(n, q))
     Star(p, n) then Star(p, concat(n, q))
-    Question(p, n) then Question(p, concat(n, q))
     Union(r1, r2, n) then Union(r1, r2, concat(n, q))
 
   fun plusAnd(r, next) = concat(r, Star(r, next)) // pattern (...)+ 
