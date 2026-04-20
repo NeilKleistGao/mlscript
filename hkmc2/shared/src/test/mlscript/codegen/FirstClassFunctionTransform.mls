@@ -168,7 +168,7 @@ Foo(1).foo(x => x - 1)
 fun foo() = x => x
 foo()(1)
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let foo³, lambda⁶, Function$⁶;
+//│ let foo³, lambda⁶, tmp, Function$⁶;
 //│ define lambda⁶ as fun lambda⁷(x) {
 //│   return x
 //│ };
@@ -177,12 +177,15 @@ foo()(1)
 //│     return lambda⁷(x)
 //│   }
 //│ };
-//│ define foo³ as fun foo⁴() { let tmp; set tmp = new Function$⁷(); return tmp };
-//│ foo⁴()(1)
+//│ define foo³ as fun foo⁴() {
+//│   let tmp1;
+//│   set tmp1 = new Function$⁷();
+//│   return tmp1
+//│ };
+//│ set tmp = foo⁴();
+//│ tmp.call﹖(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '1', got: 'undefined'
+//│ = 1
 
 
 class Bar() with
@@ -191,9 +194,7 @@ class Bar() with
 
 :expect 42
 Bar().bar()(42)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '42', got: 'undefined'
+//│ = 42
 
 
 class Baz(b) with
@@ -202,9 +203,7 @@ class Baz(b) with
 
 :expect 42
 Baz(42).baz()(0)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '42', got: 'undefined'
+//│ = 42
 
 
 module Foo with
@@ -266,9 +265,7 @@ module Foo with
 
 :expect 3
 Foo.Bar(1).bar(1)(1)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '3', got: 'undefined'
+//│ = 3
 
 
 let x = 1
@@ -377,7 +374,7 @@ foo.Foo#x
 :ge
 foo.f(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if f is a function object.
-//│ ║  l.378: 	foo.f(0)
+//│ ║  l.375: 	foo.f(0)
 //│ ╙──       	^^^^^
 //│ = 1
 
@@ -395,7 +392,7 @@ foo.Foo#f(0)
 :ge
 foo.x(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if x is a function object.
-//│ ║  l.396: 	foo.x(0)
+//│ ║  l.393: 	foo.x(0)
 //│ ╙──       	^^^^^
 
 
@@ -457,9 +454,7 @@ let f = x => y => x + y
 
 :expect 3
 f(1)(2)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:281)
-//│ ═══[RUNTIME ERROR] Expected: '3', got: 'undefined'
+//│ = 3
 
 
 :sir

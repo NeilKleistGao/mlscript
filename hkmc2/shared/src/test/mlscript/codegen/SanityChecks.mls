@@ -61,7 +61,7 @@ id(f2)(2)
 :re
 id(f)(2)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ block$res6 = runtime.checkCall(Predef.id(f1))(2); undefined
+//│ block$res6 = runtime.safeCall(runtime.checkCall(Predef.id(f1))(2)); undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ═══[RUNTIME ERROR] Error: Function 'f' expected 2 arguments but got 1
 
@@ -80,7 +80,7 @@ id(f)(3)(4)
 //│     return tmp + z
 //│   }
 //│ };
-//│ block$res7 = runtime.checkCall(Predef.id(f3))(3)(4);
+//│ block$res7 = runtime.safeCall(runtime.safeCall(runtime.checkCall(Predef.id(f3))(3))(4));
 //│ undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = NaN
@@ -152,7 +152,7 @@ id(Cls(1, 2)).f(3, 4)(5)
 //│ });
 //│ tmp4 = runtime.checkCall(Cls5(1, 2));
 //│ tmp5 = runtime.checkCall(Predef.id(tmp4));
-//│ block$res12 = runtime.safeCall(tmp5.f(3, 4))(5);
+//│ block$res12 = runtime.safeCall(runtime.safeCall(tmp5.f(3, 4))(5));
 //│ undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = NaN
