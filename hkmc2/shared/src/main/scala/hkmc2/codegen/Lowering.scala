@@ -390,6 +390,16 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
   def lowerCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Term, loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
     lowerArg(arg)(as => k(Call(fr, as :: Nil)(isMlsFun, true, isTailCall).withLoc(loc)))
   
+  /** Lower a call with multiple argument lists into a single `Call` node.
+    * Arguments are lowered left-to-right and collected into `argss`. */
+  def lowerMultiCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, args: Ls[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
+    def go(remaining: Ls[Term], acc: Ls[Ls[Arg]]): Block = remaining match
+      case Nil =>
+        k(Call(fr, acc.reverse)(isMlsFun, true, isTailCall).withLoc(loc))
+      case arg :: rest =>
+        lowerArg(arg)(as => go(rest, as :: acc))
+    go(args, Nil)
+  
   def lowerArg(arg: Term)(k: Ls[Arg] => Block)(using LoweringCtx): Block =
     arg match
     case Tup(fs) =>
@@ -577,7 +587,16 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           source = Diagnostic.Source.Compilation)
     case st.TyApp(f, ts) => term(f)(k) // * Type arguments are erased
     case st.App(f, arg) =>
-      val isMlsFun = f.resolvedSym.fold(f.isInstanceOf[st.Lam]):
+      // Collect chains of App nodes: `f(a)(b)(c)` → (f, [a, b, c])
+      // This allows lowering curried calls as a single `Call` with multiple arg lists.
+      @tailrec
+      def collectAppChain(expr: st, args: Ls[Term]): (st, Ls[Term]) = expr match
+        case st.App(inner, innerArg) => collectAppChain(inner, innerArg :: args)
+        case st.TyApp(inner, _) => collectAppChain(inner, args) // type args are erased
+        case _ => (expr, args)
+      val (baseF, allArgs) = collectAppChain(f, arg :: Nil)
+      
+      val isMlsFun = baseF.resolvedSym.fold(baseF.isInstanceOf[st.Lam]):
         case _: sem.BuiltinSymbol => true
         case sym: sem.BlockMemberSymbol =>
           sym.trmImplTree.fold(sym.clsTree.isDefined)(_.k is syntax.Fun)
@@ -585,9 +604,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         // Do not perform safety check on `MatchSuccess` and `MatchFailure`.
         case sym => (sym is State.matchSuccessClsSymbol) ||
           (sym is State.matchFailureClsSymbol)
-      def conclude(fr: Path) = lowerCall(fr, isMlsFun, annots.contains(Annot.TailCall), arg, t.toLoc)(k)
+      def conclude(fr: Path) = lowerMultiCall(fr, isMlsFun, annots.contains(Annot.TailCall), allArgs, t.toLoc)(k)
       
-      val instantiated = f.instantiated
+      val instantiated = baseF.instantiated
       val instantiatedResolvedBms = instantiated.resolvedSym.flatMap(_.asBlkMember)
       
       // * We have to instantiate `f` again because, if `f` is a Sel, the `term`
@@ -616,20 +635,24 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
               msg"Debugging functions are not enabled" ->
               t.toLoc :: Nil,
               source = Diagnostic.Source.Compilation)
-        conclude(Value.Ref(State.runtimeSymbol).selSN("raisePrintStackEffect").withLocOf(f))
+        conclude(Value.Ref(State.runtimeSymbol).selSN("raisePrintStackEffect").withLocOf(baseF))
       case t if instantiatedResolvedBms.exists(_ is ctx.builtins.scope.locally) =>
-        arg match
-        case Tup(Fld(FldFlags.benign(), body, N) :: Nil) =>
-          LoweringCtx.nestScoped.givenIn:
-            val res = block(Nil, R(body))(k)
-            val scopedSyms = loweringCtx.getCollectedSym
-            // Put the Scoped in the rest, so that the returned result can be found correctly
-            Scoped(scopedSyms, res)
-        case _ => return fail:
-          ErrorReport(
-            msg"Unsupported form for scope.locally." ->
-            t.toLoc :: Nil,
-            source = Diagnostic.Source.Compilation)
+        // scope.locally only applies to the innermost call; extra args are applied on top
+        if allArgs.length > 1 then
+          subTerm(baseF)(conclude)
+        else
+          arg match
+          case Tup(Fld(FldFlags.benign(), body, N) :: Nil) =>
+            LoweringCtx.nestScoped.givenIn:
+              val res = block(Nil, R(body))(k)
+              val scopedSyms = loweringCtx.getCollectedSym
+              // Put the Scoped in the rest, so that the returned result can be found correctly
+              Scoped(scopedSyms, res)
+          case _ => return fail:
+            ErrorReport(
+              msg"Unsupported form for scope.locally." ->
+              t.toLoc :: Nil,
+              source = Diagnostic.Source.Compilation)
       // * Due to whacky JS semantics, we need to make sure that selections leading to a call
       // * are preserved in the call and not moved to a temporary variable.
       case sel @ Sel(prefix, nme) =>
@@ -644,7 +667,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       case Resolved(sel @ SelProj(prefix, _, nme), sym) =>
         subTerm(prefix): p =>
           conclude(Select(p, nme)(S(sym)).withLocOf(sel))
-      case _ => subTerm(f)(conclude)
+      case _ => subTerm(baseF)(conclude)
     case h @ Handle(lhs, rhs, as, cls, defs, bod) =>
       if !lowerHandlers then
         return fail:
