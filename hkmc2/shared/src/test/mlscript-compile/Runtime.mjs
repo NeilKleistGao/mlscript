@@ -536,7 +536,7 @@ let Runtime1;
   static handleEffects_handleEffect_resume(id, param0, param1) {
     loopLabel: while (true) {
       switch (id) {
-        case 0:
+        case 0: {
           lbl: while (true) {
             let nxt, scrut;
             if (param0 instanceof Runtime.EffectSig.class) {
@@ -550,8 +550,8 @@ let Runtime1;
               continue lbl;
             }
             return param0;
-          }
-        case 1:
+          }}
+        case 1: {
           let prevHandlerFrame, scrut, handlerFrame, saved, tmp, old, scrut1, scrut2, scrut3, tmp1, tmp2, tmp3, tmp4;
           prevHandlerFrame = param0.contTrace;
           lbl1: while (true) {
@@ -604,18 +604,18 @@ let Runtime1;
             }
             return param0;
           }
-          return Runtime.resumeContTrace(saved, tmp);
-        case 2:
-          let scrut4, tmp5;
-          scrut4 = param0.resumed;
-          if (scrut4 === true) {
+          return Runtime.resumeContTrace(saved, tmp);}
+        case 2: {
+          let scrut, tmp;
+          scrut = param0.resumed;
+          if (scrut === true) {
             throw runtime.safeCall(globalThis.Error("Multiple resumption"))
           }
           param0.resumed = true;
-          tmp5 = Runtime.resumeContTrace(param0, param1);
-          param0 = tmp5;
+          tmp = Runtime.resumeContTrace(param0, param1);
+          param0 = tmp;
           id = 0;
-          continue loopLabel;
+          continue loopLabel;}
       }
       break;
     }
