@@ -788,7 +788,24 @@ class FlowConstraintsCollector(val preAnalyzer: FlowPreAnalyzer, val mono: Bool)
         case c@CtorCall(_, args) =>
           args.foreach(arg => cc.constrain(processResult(arg.value), NoCons))
           NoProd
-        case c@Call(fun, argss) => handleCallLike(c.uid, fun, argss.flatten)
+        case c@Call(fun, argss) =>
+          argss match
+            case args :: Nil => handleCallLike(c.uid, fun, args)
+            case args :: rest =>
+              // Process multi-arg-list calls as chained applications matching
+              // the nested ProdFun structure created by mkFunProdStrat
+              val firstResult = handleCallLike(c.uid, fun, args)
+              rest.foldLeft(firstResult): (acc, nextArgs) =>
+                val nextArgsStrat = nextArgs.map(a => processResult(a.value))
+                if nextArgs.exists(_.spread.isDefined) then
+                  cc.constrain(acc, NoCons)
+                  nextArgsStrat.foreach(arg => cc.constrain(arg, NoCons))
+                  NoProd
+                else
+                  val callRes = freshVar("call_res", cc.forFunGroup)
+                  cc.constrain(acc, new ConsFun(c.uid, instId)(nextArgsStrat, callRes.asConsStrat))
+                  callRes.asProdStrat
+            case Nil => handleCallLike(c.uid, fun, Nil)
         case i@Instantiate(_, cls, argss) => handleCallLike(i.uid, cls, argss.flatten)
         case lam@Lambda(ps, body) =>
           processHandleableFun("lam_res", ps :: Nil, body, lam.uid)

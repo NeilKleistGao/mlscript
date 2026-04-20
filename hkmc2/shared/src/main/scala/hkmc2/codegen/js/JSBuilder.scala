@@ -153,7 +153,9 @@ class JSBuilder(using TL, State, Ctx, Config) extends CodeBuilder:
         else doc"$runtimeVar.safeCall(${base}(${firstArgsDoc}))"
       argss.drop(1).foldLeft(firstCall): (acc, args) =>
         val argsDoc = args.map(argument).mkDocument(", ")
-        doc"${acc}(${argsDoc})"
+        if checkMLsCalls
+        then doc"$runtimeVar.safeCall(${acc}(${argsDoc}))"
+        else doc"${acc}(${argsDoc})"
     case Lambda(ps, bod) => scope.nest givenIn:
       val (params, bodyDoc) = setupFunction(none, ps, bod, isLambda = true)
       doc"($params) => ${ braced(bodyDoc) }"
