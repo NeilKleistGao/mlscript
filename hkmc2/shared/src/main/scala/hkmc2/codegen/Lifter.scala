@@ -319,17 +319,17 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         override def applyResult(r: Result)(k: Result => Block): Block =
           r match
           // if possible, directly rewrite the call using the efficient version
-          case c @ Call(RefOfBms(l, S(d), _), List(args)) =>
+          case c @ Call(RefOfBms(l, S(d), _), args :: Nil) =>
             ctx.rewrittenScopes.get(d) match
               case N => super.applyResult(r)(k) // external call, or have not yet traversed that function
               case S(r) =>
                 applyArgs(args): newArgs =>
                   def join2: Block =
                     resolveDefnRef(l, d, r) match
-                      case Some(value) => k(c.copy(fun = value, argss = List(newArgs))(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLoc(c.toLoc))
+                      case Some(value) => k(c.copy(fun = value, argss = newArgs :: Nil)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLoc(c.toLoc))
                       case None => super.applyPath(c.fun): fun2 =>
                         if (fun2 is c.fun) && (args is newArgs) then k(c)
-                        else k(c.copy(fun = fun2, argss = List(newArgs))(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLoc(c.toLoc))
+                        else k(c.copy(fun = fun2, argss = newArgs :: Nil)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLoc(c.toLoc))
                   r match
                     // function call
                     case f: LiftedFunc => k(f.rewriteCall(c, newArgs))
@@ -339,16 +339,16 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
                         cls.rewriteCall(c, newArgs, extraLocals)(k)
                       case _ => join2
                     case _ => join2
-          case inst @ Instantiate(mut, RefOfBms(l, S(d), _), List(args)) =>
+          case inst @ Instantiate(mut, RefOfBms(l, S(d), _), args :: Nil) =>
             applyArgs(args): newArgs =>
               def join =
                 if args is newArgs then inst
-                else inst.copy(argss = List(newArgs)).withLoc(inst.toLoc)
+                else inst.copy(argss = newArgs :: Nil).withLoc(inst.toLoc)
               ctx.rewrittenScopes.get(d) match
                 case N => k(join)
                 case S(c: LiftedClass) => c.rewriteInstantiate(inst, newArgs, extraLocals)(k)
                 case S(r) => resolveDefnRef(l, d, r) match
-                  case Some(value) => k(Instantiate(inst.mut, value, List(newArgs)).withLoc(inst.toLoc))
+                  case Some(value) => k(Instantiate(inst.mut, value, newArgs :: Nil).withLoc(inst.toLoc))
                   case None => k(join)
           case _ => super.applyResult(r)(k)
         
@@ -638,8 +638,8 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         val inst = Instantiate(
           true,
           Value.Ref(captureClass.sym, S(captureClass.isym)),
-          List(captureInfo._2.map:
-            case (sym, _) => sym.asPath.asArg)
+          captureInfo._2.map(
+            (sym, _) => sym.asPath.asArg) :: Nil
         )
         val assign = Assign(captureSym, inst, b)
         if define then
@@ -995,7 +995,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
             case (acc, sym) => Arg(N, sym.asPath) :: acc
         case None => syms.map(s => Arg(N, s.asPath))
       
-      val call = Call(Value.Ref(fun.sym, S(fun.dSym)), List(args))(true, true, false)
+      val call = Call(Value.Ref(fun.sym, S(fun.dSym)), args :: Nil)(true, true, false)
       val bod = Return(call, false)
       
       FunDefn(
@@ -1011,11 +1011,11 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     def rewriteCall(c: Call, args: List[Arg])(using ctx: LifterCtxNew): Call =
       if isTrivial then
         if args is c.argss.head then c
-        else c.copy(argss = List(args))(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c)
+        else c.copy(argss = args :: Nil)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c)
       else
         Call(
           Value.Ref(mainSym, S(mainDsym)),
-          List(formatArgs ::: args)
+          (formatArgs ::: args) :: Nil
         )(
           isMlsFun = true,
           mayRaiseEffects = c.mayRaiseEffects,
@@ -1027,7 +1027,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       aux.force // forces computation
       Call(
         Value.Ref(auxSym, S(auxDsym)),
-        List(formatArgs)
+        formatArgs :: Nil
       )(
         isMlsFun = true,
         mayRaiseEffects = false,
@@ -1123,8 +1123,8 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       val ref = Value.Ref(obj.cls.sym, S(obj.cls.isym))
       val ret = 
         if clsIsParamless then Return(tmp.asPath, false)
-        else Return(Call(tmp.asPath, List(argList2))(true, config.checkInstantiateEffect, false), false)
-      val bod = Scoped(Set(tmp), Assign(tmp, Instantiate(false, ref, List(argList1)), ret))
+        else Return(Call(tmp.asPath, argList2 :: Nil)(true, config.checkInstantiateEffect, false), false)
+      val bod = Scoped(Set(tmp), Assign(tmp, Instantiate(false, ref, argList1 :: Nil), ret))
       // Curried via multiple param lists: C$(auxArgs)(mainArgs) = new C(mainArgs)(auxArgs)
       val paramLists =
         if clsIsParamless then auxParamList :: Nil
@@ -1134,7 +1134,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     
     private val flat = Lazy[Defn](mkFlattenedDefn)
     
-    def instObject = Instantiate(false, Value.Ref(cls.sym, S(cls.isym)), List(formatArgs))
+    def instObject = Instantiate(false, Value.Ref(cls.sym, S(cls.isym)), formatArgs :: Nil)
     
     // Rewrite a naked reference to a parameterized class constructor.
     // Returns a Call to the curried C$ wrapper partially applied with formatArgs.
@@ -1143,7 +1143,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       flat.force
       Call(
         Value.Ref(flattenedSym, S(flattenedDSym)),
-        List(formatArgs)
+        formatArgs :: Nil
       )(
         isMlsFun = true,
         mayRaiseEffects = false,
@@ -1155,32 +1155,32 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       val path = Value.Ref(cls.sym, S(cls.isym))
       if isTrivial then
         if (inst.cls === path) && (inst.argss.head is args) then k(inst)
-        else k(inst.copy(cls = path, argss = List(args)).withLocOf(inst))
+        else k(inst.copy(cls = path, argss = args :: Nil).withLocOf(inst))
       else if cls.paramsOpt.isEmpty && cls.auxParams.isEmpty then
         // Paramless class: lifter args go directly into the Instantiate constructor
-        k(Instantiate(inst.mut, path, List(formatArgs ::: args)).withLoc(inst.toLoc))
+        k(Instantiate(inst.mut, path, (formatArgs ::: args) :: Nil).withLoc(inst.toLoc))
       else
         // Parameterized class: use Instantiate with original args + Call with lifter args (curried class params)
         val tmp = TempSymbol(N)
         extraLocals.add(tmp)
-        Assign(tmp, Instantiate(inst.mut, path, List(args)).withLoc(inst.toLoc),
-          k(Call(tmp.asPath, List(formatArgs))(true, config.checkInstantiateEffect, false)))
+        Assign(tmp, Instantiate(inst.mut, path, args :: Nil).withLoc(inst.toLoc),
+          k(Call(tmp.asPath, formatArgs :: Nil)(true, config.checkInstantiateEffect, false)))
     
     def rewriteCall(c: Call, args: List[Arg], extraLocals: MutSet[Local])(k: Result => Block)(using ctx: LifterCtxNew): Block =
       if obj.isObj then lastWords("tried to rewrite instantiate for an object")
       val path = Value.Ref(cls.sym, S(cls.isym))
       if isTrivial then
         if c.argss.head is args then k(c)
-        else k(c.copy(argss = List(args))(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c))
+        else k(c.copy(argss = args :: Nil)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c))
       else if cls.paramsOpt.isEmpty && cls.auxParams.isEmpty then
         // Paramless class: lifter args go directly into the Instantiate constructor
-        k(Instantiate(false, path, List(formatArgs ::: args)).withLoc(c.toLoc))
+        k(Instantiate(false, path, (formatArgs ::: args) :: Nil).withLoc(c.toLoc))
       else
         // Parameterized class: use Instantiate + Call directly (always immutable for function-style calls)
         val tmp = TempSymbol(N)
         extraLocals.add(tmp)
-        Assign(tmp, Instantiate(false, path, List(args)).withLoc(c.toLoc),
-          k(Call(tmp.asPath, List(formatArgs))(true, config.checkInstantiateEffect, false)))
+        Assign(tmp, Instantiate(false, path, args :: Nil).withLoc(c.toLoc),
+          k(Call(tmp.asPath, formatArgs :: Nil)(true, config.checkInstantiateEffect, false)))
     
     def rewriteImpl: LifterResult[ClsLikeDefn] =
       val rewriterCtor = new BlockRewriter

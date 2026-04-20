@@ -386,9 +386,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       lowerCall(fr, isMlsFun, isTailCall, a, loc)(k)
     case N =>
       // * No arguments means a nullary call, e.g., `f()`
-      k(Call(fr, List(Nil))(isMlsFun, true, isTailCall).withLoc(loc))
+      k(Call(fr, Nil :: Nil)(isMlsFun, true, isTailCall).withLoc(loc))
   def lowerCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Term, loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
-    lowerArg(arg)(as => k(Call(fr, List(as))(isMlsFun, true, isTailCall).withLoc(loc)))
+    lowerArg(arg)(as => k(Call(fr, as :: Nil)(isMlsFun, true, isTailCall).withLoc(loc)))
   
   def lowerArg(arg: Term)(k: Ls[Arg] => Block)(using LoweringCtx): Block =
     arg match
@@ -477,7 +477,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         // * (non-local functions are compiled into getter methods selected on some prefix)
         if td.params.isEmpty then
           return k(Call(
-              Value.Ref(bs, disamb).withLocOf(ref), List(Nil)
+              Value.Ref(bs, disamb).withLocOf(ref), Nil :: Nil
             )(isMlsFun = true, true, annots.contains(Annot.TailCall)))
       case S(_) => ()
       case N => () // TODO panic here; can only lower refs to elab'd symbols
@@ -540,7 +540,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         subTerm(arg): ar =>
           val target = wasmIntrinsicPath(sym, unary = true)
             .getOrElse(Value.Ref(sym).withLocOf(ref))
-          k(Call(target, List(Arg(N, ar) :: Nil))(true, false, false))
+          k(Call(target, (Arg(N, ar) :: Nil) :: Nil)(true, false, false))
       case st.Tup(Fld(FldFlags.benign(), arg1, N) :: Fld(FldFlags.benign(), arg2, N) :: Nil) =>
         if !sym.binary then raise:
           ErrorReport(
@@ -570,7 +570,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             subTerm_nonTail(arg2): ar2 =>
               val target = wasmIntrinsicPath(sym, unary = false)
                 .getOrElse(Value.Ref(sym).withLocOf(ref))
-              k(Call(target, List(Arg(N, ar1) :: Arg(N, ar2) :: Nil))(true, false, false))
+              k(Call(target, (Arg(N, ar1) :: Arg(N, ar2) :: Nil) :: Nil)(true, false, false))
       case _ => fail:
         ErrorReport(
           msg"Unexpected arguments for builtin symbol '${sym.nme}'" -> arg.toLoc :: Nil, S(arg),
@@ -745,17 +745,17 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         case N =>
           as match
           case Nil =>
-            k(Instantiate(mut, sr, List(Nil)))
+            k(Instantiate(mut, sr, Nil :: Nil))
           case a :: Nil => lowerArg(a): asr =>
-            k(Instantiate(mut, sr, List(asr)))
+            k(Instantiate(mut, sr, asr :: Nil))
           case a :: as => lowerArg(a): asr =>
             val z = as.foldLeft[Path => Block](k): (acc, arg) => 
               inner =>
                 lowerArg(arg): asr2 =>
                   val ts = loweringCtx.registerTempSymbol(N)
-                  Assign(ts, Call(inner, List(asr2))(true, true, false), acc(Value.Ref(ts)))
+                  Assign(ts, Call(inner, asr2 :: Nil)(true, true, false), acc(Value.Ref(ts)))
             val ts = loweringCtx.registerTempSymbol(N)
-            Assign(ts, Instantiate(mut, sr, List(asr)), z(Value.Ref(ts)))
+            Assign(ts, Instantiate(mut, sr, asr :: Nil), z(Value.Ref(ts)))
         case S((isym, rft)) =>
           val sym = new BlockMemberSymbol(isym.name, Nil)
           loweringCtx.collectScopedSym(sym)
@@ -783,11 +783,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       setupSelection(prefix, proj, S(sym))(k)
     case Region(reg, body) =>
       loweringCtx.collectScopedSym(reg)
-      Assign(reg, Instantiate(mut = true, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Region"))(N), List(Nil)),
+      Assign(reg, Instantiate(mut = true, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Region"))(N), Nil :: Nil),
         term_nonTail(body)(k))
     case RegRef(reg, value) =>
       plainArgs(reg :: value :: Nil): args =>
-        k(Instantiate(mut = true, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Ref"))(N), List(args)))
+        k(Instantiate(mut = true, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Ref"))(N), args :: Nil))
     case Drop(ref) =>
       subTerm(ref): _ =>
         k(unit)
@@ -822,14 +822,14 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     //   subTerm(t)(k)
   
   def setupTerm(name: Str, args: Ls[Path])(k: Result => Block)(using LoweringCtx): Block =
-    k(Instantiate(mut = false, Value.Ref(State.termSymbol).selSN(name), List(args.map(_.asArg))))
+    k(Instantiate(mut = false, Value.Ref(State.termSymbol).selSN(name), args.map(_.asArg) :: Nil))
 
   def setupQuotedKeyword(kw: Str): Path =
     Value.Ref(State.termSymbol).selSN("Keyword").selSN(kw)
 
   def setupSymbol(symbol: Local)(k: Result => Block)(using LoweringCtx): Block =
     k(Instantiate(mut = false, Value.Ref(State.termSymbol).selSN("Symbol"),
-      List(Value.Lit(Tree.StrLit(symbol.nme)).asArg :: Nil)))
+      (Value.Lit(Tree.StrLit(symbol.nme)).asArg :: Nil) :: Nil))
 
   def quotePattern(p: FlatPattern)(k: Result => Block)(using LoweringCtx): Block = p match
     case FlatPattern.Lit(lit) => setupTerm("LitPattern", Value.Lit(lit) :: Nil)(k)
@@ -1233,7 +1233,7 @@ trait LoweringSelSanityChecks(using Config, TL, Raise, State)
           .ifthen(selRes.asPath,
             Case.Lit(syntax.Tree.UnitLit(false)),
             Throw(Instantiate(mut = false, Select(Value.Ref(State.globalThisSymbol), Tree.Ident("Error"))(N),
-              List(Value.Lit(syntax.Tree.StrLit(s"Access to required field '${nme.name}' yielded 'undefined'")).asArg :: Nil)))
+              (Value.Lit(syntax.Tree.StrLit(s"Access to required field '${nme.name}' yielded 'undefined'")).asArg :: Nil) :: Nil))
           )
           .rest(k(selRes.asPath))
 
@@ -1251,7 +1251,7 @@ trait LoweringTraceLog(instrument: Bool)(using TL, Raise, State)
       case ((sym, res), acc) => Assign(sym, res, acc)
   
   private def pureCall(fn: Path, args: Ls[Arg]): Call =
-    Call(fn, List(args))(true, false, false)
+    Call(fn, args :: Nil)(true, false, false)
   
   extension (k: Block => Block)
     def |>: (b: Block): Block = k(b)
