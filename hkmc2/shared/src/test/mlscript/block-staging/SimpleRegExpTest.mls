@@ -1,0 +1,178 @@
+:js
+
+import "../../mlscript-compile/SimpleRegExp.mls"
+open SimpleRegExp
+
+
+:re
+match(RegExp(), "foo")
+//│ ═══[RUNTIME ERROR] Error: Not implemented
+
+
+match(Exact("x"), "x")
+//│ = Some("x")
+
+
+match(Exact("x"), "")
+//│ = None
+
+
+match(Exact("x"), "xyz")
+//│ = Some("x")
+
+
+match(Any(), "x")
+//│ = Some("x")
+
+
+match(Any(), "")
+//│ = None
+
+
+match(Any(), "xyz")
+//│ = Some("x")
+
+
+match(Not(["x", "y", "z"]), "xyz")
+//│ = None
+
+
+match(Not(["x", "y", "z"]), "w")
+//│ = Some("w")
+
+
+match(Star(Exact("x")), "")
+//│ = Some("")
+
+
+match(Star(Exact("x")), "xyz")
+//│ = Some("x")
+
+
+match(Star(Exact("x")), "xxxyz")
+//│ = Some("xxx")
+
+
+match(Star(Exact("x")), "xxxyxx")
+//│ = Some("xxx")
+
+
+match(Star(Any()), "xxxyxxx")
+//│ = Some("xxxyxxx")
+
+
+match(Concat(Star(Exact("x")), Exact("x")), "xxxxxxx")
+//│ = Some("xxxxxxx")
+
+match(Concat(Star(Exact("x")), Exact("x")), "x")
+//│ = Some("x")
+
+match(question(Exact("x")), "x")
+//│ = Some("x")
+
+match(question(Exact("x")), "y")
+//│ = Some("")
+
+match(question(Exact("x")), "xx")
+//│ = Some("x")
+
+
+match(question(Any()), "y")
+//│ = Some("y")
+
+
+match(Union(Union(Exact("x"), Exact("y")), Exact("z")), "z")
+//│ = Some("z")
+
+
+match(Union(Union(Exact("x"), Exact("y")), Exact("z")), "y")
+//│ = Some("y")
+
+match(Union(Union(Exact("x"), Exact("y")), Exact("z")), "w")
+//│ = None
+
+
+match(Concat(Star(Exact("x")), Exact("y")), "x")
+//│ = None
+
+
+match(Concat(Star(Exact("x")), Exact("y")), "y")
+//│ = Some("y")
+
+
+match(Concat(Star(Exact("x")), Exact("y")), "xxxxxy")
+//│ = Some("xxxxxy")
+
+
+match(Concat(Star(Exact("x")), Exact("y")), "xyyyy")
+//│ = Some("xy")
+
+
+match(plus(Exact("x")), "")
+//│ = None
+
+match(plus(Exact("x")), "x")
+//│ = Some("x")
+
+
+match(plus(Exact("x")), "y")
+//│ = None
+
+
+match(plus(Exact("x")), "xxx")
+//│ = Some("xxx")
+
+
+match(plus(Exact("x")), "xxxy")
+//│ = Some("xxx")
+
+
+// x{3}, equivalent to xxx
+match(nTimes(Exact("x"), 3), "xxx")
+//│ = Some("xxx")
+
+
+match(nTimes(Exact("x"), 3), "xxy")
+//│ = None
+
+
+match(nTimes(Exact("x"), 3), "xx")
+//│ = None
+
+
+:silent
+let p = Concat(In(["T", "t"]), Concat(Star(words), notWord)) 
+
+
+matchAll(p, "To be or not to be, that is the question.")
+//│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
+
+
+match(email, "foo@bar.baz")
+//│ = Some("foo@bar.baz")
+
+match(email, "foo-foo@bar.baz")
+//│ = Some("foo-foo@bar.baz")
+
+match(email, "a.b.c.d@e-f.g.h")
+//│ = Some("a.b.c.d@e-f.g.h")
+
+match(email, "a-b.c.d@e-f.g.h")
+//│ = Some("a-b.c.d@e-f.g.h")
+
+match(email, "foo@bar@baz")
+//│ = None
+
+match(email, "f@a")
+//│ = None
+
+
+:silent
+import "fs"
+
+
+:silent
+let text = fs.readFileSync("./hkmc2/shared/src/test/mlscript-compile/staging/benchmark/input-text.txt", "utf8")
+
+
+// matchAll(email, text).length
