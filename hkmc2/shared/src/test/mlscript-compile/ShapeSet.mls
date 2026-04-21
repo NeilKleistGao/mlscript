@@ -4,6 +4,7 @@ import "./Option.mls"
 import "./Predef.mls"
 import "./Shape.mls"
 import "./StrOps.mls"
+import "./Runtime.mls"
 
 open Block {ConcreteClassSymbol, Path, Symbol, Param}
 open Shape {Dyn, Lit, Arr, Class}
@@ -74,10 +75,9 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
     let entries = [...paramsMap.entries()]
     let keys = entries.map(a =>
       let s = Symbol(a.0)
-      if psOpt is Some(pss) then
+      if psOpt is Some(pss) then 
         let found = pss.flat().find(p => p.sym.name === a.0)
-        if found is undefined then
-          Param(None, s)
+        if found is Runtime.Unit then Param(None, s)
         else found
       else Param(None, s)
     )
@@ -89,11 +89,62 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
       .map(Class(newSym, _))
       |> liftMany
 
-// helper functions
-
 fun filterSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
 
 fun restSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
+
+fun isFalseShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is false
+fun isTrueShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is true
+
+fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) = 
+  if 
+    op is 
+      "&&" and 
+        isFalseShape(s1) then mkLit(false)
+        isFalseShape(s2) then mkLit(true)
+      "||" and
+        isTrueShape(s1) then mkLit(true)
+        isTrueShape(s2) then mkLit(true)
+    s1.isDyn() then mkDyn()
+    s2.isDyn() then mkDyn()
+    else
+      let pairs = prod([s1.values(), s2.values()])
+      let res = pairs.map(pair => 
+        if pair.0 is Lit(l1) and pair.1 is Lit(l2) and op is
+          "+" then Lit(l1 + l2)
+          "-" then Lit(l1 - l2)
+          "*" then Lit(l1 * l2)
+          "/" then Lit(l1 / l2)
+          "%" then Lit(l1 % l2)
+          "==" then Lit(l1 == l2)
+          "!=" then Lit(l1 != l2)
+          "<" then Lit(l1 < l2)
+          "<=" then Lit(l1 <= l2)
+          ">" then Lit(l1 > l2)
+          ">=" then Lit(l1 >= l2)
+          "===" then Lit(l1 === l2)
+          "!==" then Lit(l1 !== l2)
+          "&&" then Lit(l1 && l2)
+          "||" then Lit(l1 || l2)
+        else Dyn()
+      )
+      if res.some(_ is Dyn) then mkDyn()
+      else
+        let st = liftMany(res)
+        let isBoolOp = if op is
+          "==" then true
+          "!=" then true
+          "<" then true
+          "<=" then true
+          ">" then true
+          ">=" then true
+          "===" then true
+          "!==" then true
+          "&&" then true
+          "||" then true
+          else false
+        if isBoolOp and st.values().length > 1 then mkDyn()
+        else st
 
 fun selSet(s1: ShapeSet, s2: ShapeSet) = 
   prod([s1.values(), s2.values()])
@@ -136,7 +187,7 @@ fun val2path(v, allocs) =
     let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
     let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
-  else if v !== undefined and v !== null and v.constructor !== undefined and v.constructor.(Symbols.definitionMetadata) !== undefined then
+  else if not(v is undefined) and not (v is null) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
     let meta = v.constructor.(Symbols.definitionMetadata)
     let clsName = meta.1
     // class may have no parameters

@@ -26,6 +26,19 @@ fun getCacheName(name, isClass) =
 
 fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
 
+fun getStagedClassInfo(c) =
+  let actualClass = getActualClass(c)
+  let clsName = actualClass.(Symbols.definitionMetadata).1
+  [actualClass, clsName]
+
+fun getClassGenMap(c) =
+  let info = getStagedClassInfo(c)
+  info.0.(getGenMapName(info.1, true))
+
+fun getClassCache(c) =
+  let info = getStagedClassInfo(c)
+  info.0.(getCacheName(info.1, true))
+
 fun wrapScoped(symbols, block) =
   if symbols.length is 0 then block
   else if block is Scoped(oldSymbols, rest) then Scoped([...symbols, ...oldSymbols], rest)
@@ -42,11 +55,11 @@ fun showCtxPath(p) = if p is // FIXME
     ValueLit(lit) then "Lit(" + lit.toString() + ")"
 
 class Ctx(
-  // ctx tracks shapes of variables during shape prop
+  // ctx tracks shapes of variables
   val ctx: Map[String, ShapeSet], 
-  // valDefnCtx tracks fields defined by ValDefn during shape prop of constructor
+  // valDefnCtx tracks fields defined by ValDefn
   val valDefnCtx: Map[String, ShapeSet]
-  // allocs tracks the new variables allocated during shape prop
+  // allocs tracks the new variables allocated
   val allocs: Array[Block.Symbol],
   // thisShape stores the shapeset of this, e.g., C1(1) U C1(2)
   val thisShape: Option[ShapeSet],
@@ -78,7 +91,7 @@ module Ctx with
 class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, [Block.Block, Shape]]) with
   val printer = Printer(Some(owner))
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
-  // NOTE: this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
+  // this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
   fun setFun(k, v) = cache.set(k, v); v
   fun toString() =
     let decl = if owner is
@@ -144,25 +157,26 @@ module FunCache with
 
 // shape of value
 fun sov(v): ShapeSet = 
-  if typeof(v) is
-    "number" then mkLit(v)
-    "string" then mkLit(v)
-    "boolean" then mkLit(v)
-  else if Array.isArray(v) then
-    mkArr(v.map(sov))
-  else if not (v is undefined) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
-    let meta = v.constructor.(Symbols.definitionMetadata)
-    let clsName = meta.1
-    // if class field is not public, then definitionMetadata in the corresponding field is null
-    let paramsOpt = if meta.length < 3 
-      then None
-      else Some(meta.2.map(p => if p is null then Symbol("") else Symbol(p)))
-    let classSymbol = ConcreteClassSymbol(clsName, v.constructor, paramsOpt, [])
-    let argsMap = new Map()
-    if not (paramsOpt is None) do
-      meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n))))
-    mkClassFromMap(classSymbol, argsMap, None) // FIXME
-  else throw Error("unknown value from sov", v.toString())
+  if 
+    typeof(v) is
+      "number" then mkLit(v)
+      "string" then mkLit(v)
+      "boolean" then mkLit(v)
+    Array.isArray(v) then
+      mkArr(v.map(sov))
+    not (v is undefined) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
+      let meta = v.constructor.(Symbols.definitionMetadata)
+      let clsName = meta.1
+      // if class field is not public, then definitionMetadata in the corresponding field is null
+      let paramsOpt = if meta.length < 3 
+        then None
+        else Some(meta.2.map(p => if p is null then Symbol("") else Symbol(p)))
+      let classSymbol = ConcreteClassSymbol(clsName, v.constructor, paramsOpt, [])
+      let argsMap = new Map()
+      if not (paramsOpt is None) do
+        meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n))))
+      mkClassFromMap(classSymbol, argsMap, None) // FIXME
+    else throw Error("unknown value from sov", v.toString())
 
 // shape of path
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
@@ -188,12 +202,11 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
     ValueRef(l) then mkDyn()
 
 fun isStagedClass(c) = 
-  let actualClass = getActualClass(c)
-  let clsName = actualClass.(Symbols.definitionMetadata).1
-  let genMapName = getGenMapName(clsName, true)
-  not (actualClass.(genMapName) is undefined)
+  not (getClassGenMap(c) is undefined)
 
 // split a shapeset of class symbols into known ones and unknown ones
+class SplitResult(val knownMap: Map[ConcreteClassSymbol, ShapeSet], val unkShape: ShapeSet)
+
 fun fsplit(pss) = 
   let knownMap = new Map()
   let unkShape = foldl((acc, s) => if s is
@@ -203,152 +216,143 @@ fun fsplit(pss) =
       acc
     else union(acc, mkDyn())
   )(mkBot(), ...pss.values())
-  [knownMap, unkShape]
+  SplitResult(knownMap, unkShape)
 
 fun lit(l) = [End(), ValueLit(l), mkLit(l)]
+
+fun sorInstantiate(ctx, r, cls, args) =
+  let clsSymb = if cls is
+    ValueRef(symb) and symb is ConcreteClassSymbol then symb  // class defined globally
+    Select(_, symb) and symb is ConcreteClassSymbol then symb // class defined in a module
+    else throw Error("Instantiate with non-ClassSymbol in shape propagation: " + cls.toString())
+  let argsShape = args.map(a => sop(ctx, a.value))
+  if isStagedClass(clsSymb.value) then
+    let cache = getClassCache(clsSymb.value)
+    if not (cache is undefined) then
+      let res = SpecializeHelpers.specializeCtor(clsSymb, argsShape, ctx.clearCtx)
+      [End(), r, res]
+    else throw Error("cache not found in staged class")
+  else [End(), r, mkClass(clsSymb, argsShape)]
+
+fun sorBuiltinOp(ctx, r, f, name, args) = if args is
+  [x] and sop(ctx, x.value).values() is [Shape.Lit(l)] and name is
+    "!" then lit(not l)
+    "-" then lit(-l)
+    "+" then lit(+l)
+  [x, y] then
+    let s1 = sop(ctx, x.value)
+    let s2 = sop(ctx, y.value)
+    let bs = binOpSet(name, s1, s2)
+    if staticSet(bs) then lit(valOfSet(bs))
+    else
+      let evaledArgs = args.map(a => sor(ctx, a.value))
+      let fullBlk = foldl((acc, e) => concat(acc, e.0))(End(), ...evaledArgs)
+      let newArgs = evaledArgs.map(e => Arg(if e.1 is Path then e.1 else throw Error("expected path")))
+      let newArgsWithLit = 
+        if s1.values() is [Shape.Lit(l)] then [Arg(ValueLit(l)), newArgs.1]
+        else if s2.values() is [Shape.Lit(l)] then [newArgs.0, Arg(ValueLit(l))]
+        else newArgs
+      [fullBlk, Call(f, newArgsWithLit), bs]
+  else
+    let evaledArgs = args.map(a => sor(ctx, a.value))
+    let fullBlk = foldl((acc, e) => concat(acc, e.0))(End(), ...evaledArgs)
+    let newArgs = evaledArgs.map(e => Arg(if e.1 is Path then e.1 else throw Error("expected path")))
+    [fullBlk, Call(f, newArgs), mkDyn()]
+
+fun sorCall(ctx, r, f, args, argShapes) = if f is
+  Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")) // runtime.Tuple.get is generated by the compiler in the IR
+    and args is [Arg(scrut), Arg(litArg)] then
+      let recovered = DynSelect(scrut, litArg, false)
+      [End(), recovered, sop(ctx, recovered)]
+  Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
+    throw Error("runtime.Tuple.slice not handled in shape propagation")
+  Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
+    [End(), r, mkClass(clsSymb, argShapes)] // FIXME
+  ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
+    isStagedClass(clsSymb.value) and
+      let cache = getClassCache(clsSymb.value)
+      not (cache is undefined) then
+        let res = SpecializeHelpers.specializeCtor(clsSymb, argShapes, ctx.clearCtx)
+        [End(), r, res]
+      else throw Error("class is staged but cache not found")
+    else [End(), r, mkClass(clsSymb, argShapes)]
+  ValueRef(symb) then sorBuiltinOp(ctx, r, f, symb.name, args)  // built-in or top-level
+  Select(ValueRef(ModuleSymbol(name, value)), Symbol(fld)) and
+    let mapPropName = getGenMapName(name, false)
+    let cachePropName = getCacheName(name, false)
+    let genMap = value.(mapPropName)
+    not (genMap is undefined) and
+      let f_gen = genMap.get(fld) 
+      not (f_gen is Runtime.Unit) and  // staged function
+        let res = f_gen(...argShapes)
+        staticSet(res.1) then
+          let v2p = val2path(valOfSet(res.1), ctx.allocs)
+          [v2p.0, v2p.1, res.1]
+        else
+          [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), Symbol(res.0)), args), res.1]
+      else 
+        throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
+    argShapes.every(staticSet) then // non staged function and params known
+      let f_imp = value.(fld)
+      let evaluated = f_imp(...argShapes.map(valOfSet))
+      let evaluated_path = val2path(evaluated, ctx.allocs)
+      [evaluated_path.0, evaluated_path.1, sov(evaluated)]
+    else
+      [End(), r, mkDyn()] // non staged function and some params unknown
+  else throw Error("unknown call in sor: " + r.toString())
 
 // shape of result: return [blk, res, s] 
 // where blk is the block needed to construct the result res (End() if not needed) and s is the shape
 fun sor(ctx, r) = if r is 
   Path and
     let s = sop(ctx, r)
-    // If a path has a statically known shape, then just replace it with the known value
     staticSet(s) and val2path(valOfSet(s), ctx.allocs) is [blk, res] then [blk, res, s]
     else [End(), r, s]
-  Instantiate(cls, args) and 
-    let clsSymb = if cls is
-      ValueRef(symb) and symb is ConcreteClassSymbol then symb  // class defined globally
-      Select(_, symb) and symb is ConcreteClassSymbol then symb // class defined in a module
-      else throw Error("Instantiate with non-ClassSymbol in shape propagation: " + cls.toString())
-    let argsShape = args.map(a => sop(ctx, a.value))
-    isStagedClass(clsSymb.value) and
-      let actualClass = getActualClass(clsSymb.value)
-      let clsName = clsSymb.name 
-      let cacheName = getCacheName(clsName, true)
-      let cache = actualClass.(cacheName)
-      not (cache is undefined) then
-        let res = SpecializeHelpers.specializeCtor(clsSymb, argsShape, ctx.clearCtx)
-        [End(), r, res]
-      else throw Error("cache not found in staged class")
-    else [End(), r, mkClass(clsSymb, argsShape)]
+  Instantiate(cls, args) then sorInstantiate(ctx, r, cls, args)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
-  Call(f, args) and
-    let argShapes = args.map((a, _, _) => sop(ctx, a.value))
-    f is
-      Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")) // runtime.Tuple.get is generated by the compiler in the IR
-        and args is [Arg(scrut), Arg(litArg)] then
-          let recovered = DynSelect(scrut, litArg, false)
-          [End(), recovered, sop(ctx, recovered)]
-      Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
-        throw Error("runtime.Tuple.slice not handled in shape propagation")
-      Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
-        [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))] // FIXME
-      ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
-        isStagedClass(clsSymb.value) then
-          let actualClass = getActualClass(clsSymb.value)
-          let clsName = actualClass.(Symbols.definitionMetadata).1
-          let cacheName = getCacheName(clsName, true)
-          if not (actualClass.(cacheName) is undefined) then
-            let res = SpecializeHelpers.specializeCtor(clsSymb, argShapes, ctx.clearCtx)
-            [End(), r, res]
-          else throw Error("class is staged but cache not found")
-        else [End(), r, mkClass(clsSymb, argShapes)]
-      ValueRef(symb) and  // built-in or top-level
-        let name = symb.name
-        args is
-          [x] and sop(ctx, x.value).values() is [Shape.Lit(l)] and name is
-            "!" then lit(not l)
-            "-" then lit(-l)
-            "+" then lit(+l)
-          [x, y] and sop(ctx, x.value).values() is [Shape.Lit(l1)] and sop(ctx, y.value).values() is [Shape.Lit(l2)] and name is
-            "+" then lit(l1 + l2)
-            "-" then lit(l1 - l2)
-            "*" then lit(l1 * l2)
-            "/" then lit(l1 / l2)
-            "%" then lit(l1 % l2)
-            "==" then lit(l1 == l2)
-            "!=" then lit(l1 != l2)
-            "<" then lit(l1 < l2) // TODO: technically if one shape is {1, 2} and another shape is {3, 4} we can still do partial evaluation
-            "<=" then lit(l1 <= l2)
-            ">" then lit(l1 > l2)
-            ">=" then lit(l1 >= l2)
-            "===" then lit(l1 === l2)
-            "!==" then lit(l1 !== l2)
-            "&&" then lit(l1 && l2)
-            "||" then lit(l1 || l2)
-          else [End(), r, mkDyn()]
-      Select(ValueRef(ModuleSymbol(name, value)), Symbol(fld)) and
-        let mapPropName = getGenMapName(name, false)
-        let cachePropName = getCacheName(name, false)
-        let genMap = value.(mapPropName)
-        not (genMap is undefined) and
-          let f_gen = genMap.get(fld) 
-          not (f_gen is Runtime.Unit) then  // staged function
-            let res = f_gen(...argShapes)
-            if staticSet(res.1) then
-              let v2p = val2path(valOfSet(res.1), ctx.allocs)
-              [v2p.0, v2p.1, res.1]
-            else
-              [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), Symbol(res.0)), args), res.1]
-          else 
-            throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
-        argShapes.every(staticSet) then // non staged function and params known
-          let f_imp = value.(fld)
-          let evaluated = f_imp(...argShapes.map(valOfSet))
-          let evaluated_path = val2path(evaluated, ctx.allocs)
-          [evaluated_path.0, evaluated_path.1, sov(evaluated)]
-        else
-          [End(), r, mkDyn()] // non staged function and some params unknown
-      else throw Error("unknown call in sor: " + r.toString())
+  Call(f, args) then sorCall(ctx, r, f, args, args.map((a, _, _) => sop(ctx, a.value)))
   else throw Error("unknown result in sor: " + r.toString())
 
 fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
   let pss = sop(ctx, ValueRef(symb))
   let argShapes = args.map(a => sop(ctx, a.value))
-  let splitted = fsplit(pss)
-  let knownMap = splitted.0
-  let unkShape = splitted.1
+  let splitRes = fsplit(pss)
+  let knownMap = splitRes.knownMap
+  let unkShape = splitRes.unkShape
+  let knownMapArr = [...knownMap.entries()]
   let isRet = xOpt is None
 
   if knownMap.size is 
-    1 and unkShape.isEmpty() and
-      // If the object is certainly a known class, generate the generated method call directly without pattern matching
-      let entry = [...knownMap.entries()].0
-      let C_i = entry.0
-      let ss_i = entry.1
-      let actualClass = getActualClass(C_i.value)
-      let clsName = actualClass.(Symbols.definitionMetadata).1
-      let genMapName = getGenMapName(clsName, true)
-      let genMap = actualClass.(genMapName)
-      let f_gen = genMap.get(f)
-      let generated = f_gen(ss_i)(...argShapes)
-      let retSym = generated.0
-      let retShape = generated.1
-      let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
-      isRet then
-        [concat(End(), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
-      else
-        let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-        [concat(End(), Assign(x, callRes, End())), retShape]
     0 and
       let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
       isRet then
-        [concat(End(), Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
+        [Return(dfltMatch, if implctOpt is Some(i) then i else false), mkDyn()]
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-        [concat(End(), Assign(x, dfltMatch, End())), mkDyn()]
+        [Assign(x, dfltMatch, End()), mkDyn()]
+    1 and unkShape.isEmpty() and
+      // If the object is certainly a known class, generate the generated method call directly without pattern matching
+      let C_i = knownMapArr.0.0
+      let ss_i = knownMapArr.0.1
+      let genMap = getClassGenMap(C_i.value)
+      let f_gen = genMap.get(f)
+      let ret = f_gen(ss_i)(...argShapes)
+      let retSym = ret.0
+      let retShape = ret.1
+      let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
+      isRet then
+        [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
+      else
+        let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
+        [Assign(x, callRes, End()), retShape]
     else
-      let armsRet = [...knownMap.entries()].map(entry =>
+      let armsRet = knownMapArr.map(entry =>
         let C_i = entry.0
         let ss_i = entry.1
-        let actualClass = getActualClass(C_i.value)
-        let clsName = actualClass.(Symbols.definitionMetadata).1
-        let genMapName = getGenMapName(clsName, true)
-        let genMap = actualClass.(genMapName)
+        let genMap = getClassGenMap(C_i.value)
         let f_gen = genMap.get(f)
-        let generated = f_gen(ss_i)(...argShapes)
-        let retSym = generated.0
-        let retShape = generated.1
+        let retSym = f_gen(ss_i)(...argShapes).0
+        let retShape = f_gen(ss_i)(...argShapes).1
         let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
         if isRet then
           [Arm(Cls(C_i, ValueRef(symb)), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]

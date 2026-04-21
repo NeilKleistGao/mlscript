@@ -17,12 +17,12 @@ staged fun f() = 0
 
 :js
 :sir
-:staging // TODO: this is only used to import Block, the printout is undesired
+:staging
 staged module A
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let A⁰, symbolMap, tmp, tmp1, tmp2;
-//│ set tmp = new globalThis⁰.Map﹖();
-//│ set tmp1 = new globalThis⁰.Map﹖();
+//│ set tmp = new globalThis⁰.this.Map﹖();
+//│ set tmp1 = new globalThis⁰.this.Map﹖();
 //│ set tmp2 = new Block⁰.SymbolMap﹖(tmp, tmp1);
 //│ set symbolMap = tmp2;
 //│ define A⁰ as class A¹
@@ -31,18 +31,18 @@ staged module A
 //│     let tmp3, tmp4, sym, tmp5, tmp6, tmp7;
 //│     set sym = Block⁰.ModuleSymbol﹖("A", A²);
 //│     set tmp5 = symbolMap.checkMap﹖("moduleMap", A², sym);
-//│     set tmp6 = new globalThis⁰.Map﹖();
+//│     set tmp6 = new globalThis⁰.this.Map﹖();
 //│     set tmp7 = new SpecializeHelpers⁰.FunCache﹖(tmp5, tmp6);
 //│     define cache$A⁰ as val cache$A¹ = tmp7;
 //│     set tmp3 = [];
-//│     set tmp4 = new globalThis⁰.Map﹖(tmp3);
+//│     set tmp4 = new globalThis⁰.this.Map﹖(tmp3);
 //│     define generatorMap$A⁰ as val generatorMap$A¹ = tmp4;
 //│     end
 //│   }
 //│   method generate⁰ = fun generate¹(source, path) {
-//│     let tmp_dyn, tmp3;
-//│     set tmp_dyn = ShapeSet⁰.mkDyn﹖();
-//│     set tmp3 = Block⁰.Printer﹖.class﹖.default﹖.codegen﹖("A", A².cache$A﹖, source, path);
+//│     let tmp3, tmp4;
+//│     set tmp3 = A².this.propagate﹖();
+//│     set tmp4 = Block⁰.codegen﹖("A", A².this.cache$A﹖, source, path);
 //│     end
 //│   }
 //│   method ctor$_instr⁰ = fun ctor$_instr¹() {
@@ -54,6 +54,7 @@ staged module A
 //│     set tmp5 = Block⁰.FunDefn﹖(sym, tmp4, end);
 //│     return tmp5
 //│   }
+//│   method propagate⁰ = fun propagate¹() { let tmp_dyn; set tmp_dyn = ShapeSet⁰.mkDyn﹖(); end }
 //│ };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -67,8 +68,8 @@ fun g(@static x) = x
 :e
 fun h(@dynamic @static x) = x
 //│ ╔══[COMPILATION ERROR] At most one reflection constraint can be added for each parameter.
-//│ ║  l.68: 	fun h(@dynamic @static x) = x
+//│ ║  l.69: 	fun h(@dynamic @static x) = x
 //│ ╙──      	               ^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Name not found: x
-//│ ║  l.68: 	fun h(@dynamic @static x) = x
+//│ ║  l.69: 	fun h(@dynamic @static x) = x
 //│ ╙──      	                            ^

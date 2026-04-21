@@ -154,9 +154,12 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       val lowered_1 = ltl.givenIn:
         BlockSimplifier(symbolsToPreserve)(lowered_0)
       
+      val lowered_2 = ltl.givenIn:
+        DeadParamElim(lowered_1)
+      
       // TODO: Test that transformers retain object identity when there are no changes
-      if (lowered_1 isnt lowered_0) && (lowered_1 === lowered_0) then
-        output("/!\\ Warning: object identity between equal objects was not preserved by BlockSimplifier")
+      if (lowered_2 isnt lowered_0) && (lowered_2 === lowered_0) then
+        output("/!\\ Warning: object identity between equal objects was not preserved by BlockSimplifier or DeadParamElim")
         def rec(lhs: Block, rhs: Block): Bool =
           (lhs is rhs) || {
             if
@@ -167,10 +170,8 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
               false
             else false
           }
-        rec(lowered_0.main, lowered_1.main)
+        rec(lowered_0.main, lowered_2.main)
       
-      val lowered_2 = ltl.givenIn:
-        DeadParamElim(lowered_1)
       if checkIR.isSet then
         BlockChecker().applyProgram(lowered_2)
       

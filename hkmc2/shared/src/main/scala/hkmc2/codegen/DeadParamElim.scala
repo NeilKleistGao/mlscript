@@ -15,6 +15,7 @@ type ConcreteCallSiteId = ResultId -> InstantiationId
 
 
 class DeadParamElimSolver(val constraintSolver: FlowConstraintSolver):
+  
   given tl: TraceLogger = constraintSolver.tl
   given fState: FlowAnalysis.State = constraintSolver.fState
   given eState: Elaborator.State = constraintSolver.eState
@@ -143,6 +144,11 @@ end DeadParamElimSolver
 
 
 class Rewrite(val deadParamElimSolver: DeadParamElimSolver)(using Raise):
+  
+  def apply(): Program =
+    if newBody is pre.pgrm.main then pre.pgrm
+    else Program(pre.pgrm.imports, newBody)
+  
   val constraintSolver = deadParamElimSolver.constraintSolver
   val collector = deadParamElimSolver.collector
   given tl: TraceLogger = constraintSolver.tl
@@ -179,6 +185,7 @@ class Rewrite(val deadParamElimSolver: DeadParamElimSolver)(using Raise):
   }
   
   class Rewriter(instId: InstantiationId) extends BlockTransformer(_symSubst):
+    
     private val activeEliminatedParams = MutSet.empty[VarSymbol]
 
     private def withEliminatedParams[A](removed: Set[VarSymbol])(thunk: => A): A =
@@ -298,6 +305,7 @@ class Rewrite(val deadParamElimSolver: DeadParamElimSolver)(using Raise):
   end Rewriter
   
   val newBody =
+    
     def filterParamList(pl: ParamList, eliminable: Set[Int]): ParamList =
       if eliminable.isEmpty then pl
       else
@@ -371,11 +379,13 @@ class Rewrite(val deadParamElimSolver: DeadParamElimSolver)(using Raise):
             case None => super.applyFunDefn(fun)
       Scoped(
         Set.from(newPolyFuns.map(_.sym)),
-        mainRewriter.applyBlock(pre.b))
+        mainRewriter.applyBlock(pre.pgrm.main))
     
     newPolyFuns.foldRight(newMainBody): (fdef, rest) =>
       Define(fdef, rest)
+  
   end newBody
+  
 end Rewrite
 
 
@@ -394,8 +404,13 @@ object DeadParamElim:
           override def doTrace: Bool = dCfg.debug
           override def emitDbg(str: Str): Unit = outerTl.emitDbg(s"dead-param-elim > $str")
         ).givenIn:
-          val fState = new FlowAnalysis.State
-          val flowAnalysisRes = FlowAnalysis(p.main, mono = dCfg.mono)
+          val flowAnalysisRes = FlowAnalysis(p, mono = dCfg.mono)
           val deadParamElimSolver = new DeadParamElimSolver(flowAnalysisRes)
-          val rewrite = new Rewrite(deadParamElimSolver)
-          Program(p.imports, rewrite.newBody)
+          if deadParamElimSolver.eliminableParamsById.isEmpty
+            && deadParamElimSolver.eliminableCallSiteArgsById.isEmpty
+          then p
+          else
+            val rewrite = new Rewrite(deadParamElimSolver)
+            rewrite()
+
+
