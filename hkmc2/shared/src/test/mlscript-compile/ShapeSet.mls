@@ -89,11 +89,62 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
       .map(Class(newSym, _))
       |> liftMany
 
-// helper functions
-
 fun filterSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
 
 fun restSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
+
+fun isFalseShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is false
+fun isTrueShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is true
+
+fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) = 
+  if 
+    op is 
+      "&&" and 
+        isFalseShape(s1) then mkLit(false)
+        isFalseShape(s2) then mkLit(true)
+      "||" and
+        isTrueShape(s1) then mkLit(true)
+        isTrueShape(s2) then mkLit(true)
+    s1.isDyn() then mkDyn()
+    s2.isDyn() then mkDyn()
+    else
+      let pairs = prod([s1.values(), s2.values()])
+      let res = pairs.map(pair => 
+        if pair.0 is Lit(l1) and pair.1 is Lit(l2) and op is
+          "+" then Lit(l1 + l2)
+          "-" then Lit(l1 - l2)
+          "*" then Lit(l1 * l2)
+          "/" then Lit(l1 / l2)
+          "%" then Lit(l1 % l2)
+          "==" then Lit(l1 == l2)
+          "!=" then Lit(l1 != l2)
+          "<" then Lit(l1 < l2)
+          "<=" then Lit(l1 <= l2)
+          ">" then Lit(l1 > l2)
+          ">=" then Lit(l1 >= l2)
+          "===" then Lit(l1 === l2)
+          "!==" then Lit(l1 !== l2)
+          "&&" then Lit(l1 && l2)
+          "||" then Lit(l1 || l2)
+        else Dyn()
+      )
+      if res.some(_ is Dyn) then mkDyn()
+      else
+        let st = liftMany(res)
+        let isBoolOp = if op is
+          "==" then true
+          "!=" then true
+          "<" then true
+          "<=" then true
+          ">" then true
+          ">=" then true
+          "===" then true
+          "!==" then true
+          "&&" then true
+          "||" then true
+          else false
+        if isBoolOp and st.values().length > 1 then mkDyn()
+        else st
 
 fun selSet(s1: ShapeSet, s2: ShapeSet) = 
   prod([s1.values(), s2.values()])

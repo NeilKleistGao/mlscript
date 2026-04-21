@@ -16,7 +16,7 @@ staged module Staged with
     2 then 1
     n then fib(n - 1) + fib(n - 2)
 
-staged module Test with
+staged module Simple with
   fun f(x, y) = x + y + 1 - 1
   fun fib(n) = if n is
     1 then 1
@@ -33,10 +33,10 @@ staged module Test with
     let dyn = pyth(n, 2) 
     fib(dyn * 2)
 
-Test."test_gen"()
-Test."test2_gen"(mkDyn())
-print(Test."cache$Test")
-//│ > module Test with
+Simple."test_gen"()
+Simple."test2_gen"(mkDyn())
+print(Simple."cache$Simple")
+//│ > module Simple with
 //│ >   ()
 //│ >   fun f_Lit2_Lit2(x, y) = 4
 //│ >   fun fib(n) =
@@ -70,7 +70,7 @@ print(Test."cache$Test")
 
 class C(val x)
 
-staged module TestIf with
+staged module If with
   fun f(x) = if x is
     C(2) then "C(2)"
     C then "C"
@@ -80,9 +80,9 @@ staged module TestIf with
     f(C(3))
     f(2)
 
-TestIf."test_gen"()
-print(TestIf."cache$TestIf")
-//│ > module TestIf with
+If."test_gen"()
+print(If."cache$If")
+//│ > module If with
 //│ >   ()
 //│ >   fun f_C_Lit2(x) = "C(2)"
 //│ >   fun f_C_Lit3(x) = "C"
@@ -90,7 +90,7 @@ print(TestIf."cache$TestIf")
 //│ >   fun test() = "else"
 
 class C(val n)
-staged module TestIf2 with
+staged module If2 with
   fun f(x) =
     let y
     if x is C then
@@ -102,11 +102,11 @@ staged module TestIf2 with
   fun test2(dyn) = f(C(dyn))
   fun test3() = f(0)
 
-TestIf2."test_gen"()
-TestIf2."test2_gen"(mkDyn())
-TestIf2."test3_gen"()
-print(TestIf2."cache$TestIf2")
-//│ > module TestIf2 with
+If2."test_gen"()
+If2."test2_gen"(mkDyn())
+If2."test3_gen"()
+print(If2."cache$If2")
+//│ > module If2 with
 //│ >   ()
 //│ >   fun f_C_Dyn(x) =
 //│ >     let {y, tmp}
@@ -175,7 +175,7 @@ staged class L3(val y) with
 class L4(val y) with
   fun call(x) = x + y
 
-staged module TestDispatching with
+staged module Dispatching with
   fun twice(f, x) = f.call(f.call(x))
   fun pick(x, y, b) = if b then x else y
   fun test(b) = 
@@ -183,17 +183,58 @@ staged module TestDispatching with
     let m = pick(new L2(2), new L3(3), b)
     twice(m, 5)
 
-TestDispatching."test_gen"(mkLit(true))
+Dispatching."test_gen"(mkLit(true))
 //│ = ["test_Littrue", {Lit(9)}]
 
-TestDispatching."test_gen"(mkLit(false))
+Dispatching."test_gen"(mkLit(false))
 //│ = ["test_Litfalse", {Lit(29)}]
 
-TestDispatching."test_gen"(mkDyn())
-//│ = ["test", {Dyn()}]
+Dispatching."test_gen"(mkDyn())
+//│ = ["test", {Lit(15),Lit(17),Lit(29),Lit(9)}]
 
-print(TestDispatching."cache$M")
-//│ > undefined
+print(Dispatching."cache$Dispatching")
+//│ > module Dispatching with
+//│ >   ()
+//│ >   fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
+//│ >     let {obj_7, obj_8}
+//│ >     if b is
+//│ >       true then
+//│ >         obj_7 = new L2(2)
+//│ >         obj_7
+//│ >       else
+//│ >         obj_8 = new L3(3)
+//│ >         obj_8
+//│ >   fun pick_L2_Lit2_L3_Lit3_Litfalse(x, y, b) =
+//│ >     let {obj_5}
+//│ >     obj_5 = new L3(3)
+//│ >     obj_5
+//│ >   fun pick_L2_Lit2_L3_Lit3_Littrue(x, y, b) =
+//│ >     let {obj_2}
+//│ >     obj_2 = new L2(2)
+//│ >     obj_2
+//│ >   fun test(b) =
+//│ >     let {y1, m, tmp1, tmp2, tmp3}
+//│ >     tmp1 = new L1(1)
+//│ >     y1 = 11
+//│ >     tmp2 = new L2(2)
+//│ >     tmp3 = new L3(3)
+//│ >     m = pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
+//│ >     twice_Union_L2_Lit2_L3_Lit3_end_Lit5(m, 5)
+//│ >   fun test_Litfalse(b) = 29
+//│ >   fun test_Littrue(b) = 9
+//│ >   fun twice_L1_Lit1_Lit5(f, x) = 11
+//│ >   fun twice_L2_Lit2_Lit5(f, x) = 9
+//│ >   fun twice_L3_Lit3_Lit5(f, x) = 29
+//│ >   fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f, x) =
+//│ >     let {tmp}
+//│ >     if f is
+//│ >       L2 then
+//│ >         tmp = f.call_L2_Lit2_dot_Lit5(x)
+//│ >       L3 then
+//│ >         tmp = f.call_L3_Lit3_dot_Lit5(x)
+//│ >     if f is
+//│ >       L2 then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
+//│ >       L3 then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
 
 print(L1.class."class$cache$L1")
 print(L2.class."class$cache$L2")
@@ -221,18 +262,14 @@ staged class A(val x: Int) with
 staged class B(val x: Int) with
   fun f(y: A) = x + y.f(x)
 
-staged module TestThis with
-  fun test2(y) = B(1).x + y
+staged module This with
   fun test(x) = B(x).f(A(1))
+  fun test2(y) = B(1).x + y
 
-TestThis."test2_gen"(mkLit(1))
-//│ = ["test2_Lit1", {Lit(2)}]
-
-TestThis."test_gen"(mkLit(1))
-print(TestThis."cache$TestThis")
-//│ > module TestThis with
+This."test_gen"(mkLit(1))
+print(This."cache$This")
+//│ > module This with
 //│ >   ()
-//│ >   fun test2_Lit1(y) = 2
 //│ >   fun test_Lit1(x) = 3
 
 print(A.class."class$cache$A")
@@ -249,19 +286,38 @@ staged class B(val x, val y) with
 
 staged class D(val x, val y) extends B(x + 1, x + 2)
 
-staged module TestInheritance with
+staged module Inheritance with
   fun test() = 
     let d = D(1, 2)
     if d is
       B then d.z
       else "not B"
 
-TestInheritance."test_gen"()
+Inheritance."test_gen"()
 //│ = ["test", {Lit(5)}]
 
 staged module NonTermination with
-  fun f(x, y) = if y is 
+  fun f(x, y) = if y is
     1 then 0
     else f(x, y + 1)
 
+:fixme
 // NonTermination."f_gen"(mkDyn(), mkLit(0))
+
+fun g(x, y) = x + y
+
+staged module GlobalFunction with
+  fun test(x) = g(x, x)
+
+GlobalFunction."test_gen"(union(mkLit(1), mkLit(2)))
+//│ = ["test_Union_Lit1_Lit2_end", {Dyn()}]
+
+staged module Comparison with
+  fun test(x) = x < 5
+
+Comparison."test_gen"(union(mkLit(3), mkLit(4)))
+//│ = ["test_Union_Lit3_Lit4_end", {Lit(true)}]
+
+Comparison."test_gen"(union(mkLit(4), mkLit(6)))
+//│ = ["test_Union_Lit4_Lit6_end", {Dyn()}]
+
