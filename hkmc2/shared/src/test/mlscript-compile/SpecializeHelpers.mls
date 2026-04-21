@@ -265,22 +265,32 @@ fun sor(ctx, r) = if r is
             "!" then lit(not l)
             "-" then lit(-l)
             "+" then lit(+l)
-          [x, y] and sop(ctx, x.value).values() is [Shape.Lit(l1)] and sop(ctx, y.value).values() is [Shape.Lit(l2)] and name is
-            "+" then lit(l1 + l2)
-            "-" then lit(l1 - l2)
-            "*" then lit(l1 * l2)
-            "/" then lit(l1 / l2)
-            "%" then lit(l1 % l2)
-            "==" then lit(l1 == l2)
-            "!=" then lit(l1 != l2)
-            "<" then lit(l1 < l2) // TODO: technically if one shape is {1, 2} and another shape is {3, 4} we can still do partial evaluation
-            "<=" then lit(l1 <= l2)
-            ">" then lit(l1 > l2)
-            ">=" then lit(l1 >= l2)
-            "===" then lit(l1 === l2)
-            "!==" then lit(l1 !== l2)
-            "&&" then lit(l1 && l2)
-            "||" then lit(l1 || l2)
+          [x, y] and
+            let vx = sop(ctx, x.value).values()
+            let vy = sop(ctx, y.value).values()
+            vx is [Shape.Lit(l1)] and vy is [Shape.Lit(l2)] and
+              name is
+                "+" then lit(l1 + l2)
+                "-" then lit(l1 - l2)
+                "*" then lit(l1 * l2)
+                "/" then lit(l1 / l2)
+                "%" then lit(l1 % l2)
+                "==" then lit(l1 == l2)
+                "!=" then lit(l1 != l2)
+                "<" then lit(l1 < l2) // TODO: technically if one shape is {1, 2} and another shape is {3, 4} we can still do partial evaluation
+                "<=" then lit(l1 <= l2)
+                ">" then lit(l1 > l2)
+                ">=" then lit(l1 >= l2)
+                "===" then lit(l1 === l2)
+                "!==" then lit(l1 !== l2)
+                "&&" then lit(l1 && l2)
+                "||" then lit(l1 || l2)
+                else [End(), r, mkDyn()]
+            else if vx is [Shape.Lit(l1)] then
+              [End(), Call(f, [Arg(ValueLit(l1)), y]), mkDyn()]
+            else if vy is [Shape.Lit(l2)] then
+              [End(), Call(f, [x, Arg(ValueLit(l2))]), mkDyn()]
+            else [End(), r, mkDyn()]
           else [End(), r, mkDyn()]
       Select(ValueRef(ModuleSymbol(name, value)), Symbol(fld)) and
         let mapPropName = getGenMapName(name, false)

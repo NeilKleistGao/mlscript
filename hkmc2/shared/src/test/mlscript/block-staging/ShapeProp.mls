@@ -59,7 +59,7 @@ print(Test."cache$Test")
 //│ >     let {tmp6, tmp7}
 //│ >     tmp6 = NonStaged.sq(x)
 //│ >     tmp7 = 4
-//│ >     tmp6 + tmp7
+//│ >     tmp6 + 4
 //│ >   fun pyth_Lit2_Lit4(x, y) = 20
 //│ >   fun test() = 20
 //│ >   fun test2(n) =
@@ -138,22 +138,22 @@ print(LinearAlgebra."cache$LinearAlgebra")
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 1
-//│ >     tmp1 = *(v1.(n), v2.(n))
-//│ >     tmp2 = tmp1 + acc
+//│ >     tmp1 = *(v1.(n), 3)
+//│ >     tmp2 = tmp1 + 0
 //│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, tmp, tmp2)
 //│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, n, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 2
 //│ >     tmp1 = 4
-//│ >     tmp2 = tmp1 + acc
+//│ >     tmp2 = 4 + acc
 //│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, tmp, tmp2)
 //│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, n, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 3
 //│ >     tmp1 = 2
-//│ >     tmp2 = tmp1 + acc
+//│ >     tmp2 = 2 + acc
 //│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, tmp, tmp2)
 //│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, n, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
@@ -206,7 +206,7 @@ print(L3.class."class$cache$L3")
 //│ >   ()
 //│ >   fun call_L2_Lit2_dot_Lit5(x) = 7
 //│ >   fun call_L2_Lit2_dot_Lit7(x) = 9
-//│ >   fun call_L2_Lit2_dot_Union_Lit7_Lit13_end(x) = x + y
+//│ >   fun call_L2_Lit2_dot_Union_Lit7_Lit13_end(x) = x + 2
 //│ > class L3(y) with
 //│ >   ()
 //│ >   fun call_L3_Lit3_dot_Lit13(x) = 29
@@ -214,7 +214,7 @@ print(L3.class."class$cache$L3")
 //│ >   fun call_L3_Lit3_dot_Union_Lit7_Lit13_end(x) =
 //│ >     let {tmp1}
 //│ >     tmp1 = *(x, 2)
-//│ >     tmp1 + y
+//│ >     tmp1 + 3
 
 staged class A(val x: Int) with
   fun f(y: Int) = x + y
@@ -258,3 +258,10 @@ staged module TestInheritance with
 
 TestInheritance."test_gen"()
 //│ = ["test", {Lit(5)}]
+
+staged module NonTermination with
+  fun f(x, y) = if y is 
+    1 then 0
+    else f(x, y + 1)
+
+// NonTermination."f_gen"(mkDyn(), mkLit(0))
