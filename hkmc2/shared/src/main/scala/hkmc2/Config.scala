@@ -74,7 +74,7 @@ object Config:
     commentGeneratedCode = false,
     noFreeze = false,
     noModuleCheck = false,
-    deadParamElim = N
+    deadParamElim = S(DeadParamElim.default)
   )
   object default:
     val patMatConsequentSharingThreshold = S(15)
@@ -109,9 +109,17 @@ object Config:
 
   case class DeadParamElim(val debug: Boolean, val mono: Boolean)
   object DeadParamElim:
-    val default = DeadParamElim(true, true)
+    val default = DeadParamElim(false, true)
   
   case class Inliner(inlineThreshold: Int)
+
+  def extractConfigFromStats(prgm: semantics.Term.Blk)(using Config) =
+    // Extract cumulative config modifications from SetConfig statements
+    val configModify = prgm.stats.collect:
+      case sc: semantics.SetConfig => sc.modify
+    .foldLeft(identity[Config]): (acc, modify) =>
+      cfg => modify(acc(cfg))
+    configModify(config)
 
 end Config
 
