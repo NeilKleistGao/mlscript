@@ -268,6 +268,15 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
     throw Error("runtime.Tuple.slice not handled in shape propagation")
   Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
     [End(), r, mkClass(clsSymb, argShapes)] // FIXME
+  Select(p, Symbol("concat")) then // TODO: remove these special checks
+    if sop(ctx, p).values() is [Shape.Arr(arr)] and args is [e] and sop(ctx, e.value) is [Shape.Arr(arr2)] then
+      [End(), r, mkArr(arr.concat(arr2))]
+    else
+      [End(), r, mkDyn()]
+  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("sin")) then
+    [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
+  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("cos")) then
+    [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
   ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
     isStagedClass(clsSymb.value) and
       let cache = getClassCache(clsSymb.value)
@@ -444,7 +453,7 @@ fun propStub(ctx, body) =
 fun buildShapeName(s: Shape): Str = if s is
   Dyn then "Dyn"
   Lit(lit) and lit is Str then "Str" + lit
-  Lit(lit) then "Lit" + lit.toString()
+  Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
   Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
   Class(sym, params) and params.length is
     0 then sym.name
