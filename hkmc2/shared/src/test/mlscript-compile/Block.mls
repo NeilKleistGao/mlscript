@@ -130,7 +130,9 @@ class Printer(val owner: Opt[Class]) with
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
         qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
-        else showPath(qual) + "." + showSymbol(name)
+        qual is ValueRef(sym) and sym is ClassSymbol then "this." + showSymbol(name)
+        else
+          showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
       ValueRef(l) then showSymbol(l)
@@ -169,9 +171,12 @@ class Printer(val owner: Opt[Class]) with
     // do not print constraints to next stage
     "(" + pl.map(p => showSymbol(p.sym)).join(", ") + ")"
 
+  fun showCtorParams(pl: ParamList) =  
+    "(" + pl.map(p => "val " + showSymbol(p.sym)).join(", ") + ")"
+
   fun showParamsOpt(p) =
     if p is
-      Some(s) then showParams(s)
+      Some(s) then showCtorParams(s)
       None then ""
 
   fun showParamList(ps: Array[ParamList]) =

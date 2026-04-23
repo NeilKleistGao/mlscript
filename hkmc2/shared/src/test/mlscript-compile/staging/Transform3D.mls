@@ -23,13 +23,11 @@ staged module Transform3D with
 
   fun updateVec(vec, m, col, j, v, i', j') =
     if j' === 0 then vec
-    else if col - j' === j then updateVec(vec.concat([v]), m, col, j, v, i', j' - 1)
-    else updateVec(vec.concat([m.(i').(col - j')]), m, col, j, v, i', j' - 1)
+    else updateVec(if col - j' === j then vec.concat([v]) else vec.concat([m.(i').(col - j')]), m, col, j, v, i', j' - 1)
 
   fun iterUpdate(res, m, row, col, i, j, v, i') =
     if i' === 0 then res
-    else if i === row - i' then iterUpdate(res.concat([updateVec([], m, col, j, v, row - i', col)]), m, row, col, i, j, v, i' - 1)
-    else iterUpdate(res.concat([m.(row - i')]), m, row, col, i, j, v, i' - 1)
+    else iterUpdate(if i === row - i' then res.concat([updateVec([], m, col, j, v, row - i', col)]) else res.concat([m.(row - i')]), m, row, col, i, j, v, i' - 1)
 
   fun multiply(x, y) =
     let rowX = x.length
