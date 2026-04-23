@@ -577,12 +577,12 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     case SpecializedSwitch(scrut, cases, dflt, rest) =>
       val switchBod = cases.foldLeft(doc""): (acc, arm) =>
         val needsBreak = arm.isInstanceOf[SwitchCase.ExplicitBreak]
-        acc :: doc" # case ${result(Value.Lit(arm.litValue))}: { #{ ${
-          // * Wrap each case in { } to create a JS block scope for `let` declarations.
-          // * Without braces, `let` declarations in different case blocks would share
-          // * the switch scope and conflict if they use the same variable name.
-          nonBracedScoped(arm.body)(bd => returningTerm(bd, endSemi = true))
-        }${if needsBreak then doc" # break;" else ""} #} }"
+        acc :: doc" # case ${result(Value.Lit(arm.litValue))}: #{ ${
+          // * Note: we use `block` here so that Scoped nodes will create proper brace sections,
+          // * necessary since `case` clauses do not create a new scope,
+          // * so something like `switch (x) { case 1: let y = 1; break; case 2: let y = 2 }` is ill-formed!
+          block(arm.body, endSemi = true)
+        }${if needsBreak then doc" # break;" else ""} #} "
       val bodWithDflt = doc"${switchBod}${dflt match
         case Some(bd) => doc" # default: #{ ${nonBracedScoped(bd)(bd => returningTerm(bd, endSemi = true))} #} "
         case None => doc""
@@ -663,8 +663,9 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
 
     // Only nested scopes in unusual positions are handled here.
     case Scoped(syms, body) =>
-      scope.nest.givenIn:
-        blockPreamble(syms.view.filter(body.freeVars)) :: returningTerm(body, endSemi = endSemi)
+      doc" # " :: braced:
+        scope.nest.givenIn:
+          blockPreamble(syms.view.filter(body.freeVars)) :: returningTerm(body, endSemi = endSemi)
     
     // case _ => ???
   

@@ -536,7 +536,7 @@ let Runtime1;
   static handleEffects_handleEffect_resume(id, param0, param1) {
     loopLabel: while (true) {
       switch (id) {
-        case 0: {
+        case 0:
           lbl: while (true) {
             let nxt, scrut;
             if (param0 instanceof Runtime.EffectSig.class) {
@@ -550,72 +550,76 @@ let Runtime1;
               continue lbl;
             }
             return param0;
-          }}
-        case 1: {
-          let prevHandlerFrame, scrut, handlerFrame, saved, tmp, old, scrut1, scrut2, scrut3, tmp1, tmp2, tmp3, tmp4;
-          prevHandlerFrame = param0.contTrace;
-          lbl1: while (true) {
-            let scrut4, scrut5;
-            scrut4 = prevHandlerFrame.nextHandler !== null;
-            if (scrut4 === true) {
-              scrut5 = prevHandlerFrame.nextHandler.handler !== param0.handler;
-              if (scrut5 === true) {
-                prevHandlerFrame = prevHandlerFrame.nextHandler;
-                continue lbl1
+          }
+        case 1:
+          {
+            let prevHandlerFrame, scrut, handlerFrame, saved, tmp, old, scrut1, scrut2, scrut3, tmp1, tmp2, tmp3, tmp4;
+            prevHandlerFrame = param0.contTrace;
+            lbl1: while (true) {
+              let scrut4, scrut5;
+              scrut4 = prevHandlerFrame.nextHandler !== null;
+              if (scrut4 === true) {
+                scrut5 = prevHandlerFrame.nextHandler.handler !== param0.handler;
+                if (scrut5 === true) {
+                  prevHandlerFrame = prevHandlerFrame.nextHandler;
+                  continue lbl1
+                }
               }
+              break;
             }
-            break;
-          }
-          scrut = prevHandlerFrame.nextHandler === null;
-          if (scrut === true) {
-            return param0
-          }
-          handlerFrame = prevHandlerFrame.nextHandler;
-          saved = new Runtime.ContTrace.class(handlerFrame.next, param0.contTrace.last, handlerFrame.nextHandler, param0.contTrace.lastHandler, false);
-          param0.contTrace.last = handlerFrame;
-          param0.contTrace.lastHandler = handlerFrame;
-          handlerFrame.next = null;
-          handlerFrame.nextHandler = null;
-          Runtime.curEffect = null;
-          old = Runtime.stackDepth;
-          try {
-            tmp2 = Runtime.stackDepth + 2;
-            Runtime.stackDepth = tmp2;
-            tmp3 = Runtime.resume(param0.contTrace);
-            tmp4 = runtime.safeCall(param0.handlerFun(tmp3));
-            tmp1 = tmp4;
-          } finally {
-            Runtime.stackDepth = old;
-          }
-          tmp = tmp1;
-          scrut1 = Runtime.curEffect !== null;
-          if (scrut1 === true) {
-            param0 = Runtime.curEffect;
-            scrut2 = saved.next !== null;
-            if (scrut2 === true) {
-              param0.contTrace.last.next = saved.next;
-              param0.contTrace.last = saved.last;
-            }
-            scrut3 = saved.nextHandler !== null;
-            if (scrut3 === true) {
-              param0.contTrace.lastHandler.nextHandler = saved.nextHandler;
-              param0.contTrace.lastHandler = saved.lastHandler;
+            scrut = prevHandlerFrame.nextHandler === null;
+            if (scrut === true) {
               return param0
             }
-            return param0;
+            handlerFrame = prevHandlerFrame.nextHandler;
+            saved = new Runtime.ContTrace.class(handlerFrame.next, param0.contTrace.last, handlerFrame.nextHandler, param0.contTrace.lastHandler, false);
+            param0.contTrace.last = handlerFrame;
+            param0.contTrace.lastHandler = handlerFrame;
+            handlerFrame.next = null;
+            handlerFrame.nextHandler = null;
+            Runtime.curEffect = null;
+            old = Runtime.stackDepth;
+            try {
+              tmp2 = Runtime.stackDepth + 2;
+              Runtime.stackDepth = tmp2;
+              tmp3 = Runtime.resume(param0.contTrace);
+              tmp4 = runtime.safeCall(param0.handlerFun(tmp3));
+              tmp1 = tmp4;
+            } finally {
+              Runtime.stackDepth = old;
+            }
+            tmp = tmp1;
+            scrut1 = Runtime.curEffect !== null;
+            if (scrut1 === true) {
+              param0 = Runtime.curEffect;
+              scrut2 = saved.next !== null;
+              if (scrut2 === true) {
+                param0.contTrace.last.next = saved.next;
+                param0.contTrace.last = saved.last;
+              }
+              scrut3 = saved.nextHandler !== null;
+              if (scrut3 === true) {
+                param0.contTrace.lastHandler.nextHandler = saved.nextHandler;
+                param0.contTrace.lastHandler = saved.lastHandler;
+                return param0
+              }
+              return param0;
+            }
+            return Runtime.resumeContTrace(saved, tmp);
           }
-          return Runtime.resumeContTrace(saved, tmp);}
-        case 2: {
-          let scrut, tmp;
-          scrut = param0.resumed;
-          if (scrut === true) {
-            throw runtime.safeCall(globalThis.Error("Multiple resumption"))
+        case 2:
+          {
+            let scrut, tmp;
+            scrut = param0.resumed;
+            if (scrut === true) {
+              throw runtime.safeCall(globalThis.Error("Multiple resumption"))
+            }
+            param0.resumed = true;
+            tmp = Runtime.resumeContTrace(param0, param1);
+            param0 = tmp;
+            id = 0;
+            continue loopLabel;
           }
-          param0.resumed = true;
-          tmp = Runtime.resumeContTrace(param0, param1);
-          param0 = tmp;
-          id = 0;
-          continue loopLabel;}
       }
       break;
     }
