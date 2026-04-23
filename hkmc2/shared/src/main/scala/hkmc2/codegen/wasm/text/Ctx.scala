@@ -15,7 +15,6 @@ import semantics.{
 import text.Param as WasmParam
 import Instructions.*
 
-import scala.annotation.{nowarn, targetName}
 import scala.collection.immutable.ListMap
 import scala.collection.mutable.{ArrayBuffer as ArrayBuf, Map as MutMap, LinkedHashSet}
 import scala.reflect.ClassTag
@@ -188,9 +187,9 @@ object SessionExportCtx:
 class FuncInfo(
     val id: SymIdx,
     val typeUse: TypeUse,
-    params: Seq[Local -> Str],
+    params: Seq[Local -> SymIdx],
     val resultTypes: Seq[Result],
-    locals: Seq[Local -> Str],
+    locals: Seq[Local -> SymIdx],
     val body: Expr,
     val exportName: Opt[Str],
 ) extends ToWat:
@@ -211,9 +210,9 @@ class FuncInfo(
   def this(
       sym: BlockMemberSymbol,
       typeUse: TypeUse,
-      params: Seq[Local -> Str],
+      params: Seq[Local -> SymIdx],
       nResults: Int,
-      locals: Seq[Local -> Str],
+      locals: Seq[Local -> SymIdx],
       body: Expr,
   )(using Raise, Scope) = this(
     SymIdx(sym.optionIf(_.nameIsMeaningful).fold(summon[Scope].allocateName(sym))(_.nme)),
@@ -228,9 +227,9 @@ class FuncInfo(
   def this(
       id: Opt[SymIdx],
       typeUse: TypeUse,
-      params: Seq[Local -> Str],
+      params: Seq[Local -> SymIdx],
       nResults: Int,
-      locals: Seq[Local -> Str],
+      locals: Seq[Local -> SymIdx],
       body: Expr,
       `export`: Opt[Str],
   )(using Raise, Scope, State) = this(
@@ -245,7 +244,7 @@ class FuncInfo(
 
   /** Returns the type of this function as a [[SignatureType]]. */
   def getSignatureType: SignatureType = SignatureType(
-    params = params.map((_, varNme) => WasmParam(varNme, RefType.anyref)),
+    params = params.map((_, paramIdx) => WasmParam(paramIdx, RefType.anyref)),
     results = resultTypes,
   )
 
@@ -257,7 +256,7 @@ class FuncInfo(
         getSignatureType.toWat.surroundUnlessEmpty(doc" ")
       } #{ ${
         locals.map: p =>
-          doc"(local $$${p._2} ${RefType.anyref.toWat})"
+          doc"(local ${p._2.toWat} ${RefType.anyref.toWat})"
         .mkDocument(doc" # ").surroundUnlessEmpty(doc" # ")
       } # ${body.toWat} #} )"""
 end FuncInfo
@@ -351,9 +350,31 @@ end TagInfo
 enum WasmIntrinsicType:
   case TupleArray(mutable: Bool)
 
+/** Class containing identifiers of labels to jump to when breaking or continuing from a control flow structure.
+  *
+  * @param breakLabel
+  *   The identifier of the label to jump to for exiting the control flow structure, e.g. for `break` statements.
+  * @param continueLabel
+  *   The identifier of the label to jump to for continuing the control flow structure, e.g. for `continue` statements
+  *   in loops. This is `None` for non-loop control flow structures.
+  */
+case class LabelTarget(breakLabel: Str, continueLabel: Opt[Str])
+
 object FunctionCtx:
 
   def funcCtx(using funcCtx: FunctionCtx): FunctionCtx = funcCtx
+
+  /** Context for tracking control flow jump targets.
+    *
+    * @param scp
+    *   [[Scope]] for generating WAT identifiers of labels in this control flow context.
+    * @param breakLabel
+    *   The label to jump to for exiting this control flow context, e.g. for `break` statements.
+    * @param continueLabel
+    *   The label to jump to for continuing this control flow context, e.g. for `continue` statements in loops. This is
+    *   `None` for non-loop contexts.
+    */
+  private case class ControlFlowCtx(scp: Scope, breakLabel: LabelSymbol, continueLabel: Opt[LabelSymbol])
 
 /** Context associated with codegen for a Wasm function.
   *
@@ -377,6 +398,7 @@ class FunctionCtx(_params: Ls[ParamList], thisSym: Opt[InnerSymbol])(using Raise
       dis -> SymIdx(localScp.addToBindings(dis, "this", shadow = false))
     thisParam.toSeq ++ _params.flatMap(_.paramSyms).map(p => p -> SymIdx(localScp.allocateName(p)))
   private val _locals = ArrayBuf.empty[Local]
+  private var labels = ListMap.empty[LabelSymbol, FunctionCtx.ControlFlowCtx]
 
   /** Adds a Wasm local into this context.
     *
@@ -403,6 +425,38 @@ class FunctionCtx(_params: Ls[ParamList], thisSym: Opt[InnerSymbol])(using Raise
     * identifier.
     */
   def locals: Seq[Local -> SymIdx] = _locals.map(l => l -> SymIdx(localScp.lookup_!(l, N))).toSeq
+
+  /** Pushes a label target for the dynamic extent of `body` and pops it afterwards.
+    *
+    * The `body` function is given a [[LabelTarget]] containing the `break` and `continue` labels corresponding to
+    * `label`.
+    *
+    * @param hasContinueLabel
+    *   Indicates whether a `continue` label should be generated for this control flow context, e.g. for loops.
+    */
+  def withLabel[T](label: LabelSymbol, hasContinueLabel: Bool)(body: LabelTarget => T): T =
+    val ctrlFlowCtx = FunctionCtx.ControlFlowCtx(
+      scp = labels.lastOption.fold(Scope.empty(Scope.Cfg.default))(_._2.scp.nest),
+      breakLabel = label,
+      continueLabel = if hasContinueLabel then S(LabelSymbol(N, s"${label.nme}_cont")) else N,
+    )
+    labels += label -> ctrlFlowCtx
+    val res = body:
+      LabelTarget(
+        breakLabel = ctrlFlowCtx.scp.allocateName(label),
+        continueLabel = ctrlFlowCtx.continueLabel.map(cl => ctrlFlowCtx.scp.allocateName(cl)),
+      )
+    labels = labels.init
+    res
+
+  /** Looks up the nearest in-scope target for `label`. */
+  def lookupLabel(label: LabelSymbol): Opt[LabelTarget] =
+    labels.lastOption.flatMap: (_, ctrlFlowCtx) =>
+      ctrlFlowCtx.scp.lookup(label).map: labelId =>
+        LabelTarget(
+          breakLabel = labelId,
+          continueLabel = labels(label).continueLabel.map(cl => labels.last._2.scp.lookup_!(cl, N)),
+        )
 end FunctionCtx
   
 /** Generates a function body, providing an instance of [[FunctionCtx]] for parameter and locals tracking.
@@ -421,11 +475,6 @@ object Ctx:
   case class SingletonInfo(
       globalName: Str,
       globalTy: RefType,
-  )
-
-  case class LabelTarget(
-      breakLabel: Str,
-      continueLabel: Opt[Str],
   )
 
   val binaryOps: Map[Str, (Expr, Expr) => Expr] = Map(
@@ -507,7 +556,6 @@ class Ctx extends ToWat:
   private val cachedFunctionImports = MutMap.empty[(Str, Str), FuncIdx]
   private val cachedGlobalImports = MutMap.empty[(Str, Str), GlobalIdx]
 
-  private var labelTargets = Nil: List[(LabelSymbol, Ctx.LabelTarget)]
   private val singletonByBms = MutMap.empty[BlockMemberSymbol, Ctx.SingletonInfo]
   private val singletonByIsym = MutMap.empty[ModuleOrObjectSymbol, Ctx.SingletonInfo]
   private val singletonInitActions = ArrayBuf.empty[Expr]
@@ -527,18 +575,6 @@ class Ctx extends ToWat:
       case globalInfo: GlobalInfo => ExternType.Global(globalInfo.id, globalInfo.globalType)
       case globalImport: Import[ExternType.Global] => globalImport.externType
 
-  /** Pushes a label target for the dynamic extent of `body` and pops it afterwards. */
-  def withLabel[T](label: LabelSymbol, target: Ctx.LabelTarget)(body: => T): T =
-    labelTargets = (label, target) :: labelTargets
-    val res = body
-    labelTargets = labelTargets.tail
-    res
-
-  /** Looks up the nearest in-scope target for `label`. */
-  def lookupLabel(label: LabelSymbol): Opt[Ctx.LabelTarget] =
-    labelTargets.collectFirst:
-      case (sym, target) if sym eq label => target
-
   /** Returns a new number to be used as an object tag. */
   def getFreshObjectTag(): Int =
     val tag = objectTagNum
@@ -553,30 +589,11 @@ class Ctx extends ToWat:
       namedTypes(_) = typeInfo
     TypeIdx(id)
 
-  @deprecated("Use the overload without `resolveSymIdx` instead.")
-  def getType(typeref: TypeIdx | BlockMemberSymbol, resolveSymIdx: Bool): Opt[TypeIdx] =
-    if resolveSymIdx then
-      typeref match
-        case TypeIdx(idx @ SymIdx(_)) =>
-          types.zipWithIndex.collectFirst:
-            case ((symIdx, _), i) if symIdx == idx => TypeIdx(NumIdx(i))
-        case typeidx: TypeIdx => S(typeidx)
-        case sym: BlockMemberSymbol =>
-          namedTypes.get(sym).flatMap: typeInfo =>
-            types.zipWithIndex.collectFirst:
-              case ((_, ti), i) if ti === typeInfo => TypeIdx(NumIdx(i))
-    else getType(typeref)
-
   /** Returns the [[TypeIdx]] of the given `typeref`.
     */
   def getType(typeref: TypeIdx | BlockMemberSymbol): Opt[TypeIdx] = typeref match
     case typeidx: TypeIdx => S(typeidx)
     case sym: BlockMemberSymbol => getTypeInfo(typeref).map(ti => TypeIdx(ti.id))
-
-  @deprecated("Use the overload without `resolveSymIdx` instead.")
-  def getType_!(typeref: TypeIdx | BlockMemberSymbol, resolveSymIdx: Bool): TypeIdx =
-    getType(typeref, resolveSymIdx).getOrElse:
-      lastWords(s"Missing type definition for ${typeref.prettyString}")
 
   /** Same as [[getType]] but throws an exception when the `typeref` is not found. */
   def getType_!(typeref: TypeIdx | BlockMemberSymbol): TypeIdx =
@@ -584,9 +601,7 @@ class Ctx extends ToWat:
       lastWords(s"Missing type definition for ${typeref.prettyString}")
 
   /** Returns the [[TypeInfo]] instance associated with the given `typeref`. */
-  @nowarn("cat=deprecation")
   def getTypeInfo(typeref: TypeIdx | BlockMemberSymbol): Opt[TypeInfo] = typeref match
-    case TypeIdx(NumIdx(idx)) => types.drop(idx).headOption.map(_._2)
     case TypeIdx(idx @ SymIdx(nme)) => types.get(idx)
     case sym: BlockMemberSymbol => namedTypes.get(sym)
 
@@ -603,13 +618,6 @@ class Ctx extends ToWat:
   def getAllRuntimeTags(sym: BlockMemberSymbol): Opt[LinkedHashSet[Int]] =
     runtimeClassTags.get(sym)
 
-  @deprecated("Use the `Import[ExternType.Func]` overload instead.")
-  def addFunctionImport(sym: Opt[Symbol], funcImport: FuncImport): FuncIdx =
-    addFunctionImport(
-      sym,
-      Import(funcImport.module, funcImport.name, ExternType.Func(funcImport.id, TypeUse(funcImport.typeIdx))),
-    )
-
   /** Adds a function import into this context.
     *
     * Returns the function index in the global function index space.
@@ -620,14 +628,6 @@ class Ctx extends ToWat:
     sym.foreach:
       namedFuncs(_) = funcImport
     FuncIdx(id)
-
-  @deprecated("Use the `Import[ExternType.Func]` overload instead.")
-  @targetName("getOrCreateFuncImport")
-  def getOrCreateFunctionImport(
-      module: Str,
-      name: Str,
-  )(createImport: => FuncImport): FuncIdx =
-    cachedFunctionImports.getOrElseUpdate((module, name), addFunctionImport(N, createImport))
 
   /** Returns the cached function import for (`module`, `name`), creating it with `createImport` if needed.
     */
@@ -682,11 +682,6 @@ class Ctx extends ToWat:
         cachedMemoryImport(key) = SymIdx(name)
   end ensureMemoryImport
 
-  /** Returns the minimum page requirement of memory import (`module`, `name`) if present. */
-  @deprecated("Use `getMemoryImport` instead to get the full memory import information.")
-  def getMemoryImportMinPages(module: Str, name: Str): Opt[Int] =
-    getMemoryImport(module, name).map(_.memType.lim.min)
-
   /** Returns the memory import information for the given (`module`, `name`) tuple if present. */
   def getMemoryImport(module: Str, name: Str): Opt[ExternType.Mem] =
     memories.collectFirst:
@@ -714,20 +709,6 @@ class Ctx extends ToWat:
       (id -> ElemSegment.Declare(id, refType -> Seq(ref.func(idx, refType))))
     idx
 
-  @deprecated("Use the overload without `resolveSymIdx` instead.")
-  def getFunc(funcref: FuncIdx | Symbol, resolveSymIdx: Bool): Opt[FuncIdx] =
-    if resolveSymIdx then
-      funcref match
-        case FuncIdx(idx @ SymIdx(_)) =>
-          funcs.zipWithIndex.collectFirst:
-            case ((symIdx, _), i) if symIdx == idx => FuncIdx(NumIdx(i))
-        case funcidx: FuncIdx => S(funcidx)
-        case sym: Symbol =>
-          namedFuncs.get(sym).flatMap: funcInfo =>
-            funcs.zipWithIndex.collectFirst:
-              case ((_, fi), i) if fi === funcInfo => FuncIdx(NumIdx(i))
-    else getFunc(funcref)
-
   /** Returns the [[FuncIdx]] of the given `funcref`.
     */
   def getFunc(funcref: FuncIdx | Symbol): Opt[FuncIdx] = funcref match
@@ -738,19 +719,12 @@ class Ctx extends ToWat:
           case fi: FuncInfo => FuncIdx(fi.id)
           case imp: Import[ExternType.Func] => FuncIdx(imp.externType.id)
 
-  @deprecated("Use the overload without `resolveSymIdx` instead.")
-  def getFunc_!(funcref: FuncIdx | Symbol, resolveSymIdx: Bool): FuncIdx =
-    getFunc(funcref, resolveSymIdx).getOrElse:
-      lastWords(s"Missing function definition for ${funcref.prettyString}")
-
   /** Same as [[getFunc]] but throws an exception when the `funcref` is not found. */
   def getFunc_!(funcref: FuncIdx | Symbol): FuncIdx =
     getFunc(funcref).getOrElse:
       lastWords(s"Missing function definition for ${funcref.prettyString}")
 
-  @nowarn("cat=deprecation")
   private def getFuncEntry(funcref: FuncIdx | Symbol): Opt[FuncInfo | Import[ExternType.Func]] = funcref match
-    case FuncIdx(NumIdx(idx)) => funcs.drop(idx).headOption.map(_._2)
     case FuncIdx(idx @ SymIdx(_)) => funcs.get(idx)
     case funcref: Symbol => namedFuncs.get(funcref)
 
@@ -787,10 +761,8 @@ class Ctx extends ToWat:
     getGlobal(globalref).getOrElse:
       lastWords(s"Missing global definition for ${globalref.prettyString}")
 
-  @nowarn("cat=deprecation")
   private def getGlobalEntry(globalref: GlobalIdx | Symbol): Opt[GlobalInfo | Import[ExternType.Global]] =
     globalref match
-      case GlobalIdx(NumIdx(idx)) => globals.drop(idx.toInt).headOption.map(_._2)
       case GlobalIdx(idx @ SymIdx(_)) => globals.get(idx)
       case sym: Symbol => namedGlobals.get(sym)
 
