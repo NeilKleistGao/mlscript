@@ -46,6 +46,8 @@ fun showCtxPath(p) = if p is // FIXME
 class Ctx(
   // ctx tracks shapes of variables during shape prop
   val ctx: Map[String, ShapeSet], 
+  // valueNameCtx tracks the assigned name of the pointer in the previous module for the current runtime value 
+  val valueNameCtx: Map[Class, Str],
   // valDefnCtx tracks fields defined by ValDefn during shape prop of constructor
   val valDefnCtx: Map[String, ShapeSet]
   // allocs tracks the new variables allocated during shape prop
@@ -58,11 +60,11 @@ class Ctx(
     if ctx.has(ps) then Some(ctx.get(ps)) else None
   fun getValDefn(name) =
     if valDefnCtx.has(name) then Some(valDefnCtx.get(name)) else None
-  fun clone = Ctx(new Map(ctx), new Map(valDefnCtx), allocs, thisShape)
+  fun clone = Ctx(new Map(ctx), valueNameCtx, new Map(valDefnCtx), allocs, thisShape)
   // For propagation of instantiation of derived class, 
   // we need to keep track of fields defined in parent class,
   // which is stored in valDefnCtx
-  fun clearCtx = Ctx(new Map(), valDefnCtx, allocs, thisShape)
+  fun clearCtx = Ctx(new Map(), valueNameCtx, valDefnCtx, allocs, thisShape)
   fun add(path: Path, ss: ShapeSet) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then
@@ -70,12 +72,14 @@ class Ctx(
     else
       ctx.set(ps, ss)
     this
+  fun setValueName(c: ConcreteClassSymbol | ModuleSymbol, name: Str) =
+    valueNameCtx.set(c.value, name)
   // Later ValDefn (in derived class) shadows earlier ValDefn (in base class)
   fun addValDefn(ps: String, ss: ShapeSet) =
     valDefnCtx.set(ps, ss)
     this
 module Ctx with
-  fun empty() = Ctx(new Map(), new Map(), mut [], None)
+  fun empty() = Ctx(new Map(), new Map(), new Map(), mut [], None)
 
 class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, [Block.Block, Shape]]) with
   val printer = Printer(Some(owner))
@@ -135,11 +139,11 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     assert ctor is FunDefn
     let params = new Set(ctor.params.flat().map(_.sym))
     let ctorBody = removeExtraValDefn(params, ctor.body)
-
+    
     decl + owner.name + printer.showParamList(paramList)
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
-      + indent("\n" + printer.showBlock(ctorBody))
+      + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
       + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().sort().join("\n"))
 
 module FunCache with
@@ -217,7 +221,7 @@ fun sor(ctx, r) = if r is
   Path and
     let s = sop(ctx, r)
     // If a path has a statically known shape, then just replace it with the known value
-    staticSet(s) and val2path(valOfSet(s), ctx.allocs) is [blk, res] then [blk, res, s]
+    staticSet(s) and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [blk, res] then [blk, res, s]
     else [End(), r, s]
   Instantiate(cls, args) and 
     let clsSymb = if cls is
@@ -245,6 +249,15 @@ fun sor(ctx, r) = if r is
           [End(), recovered, sop(ctx, recovered)]
       Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
         throw Error("runtime.Tuple.slice not handled in shape propagation")
+      Select(p, Symbol("concat")) then
+        if sop(ctx, p).values() is [Shape.Arr(arr)] and args is [e] and sop(ctx, e.value) is [Shape.Arr(arr2)] then
+          [End(), r, mkArr(arr.concat(arr2))]
+        else
+          [End(), r, mkDyn()]
+      Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("sin")) then
+        [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
+      Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("cos")) then
+        [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
       Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
         [End(), r, mkClass(clsSymb, args.map(a => sop(ctx, a.value)))] // FIXME
       ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
@@ -290,7 +303,7 @@ fun sor(ctx, r) = if r is
           not (f_gen is Runtime.Unit) then  // staged function
             let res = f_gen(...argShapes)
             if staticSet(res.1) then
-              let v2p = val2path(valOfSet(res.1), ctx.allocs)
+              let v2p = val2path(valOfSet(res.1), ctx.allocs, ctx.valueNameCtx)
               [v2p.0, v2p.1, res.1]
             else
               [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), Symbol(res.0)), args), res.1]
@@ -299,7 +312,7 @@ fun sor(ctx, r) = if r is
         argShapes.every(staticSet) then // non staged function and params known
           let f_imp = value.(fld)
           let evaluated = f_imp(...argShapes.map(valOfSet))
-          let evaluated_path = val2path(evaluated, ctx.allocs)
+          let evaluated_path = val2path(evaluated, ctx.allocs, ctx.valueNameCtx)
           [evaluated_path.0, evaluated_path.1, sov(evaluated)]
         else
           [End(), r, mkDyn()] // non staged function and some params unknown
@@ -385,7 +398,7 @@ fun prop(ctx, b) = if b is
     Scoped(symbols, rest) then
       symbols.forEach((x, _, _) => ctx.add(ValueRef(x), mkBot()))
       let newAllocs = mut []
-      let newCtx = Ctx(new Map(ctx.ctx), ctx.valDefnCtx, newAllocs, ctx.thisShape)
+      let newCtx = Ctx(new Map(ctx.ctx), ctx.valueNameCtx, ctx.valDefnCtx, newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
     Assign(x, Call(Select(ValueRef(symb), Symbol(f)), args), restBlock) and not (symb is ModuleSymbol) then
@@ -467,6 +480,15 @@ fun specializeName(funName, isMethod, ps, shapes) =
   if mappedShapes.every(_.every(_.isDyn())) then funName
   else funName + "_" + mappedShapes.map(pss => pss.map(buildShapeSetName).join("_")).join("_dot_")
 
+// abuse Printer for structural induction
+// to do this properly you would need only add the definitions as you go through the tree
+class ValueCollection(defn: Map[Class, Str]) extends Printer(None) with
+  fun showSymbol(s) =
+    if s is
+      ConcreteClassSymbol | ModuleSymbol then defn.set(getActualClass(s.value), s.name)
+      else ()
+    ""
+
 fun specialize(cache: FunCache, funName, dflt, shapes) =
   let defn = dflt()
   if defn is FunDefn(Symbol(_), ps, body) then
@@ -476,11 +498,13 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
       Some(x) then [x.0.sym.name, x.1]
       None then
         let paramShapes = if isMethod then shapes.slice(1) else shapes
+
         let ctx = if isMethod then
           let clsSymb = cache.owner
-          Ctx(new Map(), new Map(), mut [], Some(shapes.(0).(0)))
+          Ctx(new Map(), new Map(), new Map(), mut [], Some(shapes.(0).(0)))
         else Ctx.empty()
-        if isMethod do ctx.add(ValueRef(Symbol("_this")), Some(shapes.(0).(0)))
+
+        // console.log("checking", ctx.valueNameCtx, Printer.default.showBlock(body))
 
         ps.forEach((p, i, _) => p.forEach((p2, j, _) =>
           let shape = if p2.constraint is
@@ -490,6 +514,12 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
           ctx.add(ValueRef(p2.sym), shape)
         ))
 
+        // build map from all class/module symbols that are used within the body and the shape of the context
+        new ValueCollection(ctx.valueNameCtx).showBlock(body)
+        ctx.ctx.values()
+          .forEach(_.shapeset.values().filter(_ is Class)
+              .forEach(s => ctx.valueNameCtx.set(s.sym.value.class, s.sym.name)))
+        
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
 
         let res = prop(ctx, body)
@@ -499,7 +529,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 
         let finalBody = if staticSet(actualRetShape) then
           let allocs = mut []
-          let v2p = val2path(valOfSet(actualRetShape), allocs)
+          let v2p = val2path(valOfSet(actualRetShape), allocs, ctx.valueNameCtx)
           wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
         else bodyWithScoped
         let entry = cache.setFun(newName, [FunDefn(Symbol(newName), ps, finalBody), actualRetShape])
