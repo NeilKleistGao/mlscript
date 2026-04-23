@@ -133,14 +133,14 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     
     let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
     assert ctor is FunDefn
-    let params = new Set(ctor.params.flat())
+    let params = new Set(ctor.params.flat().map(_.sym))
     let ctorBody = removeExtraValDefn(params, ctor.body)
 
     decl + owner.name + printer.showParamList(paramList)
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody))
-      + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().join("\n"))
+      + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().sort().join("\n"))
 
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map())
@@ -379,7 +379,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
 fun prop(ctx, b) = if b is
     End() then [b, mkBot()]
     Return(Call(Select(ValueRef(symb), Symbol(f)), args), implct) and not (symb is ModuleSymbol) and not (f is "concat") then // TODO[later]: Ref -> Path, remove special checks
-      dispatchMethodCall(ctx, None, Some(implct), symb, f, args, End())
+      dispatchMethodCall(ctx, None, Some(implct), symb, f, args)
     Return(res, implct) and sor(ctx, res) is [blk, r1, s1] then
       [concat(blk, Return(r1, implct)), s1]
     Scoped(symbols, rest) then
@@ -521,67 +521,3 @@ fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], c
     else throw Error("ctor not found in staged class")
     mkClassFromMap(classSymb, ctx.valDefnCtx)
   else throw Error("instrumented method is not a FunDefn")
-  
-class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, [Block.Block, Shape]]) with
-  val printer = Printer(Some(owner))
-  fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
-  // NOTE: this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
-  fun setFun(k, v) = cache.set(k, v); v
-  fun toString() =
-    let decl = if owner is
-      ConcreteClassSymbol then "class "
-      ModuleSymbol then "module "
-    let runtimeClass = if owner is
-      ConcreteClassSymbol(_, _, Some, _) then owner.value.class
-      else owner.value
-    
-    val paramList = if owner is 
-      ConcreteClassSymbol and owner.paramsOpt is
-        Some(ps) then [ps, ...owner.auxParams]
-        else owner.auxParams
-      ModuleSymbol then []
-
-    // process preCtor: inline temp variable when printing
-    class InlinePrinter(ctx: Map[Symbol, String]) extends Printer(Some(owner)) with
-      fun showPath(p) = if p is
-        ValueRef(s) and ctx.has(s) then ctx.get(s)
-        Select(qual, name) then showPath(qual) + "." + this.showSymbol(name)
-        DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
-        DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
-        ValueRef(s) then this.showSymbol(s)
-        ValueLit(lit) then this.showLiteral(lit)
-    
-    fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)
-    
-    fun inlineAssigments(ctx: Map[Symbol, String])(b) = if b is 
-      Return(res, implct) then inlineResult(ctx)(res)
-      Scoped(_, rest) then inlineAssigments(ctx)(rest)
-      Assign(lhs, rhs, rest) then inlineAssigments(ctx.set(lhs, inlineResult(ctx)(rhs)))(rest)
-      End then ""
-      else throw Error("unexpected Block type in constructor: " + b.toString())
-    
-    let extendsClause = if owner is ConcreteClassSymbol then
-      let preCtor = runtimeClass."preCtor$_instr"().body
-      assert preCtor is Block.Block
-      inlineAssigments(new Map())(preCtor)
-    else ""
-    
-    // process ctor: remove ValDefn of parameters defined in paramsOpt
-    fun removeExtraValDefn(params, block) = if block is
-      Define(ValDefn(Some, sym, ValueRef(rhs)), rest) and params.has(rhs) then removeExtraValDefn(params, rest)
-      Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, removeExtraValDefn(params, rest))
-      Assign(lhs, rhs, rest) then Assign(lhs, rhs, removeExtraValDefn(params, rest))
-      Define(defn, rest) then Define(defn, removeExtraValDefn(params, rest))
-      Scoped(symbols, rest) then Scoped(symbols, removeExtraValDefn(params, rest))
-      else block
-    
-    let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
-    assert ctor is FunDefn
-    let params = new Set(ctor.params.flat().map(_.sym))
-    let ctorBody = removeExtraValDefn(params, ctor.body)
-
-    decl + owner.name + printer.showParamList(paramList)
-      + if extendsClause == "" then "" else (" extends " + extendsClause)
-      + if cache.length == 0 then "" else " with"
-      + indent("\n" + printer.showBlock(ctorBody))
-      + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().sort().join("\n"))

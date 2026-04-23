@@ -2,12 +2,12 @@
 :staging
 :noModuleCheck
 
+fun gen(M, name) =
+  M."generate"("../" + name + ".mjs", "./hkmc2/shared/src/test/mlscript-compile/staging/out/" + name + ".mls")
+
 import "../../mlscript-compile/staging/SimpleStagedExample.mls"
 
-
-SimpleStagedExample."generate"("../SimpleStagedExample.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SimpleStagedExample.mls")
-
-// console.log(SimpleStagedExample."cache$SimpleStagedExample".toString())
+gen(SimpleStagedExample, "SimpleStagedExample")
 
 import "../../mlscript-compile/staging/out/SimpleStagedExample.mls"
 
@@ -20,6 +20,7 @@ SimpleStagedExample.foo()
 SimpleStagedExample.f(1, 5)
 //│ = 6
 
+
 :expect 5
 SimpleStagedExample.fib(5)
 //│ = 5
@@ -27,15 +28,29 @@ SimpleStagedExample.fib(5)
 
 import "../../mlscript-compile/staging/LinkingGeneratedClasses.mls"
 
-
-LinkingGeneratedClasses."generate"("../LinkingGeneratedClasses.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/LinkingGeneratedClasses.mls")
+gen(LinkingGeneratedClasses, "LinkingGeneratedClasses")
 
 import "../../mlscript-compile/staging/out/LinkingGeneratedClasses.mls"
 
-:fixme
 LinkingGeneratedClasses.test1
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ = C
 
 LinkingGeneratedClasses.test2
 //│ = D
 
+:expect 3
+LinkingGeneratedClasses.f().call(3)
+//│ = 3
+
+:expect 5
+LinkingGeneratedClasses.g().call(3)
+//│ = 5
+
+import "../../mlscript-compile/staging/StagedClass.mls"
+
+// module wasn't staged alongside class
+gen(StagedClass."class", "StagedClass")
+
+import "../../mlscript-compile/staging/ImportingFiles.mls"
+
+gen(ImportingFiles, "ImportingFiles")

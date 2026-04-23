@@ -131,7 +131,7 @@ open SpecializeHelpers { Ctx, sop, sor, prop }
 
 let ctx = Ctx.empty()
 let x = ValueRef(Symbol("x"))
-//│ ctx = Ctx(Map(0) {}, [], None, {})
+//│ ctx = Ctx(Map(0) {}, Map(0) {}, Map(0) {}, [], None)
 //│ x = ValueRef(Symbol("x"))
 
 ctx.add(x, mkLit(1))
@@ -154,9 +154,10 @@ ctx2.get(y)
 //│ = Some({Lit("a"),Lit("b")})
 //│ ctx2 = Ctx(
 //│   Map(2) {"Symbol(x)" => {Lit(1),Lit(2)}, "Symbol(y)" => {Lit("a"),Lit("b")}},
+//│   Map(0) {},
+//│   Map(0) {},
 //│   [],
-//│   None,
-//│   {}
+//│   None
 //│ )
 
 ctx.get(y)
@@ -193,9 +194,10 @@ sop(ctx, selPath)
 //│   Map(1) {
 //│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), []), [Lit("pass")])}
 //│   },
+//│   Map(0) {},
+//│   Map(0) {},
 //│   [],
-//│   None,
-//│   {}
+//│   None
 //│ )
 //│ selPath = DynSelect(ValueRef(Symbol("x")), ValueLit("a"), false)
 //│ x = Symbol("x")
@@ -211,20 +213,35 @@ sor(Ctx.empty(), tup)
 //│ ]
 //│ tup = Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))])
 
-let c = ConcreteClassSymbol("C", undefined, Some([Symbol("p")]), [])
+class C(val p)
+let c = ConcreteClassSymbol("C", C, Some([Symbol("p")]), [])
 let inst = Instantiate(ValueRef(c), [Arg(ValueLit(123))])
 sor(Ctx.empty(), inst)
 //│ = [
 //│   End(),
 //│   Instantiate(
-//│     ValueRef(ConcreteClassSymbol("C", undefined, Some([Symbol("p")]), [])),
+//│     ValueRef(
+//│       ConcreteClassSymbol(
+//│         "C",
+//│         fun C { class: class C },
+//│         Some([Symbol("p")]),
+//│         []
+//│       )
+//│     ),
 //│     [Arg(ValueLit(123))]
 //│   ),
-//│   {Class(ConcreteClassSymbol("C", undefined, Some([Symbol("p")]), []), [Lit(123)])}
+//│   {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), []), [Lit(123)])}
 //│ ]
-//│ c = ConcreteClassSymbol("C", undefined, Some([Symbol("p")]), [])
+//│ c = ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [])
 //│ inst = Instantiate(
-//│   ValueRef(ConcreteClassSymbol("C", undefined, Some([Symbol("p")]), [])),
+//│   ValueRef(
+//│     ConcreteClassSymbol(
+//│       "C",
+//│       fun C { class: class C },
+//│       Some([Symbol("p")]),
+//│       []
+//│     )
+//│   ),
 //│   [Arg(ValueLit(123))]
 //│ )
 
@@ -352,7 +369,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.353: 	val MSym = ValueRef(ModuleSymbol("M", M))
+//│ ║  l.370: 	val MSym = ValueRef(ModuleSymbol("M", M))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M))
@@ -375,9 +392,10 @@ val ctxXY = Ctx.empty()
   .add(ValueRef(y), mkLit(32))
 //│ ctxXY = Ctx(
 //│   Map(2) {"Symbol(x)" => {Lit(10)}, "Symbol(y)" => {Lit(32)}},
+//│   Map(0) {},
+//│   Map(0) {},
 //│   [],
-//│   None,
-//│   {}
+//│   None
 //│ )
 
 // x + y
@@ -516,10 +534,10 @@ val res = prop(Ctx.empty(), nestedBlock)
 //│   {Lit(2)}
 //│ ]
 
-val2path(1, mut [])
+val2path(1, mut [], new Map())
 //│ = [End(), ValueLit(1)]
 
-val2path([1, 2, 3], mut [])
+val2path([1, 2, 3], mut [], new Map())
 //│ = [
 //│   Assign(
 //│     Symbol("tup_1"),
@@ -530,12 +548,12 @@ val2path([1, 2, 3], mut [])
 //│ ]
 
 class TestClass(val a, val b)
-val2path(TestClass(1, 2), mut [])
+val2path(TestClass(1, 2), mut [], new Map())
 //│ = [
 //│   Assign(
 //│     Symbol("obj_2"),
 //│     Instantiate(
-//│       ValueRef(ConcreteClassSymbol("TestClass", undefined, None, [])),
+//│       ValueRef(ConcreteClassSymbol((), undefined, None, [])),
 //│       [Arg(ValueLit(1)), Arg(ValueLit(2))]
 //│     ),
 //│     End()
@@ -543,7 +561,7 @@ val2path(TestClass(1, 2), mut [])
 //│   ValueRef(Symbol("obj_2"))
 //│ ]
 
-val2path(TestClass(1, [1,2]), mut [])
+val2path(TestClass(1, [1,2]), mut [], new Map([[TestClass.class, "TestClass"]]))
 //│ = [
 //│   Assign(
 //│     Symbol("tup_3"),
