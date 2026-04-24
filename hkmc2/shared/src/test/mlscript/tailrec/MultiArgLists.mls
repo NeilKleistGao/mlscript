@@ -1,27 +1,8 @@
 :js
 
 // Test: Tail-recursive function with single parameter list works correctly
-:sjs
 fun sum(n, acc) = if n == 0 then acc else sum(n - 1, n + acc)
 sum(100, 0)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let sum;
-//│ sum = function sum(n, acc) {
-//│   loopLabel: while (true) {
-//│     let scrut, tmp, tmp1;
-//│     scrut = Predef.equals(n, 0);
-//│     if (scrut === true) {
-//│       return acc
-//│     }
-//│     tmp = n - 1;
-//│     tmp1 = n + acc;
-//│     n = tmp;
-//│     acc = tmp1;
-//│     continue loopLabel;
-//│   }
-//│ };
-//│ sum(100, 0)
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 5050
 
 // Test: Curried function with multiple parameter lists — properly lowered as
@@ -34,11 +15,31 @@ fun loop(x)(y) =
 loop(1000)(0)
 //│ = 500500
 
-// Test: Function with multiple parameter lists, non-annotated (no error/warning expected)
+// Test: Function with multiple parameter lists, non-annotated (should still optimize to a loop)
+:sir
 fun count(start)(stop) =
   if start == stop then start
   else count(start + 1)(stop)
 count(0)(100)
+//│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
+//│ let count⁰, count$tailrec⁰;
+//│ define count$tailrec⁰ as fun count$tailrec¹(start, stop) {
+//│   loop loopLabel:
+//│     let scrut, tmp;
+//│     set scrut = Predef⁰.equals⁰(start, stop);
+//│     match scrut
+//│       true =>
+//│         return start
+//│       else
+//│         set tmp = +⁰(start, 1);
+//│         set start = tmp;
+//│         continue loopLabel
+//│     end
+//│   end
+//│ };
+//│ define count⁰ as fun count¹(start)(stop) { return count$tailrec¹(start, stop) };
+//│ count¹(0)(100)
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 100
 
 // Test: Mutually recursive functions with multiple parameter lists

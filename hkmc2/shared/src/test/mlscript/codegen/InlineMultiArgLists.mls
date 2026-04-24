@@ -1,89 +1,90 @@
 :js
 
-// Test: Curried function with two parameter lists — currently lowered as
-// separate calls (first call gets 1 arg list), so the function is inlined
-// for the first call, then the result lambda handles the second call.
-:sjs
+// * TODO: take `private` into accoutn and inline these single-use functions regardless of threshold
+
+
+// Test: Curried function with two parameter lists. Properly fully inlined.
+:soir
 private fun add(x)(y) = x + y
 add(1)(2)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let add, x, y, inlinedVal;
-//│ add = function add(x1) {
-//│   return (y1) => { return x1 + y1 }
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let add⁰, x⁰, y⁰, inlinedVal;
+//│ define add⁰ as fun add¹(x)(y) {
+//│   return +⁰(x, y)
 //│ };
-//│ x = 1;
-//│ y = 2;
-//│ inlinedVal = x + y;
+//│ set x⁰ = 1;
+//│ set y⁰ = 2;
+//│ set inlinedVal = +⁰(x⁰, y⁰);
 //│ inlinedVal
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 3
 
 // Test: Function returning a lambda, called with 2 arg lists at use site.
-// Since lowering produces separate calls, this behaves like a single-param
-// function that returns a lambda.
-:sjs
+// We properly inline the outer function, but not yet the inner lambda.
+:inlineThreshold 100
+:soir
 private fun mkAdder(x) =
   (y) => x + y
 mkAdder(10)(20)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let mkAdder;
-//│ mkAdder = function mkAdder(x1) {
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let mkAdder⁰, x¹, inlinedVal, inlinedCallBase, lambda⁰;
+//│ define mkAdder⁰ as fun mkAdder¹(x) {
 //│   let lambda;
-//│   lambda = (undefined, function (y1) { return x1 + y1 });
-//│   return lambda
+//│   define lambda as fun lambda¹(y) {
+//│     return +⁰(x, y)
+//│   };
+//│   return lambda¹
 //│ };
-//│ mkAdder(10)(20)
+//│ set x¹ = 10;
+//│ define lambda⁰ as fun lambda²(y) {
+//│   return +⁰(x¹, y)
+//│ };
+//│ set inlinedVal = lambda²;
+//│ set inlinedCallBase = inlinedVal;
+//│ inlinedCallBase(20)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 30
 
 // Test: Partial application — call with fewer arg lists than param lists
-:sjs
+:soir
 private fun add2(x)(y) = x + y
 let f = add2(10)
 f(5)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let add2, f, x1, inlinedVal1, inlinedLambda;
-//│ add2 = function add2(x2) {
-//│   return (y1) => {
-//│     return x2 + y1
-//│   }
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let add2⁰, f⁰, x², inlinedVal, inlinedLambda⁰;
+//│ define add2⁰ as fun add2¹(x)(y) {
+//│   return +⁰(x, y)
 //│ };
-//│ x1 = 10;
-//│ inlinedLambda = function inlinedLambda(y1) {
-//│   inlinedVal1 = x1 + y1;
-//│   return inlinedVal1
+//│ set x² = 10;
+//│ define inlinedLambda⁰ as fun inlinedLambda¹(y) {
+//│   set inlinedVal = +⁰(x², y);
+//│   return inlinedVal
 //│ };
-//│ f = inlinedLambda;
-//│ runtime.safeCall(f(5))
+//│ set f⁰ = inlinedLambda¹;
+//│ f⁰(5)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 15
 //│ f = fun inlinedLambda
 
-// Test: Three parameter lists — all correctly passed through
-:sjs
+// Test: Three parameter lists — all properly inlined
+:inlineThreshold 100
+:soir
 private fun triple(x)(y)(z) = x + y + z
 triple(1)(2)(3)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let triple;
-//│ triple = function triple(x2) {
-//│   return (y1) => { return (z) => { let tmp; tmp = x2 + y1; return tmp + z } }
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let triple⁰, x³, y¹, z⁰, inlinedVal, tmp;
+//│ define triple⁰ as fun triple¹(x)(y)(z) {
+//│   let tmp1;
+//│   set tmp1 = +⁰(x, y);
+//│   return +⁰(tmp1, z)
 //│ };
-//│ triple(1)(2)(3)
+//│ set x³ = 1;
+//│ set y¹ = 2;
+//│ set z⁰ = 3;
+//│ set tmp = +⁰(x³, y¹);
+//│ set inlinedVal = +⁰(tmp, z⁰);
+//│ inlinedVal
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 6
 
-// Test: Single-param function returning lambda, called with 2 arg lists
-:sjs
-private fun wrap(x) = (y) => x * y
-wrap(3)(7)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let wrap;
-//│ wrap = function wrap(x2) {
-//│   let lambda;
-//│   lambda = (undefined, function (y1) { return x2 * y1 });
-//│   return lambda
-//│ };
-//│ wrap(3)(7)
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 21
 
