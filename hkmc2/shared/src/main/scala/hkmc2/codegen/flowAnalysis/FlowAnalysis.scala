@@ -45,9 +45,9 @@ object FlowAnalysis:
         case Some(id) => id
   
   
-  def apply(b: Block, mono: Bool)(using TraceLogger, Elaborator.State, Raise) =
+  def apply(pgrm: Program, mono: Bool)(using TraceLogger, Elaborator.State, Raise) =
     given State = new State
-    val pre = new FlowPreAnalyzer(b)
+    val pre = new FlowPreAnalyzer(pgrm)
     val constrCol = new FlowConstraintsCollector(pre, mono)
     new FlowConstraintSolver(constrCol)
     
@@ -230,7 +230,7 @@ type ConcreteConsumer = Dtor | FieldSel
 
 class ProdStratScheme(val s: StratVarState, val constraints: Ls[ProdStrat -> ConsStrat])
 
-class FlowPreAnalyzer(val b: Block)(using
+class FlowPreAnalyzer(val pgrm: Program)(using
   val tl: TraceLogger,
   val eState: Elaborator.State,
   val fState: FlowAnalysis.State,
@@ -240,7 +240,7 @@ class FlowPreAnalyzer(val b: Block)(using
   import StratVarState.freshVar
   
   ctxTracker.inTopLvl:
-    applyBlock(b)
+    applyBlock(pgrm.main)
   
   object res:
     val primitiveStratVar = StratVarState.freshVar("unknown")
@@ -402,12 +402,6 @@ class FlowPreAnalyzer(val b: Block)(using
       applyPath(fld)
       applyResult(rhs)
       applyBlock(rest)
-    case HandleBlock(local, res, par, args, cls, hdr, bod, rst) =>
-      applyPath(par)
-      args.foreach(applyPath)
-      hdr.foreach(applyHandler)
-      applyBlock(bod)
-      applyBlock(rst)
     case End(_) => ()
     case Unreachable(_) => ()
   
@@ -565,7 +559,7 @@ class FlowConstraintsCollector(val preAnalyzer: FlowPreAnalyzer, val mono: Bool)
     globalCollector.givenIn: cc ?=>
       cc.constrain(preAnalyzer.res.primitiveStratVar.asProdStrat, NoCons)
       cc.constrain(NoProd, preAnalyzer.res.primitiveStratVar.asConsStrat)
-      processBlock(preAnalyzer.b)(using cc, NoCons)
+      processBlock(preAnalyzer.pgrm.main)(using cc, NoCons)
 
       if mono then
         for
@@ -738,14 +732,6 @@ class FlowConstraintsCollector(val preAnalyzer: FlowPreAnalyzer, val mono: Bool)
         constrainOpaqueResult(fld)
         constrainOpaqueResult(rhs)
         processBlock(rest)
-      case HandleBlock(lhs, res, par, args, cls, handlers, body, rest) =>
-        constrainOpaqueResult(par)
-        args.foreach: arg =>
-          constrainOpaqueResult(arg)
-        handlers.foreach: handler =>
-          processBlock(handler.body)(using cc, NoCons)
-        processBlock(body)
-        processBlock(rest)
       case Define(defn, rest) =>
         defn match
         case ValDefn(tsym, sym, rhs) =>
@@ -788,7 +774,7 @@ class FlowConstraintsCollector(val preAnalyzer: FlowPreAnalyzer, val mono: Bool)
             cls.tree.clsParams.size match
             case 1 =>
               val clsParams = cls.tree.clsParams.head
-              softAssert(argsStrat.size == clsParams.size)
+              softTODO(argsStrat.size === clsParams.size, s"mismatched ctor arg and cls param sizes")
               new Ctor(c.uid, instId)(ctor, clsParams.zip(argsStrat))
             case _ =>
               // - the size of 0 means we don't know the cls param symbols,

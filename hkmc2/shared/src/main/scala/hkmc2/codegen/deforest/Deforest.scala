@@ -111,6 +111,7 @@ class DeforestFusionSolver(val constraintSolver: FlowConstraintSolver):
   tl.log("<<< fusing <<<")
 end DeforestFusionSolver
 
+
 object Deforest:
   def apply(p: Program)(using
     cfg: Config,
@@ -118,9 +119,11 @@ object Deforest:
     raise: Raise,
     eState: Elaborator.State,
   ): Program =
-    val fState = new FlowAnalysis.State
     // TODO: handle see through imported modules
-    val flowAnalysisRes = FlowAnalysis(p.main, mono = cfg.deforest.exists(_.mono))
+    val flowAnalysisRes = FlowAnalysis(p, mono = cfg.deforest.exists(_.mono))
     val solver = new DeforestFusionSolver(flowAnalysisRes)
-    val rewrite = new DeforestRewriter(solver)
-    Program(p.imports, rewrite.newBody)
+    if solver.finalCtorDests.isEmpty && solver.finalDtorSrcs.isEmpty then p
+    else
+      val rewrite = new DeforestRewriter(solver)
+      rewrite()
+

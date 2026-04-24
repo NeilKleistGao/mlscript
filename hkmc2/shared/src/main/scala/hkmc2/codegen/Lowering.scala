@@ -92,8 +92,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           r.expanded
       case t => t
   
-  var lowerHandlers: Bool = config.effectHandlers.isDefined
-  var lift: Bool = config.liftDefns.isDefined
+  val lowerHandlers: Bool = config.effectHandlers.isDefined
+  val lift: Bool = config.liftDefns.isDefined
 
   private lazy val wasmBinaryIntrinsicMap: Map[Str, Str] = Map(
     "+" -> "plus_impl",
@@ -624,7 +624,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             val res = block(Nil, R(body))(k)
             val scopedSyms = loweringCtx.getCollectedSym
             // Put the Scoped in the rest, so that the returned result can be found correctly
-            new Scoped(scopedSyms, res)
+            Scoped(scopedSyms, res)
         case _ => return fail:
           ErrorReport(
             msg"Unsupported form for scope.locally." ->
@@ -688,6 +688,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           subTerm_nonTail(fld): f =>
             subTerm_nonTail(rhs): r =>
               AssignDynField(p, f, ai, r, k(unit))
+      case sel @ SelProj(prefix, _, proj) =>
+        subTerm(prefix): p =>
+          subTerm_nonTail(rhs): r =>
+            AssignField(p, proj, r, k(unit))(sel.sym)
       case _ => fail:
         ErrorReport(
           msg"Unexpected left-hand side in assignment (${lhs.describe})" -> lhs.toLoc :: Nil, S(lhs),
@@ -1066,17 +1070,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
   
   def program(main: st.Blk): Program =
     
-    // Extract cumulative config modifications from SetConfig statements
-    val configModify = main.stats.collect:
-      case sc: SetConfig => sc.modify
-    .foldLeft(identity[Config]): (acc, modify) =>
-      cfg => modify(acc(cfg))
-    val effectiveConfig = configModify(config)
-    
-    // * Update mutable flags to reflect the effective config before block lowering
-    lowerHandlers = effectiveConfig.effectHandlers.isDefined
-    lift = effectiveConfig.liftDefns.isDefined
-    
     val (imps, funs, rest) = splitBlock(main.stats, Nil, Nil, Nil)
     
     val blk =
@@ -1087,7 +1080,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     val deforested =
       val outterTl = tl
-      effectiveConfig.deforest match
+      config.deforest match
         case None => desug
         case Some(dCfg) =>
           /*
@@ -1104,24 +1097,21 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             deforest.Deforest(Program(imps.map(imp => imp.sym -> imp.str), desug)).main
     
     val handlerPaths = new HandlerPaths
-
-    val withHandlers1 = effectiveConfig.effectHandlers.fold(deforested): opt =>
-      HandlerLowering(handlerPaths, opt).translateHandleBlocks(deforested)
     
-    val shouldFlattenScopes = effectiveConfig.effectHandlers.isDefined
+    val shouldFlattenScopes = config.effectHandlers.isDefined
     
     val scopeFlattened =
-      if shouldFlattenScopes then ScopeFlattener().applyBlock(withHandlers1)
-      else withHandlers1
+      if shouldFlattenScopes then ScopeFlattener().applyBlock(deforested)
+      else deforested
     
     val lifted =
       if lift then Lifter(scopeFlattened).transform
       else scopeFlattened
     
-    val (withHandlers2, stackSafetyInfo) = effectiveConfig.effectHandlers.fold((lifted, Map.empty)): opt =>
+    val (withHandlers2, stackSafetyInfo) = config.effectHandlers.fold((lifted, Map.empty)): opt =>
       HandlerLowering(handlerPaths, opt).translateTopLevel(lifted)
       
-    val stackSafe = effectiveConfig.stackSafety match
+    val stackSafe = config.stackSafety match
       case N => withHandlers2
       case S(sts) => StackSafeTransform(sts.stackLimit, handlerPaths, stackSafetyInfo).transformTopLevel(withHandlers2)
     
@@ -1133,13 +1123,13 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     val merged = MergeMatchArmTransformer.applyBlock(bufferable)
     
     val funcToCls =
-      if effectiveConfig.funcToCls then Lifter(FirstClassFunctionTransformer().transform(merged)).transform
+      if config.funcToCls then Lifter(FirstClassFunctionTransformer().transform(merged)).transform
       else merged
     
     val staged = ReflectionInstrumenter(using summon).apply(funcToCls)
     
     val res =
-      if effectiveConfig.tailRecOpt then TailRecOpt().transform(staged)
+      if config.tailRecOpt then TailRecOpt().transform(staged)
       else staged
     
     Program(

@@ -197,6 +197,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             dfltStaged: (dflt, ctx) =>
               blockCtor("Match", Ls(x, arms, dflt, e), symName)(k(_, ctx))
 
+  private def desugarEscaping(l: Value.Lit) = l.lit match
+    case s: Tree.StrLit =>
+      val desugard = s.idStr
+      Value.Lit(Tree.StrLit(desugard.substring(1, desugard.length() - 1)))
+    case _ => l
+
   // transformations of Block
 
   def transformPath(p: Path)(using ctx: Context)(k: (Path, Context) => Block): Block =
@@ -207,7 +213,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformSymbol(disamb.getOrElse(l)): (sym, ctx) =>
             blockCtor("ValueRef", Ls(sym), "var")(k(_, ctx))
         case l: Value.Lit =>
-          blockCtor("ValueLit", Ls(l), "lit")(k(_, ctx))
+          blockCtor("ValueLit", Ls(desugarEscaping(l)), "lit")(k(_, ctx))
         case s @ Select(p, Tree.Ident(name)) =>
           transformPath(p): (x, ctx) =>
             s.symbol match
@@ -432,10 +438,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
             Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
     
-    def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
-      val options = Record(false, Ls(RcdArg(S(toValue("indent")), toValue(true))))
-
-      call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
+    val propFunDef =
+      val sym = BlockMemberSymbol("propagate", Nil)
+      val params = PlainParamList(Nil)
+      val body = call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
         def callGenCont(rest: Block) =
           generatorMethods.foldRight(rest)((gen, rest) =>
             val genPath = modSym.asPath.selSN(gen.sym.nme)
@@ -444,8 +450,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               ((args, k) => call(_, args, true, "gen_call")(k))
               (genPath)
           )
-        callGenCont(call(blockMod("codegen"), toValue(modSym.nme) :: cachePath :: sourceSym.asPath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
+        callGenCont(End())
+      FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(false, N, Visibility.Public)
 
+    def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
+      call(modSym.asPath.selSN(propFunDef.sym.nme), Nil, true, "tmp")(_ =>
+        call(blockMod("codegen"), toValue(modSym.nme) :: cachePath :: sourceSym.asPath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
     val entryFunDef =
       val sym = BlockMemberSymbol("generate", Nil)
       val sourceSym = VarSymbol(Ident("source"))
@@ -464,11 +474,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val tsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(name))
         val sym = BlockMemberSymbol(name, Nil)
 
-        val goodKey = key
-        
         // reconstructs the Path from the top-level to the current symbol
         def reconstruct(s: DefinitionSymbol[? <: ModuleOrObjectDef | ClassDef]): Path =
-          s.defn.orElse(defnMap.get(goodKey)) match
+          s.defn.orElse(defnMap.get(key)) match
             case S(defn) =>
               val owner: Option[InnerSymbol] = defn match
                 case l: (ModuleOrObjectDef | ClassDef) => l.owner
@@ -481,7 +489,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                 case l: ClsLikeDefn => Value.Ref(l.sym, S(s))
             case N => s.asPath 
 
-        (tsym, sym, reconstruct(goodKey))
+        (tsym, sym, reconstruct(key))
       )
 
     def previousStageDecl(b: Block) =
@@ -489,7 +497,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         Define(ValDefn(tsym, sym, key)(N), acc)
       })
     
-    (entryFunDef, stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(previousStageDecl(b))))
+    (entryFunDef, propFunDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(previousStageDecl(b))))
 
   override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
     // staged modules

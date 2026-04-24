@@ -69,7 +69,7 @@ class Arg(val value: Path)
 class Case with
   constructor
     Lit(val lit: Literal)
-    Cls(val cls: Symbol, val path: Path)
+    Cls(val cls: ClassSymbol, val path: Path)
     Tup(val len: Int)
 
 class Result with
@@ -136,7 +136,9 @@ class Printer(val owner: Opt[Symbol]) with
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
         qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
-        else showPath(qual) + "." + showSymbol(name)
+        qual is ValueRef(sym) and sym is ClassSymbol then "this." + showSymbol(name)
+        else
+          showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
       ValueRef(l) then showSymbol(l)
@@ -177,9 +179,12 @@ class Printer(val owner: Opt[Symbol]) with
     // do not print constraints to next stage
     "(" + pl.map(p => showSymbol(p.sym)).join(", ") + ")"
 
+  fun showCtorParams(pl: ParamList) =  
+    "(" + pl.map(p => "val " + showSymbol(p.sym)).join(", ") + ")"
+
   fun showParamsOpt(p) =
     if p is
-      Some(s) then showParams(s)
+      Some(s) then showCtorParams(s)
       None then ""
 
   fun showParamList(ps: Array[ParamList]) =
@@ -248,6 +253,21 @@ fun codegen(name, cache, source, file) =
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
   let originData = fs.readFileSync(fullpath, "utf8")
-  let newData = code
+  let newData = "#config(noFreeze: true)\n" + code
+  if newData != originData do
+    fs.writeFileSync(fullpath, newData, "utf8")
+
+fun generateAll(name, file, ...modules) =
+  let fullpath = path.join of process.cwd(), file
+  if not fs.existsSync(fullpath) do
+    fs.mkdirSync(path.dirname(fullpath), recursive: true)
+    fs.writeFileSync(fullpath, "", "utf8")
+  let code = fold((res, p) => if p is
+    [mod, name, source] then
+      mod.propagate()
+      [res.0 + "import \"" + source + "\"\n", res.1 + "open " + name + "\n", res.2 + indent(mod.("cache$" + name).toString()) + "\n"]
+  )(["", "", ""], ...modules)
+  let originData = fs.readFileSync(fullpath, "utf8")
+  let newData = "#config(noFreeze: true)\n" + code.0 + "\n" + code.1 + "\n" + "module " + name + " with" + indent("\n" + code.2)
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")
