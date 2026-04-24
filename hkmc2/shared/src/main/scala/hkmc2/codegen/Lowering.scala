@@ -595,7 +595,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         expr.instantiated match
         case st.App(inner, innerArg) => collectAppChain(inner, innerArg :: args)
         case st.TyApp(inner, _) => collectAppChain(inner, args) // type args are erased
-        case _ => (expr, args)
+        case expr => (expr, args)
       val (baseF, allArgs) = collectAppChain(f, arg :: Nil)
       
       val isMlsFun = baseF.resolvedSym.fold(baseF.isInstanceOf[st.Lam]):
