@@ -49,8 +49,8 @@ fun showCtxPath(p) = if p is // FIXME
     DynSelect(qual, fld, _) then showCtxPath(qual) + ".(" + showCtxPath(fld) + ")" 
     ValueRef(l) and
       l is
-        ConcreteClassSymbol(n, v, _, _) then "ClassSymbol(" + n + ")"
-        ModuleSymbol(n, v) then "ModuleSymbol(" + n + ")"
+        ConcreteClassSymbol(n, v, _, _, _) then "ClassSymbol(" + n + ")"
+        ModuleSymbol(n, v, _) then "ModuleSymbol(" + n + ")"
         Symbol(n) then "Symbol(" + n + ")"
         else throw Error(l)
     ValueLit(lit) then "Lit(" + lit.toString() + ")"
@@ -103,7 +103,7 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       ConcreteClassSymbol then "class "
       ModuleSymbol then "module "
     let runtimeClass = if owner is
-      ConcreteClassSymbol(_, _, Some, _) then owner.value.class
+      ConcreteClassSymbol(_, _, Some, _, _) then owner.value.class
       else owner.value
     
     val paramList = if owner is 
@@ -271,16 +271,16 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       [End(), recovered, sop(ctx, recovered)]
   Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
     throw Error("runtime.Tuple.slice not handled in shape propagation")
-  Select(ValueRef(ModuleSymbol(name, value)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
+  Select(ValueRef(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
     [End(), r, mkClass(clsSymb, argShapes)] // FIXME
   Select(p, Symbol("concat")) then // TODO: remove these special checks
     if sop(ctx, p).values() is [Shape.Arr(arr)] and args is [e] and sop(ctx, e.value) is [Shape.Arr(arr2)] then
       [End(), r, mkArr(arr.concat(arr2))]
     else
       [End(), r, mkDyn()]
-  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("sin")) then
+  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _, _)), Symbol("sin")) then
     [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
-  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _)), Symbol("cos")) then
+  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _, _)), Symbol("cos")) then
     [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
   ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
     isStagedClass(clsSymb.value) and
@@ -291,7 +291,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       else throw Error("class is staged but cache not found")
     else [End(), r, mkClass(clsSymb, argShapes)]
   ValueRef(symb) then sorBuiltinOp(ctx, r, f, symb.name, args)  // built-in or top-level
-  Select(ValueRef(ModuleSymbol(name, value)), Symbol(fld)) and
+  Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
     let cachePropName = getCacheName(name, false)
     let genMap = value.(mapPropName)
@@ -303,7 +303,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
           let v2p = val2path(valOfSet(res.1), ctx.allocs, ctx.valueNameCtx)
           [v2p.0, v2p.1, res.1]
         else
-          [End(), Call(Select(ValueRef(ModuleSymbol(name, value)), Symbol(res.0)), args), res.1]
+          [End(), Call(Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) then // non staged function and params known
@@ -486,7 +486,7 @@ fun specializeName(funName, isMethod, ps, shapes) =
 class ValueCollection(defn: Map[Class, Str]) extends Printer(None) with
   fun showSymbol(s) =
     if s is
-      ConcreteClassSymbol | ModuleSymbol then defn.set(getActualClass(s.value), s.name)
+      ConcreteClassSymbol | ModuleSymbol then defn.set(getActualClass(s.value), s)
       else ()
     ""
 
@@ -523,7 +523,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         new ValueCollection(ctx.valueNameCtx).showBlock(body)
         ctx.ctx.values()
           .forEach(_.shapeset.values().filter(_ is Class)
-              .forEach(s => ctx.valueNameCtx.set(s.sym.value.class, s.sym.name)))
+              .forEach(s => ctx.valueNameCtx.set(getActualClass(s.sym.value), s.sym)))
         
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
 

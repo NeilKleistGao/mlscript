@@ -27,7 +27,7 @@ fun show(s: Shape) =
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
-    [Class(ConcreteClassSymbol(_, _, paramsOpt, auxParams), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
+    [Class(ConcreteClassSymbol(_, _, paramsOpt, auxParams, _), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
       paramsSymb.map(_.sym.name).indexOf(n) is
         -1 then []
         n then [params.(n)]
@@ -69,7 +69,7 @@ fun filter(s: Shape, p: Case): Array[Shape] =
     [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s] 
     [Arr(ls), Block.Tup(n)] and ls.length == n then [s]
     [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
-      c1.value == c2.value then [s]
+      c1 == c2 then [s] // TODO: is === possible?
     [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
       isSubClassOf(c1.value, c2.value) then [s]
     [Dyn, _] then [silh(p)]
@@ -81,7 +81,7 @@ fun rest(s: Shape, p: Case): Array[Shape] =
     [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then []
     [Arr(ls), Block.Tup(n)] and ls.length == n then []
     [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
-      c1.value == c2.value then []
+      c1 == c2 then [] // TODO: is === possible?
     [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
       isSubClassOf(c1.value, c2.value) then []
     [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]

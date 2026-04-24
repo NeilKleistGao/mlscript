@@ -64,21 +64,26 @@ selSet(arrSp, mkLit(1))
 selSet(mkDyn(), mkLit(5))
 //│ = {Dyn()}
 
+:silent
+class A(val a, val b)
+let aSym = ConcreteClassSymbol("A", A, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false)
+
 :fixme
-let a = Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")])
+let a = Class(aSym, [Lit(42), Lit("c")])
 let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)])])
 selSet(x, liftMany([Lit("a"), Lit(2)]))
 //│ ═══[RUNTIME ERROR] Error: Array out of bound
 //│ a = Class(
 //│   ConcreteClassSymbol(
 //│     "A",
-//│     undefined,
+//│     fun A { class: class A },
 //│     Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
-//│     []
+//│     [],
+//│     false
 //│   ),
 //│   [Lit(42), Lit("c")]
 //│ )
-//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")]),Dyn()}
+//│ x = {Arr([Lit(100), Lit(false), Lit(undefined)]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [Lit(42), Lit("c")]),Dyn()}
 
 selSet(lift(Arr([Dyn(), Lit(1), a])), mkLit(1))
 //│ = {Lit(1)}
@@ -101,7 +106,7 @@ filterSet(mkDyn(), Block.Tup(2))
 //│ = {Arr([Dyn(), Dyn()])}
 
 let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()]), Arr([Lit(1), Lit(2), Lit(3)]), a])
-//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
+//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
@@ -110,8 +115,8 @@ filterSet(filterShapes, Block.Lit(1))
 
 assert(filterSet(filterShapes, Block.Lit(2)).isEmpty())
 
-filterSet(filterShapes, Block.Cls(Symbol("A"), undefined))
-//│ = {Class(ConcreteClassSymbol("A", undefined, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), []), [Lit(42), Lit("c")])}
+filterSet(filterShapes, Block.Cls(aSym, undefined))
+//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [Lit(42), Lit("c")])}
 
 filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
 //│ = {Lit(1)}
@@ -183,16 +188,16 @@ sop(Ctx.empty().add(ValueRef(Symbol("x")), mkBot()), ValueRef(Symbol("x")))
 
 
 val x = Symbol("x")
-val C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [])
+val C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false)
 val selPath = DynSelect(ValueRef(x), ValueLit("a"), false)
 let ctx = Ctx.empty()
 ctx.add(ValueRef(x), mkClass(C, [mkLit("pass")]))
 sop(ctx, selPath)
 //│ = {}
-//│ C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [])
+//│ C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false)
 //│ ctx = Ctx(
 //│   Map(1) {
-//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), []), [Lit("pass")])}
+//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false), [Lit("pass")])}
 //│   },
 //│   Map(0) {},
 //│   Map(0) {},
@@ -214,7 +219,7 @@ sor(Ctx.empty(), tup)
 //│ tup = Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))])
 
 class C(val p)
-let c = ConcreteClassSymbol("C", C, Some([Symbol("p")]), [])
+let c = ConcreteClassSymbol("C", C, Some([Symbol("p")]), [], false)
 let inst = Instantiate(ValueRef(c), [Arg(ValueLit(123))])
 sor(Ctx.empty(), inst)
 //│ = [
@@ -225,21 +230,29 @@ sor(Ctx.empty(), inst)
 //│         "C",
 //│         fun C { class: class C },
 //│         Some([Symbol("p")]),
-//│         []
+//│         [],
+//│         false
 //│       )
 //│     ),
 //│     [Arg(ValueLit(123))]
 //│   ),
-//│   {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), []), [Lit(123)])}
+//│   {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [], false), [Lit(123)])}
 //│ ]
-//│ c = ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [])
+//│ c = ConcreteClassSymbol(
+//│   "C",
+//│   fun C { class: class C },
+//│   Some([Symbol("p")]),
+//│   [],
+//│   false
+//│ )
 //│ inst = Instantiate(
 //│   ValueRef(
 //│     ConcreteClassSymbol(
 //│       "C",
 //│       fun C { class: class C },
 //│       Some([Symbol("p")]),
-//│       []
+//│       [],
+//│       false
 //│     )
 //│   ),
 //│   [Arg(ValueLit(123))]
@@ -367,23 +380,23 @@ module M with
   fun f(args) = 24
 
 :ignore
-val MSym = ValueRef(ModuleSymbol("M", M))
+val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.370: 	val MSym = ValueRef(ModuleSymbol("M", M))
+//│ ║  l.383: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
-//│ MSym = ValueRef(ModuleSymbol("M", class M))
+//│ MSym = ValueRef(ModuleSymbol("M", class M, false))
 
 val fSym = Symbol("f")
 val fPath = Select(MSym, fSym)
-//│ fPath = Select(ValueRef(ModuleSymbol("M", class M)), Symbol("f"))
+//│ fPath = Select(ValueRef(ModuleSymbol("M", class M, false)), Symbol("f"))
 //│ fSym = Symbol("f")
 
 val callF = Call(fPath, [Arg(ValueLit(12))])
 sor(Ctx.empty(), callF)
 //│ = [End(), ValueLit(24), {Lit(24)}]
 //│ callF = Call(
-//│   Select(ValueRef(ModuleSymbol("M", class M)), Symbol("f")),
+//│   Select(ValueRef(ModuleSymbol("M", class M, false)), Symbol("f")),
 //│   [Arg(ValueLit(12))]
 //│ )
 
@@ -548,12 +561,39 @@ val2path([1, 2, 3], mut [], new Map())
 //│ ]
 
 class TestClass(val a, val b)
-val2path(TestClass(1, 2), mut [], new Map([[TestClass.class, "TestClass"]]))
+val sym = ConcreteClassSymbol("TestClass", TestClass, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false)
+val map = new Map([[TestClass.class, sym]])
+//│ map = Map(1) {
+//│   class TestClass => ConcreteClassSymbol(
+//│     "TestClass",
+//│     fun TestClass { class: class TestClass },
+//│     Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
+//│     [],
+//│     false
+//│   )
+//│ }
+//│ sym = ConcreteClassSymbol(
+//│   "TestClass",
+//│   fun TestClass { class: class TestClass },
+//│   Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
+//│   [],
+//│   false
+//│ )
+
+val2path(TestClass(1, 2), mut [], map)
 //│ = [
 //│   Assign(
 //│     Symbol("obj_2"),
 //│     Instantiate(
-//│       ValueRef(ConcreteClassSymbol("TestClass", undefined, None, [])),
+//│       ValueRef(
+//│         ConcreteClassSymbol(
+//│           "TestClass",
+//│           fun TestClass { class: class TestClass },
+//│           Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
+//│           [],
+//│           false
+//│         )
+//│       ),
 //│       [Arg(ValueLit(1)), Arg(ValueLit(2))]
 //│     ),
 //│     End()
@@ -561,7 +601,7 @@ val2path(TestClass(1, 2), mut [], new Map([[TestClass.class, "TestClass"]]))
 //│   ValueRef(Symbol("obj_2"))
 //│ ]
 
-val2path(TestClass(1, [1,2]), mut [], new Map([[TestClass.class, "TestClass"]]))
+val2path(TestClass(1, [1,2]), mut [], map)
 //│ = [
 //│   Assign(
 //│     Symbol("tup_3"),
@@ -569,7 +609,15 @@ val2path(TestClass(1, [1,2]), mut [], new Map([[TestClass.class, "TestClass"]]))
 //│     Assign(
 //│       Symbol("obj_4"),
 //│       Instantiate(
-//│         ValueRef(ConcreteClassSymbol("TestClass", undefined, None, [])),
+//│         ValueRef(
+//│           ConcreteClassSymbol(
+//│             "TestClass",
+//│             fun TestClass { class: class TestClass },
+//│             Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
+//│             [],
+//│             false
+//│           )
+//│         ),
 //│         [Arg(ValueLit(1)), Arg(ValueRef(Symbol("tup_3")))]
 //│       ),
 //│       End()

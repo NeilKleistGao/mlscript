@@ -25,8 +25,8 @@ type ParamList = Array[Param]
 class Symbol(val name: Str)
 class ClassSymbol(val name: Str) extends Symbol(name)
 class VirtualClassSymbol(val name: Str) extends ClassSymbol(name)
-class ConcreteClassSymbol(val name: Str, val value: Class, val paramsOpt: Opt[ParamList], val auxParams: Array[ParamList]) extends ClassSymbol(name)
-class ModuleSymbol(val name: Str, val value: Class) extends Symbol(name)
+class ConcreteClassSymbol(val name: Str, val value: Class, val paramsOpt: Opt[ParamList], val auxParams: Array[ParamList], val redirect: Bool) extends ClassSymbol(name)
+class ModuleSymbol(val name: Str, val value: Class, val redirect: Bool) extends Symbol(name)
 class NoSymbol() extends Symbol("$no_symbol$")
 
 class Constraint with
@@ -125,14 +125,14 @@ class Printer(val owner: Opt[Symbol]) with
     s.name.replaceAll("$", "_")
   
   fun showSymbol(s: Symbol) =
-    if s is
-      ModuleSymbol | ConcreteClassSymbol and owner is Some(owner) then owner.name + ".\"" + s.name + "\""
-      else s.name.replaceAll("$", "_")
+    if s is ModuleSymbol | ConcreteClassSymbol and owner is Some(owner) and s.redirect
+      then owner.name + ".\"" + s.name + "$" + owner.name + "\""
+    else s.name.replaceAll("$", "_")
 
   fun showPath(p: Path): Str =
     if p is
       // avoids needing to import the runtime module
-      Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
+      Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit, _)) then "()"
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
         qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here

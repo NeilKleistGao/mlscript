@@ -71,7 +71,7 @@ fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) =
     |> liftMany
 
 fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], psOpt: Option[Array[Array[Param]]]) =
-  if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams) then
+  if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams, redir) then
     let entries = [...paramsMap.entries()]
     let keys = entries.map(a =>
       let s = Symbol(a.0)
@@ -82,7 +82,7 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
       else Param(None, s)
     )
     let params = entries.map(_.1)
-    let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams)
+    let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams, redir)
     params 
       .map(_.shapeset.values().toArray())
       |> prod
@@ -101,7 +101,7 @@ fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) =
     op is 
       "&&" and 
         isFalseShape(s1) then mkLit(false)
-        isFalseShape(s2) then mkLit(true)
+        isFalseShape(s2) then mkLit(false)
       "||" and
         isTrueShape(s1) then mkLit(true)
         isTrueShape(s2) then mkLit(true)
@@ -162,7 +162,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams), params) then new! value(...params.map(valOf))
+    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOf))
     else throw Error("Unknown shape: " + s)
 
 fun valOfSet(s : ShapeSet) = 
