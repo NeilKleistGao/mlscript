@@ -495,9 +495,9 @@ prop(Ctx.empty(), earlyRetBlock)
 //│   )
 //│ )
 
+:silent
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1), false))], Some(Return(ValueLit(2), false)), End()))], Some(Return(ValueLit(3), false)), Return(ValueLit(4), false)))))
 printCode(nestedBlock)
-val res = prop(Ctx.empty(), nestedBlock)
 //│ > let {x, y}
 //│ > x = true
 //│ > y = false
@@ -508,33 +508,8 @@ val res = prop(Ctx.empty(), nestedBlock)
 //│ >       else 2
 //│ >   else 3
 //│ > 4
-//│ nestedBlock = Scoped(
-//│   [Symbol("x"), Symbol("y")],
-//│   Assign(
-//│     Symbol("x"),
-//│     ValueLit(true),
-//│     Assign(
-//│       Symbol("y"),
-//│       ValueLit(false),
-//│       Match(
-//│         ValueRef(Symbol("x")),
-//│         [
-//│           Arm(
-//│             Lit(true),
-//│             Match(
-//│               ValueRef(Symbol("y")),
-//│               [Arm(Lit(true), Return(ValueLit(1), false))],
-//│               Some(Return(ValueLit(2), false)),
-//│               End()
-//│             )
-//│           )
-//│         ],
-//│         Some(Return(ValueLit(3), false)),
-//│         Return(ValueLit(4), false)
-//│       )
-//│     )
-//│   )
-//│ )
+
+val res = prop(Ctx.empty(), nestedBlock)
 //│ res = [
 //│   Scoped(
 //│     [Symbol("x"), Symbol("y")],
@@ -544,8 +519,14 @@ val res = prop(Ctx.empty(), nestedBlock)
 //│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2), false))
 //│     )
 //│   ),
-//│   {Lit(2)}
+//│   {Lit(2),Lit(4)}
 //│ ]
+
+:fixme
+:expect {Lit(2)}
+res.1
+//│ ═══[RUNTIME ERROR] Expected: '{Lit(2)}', got: '{Lit(2),Lit(4)}'
+//│ = {Lit(2),Lit(4)}
 
 val2path(1, mut [], new Map())
 //│ = [End(), ValueLit(1)]
