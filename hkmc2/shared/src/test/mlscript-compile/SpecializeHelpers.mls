@@ -59,7 +59,7 @@ class Ctx(
   // ctx tracks shapes of variables
   val ctx: Map[String, ShapeSet], 
   // valueNameCtx tracks the assigned name of the pointer in the previous module for the current runtime value 
-  val valueNameCtx: Map[Class, Str],
+  val valueNameCtx: Map[Class, ConcreteClassSymbol | ModuleSymbol],
   // valDefnCtx tracks fields defined by ValDefn during shape prop of constructor
   val valDefnCtx: Map[String, ShapeSet]
   // allocs tracks the new variables allocated
@@ -84,8 +84,6 @@ class Ctx(
     else
       ctx.set(ps, ss)
     this
-  fun setValueName(c: ConcreteClassSymbol | ModuleSymbol, name: Str) =
-    valueNameCtx.set(c.value, name)
   // Later ValDefn (in derived class) shadows earlier ValDefn (in base class)
   fun addValDefn(ps: String, ss: ShapeSet) =
     valDefnCtx.set(ps, ss)
@@ -161,14 +159,14 @@ module FunCache with
   fun empty(owner) = FunCache(owner, new Map())
 
 // shape of value
-fun sov(v): ShapeSet = 
+fun sov(v, valueMap): ShapeSet = 
   if 
     typeof(v) is
       "number" then mkLit(v)
       "string" then mkLit(v)
       "boolean" then mkLit(v)
     Array.isArray(v) then
-      mkArr(v.map(sov))
+      mkArr(v.map(sov, valueMap))
     not (v is undefined) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
       let meta = v.constructor.(Symbols.definitionMetadata)
       let clsName = meta.1
@@ -176,10 +174,11 @@ fun sov(v): ShapeSet =
       let paramsOpt = if meta.length < 3 
         then None
         else Some(meta.2.map(p => if p is null then Symbol("") else Symbol(p)))
-      let classSymbol = ConcreteClassSymbol(clsName, v.constructor, paramsOpt, [])
+      assert valueMap.has(v.constructor)
+      let classSymbol = valueMap.get(v.constructor)
       let argsMap = new Map()
       if not (paramsOpt is None) do
-        meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n))))
+        meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n), valueMap)))
       mkClassFromMap(classSymbol, argsMap, None) // FIXME
     else throw Error("unknown value from sov", v.toString())
 
@@ -310,7 +309,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       let f_imp = value.(fld)
       let evaluated = f_imp(...argShapes.map(valOfSet))
       let evaluated_path = val2path(evaluated, ctx.allocs, ctx.valueNameCtx)
-      [evaluated_path.0, evaluated_path.1, sov(evaluated)]
+      [evaluated_path.0, evaluated_path.1, sov(evaluated, ctx.valueNameCtx)]
     else
       [End(), r, mkDyn()] // non staged function and some params unknown
   else throw Error("unknown call in sor: " + r.toString())

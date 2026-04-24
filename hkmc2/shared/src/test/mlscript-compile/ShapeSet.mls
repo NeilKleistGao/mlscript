@@ -189,17 +189,13 @@ fun val2path(v, allocs, valueMap) =
     [fullBlock, Block.ValueRef(tupSym)]
   else if not (v is undefined) and not (v is null) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
     let meta = v.constructor.(Symbols.definitionMetadata)
-    // let clsName = meta.1
-    let clsName = valueMap.get(v.constructor)
-    
-    // console.log(valueMap, v.constructor)
     assert valueMap.has(v.constructor)
-    // console.log(v)
-    // class may have no parameters
+    let classSym = valueMap.get(v.constructor)
+    let clsName = classSym.nme
+    
     let paramNames = if meta.2 is
       undefined then []
       ps then ps
-    let classSym = Block.ConcreteClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ConcreteClassSymbol
     let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs, valueMap))
     let blocks = mapped.map(_.0)
     let paths = mapped.map(_.1)
