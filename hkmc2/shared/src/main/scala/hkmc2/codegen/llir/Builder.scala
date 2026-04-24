@@ -369,6 +369,8 @@ final class LlirBuilder(using Elaborator.State)(tl: TraceLogger, uid: FreshInt):
   private def bResult(r: Result)(k: TrivialExpr => Ctx ?=> Node)(using ctx: Ctx)(using Raise, Scope) : Node =
     trace[Node](s"bResult begin", x => s"bResult end: ${x.show}"):
       r match
+      case Call(_, argss) if argss.sizeIs > 1 =>
+        bErrStop(msg"Calls with multiple argument lists are not yet supported in LLIR")
       case Call(Value.Ref(sym: BuiltinSymbol, _), argss) =>
         bArgs(argss.flatten):
           case args: Ls[TrivialExpr] =>
