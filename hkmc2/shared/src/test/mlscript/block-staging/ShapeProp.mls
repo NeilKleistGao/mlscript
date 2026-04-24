@@ -47,9 +47,9 @@ print(Simple."cache$Simple")
 //│ >       else
 //│ >         n1 = n
 //│ >         tmp2 = n1 - 1
-//│ >         tmp3 = .fib(tmp2)
+//│ >         tmp3 = fib(tmp2)
 //│ >         tmp4 = n1 - 2
-//│ >         tmp5 = .fib(tmp4)
+//│ >         tmp5 = fib(tmp4)
 //│ >         tmp3 + tmp5
 //│ >   fun fib_Lit1(n) = 1
 //│ >   fun fib_Lit2(n) = 1
@@ -64,9 +64,9 @@ print(Simple."cache$Simple")
 //│ >   fun test() = 20
 //│ >   fun test2(n) =
 //│ >     let {dyn, tmp10}
-//│ >     dyn = .pyth_Dyn_Lit2(n, 2)
+//│ >     dyn = pyth_Dyn_Lit2(n, 2)
 //│ >     tmp10 = *(dyn, 2)
-//│ >     .fib(tmp10)
+//│ >     fib(tmp10)
 
 class C(val x)
 
@@ -119,7 +119,7 @@ print(If2."cache$If2")
 //│ >   fun test2(dyn) =
 //│ >     let {tmp2}
 //│ >     tmp2 = If2."C$If2"(dyn)
-//│ >     .f_C_Dyn(tmp2)
+//│ >     f_C_Dyn(tmp2)
 //│ >   fun test3() = 1
 
 staged module LinearAlgebra with
@@ -140,31 +140,31 @@ print(LinearAlgebra."cache$LinearAlgebra")
 //│ >     tmp = 1
 //│ >     tmp1 = *(v1.(n), 3)
 //│ >     tmp2 = tmp1 + 0
-//│ >     ._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, tmp, tmp2)
+//│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, tmp, tmp2)
 //│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, n, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 2
 //│ >     tmp1 = 4
 //│ >     tmp2 = 4 + acc
-//│ >     ._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, tmp, tmp2)
+//│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, tmp, tmp2)
 //│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, n, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 3
 //│ >     tmp1 = 2
 //│ >     tmp2 = 2 + acc
-//│ >     ._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, tmp, tmp2)
+//│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, tmp, tmp2)
 //│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, n, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = true
 //│ >     acc
-//│ >   fun dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(v1, v2) = ._dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2, 0, 0)
+//│ >   fun dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(v1, v2) = _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2, 0, 0)
 //│ >   fun test(x) =
 //│ >     let {tmp3, tmp4}
 //│ >     tmp3 = [x, 1, 2]
 //│ >     tmp4 = [3, 4, 1]
-//│ >     .dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(tmp3, tmp4)
+//│ >     dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(tmp3, tmp4)
 
 staged class L1(val y) with
   fun call(x) = x + 2 + y
@@ -184,90 +184,78 @@ staged module Dispatching with
     twice(m, 5)
 
 Dispatching."test_gen"(mkLit(true))
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:248)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'class')
-//│     at lambda3 (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2505:55)
-//│     at Iterator.forEach (<anonymous>)
-//│     at lambda1 (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2507:43)
-//│     at MapIterator.forEach (<anonymous>)
-//│     at SpecializeHelpers.specialize (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2509:33)
-//│     at twice_gen (REPL50:1:8374)
-//│     at SpecializeHelpers.sorInstantiate_sorCall_sor_prop_specializeCtor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:694:51)
-//│     at SpecializeHelpers.sor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2071:30)
-//│     at SpecializeHelpers.sorInstantiate_sorCall_sor_prop_specializeCtor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1113:53)
-//│     at SpecializeHelpers.prop (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2305:30)
+//│ = ["test_Littrue", {Lit(9)}]
 
 Dispatching."test_gen"(mkLit(false))
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:248)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'class')
-//│     at lambda3 (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2505:55)
-//│     at Iterator.forEach (<anonymous>)
-//│     at lambda1 (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2507:43)
-//│     at MapIterator.forEach (<anonymous>)
-//│     at SpecializeHelpers.specialize (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2509:33)
-//│     at twice_gen (REPL50:1:8374)
-//│     at SpecializeHelpers.sorInstantiate_sorCall_sor_prop_specializeCtor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:694:51)
-//│     at SpecializeHelpers.sor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2071:30)
-//│     at SpecializeHelpers.sorInstantiate_sorCall_sor_prop_specializeCtor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1113:53)
-//│     at SpecializeHelpers.prop (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2305:30)
+//│ = ["test_Litfalse", {Lit(29)}]
 
 Dispatching."test_gen"(mkDyn())
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:248)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'class')
-//│     at lambda3 (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2505:55)
-//│     at Iterator.forEach (<anonymous>)
-//│     at lambda1 (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2507:43)
-//│     at MapIterator.forEach (<anonymous>)
-//│     at SpecializeHelpers.specialize (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2509:33)
-//│     at twice_gen (REPL50:1:8374)
-//│     at SpecializeHelpers.sorInstantiate_sorCall_sor_prop_specializeCtor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:694:51)
-//│     at SpecializeHelpers.sor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2071:30)
-//│     at SpecializeHelpers.sorInstantiate_sorCall_sor_prop_specializeCtor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1113:53)
-//│     at SpecializeHelpers.prop (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2305:30)
+//│ = ["test", {Lit(15),Lit(17),Lit(29),Lit(9)}]
 
 print(Dispatching."cache$Dispatching")
 //│ > module Dispatching with
 //│ >   ()
+//│ >   fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
+//│ >     let {obj_7, obj_8}
+//│ >     if b is
+//│ >       true then
+//│ >         obj_7 = new! Dispatching."L2$Dispatching"(2)
+//│ >         obj_7
+//│ >       else
+//│ >         obj_8 = new! Dispatching."L3$Dispatching"(3)
+//│ >         obj_8
+//│ >   fun pick_L2_Lit2_L3_Lit3_Litfalse(x, y, b) =
+//│ >     let {obj_5}
+//│ >     obj_5 = new! Dispatching."L3$Dispatching"(3)
+//│ >     obj_5
+//│ >   fun pick_L2_Lit2_L3_Lit3_Littrue(x, y, b) =
+//│ >     let {obj_2}
+//│ >     obj_2 = new! Dispatching."L2$Dispatching"(2)
+//│ >     obj_2
 //│ >   fun test(b) =
 //│ >     let {y1, m, tmp1, tmp2, tmp3}
 //│ >     tmp1 = new! Dispatching."L1$Dispatching"(1)
-//│ >     y1 = twice(tmp1, 5)
+//│ >     y1 = 11
 //│ >     tmp2 = new! Dispatching."L2$Dispatching"(2)
 //│ >     tmp3 = new! Dispatching."L3$Dispatching"(3)
-//│ >     m = pick(tmp2, tmp3, b)
-//│ >     twice(m, 5)
-//│ >   fun test_Litfalse(b) =
-//│ >     let {y1, m, tmp1, tmp2, tmp3}
-//│ >     tmp1 = new! Dispatching."L1$Dispatching"(1)
-//│ >     y1 = twice(tmp1, 5)
-//│ >     tmp2 = new! Dispatching."L2$Dispatching"(2)
-//│ >     tmp3 = new! Dispatching."L3$Dispatching"(3)
-//│ >     m = pick(tmp2, tmp3, b)
-//│ >     twice(m, 5)
-//│ >   fun test_Littrue(b) =
-//│ >     let {y1, m, tmp1, tmp2, tmp3}
-//│ >     tmp1 = new! Dispatching."L1$Dispatching"(1)
-//│ >     y1 = twice(tmp1, 5)
-//│ >     tmp2 = new! Dispatching."L2$Dispatching"(2)
-//│ >     tmp3 = new! Dispatching."L3$Dispatching"(3)
-//│ >     m = pick(tmp2, tmp3, b)
-//│ >     twice(m, 5)
+//│ >     m = pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
+//│ >     twice_Union_L2_Lit2_L3_Lit3_end_Lit5(m, 5)
+//│ >   fun test_Litfalse(b) = 29
+//│ >   fun test_Littrue(b) = 9
+//│ >   fun twice_L1_Lit1_Lit5(f, x) = 11
+//│ >   fun twice_L2_Lit2_Lit5(f, x) = 9
+//│ >   fun twice_L3_Lit3_Lit5(f, x) = 29
+//│ >   fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f, x) =
+//│ >     let {tmp}
+//│ >     if f is
+//│ >       Dispatching."L2$Dispatching" then
+//│ >         tmp = f.call_L2_Lit2_dot_Lit5(x)
+//│ >       Dispatching."L3$Dispatching" then
+//│ >         tmp = f.call_L3_Lit3_dot_Lit5(x)
+//│ >     if f is
+//│ >       Dispatching."L2$Dispatching" then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
+//│ >       Dispatching."L3$Dispatching" then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
 
 print(L1.class."class$cache$L1")
 print(L2.class."class$cache$L2")
 print(L3.class."class$cache$L3")
 //│ > class L1(y) with
 //│ >   ()
-//│ >   
+//│ >   fun call_L1_Lit1_dot_Lit5(x) = 8
+//│ >   fun call_L1_Lit1_dot_Lit8(x) = 11
 //│ > class L2(y) with
 //│ >   ()
-//│ >   
+//│ >   fun call_L2_Lit2_dot_Lit5(x) = 7
+//│ >   fun call_L2_Lit2_dot_Lit7(x) = 9
+//│ >   fun call_L2_Lit2_dot_Union_Lit7_Lit13_end(x) = x + 2
 //│ > class L3(y) with
 //│ >   ()
-//│ >   
+//│ >   fun call_L3_Lit3_dot_Lit13(x) = 29
+//│ >   fun call_L3_Lit3_dot_Lit5(x) = 13
+//│ >   fun call_L3_Lit3_dot_Union_Lit7_Lit13_end(x) =
+//│ >     let {tmp1}
+//│ >     tmp1 = *(x, 2)
+//│ >     tmp1 + 3
 
 
 staged class A(val x: Int) with
@@ -281,28 +269,18 @@ staged module This with
 
 This."test_gen"(mkLit(1))
 print(This."cache$This")
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:248)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'class')
-//│     at SpecializeHelpers.getActualClass (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1526:14)
-//│     at SpecializeHelpers.getStagedClassInfo (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1540:37)
-//│     at SpecializeHelpers.getClassGenMap (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1549:30)
-//│     at SpecializeHelpers.isStagedClass (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1883:31)
-//│     at lambda (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1899:36)
-//│     at file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/Rendering.mjs:148:35
-//│     at SpecializeHelpers.fsplit (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:1920:33)
-//│     at SpecializeHelpers.dispatchMethodCall (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2081:34)
-//│     at SpecializeHelpers.sorInstantiate_sorCall_sor_prop_specializeCtor (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:964:54)
-//│     at SpecializeHelpers.prop (file:///home/hillo/Downloads/uni/fyp/mlscript/hkmc2/shared/src/test/mlscript-compile/SpecializeHelpers.mjs:2305:30)
+//│ > module This with
+//│ >   ()
+//│ >   fun test_Lit1(x) = 3
 
 print(A.class."class$cache$A")
 print(B.class."class$cache$B")
 //│ > class A(x) with
 //│ >   ()
-//│ >   
+//│ >   fun f_A_Lit1_dot_Lit1(y) = 2
 //│ > class B(x) with
 //│ >   ()
-//│ >   
+//│ >   fun f_B_Lit1_dot_A_Lit1(y) = 3
 
 staged class B(val x, val y) with
   val z = x + y
@@ -317,15 +295,16 @@ staged module Inheritance with
       else "not B"
 
 Inheritance."test_gen"()
-//│ = ["test", {Lit("not B")}]
+//│ = ["test", {Lit(5)}]
 
 staged module NonTermination with
-  fun f(x, y) = if y is
-    1 then 0
+  fun f(x, y) = if y
+    == x then 0
     else f(x, y + 1)
 
-:fixme
-// NonTermination."f_gen"(mkDyn(), mkLit(0))
+:re
+NonTermination."f_gen"(mkDyn(), mkLit(0))
+//│ ═══[RUNTIME ERROR] RangeError: Maximum call stack size exceeded
 
 fun g(x, y) = x + y
 
@@ -343,3 +322,12 @@ Comparison."test_gen"(union(mkLit(3), mkLit(4)))
 
 Comparison."test_gen"(union(mkLit(4), mkLit(6)))
 //│ = ["test_Union_Lit4_Lit6_end", {Dyn()}]
+
+:fixme
+class C
+module Opaque with
+  fun f() = new C
+staged module M with
+  fun f() = Opaque.f()
+M."f_gen"()
+//│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/ShapeSet.mls:192)
