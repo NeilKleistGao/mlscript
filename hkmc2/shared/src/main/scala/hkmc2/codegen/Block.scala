@@ -433,10 +433,10 @@ object Begin:
 object HandleBlock:
 
   def suspend(tag: Path, handlerFun: Path)(using Elaborator.Ctx): Result =
-    Call(Value.Ref(Elaborator.ctx.builtins.runtime.suspend, N), (tag.asArg :: handlerFun.asArg :: Nil) :: Nil)(true, true, false)
+    Call(Value.Ref(Elaborator.ctx.builtins.runtime.suspend, N), (tag.asArg :: handlerFun.asArg :: Nil) ne_:: Nil)(true, true, false)
 
   def handleSuspension(tag: Path, bodyFun: Path)(using Elaborator.Ctx): Result =
-    Call(Value.Ref(Elaborator.ctx.builtins.runtime.handle_suspension, N), (tag.asArg :: bodyFun.asArg :: Nil) :: Nil)(true, true, false)
+    Call(Value.Ref(Elaborator.ctx.builtins.runtime.handle_suspension, N), (tag.asArg :: bodyFun.asArg :: Nil) ne_:: Nil)(true, true, false)
   
   private def create(
       lhs: Local,
@@ -476,7 +476,7 @@ object HandleBlock:
       N, Nil,
       S(par), handlerMtds, Nil, Nil,
       // Apparently, the lifter is not happy with any assignment in the preCtor...
-      Return(Call(Value.Ref(State.builtinOpsMap("super")), args.map(_.asArg) :: Nil)(true, true, false), true),
+      Return(Call(Value.Ref(State.builtinOpsMap("super")), args.map(_.asArg) ne_:: Nil)(true, true, false), true),
       End(),
       N,
       N,
@@ -802,7 +802,7 @@ type Local = Symbol
  * regardless of whether the check for effect is inserted or not.
  * Note that the check for effect is inserted during HandlerLowering and setting this to true
  * after handler is lowered does not have any effect on the code generation. */
-case class Call(fun: Path, argss: Ls[Ls[Arg]])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result
+case class Call(fun: Path, argss: NELs[Ls[Arg]])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result
 
 case class Instantiate(mut: Bool, cls: Path, argss: Ls[Ls[Arg]]) extends Result
 

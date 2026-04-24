@@ -386,16 +386,16 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       lowerCall(fr, isMlsFun, isTailCall, a, loc)(k)
     case N =>
       // * No arguments means a nullary call, e.g., `f()`
-      k(Call(fr, Nil :: Nil)(isMlsFun, true, isTailCall).withLoc(loc))
+      k(Call(fr, Nil ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc))
   def lowerCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Term, loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
-    lowerArg(arg)(as => k(Call(fr, as :: Nil)(isMlsFun, true, isTailCall).withLoc(loc)))
+    lowerArg(arg)(as => k(Call(fr, as ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc)))
   
   /** Lower a call with multiple argument lists into a single `Call` node.
     * Arguments are lowered left-to-right and collected into `argss`. */
   def lowerMultiCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, args: Ls[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
     def go(remaining: Ls[Term], acc: Ls[Ls[Arg]]): Block = remaining match
       case Nil =>
-        k(Call(fr, acc.reverse)(isMlsFun, true, isTailCall).withLoc(loc))
+        k(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc))
       case arg :: rest =>
         lowerArg(arg)(as => go(rest, as :: acc))
     go(args, Nil)
@@ -487,7 +487,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         // * (non-local functions are compiled into getter methods selected on some prefix)
         if td.params.isEmpty then
           return k(Call(
-              Value.Ref(bs, disamb).withLocOf(ref), Nil :: Nil
+              Value.Ref(bs, disamb).withLocOf(ref), Nil ne_:: Nil
             )(isMlsFun = true, true, annots.contains(Annot.TailCall)))
       case S(_) => ()
       case N => () // TODO panic here; can only lower refs to elab'd symbols
@@ -550,7 +550,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         subTerm(arg): ar =>
           val target = wasmIntrinsicPath(sym, unary = true)
             .getOrElse(Value.Ref(sym).withLocOf(ref))
-          k(Call(target, (Arg(N, ar) :: Nil) :: Nil)(true, false, false))
+          k(Call(target, (Arg(N, ar) :: Nil) ne_:: Nil)(true, false, false))
       case st.Tup(Fld(FldFlags.benign(), arg1, N) :: Fld(FldFlags.benign(), arg2, N) :: Nil) =>
         if !sym.binary then raise:
           ErrorReport(
@@ -580,7 +580,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
             subTerm_nonTail(arg2): ar2 =>
               val target = wasmIntrinsicPath(sym, unary = false)
                 .getOrElse(Value.Ref(sym).withLocOf(ref))
-              k(Call(target, (Arg(N, ar1) :: Arg(N, ar2) :: Nil) :: Nil)(true, false, false))
+              k(Call(target, (Arg(N, ar1) :: Arg(N, ar2) :: Nil) ne_:: Nil)(true, false, false))
       case _ => fail:
         ErrorReport(
           msg"Unexpected arguments for builtin symbol '${sym.nme}'" -> arg.toLoc :: Nil, S(arg),
@@ -786,9 +786,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
               inner =>
                 lowerArg(arg): asr2 =>
                   val ts = loweringCtx.registerTempSymbol(N)
-                  Assign(ts, Call(inner, asr2 :: Nil)(true, true, false), acc(Value.Ref(ts)))
+                  Assign(ts, Call(inner, asr2 ne_:: Nil)(true, true, false), acc(Value.Ref(ts)))
             val ts = loweringCtx.registerTempSymbol(N)
-            Assign(ts, Instantiate(mut, sr, asr :: Nil), z(Value.Ref(ts)))
+            Assign(ts, Instantiate(mut, sr, asr ne_:: Nil), z(Value.Ref(ts)))
         case S((isym, rft)) =>
           val sym = new BlockMemberSymbol(isym.name, Nil)
           loweringCtx.collectScopedSym(sym)
@@ -1149,10 +1149,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           override def applyLam(lam: Lambda): Lambda = lam // Don't recurse into lambdas
           override def applyResult(r: Result)(k: Result => Block): Block = r match
             case c @ Call(fun, firstArgs :: restArgss) if restArgss.nonEmpty =>
-              val firstCall = Call(fun, firstArgs :: Nil)(c.isMlsFun, c.mayRaiseEffects, false)
+              val firstCall = Call(fun, firstArgs ne_:: Nil)(c.isMlsFun, c.mayRaiseEffects, false)
               val tmp = TempSymbol(N, "res")
               super.applyResult(firstCall): res1 =>
-                val remainingCall = Call(tmp.asPath, restArgss)(false, c.mayRaiseEffects, c.explicitTailCall)
+                val remainingCall = Call(tmp.asPath, restArgss.ne_!)(false, c.mayRaiseEffects, c.explicitTailCall)
                 Scoped(Set.single(tmp), Assign(tmp, res1, applyResult(remainingCall)(k)))
             case _ => super.applyResult(r)(k)
         splitter.applyBlock(lifted)
@@ -1291,7 +1291,7 @@ trait LoweringTraceLog(instrument: Bool)(using TL, Raise, State)
       case ((sym, res), acc) => Assign(sym, res, acc)
   
   private def pureCall(fn: Path, args: Ls[Arg]): Call =
-    Call(fn, args :: Nil)(true, false, false)
+    Call(fn, args ne_:: Nil)(true, false, false)
   
   extension (k: Block => Block)
     def |>: (b: Block): Block = k(b)

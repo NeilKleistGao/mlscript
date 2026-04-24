@@ -26,10 +26,10 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
     )
     val defSym = new BlockMemberSymbol("Function$", Nil, false)
     val callDef = FunDefn.withFreshSymbol(Some(clsSym), new BlockMemberSymbol("call", Nil, true), params :: Nil,
-      Return(Call(p, params.params.map(_.sym.asPath.asArg) :: Nil)(true, false, false), false))(false, N, Visibility.Public)
+      Return(Call(p, params.params.map(_.sym.asPath.asArg) ne_:: Nil)(true, false, false), false))(false, N, Visibility.Public)
     ClsLikeDefn(None, clsSym, defSym, None, syntax.Cls, None, Nil,
       Some(Select(Value.Ref(State.globalThisSymbol, Some(State.globalThisSymbol)), Tree.Ident("Function"))(Some(ctx.builtins.Function))),
-      callDef :: Nil, Nil, Nil, Return(Call(Value.Ref(State.builtinOpsMap("super")), Nil :: Nil)(false, false, false), true), End(), None, None)(N)
+      callDef :: Nil, Nil, Nil, Return(Call(Value.Ref(State.builtinOpsMap("super")), Nil ne_:: Nil)(false, false, false), true), End(), None, None)(N)
 
   private def getParamList(l: BlockMemberSymbol): Option[ParamList] = funDefns.get(l) match
     case Some(fd) => fd.params.headOption
@@ -69,7 +69,7 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
 
   override def applyResult(r: Result)(k: Result => Block): Block = r match
     case c @ Call(fun, argss) => applyListOf(argss, (args, k2) => applyArgs(args)(k2)): argss2 =>
-      def call(f: Path) = Call(f, argss2)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall)
+      def call(f: Path) = Call(f, argss2.ne_!)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall)
       fun match
         case ref @ Value.Ref(sym, _) => sym match
           case _: VarSymbol |  _: TempSymbol => k(call(ref.selSN("call")))
@@ -113,8 +113,8 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
             case nextArgs :: rest =>
               val tmp = new TempSymbol(None)
               Scoped(Set(tmp), Assign(tmp, currCall,
-                chainCalls(Call(tmp.asPath, nextArgs :: Nil)(true, c.mayRaiseEffects, false), rest)(k)))
-        applyResult(Call(fun, firstArgs :: Nil)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c)): firstResult =>
+                chainCalls(Call(tmp.asPath, nextArgs ne_:: Nil)(true, c.mayRaiseEffects, false), rest)(k)))
+        applyResult(Call(fun, firstArgs ne_:: Nil)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c)): firstResult =>
           chainCalls(firstResult, restArgss)(k)
       case _ => super.applyResult(r)(k)
 

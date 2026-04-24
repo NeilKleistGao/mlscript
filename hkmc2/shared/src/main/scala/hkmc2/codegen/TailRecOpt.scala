@@ -391,7 +391,7 @@ class TailRecOpt(using State, TL, Raise):
                       (tupleSym.asPath.asArg
                         :: Value.Lit(Tree.IntLit(paramList.length)).asArg
                         :: Value.Lit(Tree.IntLit(0)).asArg
-                        :: Nil) :: Nil
+                        :: Nil) ne_:: Nil
                     )(true, false, false)
                     val blk = blockBuilder
                       .assignScoped(tupleSym, tupleRes)
@@ -438,7 +438,7 @@ class TailRecOpt(using State, TL, Raise):
             :: paramArgs
             ::: List.fill(maxParamLen - paramArgs.length)(Value.Lit(Tree.UnitLit(false)).asArg)
         val newBod = Return(
-          Call(sel, args :: Nil)(true, false, false),
+          Call(sel, args ne_:: Nil)(true, false, false),
           false
         )
         FunDefn(f.owner, f.sym, f.dSym, f.params, newBod)(false, N, f.visibility)
@@ -470,7 +470,7 @@ class TailRecOpt(using State, TL, Raise):
           case Some(value) => Select(Value.Ref(value, N), Tree.Ident(loopBms.nme))(S(loopDSym))
           case None => Value.Ref(loopBms, S(loopDSym))
         val wrapperBod = Return(
-          Call(internalSel, paramArgs :: Nil)(true, false, false),
+          Call(internalSel, paramArgs ne_:: Nil)(true, false, false),
           false
         )
         val wrapperDefn = FunDefn(f.owner, f.sym, f.dSym, f.params, wrapperBod)(false, N, f.visibility)
