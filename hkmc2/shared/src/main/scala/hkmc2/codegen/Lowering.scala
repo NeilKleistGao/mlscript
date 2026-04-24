@@ -587,10 +587,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           source = Diagnostic.Source.Compilation)
     case st.TyApp(f, ts) => term(f)(k) // * Type arguments are erased
     case st.App(f, arg) =>
+      
       // Collect chains of App nodes: `f(a)(b)(c)` → (f, [a, b, c])
       // This allows lowering curried calls as a single `Call` with multiple arg lists.
       @tailrec
-      def collectAppChain(expr: st, args: Ls[Term]): (st, Ls[Term]) = expr match
+      def collectAppChain(expr: st, args: Ls[Term]): (st, Ls[Term]) =
+        expr.instantiated match
         case st.App(inner, innerArg) => collectAppChain(inner, innerArg :: args)
         case st.TyApp(inner, _) => collectAppChain(inner, args) // type args are erased
         case _ => (expr, args)
@@ -600,17 +602,21 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         case _: sem.BuiltinSymbol => true
         case sym: sem.BlockMemberSymbol =>
           sym.trmImplTree.fold(sym.clsTree.isDefined)(_.k is syntax.Fun)
-        case sym: sem.TermSymbol => (sym.k is syntax.Fun) && sym.defn.forall(!_.hasDeclareModifier.isDefined)
+        case sym: sem.TermSymbol =>
+          (sym.k is syntax.Fun) && sym.defn.forall(!_.hasDeclareModifier.isDefined)
         // Do not perform safety check on `MatchSuccess` and `MatchFailure`.
         case sym => (sym is State.matchSuccessClsSymbol) ||
           (sym is State.matchFailureClsSymbol)
-      def conclude(fr: Path) = lowerMultiCall(fr, isMlsFun, annots.contains(Annot.TailCall), allArgs, t.toLoc)(k)
       
-      val instantiated = baseF.instantiated
-      val instantiatedResolvedBms = instantiated.resolvedSym.flatMap(_.asBlkMember)
+      def conclude(fr: Path) =
+        lowerMultiCall(fr, isMlsFun, annots.contains(Annot.TailCall), allArgs, t.toLoc)(k)
       
       // * We have to instantiate `f` again because, if `f` is a Sel, the `term`
       // * function is not called again with f. See below `Sel` and `SelProj` cases.
+      // * Note: now the instantiation is done by `collectAppChain`.
+      val instantiated = baseF
+      val instantiatedResolvedBms = instantiated.resolvedSym.flatMap(_.asBlkMember)
+      
       instantiated match
       case t if instantiatedResolvedBms.exists(_ is ctx.builtins.js.bitand) =>
         conclude(Value.Ref(State.runtimeSymbol).selN(Tree.Ident("bitand")))
@@ -1136,6 +1142,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     // transforms properly handle each intermediate call result.
     // Only split at the function body level, not inside lambdas, to avoid
     // creating Scoped blocks that conflict when inlined into switch cases.
+    // TODO: don't do this when actually calling multi-parameter functions, which don't need splitting
     val splitCalls =
       if config.effectHandlers.isDefined then
         val splitter = new BlockTransformer(SymbolSubst.Id):
