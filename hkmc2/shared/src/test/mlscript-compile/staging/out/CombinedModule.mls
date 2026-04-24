@@ -7,7 +7,24 @@ open LinkingGeneratedClasses
 
 module CombinedModule with
   module SimpleStagedExample with
-      ()
+      class Bar(val x) with
+        fun bar() = this.x
+      class Foo(val x) with
+        fun foo(b) =
+          let {tmp10, tmp11}
+          if b is
+            1 then
+              tmp10 = this.x.bar()
+              tmp10 + 1
+            2 then
+              tmp11 = this.x.bar()
+              tmp11 + 2
+            else this.x.bar()
+      fun baz() =
+        let {tmp6, tmp7}
+        tmp6 = Bar(1)
+        tmp7 = Foo(tmp6)
+        tmp7.foo(1)
       fun f(x, y) = x + y
       fun f_Lit2_Lit3(x, y) = 5
       fun fib(n) =
@@ -33,6 +50,17 @@ module CombinedModule with
       fun fib_Lit8(n) = 21
       fun fib_Lit9(n) = 34
       fun foo() = 60
+      fun foobar(x) =
+        let {y1, z, tmp8, tmp9}
+        if x is
+          0 then
+            tmp8 = 1
+          else
+            tmp8 = 0
+        y1 = tmp8
+        tmp9 = 0
+        z = 0
+        y1 + 0
       fun spaces() =
         let {tup_3}
         tup_3 = ["\t", "\n", "\r"]
