@@ -195,16 +195,30 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
       transformArgs(elems): xs =>
         tuple(xs.map(_._1)): codes =>
           blockCtor("Tuple", Ls(codes), "tup")(k)
-    case Instantiate(mut, cls, args :: _) =>
+    case Instantiate(mut, cls, argss) =>
       assert(!mut, "mutable instantiation not supported")
-      transformArgs(args): xs =>
-        transformPath(cls): cls =>
-          tuple(xs.map(_._1)): codes =>
-            blockCtor("Instantiate", Ls(cls, codes), "inst")(k)
+      def applyArgss(base: Path, remaining: Ls[Ls[Arg]])(using Context)(k: Path => Block): Block =
+        remaining match
+          case Nil => k(base)
+          case nextArgs :: rest =>
+            transformArgs(nextArgs): xs =>
+              tuple(xs.map(_._1)): tup =>
+                blockCtor("Call", Ls(base, tup), "app"): result =>
+                  applyArgss(result, rest)(k)
+      argss match
+        case Nil =>
+          raise(ErrorReport(msg"Instantiate with no argument lists not supported in staged module." -> r.toLoc :: Nil))
+          End()
+        case args :: restArgss =>
+          transformArgs(args): xs =>
+            transformPath(cls): cls =>
+              tuple(xs.map(_._1)): codes =>
+                blockCtor("Instantiate", Ls(cls, codes), "inst"): instResult =>
+                  applyArgss(instResult, restArgss)(k)
     // desugar Runtime.Tuple.get into Select
     case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
       transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
-    case Call(fun, args :: _) =>
+    case Call(fun, argss) =>
       val stagedFunPath = fun match
         case s @ Select(qual, Tree.Ident(name)) => s.symbol.flatMap({
             case t: TermSymbol => t.owner.flatMap({ case sym: DefinitionSymbol[?] =>
@@ -216,11 +230,26 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
           })
         case _ => N
 
-      val newFun = stagedFunPath.getOrElse(fun)
-      transformPath(newFun): fun =>
-        transformArgs(args): args =>
-          tuple(args.map(_._1)): tup =>
-            blockCtor("Call", Ls(fun, tup), "app")(k)
+      def applyArgss(base: Path, remaining: Ls[Ls[Arg]])(using Context)(k: Path => Block): Block =
+        remaining match
+          case Nil => k(base)
+          case nextArgs :: rest =>
+            transformArgs(nextArgs): xs =>
+              tuple(xs.map(_._1)): tup =>
+                blockCtor("Call", Ls(base, tup), "app"): result =>
+                  applyArgss(result, rest)(k)
+
+      argss match
+        case Nil =>
+          raise(ErrorReport(msg"Call with no argument lists not supported in staged module." -> r.toLoc :: Nil))
+          End()
+        case args :: restArgss =>
+          val newFun = stagedFunPath.getOrElse(fun)
+          transformPath(newFun): fun =>
+            transformArgs(args): args =>
+              tuple(args.map(_._1)): tup =>
+                blockCtor("Call", Ls(fun, tup), "app"): callResult =>
+                  applyArgss(callResult, restArgss)(k)
     case _ =>
       raise(ErrorReport(msg"Other Results not supported in staged module: ${r.getClass.toString()}" -> r.toLoc :: Nil))
       End()
