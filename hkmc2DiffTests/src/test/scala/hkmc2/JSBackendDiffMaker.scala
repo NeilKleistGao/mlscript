@@ -97,7 +97,8 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       .toList
     
     val symbolsToPreserve = definedValues(includeNonTerms = true).iterator.map(_._2).toSet
-    
+    val effectiveConfig = Config.extractConfigFromStats(blk)
+
     if showJS.isSet then
       given Raise =
         case d @ ErrorReport(source = Source.Compilation) =>
@@ -106,9 +107,9 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
         case d => outerRaise(d)
       given Elaborator.Ctx = curCtx
       val low = ltl.givenIn:
-        codegen.Lowering()
+        codegen.Lowering()(using effectiveConfig)
       val jsb = ltl.givenIn:
-        JSBuilder()
+        JSBuilder(using effectiveConfig)
       val le_0 = low.program(blk)
       val le_1 = ltl.givenIn:
         BlockSimplifier(symbolsToPreserve)(le_0)
@@ -129,7 +130,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
             output(s"Skipping already reported diagnostic: ${e.mainMsg}")
         case d => outerRaise(d)
       val low = ltl.givenIn:
-        new codegen.Lowering()
+        new codegen.Lowering()(using effectiveConfig)
           with codegen.LoweringSelSanityChecks
           with codegen.LoweringTraceLog(traceJS.isSet)
       
@@ -151,9 +152,12 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       val lowered_1 = ltl.givenIn:
         BlockSimplifier(symbolsToPreserve)(lowered_0)
       
+      val lowered_2 = ltl.givenIn:
+        DeadParamElim(lowered_1)
+      
       // TODO: Test that transformers retain object identity when there are no changes
-      if (lowered_1 isnt lowered_0) && (lowered_1 === lowered_0) then
-        output("/!\\ Warning: object identity between equal objects was not preserved by BlockSimplifier")
+      if (lowered_2 isnt lowered_0) && (lowered_2 === lowered_0) then
+        output("/!\\ Warning: object identity between equal objects was not preserved by BlockSimplifier or DeadParamElim")
         def rec(lhs: Block, rhs: Block): Bool =
           (lhs is rhs) || {
             if
@@ -164,10 +168,8 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
               false
             else false
           }
-        rec(lowered_0.main, lowered_1.main)
+        rec(lowered_0.main, lowered_2.main)
       
-      val lowered_2 = ltl.givenIn:
-        DeadParamElim(lowered_1)
       if checkIR.isSet then
         BlockChecker().applyProgram(lowered_2)
       
