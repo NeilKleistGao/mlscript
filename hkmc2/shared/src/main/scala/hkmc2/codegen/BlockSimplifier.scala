@@ -485,21 +485,13 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
                         acc(Scoped(Set.single(resSym), newBlk(k(Value.Ref(resSym)))))
                       else if remainingParams.nonEmpty then
                         // Fewer arg lists than param lists: wrap body in a function with remaining params
-                        val lambdaSym = BlockMemberSymbol("inlinedLambda", Nil, true)
+                        val lambdaSym = BlockMemberSymbol("inlinedLambda", Nil, false)
                         val lambdaDefn = FunDefn.withFreshSymbol(N, lambdaSym,
                           remainingParams, newBlk(Return(Value.Ref(resSym), false)))(false, N, Visibility.Private)
-                        if extraArgss.isEmpty then
-                          acc(Scoped(Set(resSym, lambdaSym),
-                            Define(lambdaDefn,
-                              k(lambdaDefn.asPath))))
-                        else
-                          val extraSym = TempSymbol(N, "inlinedCallBase")
-                          acc(Scoped(Set(resSym, lambdaSym, extraSym),
-                            Define(lambdaDefn,
-                              Assign(extraSym, Call(lambdaDefn.asPath, extraArgss.take(remainingParams.length).ne_!)(c.isMlsFun, c.mayRaiseEffects, false),
-                                k(if extraArgss.length > remainingParams.length then
-                                  Call(extraSym.asPath, extraArgss.drop(remainingParams.length).ne_!)(c.isMlsFun, c.mayRaiseEffects, false)
-                                else Value.Ref(extraSym))))))
+                        assert(extraArgss.isEmpty)
+                        acc(Scoped(Set(resSym, lambdaSym),
+                          Define(lambdaDefn,
+                            k(lambdaDefn.asPath))))
                       else
                         acc(Scoped(Set(resSym), newBlk(
                           k(Call(resSym.asPath, extraArgss.ne_!)(c.isMlsFun, c.mayRaiseEffects, false)))))
