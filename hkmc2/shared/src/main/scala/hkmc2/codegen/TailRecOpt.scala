@@ -177,7 +177,7 @@ class TailRecOpt(using State, TL, Raise):
   
   def paramsLen(f: FunDefn): Int = f.params.foldLeft(0): (acc, head) =>
     acc + (if head.restParam.isDefined then 1 + head.params.length
-    else head.params.length)
+      else head.params.length)
   
   // Success:       The tail-call's args were successfully transformed. They may be blindly assigned to the//
   //                tailrec function's parameters in order, to continue the loop.
