@@ -501,10 +501,8 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
                                   Call(extraSym.asPath, extraArgss.drop(remainingParams.length).ne_!)(c.isMlsFun, c.mayRaiseEffects, false)
                                 else Value.Ref(extraSym))))))
                       else
-                        val extraSym = TempSymbol(N, "inlinedCallBase")
-                        acc(Scoped(Set(resSym, extraSym), newBlk(
-                          Assign(extraSym, Value.Ref(resSym),
-                            k(Call(extraSym.asPath, extraArgss.ne_!)(c.isMlsFun, c.mayRaiseEffects, false))))))
+                        acc(Scoped(Set(resSym), newBlk(
+                          k(Call(resSym.asPath, extraArgss.ne_!)(c.isMlsFun, c.mayRaiseEffects, false))))))
                     case (sym, value) :: argRest =>
                       val newSym = VarSymbol(sym.id)
                       go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
