@@ -282,7 +282,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
         defn: FunDefn,
         isMethod: Bool,
         private[InlinerAnalyzer] var useCount: Int,
-        private[InlinerAnalyzer] var hasNakedRef: Bool,
+        private[InlinerAnalyzer] var disallowElimination: Bool,
         private[InlinerAnalyzer] var isLoopBreaker: Bool,
       ):
         def isPrivate = !symbolsToPreserve.contains(defn.sym)
@@ -290,7 +290,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
         // Whether this function can be inlined without causing any code duplication,
         // i.e. the original definition can be removed and there is only one usage.
         def canBeInlineEliminated =
-          isPrivate && !isMethod && useCount <= 1 && !hasNakedRef && !isLoopBreaker
+          isPrivate && !isMethod && useCount <= 1 && !disallowElimination && !isLoopBreaker
           // false
         
         def shouldBeInlined(newBlk: Block)(using Config.Inliner): Bool =
@@ -363,13 +363,14 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
           applyBlock(blk)
           map.foreach: (sym, info) =>
             info.useCount = useCnt(sym)
-            info.hasNakedRef = info.hasNakedRef || hasNakedRef(sym)
+            info.disallowElimination = info.disallowElimination || hasNakedRef(sym)
           val edges: Buffer[(TermSymbol, TermSymbol)] = Buffer.empty
           usages.foreach: (sym, calls) =>
             calls.foreach: (caller, call) =>
               if map.contains(sym) then
-                map(sym).hasNakedRef = map(sym).hasNakedRef ||
-                  matchAllArgs(call.argss.take(call.argss.length min map(sym).defn.params.length), map(sym).defn.params.take(call.argss.length min map(sym).defn.params.length)).isEmpty
+                map(sym).disallowElimination = map(sym).disallowElimination ||
+                  map(sym).defn.params.isEmpty ||
+                  matchArgs(call.argss.head, map(sym).defn.params.head).isEmpty
                 caller.foreach: caller =>
                   edges.append((caller, sym))
           
