@@ -200,8 +200,8 @@ class Printer(val owner: Opt[Symbol]) with
           + showResult(rhs) + showRestBlock(rest)
       Define(d, rest) then
         showDefn(d) + showRestBlock(rest)
-      Return(res, _) then
-        showResult(res)
+      Return(res, implct) then
+        (if implct then "return " else "") + showResult(res)
       Match(scrut, arms, dflt, rest) then
         "if " + showPath(scrut) + " is"
         + indent("\n" + arms.map(showArm(_)).join("\n"))
