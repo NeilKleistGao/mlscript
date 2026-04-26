@@ -53,17 +53,7 @@ fun isPrimitiveTypeOf(sym: Symbol, l: Literal) =
     ["Bool", b] and b is Bool then true
     else false
 
-// TODO: move this to somewhere appropriate
-// A staged class with no parameters has the same runtime value as its staged companion, this causes an unwated collision when creating a symbol for both the class and the module, 
-// so we need to split the map into the which type of symbol used.
-class SymbolMap(val classMap: Map[Class, ClassSymbol], val moduleMap: Map[Class, ModuleSymbol]) with
-  fun checkMap(mapType: String, key: Class, value: ClassSymbol | ModuleSymbol) =
-    let map = this.(mapType)
-    let v = map.get(key)
-    if v is
-      Symbol then v
-      else map.set(key, value); value
-
+// TODO: spread parameters will be as another field to Arg
 class Arg(val value: Path) 
 
 class Case with
@@ -210,8 +200,8 @@ class Printer(val owner: Opt[Symbol]) with
           + showResult(rhs) + showRestBlock(rest)
       Define(d, rest) then
         showDefn(d) + showRestBlock(rest)
-      Return(res, _) then
-        showResult(res)
+      Return(res, implct) then
+        (if implct then "return " else "") + showResult(res)
       Match(scrut, arms, dflt, rest) then
         "if " + showPath(scrut) + " is"
         + indent("\n" + arms.map(showArm(_)).join("\n"))

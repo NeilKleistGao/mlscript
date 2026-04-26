@@ -337,14 +337,13 @@ prop(Ctx.empty(), c)
 
 let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(VirtualClassSymbol("Bool"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(VirtualClassSymbol("Int"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
 prop(Ctx.empty(), c)
-//│ > false
 //│ = [
 //│   Scoped(
 //│     [Symbol("x")],
 //│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3), false))
 //│   ),
 //│   {Lit(3)},
-//│   false
+//│   true
 //│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
@@ -385,7 +384,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.386: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
+//│ ║  l.385: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M, false))
@@ -440,7 +439,6 @@ prop(Ctx.empty(), blockBranch)
 //│ >   else
 //│ >     z = 3
 //│ > z
-//│ > true
 //│ = [
 //│   Scoped(
 //│     [Symbol("z")],
@@ -472,7 +470,6 @@ prop(Ctx.empty(), earlyRetBlock)
 //│ >   false then
 //│ >     y = 20
 //│ > y
-//│ > true
 //│ = [
 //│   Scoped(
 //│     [Symbol("x"), Symbol("y")],
@@ -502,11 +499,11 @@ prop(Ctx.empty(), earlyRetBlock)
 //│   )
 //│ )
 
+:silent
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1), false))], Some(Return(ValueLit(2), false)), End()))], Some(Return(ValueLit(3), false)), Return(ValueLit(4), false)))))
 val res = prop(Ctx.empty(), nestedBlock)
 printCode(nestedBlock)
 printCode(res.0)
-//│ > false
 //│ > let {x, y}
 //│ > x = true
 //│ > y = false
@@ -521,33 +518,8 @@ printCode(res.0)
 //│ > x = true
 //│ > y = false
 //│ > 2
-//│ nestedBlock = Scoped(
-//│   [Symbol("x"), Symbol("y")],
-//│   Assign(
-//│     Symbol("x"),
-//│     ValueLit(true),
-//│     Assign(
-//│       Symbol("y"),
-//│       ValueLit(false),
-//│       Match(
-//│         ValueRef(Symbol("x")),
-//│         [
-//│           Arm(
-//│             Lit(true),
-//│             Match(
-//│               ValueRef(Symbol("y")),
-//│               [Arm(Lit(true), Return(ValueLit(1), false))],
-//│               Some(Return(ValueLit(2), false)),
-//│               End()
-//│             )
-//│           )
-//│         ],
-//│         Some(Return(ValueLit(3), false)),
-//│         Return(ValueLit(4), false)
-//│       )
-//│     )
-//│   )
-//│ )
+
+val res = prop(Ctx.empty(), nestedBlock)
 //│ res = [
 //│   Scoped(
 //│     [Symbol("x"), Symbol("y")],
@@ -560,6 +532,10 @@ printCode(res.0)
 //│   {Lit(2)},
 //│   false
 //│ ]
+
+:expect {Lit(2)}
+res.1
+//│ = {Lit(2)}
 
 val2path(1, mut [], new Map())
 //│ = [End(), ValueLit(1)]
