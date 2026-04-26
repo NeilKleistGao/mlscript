@@ -512,7 +512,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
       companion.copy(
         methods = entryFun :: newCtorFun :: newMethods,
-        ctor = Begin(companion.ctor, cont(End())),
+        ctor = Begin(applyBlock(companion.ctor), cont(End())),
       )
     case b => super.applyObjBody(companion)
 
@@ -572,7 +572,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         methods = combinedEntryFun :: newPreCtorFun :: newCtorFun :: newMethods ++ companionMethods,
         ctor = Begin(companion.ctor, cont(End())),
       )
-      val newClsLikeDefn = defn.copy(companion = S(newCompanion))(defn.configOverride)
+      val newClsLikeDefn = defn.copy(companion = S(newCompanion), ctor = applyBlock(ctor))(defn.configOverride)
       Define(newClsLikeDefn, applyBlock(rest))
     case b => super.applyBlock(b)
 
