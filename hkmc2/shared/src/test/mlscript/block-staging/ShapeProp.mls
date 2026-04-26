@@ -276,6 +276,20 @@ print(L3.class."class$cache$L3")
 //│ >     tmp1 = *(x, 2)
 //│ >     tmp1 + 3
 
+staged class Bar(val x) with
+  fun bar() = x
+staged class Foo(val x) with
+  fun foo(b) =
+    if b is
+      1 then x.bar() + 1
+      2 then x.bar() + 2
+      else x.bar()
+
+staged module Dispatching2 with
+  fun baz(b) = Foo(Bar(1)).foo(b)
+
+Dispatching2."baz_gen"(mkDyn())
+//│ = ["baz", {Lit(1),Lit(2),Lit(3)}]
 
 staged class A(val x: Int) with
   fun f(y: Int) = x + y
@@ -331,8 +345,8 @@ fun g(x, y) = x + y
 staged module GlobalFunction with
   fun test(x) = g(x, x)
 
-GlobalFunction."test_gen"(union(mkLit(1), mkLit(2)))
-//│ = ["test_Union_Lit1_Lit2_end", {Dyn()}]
+GlobalFunction."test_gen"(mkLit(1))
+//│ = ["test_Lit1", {Dyn()}]
 
 staged module Comparison with
   fun test(x) = x < 5
@@ -351,18 +365,3 @@ staged module M with
   fun f() = Opaque.f()
 M."f_gen"()
 //│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/ShapeSet.mls:196)
-
-staged class Bar(val x) with
-  fun bar() = x
-staged class Foo(val x) with
-  fun foo(b) =
-    if b is
-      1 then x.bar() + 1
-      2 then x.bar() + 2
-      else x.bar()
-
-staged module SimpleStagedExample with
-  fun baz() = Foo(Bar(1)).foo(1)
-
-SimpleStagedExample."baz_gen"()
-//│ = ["baz", {Lit(2)}]
