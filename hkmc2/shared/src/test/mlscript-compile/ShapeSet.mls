@@ -39,10 +39,14 @@ fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 fun liftMany(arr: Array[Shape]) = 
   ShapeSet(new Map(arr.map(s => [s.hash(), s])))
 
-fun union(s1: ShapeSet, s2: ShapeSet) = 
+fun union2(s1: ShapeSet, s2: ShapeSet) = 
   if s1.isDyn() then s1
   else if s2.isDyn() then s2
   else ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
+
+fun union(...s) =
+  if s.length is 0 then ShapeSet.empty
+  else s.reduce((acc, next) => union2(acc, next))
 
 fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.shapeset.entries().toArray()).flat()))
 

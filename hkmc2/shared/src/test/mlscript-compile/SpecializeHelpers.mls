@@ -92,7 +92,7 @@ class Ctx(
   fun add(path: Path, ss: ShapeSet) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then
-      ctx.set(ps, union(ctx.get(ps), ss))
+      ctx.set(ps, union2(ctx.get(ps), ss))
     else
       ctx.set(ps, ss)
     this
@@ -224,10 +224,10 @@ fun fsplit(pss) =
   let knownMap = new Map()
   let unkShape = foldl((acc, s) => if s is
     Class(sym, params) and isStagedClass(sym.value) then
-      if knownMap.has(sym) then do knownMap.set(sym, union(knownMap.get(sym), lift(s)))
+      if knownMap.has(sym) then do knownMap.set(sym, union2(knownMap.get(sym), lift(s)))
       else do knownMap.set(sym, lift(s))
       acc
-    else union(acc, mkDyn())
+    else union2(acc, mkDyn())
   )(mkBot(), ...pss.values())
   SplitResult(knownMap, unkShape)
 
@@ -279,8 +279,6 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       [End(), recovered, sop(ctx, recovered)]
   Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
     throw Error("runtime.Tuple.slice not handled in shape propagation")
-  Select(ValueRef(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
-    [End(), r, mkClass(clsSymb, argShapes)] // FIXME
   Select(p, Symbol("concat")) then // TODO: remove these special checks
     if sop(ctx, p).values() is [Shape.Arr(arr)] and args is [e] and sop(ctx, e.value) is [Shape.Arr(arr2)] then
       [End(), r, mkArr(arr.concat(arr2))]
@@ -290,6 +288,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
     [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
   Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _, _)), Symbol("cos")) then
     [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
+
+  Select(ValueRef(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
+    [End(), r, mkClass(clsSymb, argShapes)] // FIXME
   ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
     isStagedClass(clsSymb.value) and
       let cache = getClassCache(clsSymb.value)
@@ -337,8 +338,9 @@ fun sor(ctx, r) = if r is
 
 // xOpt stores Some(path) if an Assign block's result is a method call, otherwise it stores None
 // implctOpt stores an option of the implct field of return
-// 
-
+// p is the path p in p.f()
+// f is the symbol f in p.f()
+// args are the arguments in p.f(args)
 fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
   let pss = sop(ctx, p)
   let argShapes = args.map(a => sop(ctx, a.value))
@@ -387,7 +389,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
           [Arm(Cls(C_i, p), Assign(x, callRes, End())), retShape]
       )
       let armsAcc = armsRet.map(_.0)
-      let totalStagedRetShape = foldl((acc, x) => union(acc, x.1))(mkBot(), ...armsRet)
+      let totalStagedRetShape = foldl((acc, x) => union2(acc, x.1))(mkBot(), ...armsRet)
       let dfltRet = if unkShape.isEmpty() then [None, mkBot()] else
         let dfltMatch = Call(Select(p, Symbol(f)), args)
         if isRet then
@@ -399,7 +401,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
         armsAcc.0.body
       else
         Match(p, armsAcc, dfltRet.0, End())
-      let totalRetShape = union(totalStagedRetShape, dfltRet.1)
+      let totalRetShape = union2(totalStagedRetShape, dfltRet.1)
       [matchBody, totalRetShape]
 
 fun prop(ctx, b) = if b is
@@ -417,7 +419,7 @@ fun prop(ctx, b) = if b is
       let newCtx = Ctx(new Map(ctx.ctx), ctx.valueNameCtx, ctx.valDefnCtx, newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
-    Assign(x, Call(Select(p, Symbol(f)), args), restBlock) and p is
+    Assign(x, Call(Select(p, Symbol(f)), args), restBlock) and p is // TODO Can we deduplicate this?
       ValueRef(symb) and not (symb is ModuleSymbol) then
         let res = dispatchMethodCall(ctx, Some(x), None, p, f, args)
         let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
@@ -440,7 +442,7 @@ fun prop(ctx, b) = if b is
       fun mergeAssigned(acc, assigned) =
         assigned.forEach((ss, ps, _) =>
           if acc.has(ps) then
-            acc.set(ps, union(acc.get(ps), ss))
+            acc.set(ps, union2(acc.get(ps), ss))
           else
             acc.set(ps, ss)
         )
@@ -455,7 +457,7 @@ fun prop(ctx, b) = if b is
         else
           let res = propBranch(arm.body, fs)
           mergeAssigned(r.3, res.2)
-          [restSet(r.0, arm.cse), union(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3]
+          [restSet(r.0, arm.cse), union2(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3]
       )([s, mkBot(), [], new Map()], ...arms)
       let dfltRes = if filteredArms.0.isEmpty() then [None, mkBot(), new Map()] else if dflt is
         Some(d) then
@@ -465,12 +467,12 @@ fun prop(ctx, b) = if b is
       mergeAssigned(filteredArms.3, dfltRes.2)
       filteredArms.3.forEach((ss, ps, _) =>
         if ctx.ctx.has(ps) then
-          ctx.ctx.set(ps, union(ctx.ctx.get(ps), ss))
+          ctx.ctx.set(ps, union2(ctx.ctx.get(ps), ss))
         else
           ctx.ctx.set(ps, ss)
       )
       let restRes = prop(ctx, restBlock)
-      let retShape = union(union(filteredArms.1, dfltRes.1), restRes.1)
+      let retShape = union(filteredArms.1, dfltRes.1, restRes.1)
       if filteredArms.2.length is
         0 then
           if dfltRes.0 is
