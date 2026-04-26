@@ -268,9 +268,11 @@ staged module This with
   fun test2(y) = B(1).x + y
 
 This."test_gen"(mkLit(1))
+This."test2_gen"(mkLit(1))
 print(This."cache$This")
 //│ > module This with
 //│ >   ()
+//│ >   fun test2_Lit1(y) = 2
 //│ >   fun test_Lit1(x) = 3
 
 print(A.class."class$cache$A")
@@ -331,3 +333,29 @@ staged module M with
   fun f() = Opaque.f()
 M."f_gen"()
 //│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/ShapeSet.mls:192)
+
+staged class Bar(val x) with
+  fun bar() = x
+staged class Foo(val x) with
+  fun foo(b) =
+    if b is
+      1 then x.bar() + 1
+      2 then x.bar() + 2
+      else x.bar()
+
+staged module SimpleStagedExample with
+  fun baz() = Foo(Bar(1)).foo(1)
+  fun foobar(x) =
+    let y = if x is 0 then 1 else 0
+    let z = if y is Num then 0 else   1
+    y + z
+
+SimpleStagedExample."baz_gen"()
+//│ = ["baz", {Lit(2)}]
+
+SimpleStagedExample."cache$SimpleStagedExample"
+//│ = module SimpleStagedExample with \
+//│     () \
+//│     fun baz() = 2
+
+Foo."class$cache$Foo"

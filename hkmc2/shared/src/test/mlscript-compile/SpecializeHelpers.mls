@@ -18,6 +18,9 @@ let classGenMapPrefix = "class$generatorMap$"
 let moduleCachePrefix = "cache$"
 let classCachePrefix = "class$cache$"
 
+fun isStagedClass(c) = 
+  not (getClassGenMap(c) is undefined)
+
 fun getGenMapName(name, isClass) =
   (if isClass then classGenMapPrefix else moduleGenMapPrefix) + name
 
@@ -163,7 +166,6 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
       + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().sort().join("\n"))
-
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map())
 
@@ -214,8 +216,6 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
     ValueLit(lit) then mkLit(lit)
     ValueRef(l) then mkDyn()
 
-fun isStagedClass(c) = 
-  not (getClassGenMap(c) is undefined)
 
 // split a shapeset of class symbols into known ones and unknown ones
 class SplitResult(val knownMap: Map[ConcreteClassSymbol, ShapeSet], val unkShape: ShapeSet)
@@ -335,8 +335,12 @@ fun sor(ctx, r) = if r is
   Call(f, args) then sorCall(ctx, r, f, args, args.map((a, _, _) => sop(ctx, a.value)))
   else throw Error("unknown result in sor: " + r.toString())
 
-fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
-  let pss = sop(ctx, ValueRef(symb))
+// xOpt stores Some(path) if an Assign block's result is a method call, otherwise it stores None
+// implctOpt stores an option of the implct field of return
+// 
+
+fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
+  let pss = sop(ctx, p)
   let argShapes = args.map(a => sop(ctx, a.value))
   let splitRes = fsplit(pss)
   let knownMap = splitRes.knownMap
@@ -346,7 +350,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
 
   if knownMap.size is 
     0 and
-      let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
+      let dfltMatch = Call(Select(p, Symbol(f)), args)
       isRet then
         [Return(dfltMatch, if implctOpt is Some(i) then i else false), mkDyn()]
       else
@@ -361,7 +365,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
       let ret = f_gen(ss_i)(...argShapes)
       let retSym = ret.0
       let retShape = ret.1
-      let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
+      let callRes = Call(Select(p, Symbol(retSym)), args)
       isRet then
         [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
       else
@@ -375,17 +379,17 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
         let f_gen = genMap.get(f)
         let retSym = f_gen(ss_i)(...argShapes).0
         let retShape = f_gen(ss_i)(...argShapes).1
-        let callRes = Call(Select(ValueRef(symb), Symbol(retSym)), args)
+        let callRes = Call(Select(p, Symbol(retSym)), args)
         if isRet then
-          [Arm(Cls(C_i, ValueRef(symb)), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
+          [Arm(Cls(C_i, p), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
         else
           let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-          [Arm(Cls(C_i, ValueRef(symb)), Assign(x, callRes, End())), retShape]
+          [Arm(Cls(C_i, p), Assign(x, callRes, End())), retShape]
       )
       let armsAcc = armsRet.map(_.0)
       let totalStagedRetShape = foldl((acc, x) => union(acc, x.1))(mkBot(), ...armsRet)
       let dfltRet = if unkShape.isEmpty() then [None, mkBot()] else
-        let dfltMatch = Call(Select(ValueRef(symb), Symbol(f)), args)
+        let dfltMatch = Call(Select(p, Symbol(f)), args)
         if isRet then
           [Some(Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
         else
@@ -394,14 +398,17 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, symb, f, args) =
       let matchBody = if knownMap.size is 1 and unkShape.isEmpty() then
         armsAcc.0.body
       else
-        Match(ValueRef(symb), armsAcc, dfltRet.0, End())
+        Match(p, armsAcc, dfltRet.0, End())
       let totalRetShape = union(totalStagedRetShape, dfltRet.1)
       [matchBody, totalRetShape]
 
 fun prop(ctx, b) = if b is
     End() then [b, mkBot()]
-    Return(Call(Select(ValueRef(symb), Symbol(f)), args), implct) and not (symb is ModuleSymbol) and not (f is "concat") then // TODO[later]: Ref -> Path, remove special checks
-      dispatchMethodCall(ctx, None, Some(implct), symb, f, args)
+    Return(Call(Select(p, Symbol(f)), args), implct) and not (f is "concat") and p is // TODO[later]: Ref -> Path, remove special checks
+      ValueRef(symb) and not symb is ModuleSymbol then
+        dispatchMethodCall(ctx, None, Some(implct), p, f, args)
+      Select(ValueRef(ConcreteClassSymbol), _) then
+        dispatchMethodCall(ctx, None, Some(implct), p, f, args)
     Return(res, implct) and sor(ctx, res) is [blk, r1, s1] then
       [concat(blk, Return(r1, implct)), s1]
     Scoped(symbols, rest) then
@@ -410,10 +417,15 @@ fun prop(ctx, b) = if b is
       let newCtx = Ctx(new Map(ctx.ctx), ctx.valueNameCtx, ctx.valDefnCtx, newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
-    Assign(x, Call(Select(ValueRef(symb), Symbol(f)), args), restBlock) and not (symb is ModuleSymbol) then
-      let res = dispatchMethodCall(ctx, Some(x), None, symb, f, args)
-      let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
-      [concat(res.0, b2.0), b2.1]
+    Assign(x, Call(Select(p, Symbol(f)), args), restBlock) and p is
+      ValueRef(symb) and not (symb is ModuleSymbol) then
+        let res = dispatchMethodCall(ctx, Some(x), None, p, f, args)
+        let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
+        [concat(res.0, b2.0), b2.1]
+      Select(ValueRef(ConcreteClassSymbol), _) then
+        let res = dispatchMethodCall(ctx, Some(x), None, p, f, args)
+        let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
+        [concat(res.0, b2.0), b2.1]
     Define(ValDefn(opt, sym, rhs), restBlock) and
       sor(ctx, rhs) is [blk, r1, s1] and
         do ctx.addValDefn(sym.name, s1)
@@ -514,6 +526,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   // so we need to read the constraints by running dflt() anyway
   // which prevent the possibilily of not running dflt when specialized function already exists in cache
   let defn = dflt()
+  // print(defn)
   if defn is FunDefn(Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
     let newName = specializeName(funName, isMethod, ps, shapes)
