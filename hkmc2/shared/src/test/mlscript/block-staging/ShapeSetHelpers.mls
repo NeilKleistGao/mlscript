@@ -317,7 +317,8 @@ prop(Ctx.empty(), c)
 //│     [Symbol("x")],
 //│     Assign(Symbol("x"), ValueLit(2), Return(ValueLit(3), false))
 //│   ),
-//│   {Lit(3)}
+//│   {Lit(3)},
+//│   false
 //│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
@@ -341,7 +342,8 @@ prop(Ctx.empty(), c)
 //│     [Symbol("x")],
 //│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3), false))
 //│   ),
-//│   {Lit(3)}
+//│   {Lit(3)},
+//│   true
 //│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
@@ -382,7 +384,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.383: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
+//│ ║  l.385: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M, false))
@@ -416,7 +418,7 @@ val blockAdd = Return(Call(plus, [Arg(ValueRef(x)), Arg(ValueRef(y))]), false)
 printCode(blockAdd)
 prop(ctxXY, blockAdd)
 //│ > x + y
-//│ = [Return(ValueLit(42), false), {Lit(42)}]
+//│ = [Return(ValueLit(42), false), {Lit(42)}, false]
 //│ blockAdd = Return(
 //│   Call(
 //│     ValueRef(Symbol("+")),
@@ -442,7 +444,8 @@ prop(Ctx.empty(), blockBranch)
 //│     [Symbol("z")],
 //│     Assign(Symbol("z"), ValueLit(1), Return(ValueLit(1), false))
 //│   ),
-//│   {Lit(1)}
+//│   {Lit(1)},
+//│   true
 //│ ]
 //│ blockBranch = Scoped(
 //│   [Symbol("z")],
@@ -476,7 +479,8 @@ prop(Ctx.empty(), earlyRetBlock)
 //│       Assign(Symbol("y"), ValueLit(20), Return(ValueLit(20), false))
 //│     )
 //│   ),
-//│   {Lit(20)}
+//│   {Lit(20)},
+//│   true
 //│ ]
 //│ earlyRetBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
@@ -497,7 +501,9 @@ prop(Ctx.empty(), earlyRetBlock)
 
 :silent
 val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1), false))], Some(Return(ValueLit(2), false)), End()))], Some(Return(ValueLit(3), false)), Return(ValueLit(4), false)))))
+val res = prop(Ctx.empty(), nestedBlock)
 printCode(nestedBlock)
+printCode(res.0)
 //│ > let {x, y}
 //│ > x = true
 //│ > y = false
@@ -508,6 +514,10 @@ printCode(nestedBlock)
 //│ >       else 2
 //│ >   else 3
 //│ > 4
+//│ > let {x, y}
+//│ > x = true
+//│ > y = false
+//│ > 2
 
 val res = prop(Ctx.empty(), nestedBlock)
 //│ res = [
@@ -519,14 +529,13 @@ val res = prop(Ctx.empty(), nestedBlock)
 //│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2), false))
 //│     )
 //│   ),
-//│   {Lit(2),Lit(4)}
+//│   {Lit(2)},
+//│   false
 //│ ]
 
-:fixme
 :expect {Lit(2)}
 res.1
-//│ ═══[RUNTIME ERROR] Expected: '{Lit(2)}', got: '{Lit(2),Lit(4)}'
-//│ = {Lit(2),Lit(4)}
+//│ = {Lit(2)}
 
 val2path(1, mut [], new Map())
 //│ = [End(), ValueLit(1)]
