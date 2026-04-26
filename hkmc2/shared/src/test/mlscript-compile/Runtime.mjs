@@ -196,6 +196,38 @@ let Runtime1;
       toString() { return runtime.render(this); }
       static [definitionMetadata] = ["class", "Str"]; 
     });
+    (class SymbolMap {
+      static {
+        Runtime.SymbolMap = this
+      }
+      static {
+        let tmp1, tmp2;
+        tmp1 = globalThis.Object.freeze(new globalThis.Map());
+        this.classMap = tmp1;
+        tmp2 = globalThis.Object.freeze(new globalThis.Map());
+        this.moduleMap = tmp2;
+      }
+      static checkClassMap(key, value) {
+        let v, tmp1;
+        v = runtime.safeCall(SymbolMap.classMap.get(key));
+        if (v instanceof Runtime.Unit.class) {
+          tmp1 = SymbolMap.classMap.set(key, value);
+          return (tmp1 , value)
+        }
+        return v;
+      } 
+      static checkModuleMap(key, value) {
+        let v, tmp1;
+        v = runtime.safeCall(SymbolMap.moduleMap.get(key));
+        if (v instanceof Runtime.Unit.class) {
+          tmp1 = SymbolMap.moduleMap.set(key, value);
+          return (tmp1 , value)
+        }
+        return v;
+      }
+      toString() { return runtime.render(this); }
+      static [definitionMetadata] = ["class", "SymbolMap"]; 
+    });
     this.render = Rendering.render;
     (class TraceLogger {
       static {
@@ -650,19 +682,17 @@ let Runtime1;
     v = null;
     lbl: while (true) {
       let scrut, tmp2, tmp3, tmp4;
-      split_root$: {
-        if (tr instanceof Runtime.EffectSig.class) {
-          scrut = tr.handler === Runtime.PrintStackEffect;
-          if (scrut === true) {
-            tmp2 = Runtime.showStackTrace("Stack Trace:", tr, debug, tr.handlerFun);
-            runtime.safeCall(globalThis.console.log(tmp2));
-            Runtime.curEffect = null;
-            tmp3 = Runtime.resume(tr.contTrace);
-            tmp4 = runtime.safeCall(tmp3(runtime.Unit));
-            v = tmp4;
-            tr = Runtime.curEffect;
-            continue lbl
-          }
+      if (tr instanceof Runtime.EffectSig.class) {
+        scrut = tr.handler === Runtime.PrintStackEffect;
+        if (scrut === true) {
+          tmp2 = Runtime.showStackTrace("Stack Trace:", tr, debug, tr.handlerFun);
+          runtime.safeCall(globalThis.console.log(tmp2));
+          Runtime.curEffect = null;
+          tmp3 = Runtime.resume(tr.contTrace);
+          tmp4 = runtime.safeCall(tmp3(runtime.Unit));
+          v = tmp4;
+          tr = Runtime.curEffect;
+          continue lbl
         }
       }
       break;
@@ -751,23 +781,24 @@ let Runtime1;
       if (atTail === true) {
         tmp = msg + "\n\tat tail position";
         msg = tmp;
+        return msg
       }
-      return msg
+      return msg;
     }
     return msg;
   } 
   static showFunctionContChain(cont, hl, vis, reps) {
-    let result, scrut, scrut1, scrut2, tmp, lambda, tmp1, tmp2, tmp3, tmp4, tmp5;
+    let result, scrut, scrut1, scrut2, tmp, lambda, tmp1, tmp2, tmp3, tmp4;
     if (cont instanceof Runtime.FunctionContFrame.class) {
       tmp = cont.constructor.name + "(pc=";
       result = tmp + cont.saved.at(1);
       lambda = (undefined, function (m, marker) {
-        let scrut3, tmp6, tmp7;
+        let scrut3, tmp5, tmp6;
         scrut3 = runtime.safeCall(m.has(cont));
         if (scrut3 === true) {
-          tmp6 = ", " + marker;
-          tmp7 = result + tmp6;
-          result = tmp7;
+          tmp5 = ", " + marker;
+          tmp6 = result + tmp5;
+          result = tmp6;
           return runtime.Unit
         }
         return runtime.Unit;
@@ -783,13 +814,12 @@ let Runtime1;
         }
         tmp2 = result + ", REPEAT";
         result = tmp2;
-        tmp3 = runtime.Unit;
       } else {
-        tmp3 = runtime.safeCall(vis.add(cont));
+        runtime.safeCall(vis.add(cont));
       }
-      tmp4 = result + ") -> ";
-      tmp5 = Runtime.showFunctionContChain(cont.next, hl, vis, reps);
-      return tmp4 + tmp5
+      tmp3 = result + ") -> ";
+      tmp4 = Runtime.showFunctionContChain(cont.next, hl, vis, reps);
+      return tmp3 + tmp4
     }
     scrut2 = cont === null;
     if (scrut2 === true) {
@@ -798,16 +828,16 @@ let Runtime1;
     return "(NOT CONT)";
   } 
   static showHandlerContChain(cont, hl, vis, reps) {
-    let result, scrut, scrut1, scrut2, lambda, tmp, tmp1, tmp2, tmp3, tmp4;
+    let result, scrut, scrut1, scrut2, lambda, tmp, tmp1, tmp2, tmp3;
     if (cont instanceof Runtime.HandlerContFrame.class) {
       result = cont.handler.constructor.name;
       lambda = (undefined, function (m, marker) {
-        let scrut3, tmp5, tmp6;
+        let scrut3, tmp4, tmp5;
         scrut3 = runtime.safeCall(m.has(cont));
         if (scrut3 === true) {
-          tmp5 = ", " + marker;
-          tmp6 = result + tmp5;
-          result = tmp6;
+          tmp4 = ", " + marker;
+          tmp5 = result + tmp4;
+          result = tmp5;
           return runtime.Unit
         }
         return runtime.Unit;
@@ -823,13 +853,12 @@ let Runtime1;
         }
         tmp1 = result + ", REPEAT";
         result = tmp1;
-        tmp2 = runtime.Unit;
       } else {
-        tmp2 = runtime.safeCall(vis.add(cont));
+        runtime.safeCall(vis.add(cont));
       }
-      tmp3 = result + " -> ";
-      tmp4 = Runtime.showFunctionContChain(cont.next, hl, vis, reps);
-      return tmp3 + tmp4
+      tmp2 = result + " -> ";
+      tmp3 = Runtime.showFunctionContChain(cont.next, hl, vis, reps);
+      return tmp2 + tmp3
     }
     scrut2 = cont === null;
     if (scrut2 === true) {
@@ -939,7 +968,7 @@ let Runtime1;
   } 
   static handleEffects(cur) {
     lbl: while (true) {
-      let nxt, scrut, tmp;
+      let nxt, scrut;
       if (cur instanceof Runtime.EffectSig.class) {
         nxt = Runtime.handleEffect(cur);
         scrut = cur === nxt;
@@ -948,26 +977,22 @@ let Runtime1;
           return null
         }
         cur = nxt;
-        tmp = runtime.Unit;
         continue lbl;
       }
       return cur;
     }
-    return runtime.Unit
   } 
   static handleEffect(cur) {
     let prevHandlerFrame, scrut, handlerFrame, saved, tmp, old, scrut1, scrut2, scrut3, tmp1, tmp2, tmp3, tmp4;
     prevHandlerFrame = cur.contTrace;
     lbl: while (true) {
       let scrut4, scrut5;
-      split_root$: {
-        scrut4 = prevHandlerFrame.nextHandler !== null;
-        if (scrut4 === true) {
-          scrut5 = prevHandlerFrame.nextHandler.handler !== cur.handler;
-          if (scrut5 === true) {
-            prevHandlerFrame = prevHandlerFrame.nextHandler;
-            continue lbl
-          }
+      scrut4 = prevHandlerFrame.nextHandler !== null;
+      if (scrut4 === true) {
+        scrut5 = prevHandlerFrame.nextHandler.handler !== cur.handler;
+        if (scrut5 === true) {
+          prevHandlerFrame = prevHandlerFrame.nextHandler;
+          continue lbl
         }
       }
       break;
@@ -1029,7 +1054,7 @@ let Runtime1;
     cont = contTrace.next;
     handlerCont = contTrace.nextHandler;
     lbl: while (true) {
-      let old, scrut, scrut1, scrut2, tmp, tmp1, tmp2, tmp3;
+      let old, scrut, scrut1, scrut2, tmp, tmp1, tmp2;
       if (cont instanceof Runtime.FunctionContFrame.class) {
         Runtime.curEffect = null;
         old = Runtime.stackDepth;
@@ -1061,7 +1086,6 @@ let Runtime1;
           return value;
         }
         cont = cont.next;
-        tmp3 = runtime.Unit;
         continue lbl;
       }
       if (handlerCont instanceof Runtime.HandlerContFrame.class) {
@@ -1071,7 +1095,6 @@ let Runtime1;
       }
       return value;
     }
-    return runtime.Unit
   } 
   static checkDepth() {
     let scrut, tmp, tmp1;
