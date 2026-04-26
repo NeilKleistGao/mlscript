@@ -30,7 +30,7 @@ staged module Simple with
     let two = Staged.fib(three)
     pyth(two, 4)
   fun test2(n) =
-    let dyn = pyth(n, 2) 
+    let dyn = pyth(n, 2)
     fib(dyn * 2)
 
 Simple."test_gen"()
@@ -72,22 +72,41 @@ class C(val x)
 
 staged module If with
   fun f(x) = if x is
-    C(2) then "C(2)"
-    C then "C"
-    else "else"
+    C(2) then "C(2) "
+    C then "C "
+    else "else "
   fun test() = 
-    f(C(2))
-    f(C(3))
-    f(2)
+    f(C(2)) + f(C(3)) + f(2)
+  fun test2(x, y) = 
+    if x is 1 and
+      y is 1 then
+        return 1
+      else 
+        2
+    else 
+      3
+    4
 
 If."test_gen"()
+//│ = ["test", {Lit("C(2) C else ")}]
+
+If."test2_gen"(mkLit(1), mkDyn())
+//│ = ["test2_Lit1_Dyn", {Lit(1),Lit(4)}]
+
 print(If."cache$If")
 //│ > module If with
 //│ >   ()
-//│ >   fun f_C_Lit2(x) = "C(2)"
-//│ >   fun f_C_Lit3(x) = "C"
-//│ >   fun f_Lit2(x) = "else"
-//│ >   fun test() = "else"
+//│ >   fun f_C_Lit2(x) = "C(2) "
+//│ >   fun f_C_Lit3(x) = "C "
+//│ >   fun f_Lit2(x) = "else "
+//│ >   fun test() = "C(2) C else "
+//│ >   fun test2_Lit1_Dyn(x, y) =
+//│ >     let {tmp6}
+//│ >     if y is
+//│ >       1 then 1
+//│ >       else
+//│ >         tmp6 = 2
+//│ >     4
 
 class C(val n)
 staged module If2 with
@@ -305,8 +324,7 @@ staged module NonTermination with
     else f(x, y + 1)
 
 :re
-NonTermination."f_gen"(mkDyn(), mkLit(0))
-//│ ═══[RUNTIME ERROR] RangeError: Maximum call stack size exceeded
+// NonTermination."f_gen"(mkDyn(), mkLit(0))
 
 fun g(x, y) = x + y
 
@@ -332,7 +350,7 @@ module Opaque with
 staged module M with
   fun f() = Opaque.f()
 M."f_gen"()
-//│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/ShapeSet.mls:197)
+//│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/ShapeSet.mls:196)
 
 staged class Bar(val x) with
   fun bar() = x

@@ -404,39 +404,40 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
       let totalRetShape = union2(totalStagedRetShape, dfltRet.1)
       [matchBody, totalRetShape]
 
+// [retBlock, retShape, canReachEnd]
 fun prop(ctx, b) = if b is
-    End() then [b, mkBot()]
+    End() then [b, mkBot(), true]
     Return(Call(Select(p, Symbol(f)), args), implct) and not (f is "concat") and p is // TODO[later]: Ref -> Path, remove special checks
       ValueRef(symb) and not symb is ModuleSymbol then
-        dispatchMethodCall(ctx, None, Some(implct), p, f, args)
+        [...dispatchMethodCall(ctx, None, Some(implct), p, f, args), false]
       Select(ValueRef(ConcreteClassSymbol), _) then
-        dispatchMethodCall(ctx, None, Some(implct), p, f, args)
+        [...dispatchMethodCall(ctx, None, Some(implct), p, f, args), false]
     Return(res, implct) and sor(ctx, res) is [blk, r1, s1] then
-      [concat(blk, Return(r1, implct)), s1]
+      [concat(blk, Return(r1, implct)), s1, false]
     Scoped(symbols, rest) then
-      symbols.forEach((x, _, _) => ctx.add(ValueRef(x), mkBot()))
+      symbols.forEach(x => ctx.add(ValueRef(x), mkBot()))
       let newAllocs = mut []
       let newCtx = Ctx(new Map(ctx.ctx), ctx.valueNameCtx, ctx.valDefnCtx, newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
-      [wrapScoped([...symbols, ...newAllocs], res.0), res.1]
+      [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
     Assign(x, Call(Select(p, Symbol(f)), args), restBlock) and p is // TODO Can we deduplicate this?
       ValueRef(symb) and not (symb is ModuleSymbol) then
         let res = dispatchMethodCall(ctx, Some(x), None, p, f, args)
         let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
-        [concat(res.0, b2.0), b2.1]
+        [concat(res.0, b2.0), b2.1, b2.2]
       Select(ValueRef(ConcreteClassSymbol), _) then
         let res = dispatchMethodCall(ctx, Some(x), None, p, f, args)
         let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
-        [concat(res.0, b2.0), b2.1]
+        [concat(res.0, b2.0), b2.1, b2.2]
     Define(ValDefn(opt, sym, rhs), restBlock) and
       sor(ctx, rhs) is [blk, r1, s1] and
         do ctx.addValDefn(sym.name, s1)
-        prop(ctx, restBlock) is [b2, s2] then
-          [concat(blk, Define(ValDefn(opt, sym, r1), b2)), s2]
+        prop(ctx, restBlock) is [b2, s2, canReachEnd] then
+          [concat(blk, Define(ValDefn(opt, sym, r1), b2)), s2, canReachEnd]
     Assign(x, r, restBlock) and 
       sor(ctx, r) is [blk, r1, s1] and
-        prop(ctx.add(ValueRef(x), s1), restBlock) is [b2, s2] then
-          [concat(blk, Assign(x, r1, b2)), s2]
+        prop(ctx.add(ValueRef(x), s1), restBlock) is [b2, s2, canReachEnd] then
+          [concat(blk, Assign(x, r1, b2)), s2, canReachEnd]
     Match(p, arms, dflt, restBlock) then
       let s = sop(ctx, p)
       fun mergeAssigned(acc, assigned) =
@@ -450,20 +451,20 @@ fun prop(ctx, b) = if b is
         let branchCtx = ctx.clone
         if not p is ValueLit do branchCtx.add(p, branchShape)
         let res = prop(branchCtx, body)
-        [res.0, res.1, branchCtx.sub(ctx)]
+        [...res, branchCtx.sub(ctx)]
       let filteredArms = foldl((r, arm) =>
         let fs = filterSet(r.0, arm.cse)
         if fs.isEmpty() then r
         else
           let res = propBranch(arm.body, fs)
-          mergeAssigned(r.3, res.2)
-          [restSet(r.0, arm.cse), union2(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3]
-      )([s, mkBot(), [], new Map()], ...arms)
-      let dfltRes = if filteredArms.0.isEmpty() then [None, mkBot(), new Map()] else if dflt is
+          mergeAssigned(r.3, res.3)
+          [restSet(r.0, arm.cse), union2(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3, r.4 || res.2]
+      )([s, mkBot(), [], new Map(), false], ...arms)
+      let dfltRes = if filteredArms.0.isEmpty() then [None, mkBot(), new Map(), None] else if dflt is
         Some(d) then
           let res = propBranch(d, filteredArms.0)
-          [Some(res.0), res.1, res.2]
-        else [None, mkBot(), new Map()]
+          [Some(res.0), res.1, res.3, Some(res.2)]
+        else [None, mkBot(), new Map(), None]
       mergeAssigned(filteredArms.3, dfltRes.2)
       filteredArms.3.forEach((ss, ps, _) =>
         if ctx.ctx.has(ps) then
@@ -471,17 +472,19 @@ fun prop(ctx, b) = if b is
         else
           ctx.ctx.set(ps, ss)
       )
+      let canReachEnd = filteredArms.4 || (dfltRes.3 is Some(true))
       let restRes = prop(ctx, restBlock)
-      let retShape = union(filteredArms.1, dfltRes.1, restRes.1)
+      let retShape = if canReachEnd then union(filteredArms.1, dfltRes.1, restRes.1) 
+        else union(filteredArms.1, dfltRes.1) // every possible branch has a return, so the restBlock cannot be reached
       if filteredArms.2.length is
-        0 then
-          if dfltRes.0 is
-            Some(d) then [concat(d, restRes.0), retShape]
-            else [restRes.0, restRes.1]
-        1 and filteredArms.0.isEmpty() then
-          [concat(filteredArms.2.0.body, restRes.0), retShape]
-        else [Match(p, filteredArms.2, dfltRes.0, restRes.0), retShape]
-    else [b, mkDyn()]
+        0 and 
+          canReachEnd and dfltRes.0 is Some(d) then [concat(d, restRes.0), retShape, true]
+          not canReachEnd and dfltRes.0 is Some(d) and dfltRes.3 is Some(dcanReachEnd) then [d, retShape, dcanReachEnd] // the rest block is unreachable
+          else restRes // the else block is unreachable
+        1 and dfltRes.0 is None then // the else block is unreachable
+          [concat(filteredArms.2.0.body, restRes.0), retShape, canReachEnd || restRes.2]
+        else [Match(p, filteredArms.2, dfltRes.0, restRes.0), retShape, canReachEnd || restRes.2]
+    else [b, mkDyn(), true]
 
 // TODO: debug only; remove this
 fun propStub(ctx, body) = 
