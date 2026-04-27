@@ -306,10 +306,10 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) then // non staged function and params known
-      let f_imp = value.(fld)
-      let evaluated = f_imp(...argShapes.map(valOfSet))
-      let evaluated_path = val2path(evaluated, ctx.allocs, ctx.valueNameCtx)
-      [evaluated_path.0, evaluated_path.1, sov(evaluated, ctx.valueNameCtx)]
+      let fimp = value.(fld)
+      let evaluated = fimp(...argShapes.map(valOfSet))
+      let evaluatedPath = val2path(evaluated, ctx.allocs, ctx.valueNameCtx)
+      [evaluatedPath.0, evaluatedPath.1, sov(evaluated, ctx.valueNameCtx)]
   else
     [End(), r, mkDyn()] // non staged function and some params unknown
   // else throw Error("unknown call in sor: " + r.toString())
