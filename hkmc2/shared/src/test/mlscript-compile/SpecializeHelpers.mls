@@ -547,9 +547,15 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 
         // build map from all class/module symbols that are used within the body and the shape of the context
         new ValueCollection(ctx.valueNameCtx).showBlock(body)
-        ctx.ctx.values()
-          .forEach(_.shapeset.values().filter(_ is Class)
-              .forEach(s => ctx.valueNameCtx.set(getActualClass(s.sym.value), s.sym)))
+        fun collectClasses(s) = if s is
+          Class(sym, params) then
+            ctx.valueNameCtx.set(getActualClass(sym.value), sym)
+            params.forEach(collectClasses)
+          Arr(shapes) then
+            shapes.forEach(collectClasses)
+          else ()
+        if ctx.thisShape is Some(ts) then ts.values().forEach(collectClasses) else ()
+        ctx.ctx.values().forEach(_.values().forEach(collectClasses))
         
         cache.setFun(newName, [FunDefn(Symbol(newName), ps, body), mkDyn()])
 
