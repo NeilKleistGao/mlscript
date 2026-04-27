@@ -279,16 +279,6 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       [End(), recovered, sop(ctx, recovered)]
   Select(Select(ValueRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
     throw Error("runtime.Tuple.slice not handled in shape propagation")
-  Select(p, Symbol("concat")) then // TODO: remove these special checks
-    if sop(ctx, p).values() is [Shape.Arr(arr)] and args is [e] and sop(ctx, e.value) is [Shape.Arr(arr2)] then
-      [End(), r, mkArr(arr.concat(arr2))]
-    else
-      [End(), r, mkDyn()]
-  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _, _)), Symbol("sin")) then
-    [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
-  Select(Select(ValueRef(Symbol("globalThis")), ModuleSymbol("Math", _, _)), Symbol("cos")) then
-    [End(), r, mkDyn()] // TODO: evaluate if the parameter is static
-
   Select(ValueRef(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
     [End(), r, mkClass(clsSymb, argShapes)] // FIXME
   ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
@@ -320,9 +310,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       let evaluated = f_imp(...argShapes.map(valOfSet))
       let evaluated_path = val2path(evaluated, ctx.allocs, ctx.valueNameCtx)
       [evaluated_path.0, evaluated_path.1, sov(evaluated, ctx.valueNameCtx)]
-    else
-      [End(), r, mkDyn()] // non staged function and some params unknown
-  else throw Error("unknown call in sor: " + r.toString())
+  else
+    [End(), r, mkDyn()] // non staged function and some params unknown
+  // else throw Error("unknown call in sor: " + r.toString())
 
 // shape of result: return [blk, res, s] 
 // where blk is the block needed to construct the result res (End() if not needed) and s is the shape
