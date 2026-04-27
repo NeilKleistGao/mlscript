@@ -243,7 +243,7 @@ fun codegen(name, cache, source, file) =
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
   let originData = fs.readFileSync(fullpath, "utf8")
-  let newData = "#config(noFreeze: true)\n" + code
+  let newData = "#config(noFreeze: true)\n" + "#config(noModuleCheck: true)\n" + code
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")
 
@@ -258,6 +258,6 @@ fun generateAll(name, file, ...modules) =
       [res.0 + "import \"" + source + "\"\n", res.1 + "open " + name + "\n", res.2 + indent(mod.("cache$" + name).toString()) + "\n"]
   )(["", "", ""], ...modules)
   let originData = fs.readFileSync(fullpath, "utf8")
-  let newData = "#config(noFreeze: true)\n" + code.0 + "\n" + code.1 + "\n" + "module " + name + " with" + indent("\n" + code.2)
+  let newData = "#config(noFreeze: true)\n" + "#config(noModuleCheck: true)\n" + code.0 + "\n" + code.1 + "\n" + "module " + name + " with" + indent("\n" + code.2)
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")
