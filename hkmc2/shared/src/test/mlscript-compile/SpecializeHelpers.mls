@@ -12,42 +12,12 @@ open Predef
 open ShapeSet
 
 module SpecializeHelpers with ...
-
-let moduleGenMapPrefix = "generatorMap$"
-let classGenMapPrefix = "class$generatorMap$"
-let moduleCachePrefix = "cache$"
-let classCachePrefix = "class$cache$"
-
-fun isStagedClass(c) = 
-  not (getClassGenMap(c) is undefined)
-
-fun getGenMapName(name, isClass) =
-  (if isClass then classGenMapPrefix else moduleGenMapPrefix) + name
-
-fun getCacheName(name, isClass) =
-  (if isClass then classCachePrefix else moduleCachePrefix) + name
-
-fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
-
-fun getStagedClassInfo(c) =
-  let actualClass = getActualClass(c)
-  let clsName = actualClass.(Symbols.definitionMetadata).1
-  [actualClass, clsName]
-
-fun getClassGenMap(c) =
-  let info = getStagedClassInfo(c)
-  info.0.(getGenMapName(info.1, true))
-
-fun getClassCache(c) =
-  let info = getStagedClassInfo(c)
-  info.0.(getCacheName(info.1, true))
-
 fun wrapScoped(symbols, block) =
   if symbols.length is 0 then block
   else if block is Scoped(oldSymbols, rest) then Scoped([...symbols, ...oldSymbols], rest)
   else Scoped(symbols, block)
 
-fun showCtxPath(p) = if p is // FIXME
+fun showCtxPath(p) = if p is
     Select(qual, Symbol(name)) then showCtxPath(qual) + "." + name
     DynSelect(qual, fld, _) then showCtxPath(qual) + ".(" + showCtxPath(fld) + ")" 
     ValueRef(l) and
@@ -169,6 +139,8 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map())
 
+open StagingUtility
+
 // shape of value
 fun sov(v, valueMap): ShapeSet = 
   if 
@@ -196,11 +168,13 @@ fun sov(v, valueMap): ShapeSet =
 // shape of path
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   Some(s) then s
-  else if p is 
-    Select(ValueRef(clsSymb), Symbol(name)) and clsSymb is ClassSymbol and // variables defined in valdefn (for constructor propagation)
+  None and p is 
+    Select(ValueRef(clsSymb), Symbol(name)) and clsSymb is ConcreteClassSymbol and // variables defined in valdefn (this is for constructor propagation only)
       ctx.getValDefn(name) is Some(s) then s
+    Select(Select(ValueRef(clsSymb), Symbol(name)), Symbol(name2)) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then // this.name.name2
+      selSet(selSet(thisShape, mkLit(name)), mkLit(name2))
     Select(qual, Symbol(name)) and // object property 
-      ctx.thisShape is Some(thisShape) then // staged class
+      ctx.thisShape is Some(thisShape) then // this.name
         selSet(thisShape, mkLit(name))
       name is "length" and // special handle array .length
         let qualShape = sop(ctx, qual)
@@ -232,6 +206,7 @@ fun fsplit(pss) =
   SplitResult(knownMap, unkShape)
 
 fun lit(l) = [End(), ValueLit(l), mkLit(l)]
+
 
 fun sorInstantiate(ctx, r, cls, args) =
   let clsSymb = if cls is
@@ -281,7 +256,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
     throw Error("runtime.Tuple.slice not handled in shape propagation")
   Select(ValueRef(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
     [End(), r, mkClass(clsSymb, argShapes)] // FIXME
-  ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // global class
+  ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and // top-level class
     isStagedClass(clsSymb.value) and
       let cache = getClassCache(clsSymb.value)
       not (cache is undefined) then

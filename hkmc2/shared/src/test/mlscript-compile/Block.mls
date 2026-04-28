@@ -14,6 +14,38 @@ open Option
 
 module Block with...
 
+module StagingUtility with
+  let moduleGenMapPrefix = "generatorMap$"
+  let classGenMapPrefix = "class$generatorMap$"
+  let moduleCachePrefix = "cache$"
+  let classCachePrefix = "class$cache$"
+
+  fun isStagedClass(c) = 
+    not (getClassGenMap(c) is undefined)
+
+  fun getGenMapName(name, isClass) =
+    (if isClass then classGenMapPrefix else moduleGenMapPrefix) + name
+
+  fun getCacheName(name, isClass) =
+    (if isClass then classCachePrefix else moduleCachePrefix) + name
+
+  fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
+
+  fun getStagedClassInfo(c) =
+    let actualClass = getActualClass(c)
+    let clsName = actualClass.(Symbols.definitionMetadata).1
+    [actualClass, clsName]
+
+  fun getClassGenMap(c) =
+    let info = getStagedClassInfo(c)
+    info.0.(getGenMapName(info.1, true))
+
+  fun getClassCache(c) =
+    let info = getStagedClassInfo(c)
+    info.0.(getCacheName(info.1, true))
+
+open StagingUtility {isStagedClass, getClassCache}
+
 type Opt[A] = Option[A]
 
 // dependancies referenced in Block classes, referencing implementation in Term.mls
@@ -139,6 +171,7 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showArgs(args: Array[Arg]) =
     args.map(showArg(_)).join(", ")
+
   fun showResult(r: Result): Str =
     if r is
       Path then showPath(r)
@@ -185,9 +218,11 @@ class Printer(val owner: Opt[Symbol]) with
       FunDefn(sym, ps, body) then
         "fun " + showDefnSymbol(sym) + showParamList(ps) + " =" +
         (if body is Return | End then " " else "\n  ") + indent(showBlock(body))
-      ClsLikeDefn(sym, methods, _) then
-        "data class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
-          + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
+      ClsLikeDefn(sym, methods, _) and sym is ConcreteClassSymbol(_, v, _, _, _) and 
+        not isStagedClass(v) then
+          "data class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
+            + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
+        isStagedClass(v) then getClassCache(v)
       // TODO: used to represent assignments in constructors, which still need some adjustments
       ValDefn(owner, sym, rhs) then
         "val " + showSymbol(sym) + " = " + showPath(rhs)
