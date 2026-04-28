@@ -99,6 +99,7 @@ fun restSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
 
 fun isFalseShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is false
 fun isTrueShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is true
+fun isZeroShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is 0
 
 fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) = 
   if 
@@ -109,6 +110,9 @@ fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) =
       "||" and
         isTrueShape(s1) then mkLit(true)
         isTrueShape(s2) then mkLit(true)
+      "*" and
+        isZeroShape(s1) then mkLit(0) // unsound if user writes 0 * "hello" => NaN
+        isZeroShape(s2) then mkLit(0)
     s1.isDyn() then mkDyn()
     s2.isDyn() then mkDyn()
     else
