@@ -211,7 +211,7 @@ let Runtime1;
         let v, tmp1;
         v = runtime.safeCall(SymbolMap.classMap.get(key));
         if (v instanceof Runtime.Unit.class) {
-          tmp1 = SymbolMap.classMap.set(key, value);
+          tmp1 = runtime.safeCall(SymbolMap.classMap.set(key, value));
           return (tmp1 , value)
         }
         return v;
@@ -220,7 +220,7 @@ let Runtime1;
         let v, tmp1;
         v = runtime.safeCall(SymbolMap.moduleMap.get(key));
         if (v instanceof Runtime.Unit.class) {
-          tmp1 = SymbolMap.moduleMap.set(key, value);
+          tmp1 = runtime.safeCall(SymbolMap.moduleMap.set(key, value));
           return (tmp1 , value)
         }
         return v;
