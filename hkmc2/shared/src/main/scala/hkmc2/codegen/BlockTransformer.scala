@@ -137,6 +137,13 @@ class BlockTransformer(subst: SymbolSubst):
   
   def applyArgs(args: List[Arg])(k: List[Arg] => Block): Block =
     applyListOf(args, applyArg(_)(_))(k)
+
+  def applyArgss(argss: NELs[List[Arg]])(k: NELs[List[Arg]] => Block): Block =
+    applyListOf(argss, applyArgs(_)(_)): newArgss =>
+      k(newArgss.ne_!)
+  
+  def applyArgss(argss: List[List[Arg]])(k: List[List[Arg]] => Block): Block =
+    applyListOf(argss, applyArgs(_)(_))(k)
   
   def applyResult(r: Result)(k: Result => Block): Block =
     r match
