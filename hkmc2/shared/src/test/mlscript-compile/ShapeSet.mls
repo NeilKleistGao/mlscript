@@ -39,10 +39,14 @@ fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
 fun liftMany(arr: Array[Shape]) = 
   ShapeSet(new Map(arr.map(s => [s.hash(), s])))
 
-fun union(s1: ShapeSet, s2: ShapeSet) = 
+fun union2(s1: ShapeSet, s2: ShapeSet) = 
   if s1.isDyn() then s1
   else if s2.isDyn() then s2
   else ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
+
+fun union(...s) =
+  if s.length is 0 then ShapeSet.empty
+  else s.reduce((acc, next) => union2(acc, next))
 
 fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.shapeset.entries().toArray()).flat()))
 
@@ -71,7 +75,7 @@ fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) =
     |> liftMany
 
 fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], psOpt: Option[Array[Array[Param]]]) =
-  if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams) then
+  if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams, redir) then
     let entries = [...paramsMap.entries()]
     let keys = entries.map(a =>
       let s = Symbol(a.0)
@@ -82,7 +86,7 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
       else Param(None, s)
     )
     let params = entries.map(_.1)
-    let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams)
+    let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams, redir)
     params 
       .map(_.shapeset.values().toArray())
       |> prod
@@ -95,16 +99,20 @@ fun restSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
 
 fun isFalseShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is false
 fun isTrueShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is true
+fun isZeroShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is 0
 
 fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) = 
   if 
     op is 
       "&&" and 
         isFalseShape(s1) then mkLit(false)
-        isFalseShape(s2) then mkLit(true)
+        isFalseShape(s2) then mkLit(false)
       "||" and
         isTrueShape(s1) then mkLit(true)
         isTrueShape(s2) then mkLit(true)
+      "*" and
+        isZeroShape(s1) then mkLit(0) // unsound if user writes 0 * "hello" => NaN
+        isZeroShape(s2) then mkLit(0)
     s1.isDyn() then mkDyn()
     s2.isDyn() then mkDyn()
     else
@@ -162,7 +170,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams), params) then new! value(...params.map(valOf))
+    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOf))
     else throw Error("Unknown shape: " + s)
 
 fun valOfSet(s : ShapeSet) = 
@@ -175,27 +183,29 @@ fun freshId(prefix) =
   set idCounter = idCounter + 1
   Block.Symbol(prefix + "_" + idCounter.toString())
 
-fun val2path(v, allocs) = 
+fun val2path(v, allocs, valueMap) = 
   if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then 
     [Block.End(), Block.ValueLit(v)]
   else if Array.isArray(v) then
-    let mapped = v.map(val2path(_, allocs))
+    let mapped = v.map(val2path(_, allocs, valueMap))
     let blocks = mapped.map(_.0)
+    blocks.reverse()
     let paths = mapped.map(_.1) 
     let tupSym = freshId("tup")
     allocs.push(tupSym)
     let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
-    let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
+    let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
-  else if not(v is undefined) and not (v is null) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
+  else if not (v is undefined) and not (v is null) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
     let meta = v.constructor.(Symbols.definitionMetadata)
-    let clsName = meta.1
-    // class may have no parameters
+    assert valueMap.has(v.constructor)
+    let classSym = valueMap.get(v.constructor)
+    let clsName = classSym.nme
+    
     let paramNames = if meta.2 is
       undefined then []
       ps then ps
-    let classSym = Block.ConcreteClassSymbol(clsName, undefined, None, []) // TODO: add correct Paramters to ConcreteClassSymbol
-    let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs))
+    let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs, valueMap))
     let blocks = mapped.map(_.0)
     let paths = mapped.map(_.1)
     let objSym = freshId("obj")

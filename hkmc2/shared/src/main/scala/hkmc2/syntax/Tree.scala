@@ -324,14 +324,12 @@ enum Tree extends AutoLocated:
         go(inner, flags, modifiers + Ins)
       // fun f(@dynamic <...>)
       case Annotated(Ident("dynamic"), inner) =>
-        println(flags)
         if flags.reflConstraint.isDefined then L:
           ErrorReport:
             msg"At most one reflection constraint can be added for each parameter." -> t.toLoc :: Nil
         else go(inner, flags.copy(reflConstraint = S(ReflectionConstraint.Dynamic)), modifiers)
       // fun f(@static <...>)
       case Annotated(Ident("static"), inner) =>
-        println(flags)
         if flags.reflConstraint.isDefined then L:
           ErrorReport:
             msg"At most one reflection constraint can be added for each parameter." -> t.toLoc :: Nil

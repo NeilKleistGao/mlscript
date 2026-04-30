@@ -2,12 +2,12 @@
 :staging
 :noModuleCheck
 
+fun gen(M, name) =
+  M."generate"("../" + name + ".mjs", "./hkmc2/shared/src/test/mlscript-compile/staging/out/" + name + ".mls")
+
 import "../../mlscript-compile/staging/SimpleStagedExample.mls"
 
-
-SimpleStagedExample."generate"("../SimpleStagedExample.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SimpleStagedExample.mls")
-
-// console.log(SimpleStagedExample."cache$SimpleStagedExample".toString())
+gen(SimpleStagedExample, "SimpleStagedExample")
 
 import "../../mlscript-compile/staging/out/SimpleStagedExample.mls"
 
@@ -20,22 +20,102 @@ SimpleStagedExample.foo()
 SimpleStagedExample.f(1, 5)
 //│ = 6
 
+
 :expect 5
 SimpleStagedExample.fib(5)
 //│ = 5
 
 
+SimpleStagedExample.baz()
+//│ = 2
+
+
 import "../../mlscript-compile/staging/LinkingGeneratedClasses.mls"
 
-
-LinkingGeneratedClasses."generate"("../LinkingGeneratedClasses.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/LinkingGeneratedClasses.mls")
+gen(LinkingGeneratedClasses, "LinkingGeneratedClasses")
 
 import "../../mlscript-compile/staging/out/LinkingGeneratedClasses.mls"
 
-:fixme
+:expect C
 LinkingGeneratedClasses.test1
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:248)
+//│ ═══[RUNTIME ERROR] TypeError: LinkingGeneratedClasses1.C$LinkingGeneratedClasses is not a constructor
+//│     at get test1 (file:///Users/sinchunyeung/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/staging/out/LinkingGeneratedClasses.mjs:31:14)
+//│     at REPL47:1:46
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:922:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:287)
+//│ ═══[RUNTIME ERROR] Expected: 'C', got: 'undefined'
 
+:expect D
 LinkingGeneratedClasses.test2
 //│ = D
 
+:expect 3
+LinkingGeneratedClasses.f().call(3)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:248)
+//│ ═══[RUNTIME ERROR] TypeError: LinkingGeneratedClasses1.Function$$LinkingGeneratedClasses is not a constructor
+//│     at LinkingGeneratedClasses.f (file:///Users/sinchunyeung/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/staging/out/LinkingGeneratedClasses.mjs:21:14)
+//│     at REPL53:1:64
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:922:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:287)
+//│ ═══[RUNTIME ERROR] Expected: '3', got: 'undefined'
+
+:expect 5
+LinkingGeneratedClasses.g().call(3)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:248)
+//│ ═══[RUNTIME ERROR] TypeError: LinkingGeneratedClasses1.Function$1$LinkingGeneratedClasses is not a constructor
+//│     at LinkingGeneratedClasses.g (file:///Users/sinchunyeung/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/staging/out/LinkingGeneratedClasses.mjs:26:14)
+//│     at REPL56:1:66
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:593:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:922:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:419:12)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:287)
+//│ ═══[RUNTIME ERROR] Expected: '5', got: 'undefined'
+
+:fixme
+import "../../mlscript-compile/staging/StagedClass.mls"
+//│ /!!!\ Uncaught error: java.nio.file.NoSuchFileException: /Users/sinchunyeung/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/staging/StagedClass.mls
+
+:fixme
+// FIXME: module wasn't staged alongside class
+gen(StagedClass."class", "StagedClass")
+//│ ╔══[COMPILATION ERROR] Name not found: StagedClass
+//│ ║  l.106: 	gen(StagedClass."class", "StagedClass")
+//│ ╙──       	    ^^^^^^^^^^^
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+:fixme
+import "../../mlscript-compile/staging/ImportingFiles.mls"
+//│ /!!!\ Uncaught error: java.nio.file.NoSuchFileException: /Users/sinchunyeung/FYP/mlscript/hkmc2/shared/src/test/mlscript-compile/staging/ImportingFiles.mls
+
+:fixme
+gen(ImportingFiles, "ImportingFiles")
+//│ ╔══[COMPILATION ERROR] Name not found: ImportingFiles
+//│ ║  l.117: 	gen(ImportingFiles, "ImportingFiles")
+//│ ╙──       	    ^^^^^^^^^^^^^^
+//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.

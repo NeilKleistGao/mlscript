@@ -30,7 +30,7 @@ staged module Simple with
     let two = Staged.fib(three)
     pyth(two, 4)
   fun test2(n) =
-    let dyn = pyth(n, 2) 
+    let dyn = pyth(n, 2)
     fib(dyn * 2)
 
 Simple."test_gen"()
@@ -57,7 +57,7 @@ print(Simple."cache$Simple")
 //│ >   fun fib_Lit4(n) = 3
 //│ >   fun pyth_Dyn_Lit2(x, y) =
 //│ >     let {tmp6, tmp7}
-//│ >     tmp6 = NonStaged.sq(x)
+//│ >     tmp6 = Simple."NonStaged$Simple".sq(x)
 //│ >     tmp7 = 4
 //│ >     tmp6 + 4
 //│ >   fun pyth_Lit2_Lit4(x, y) = 20
@@ -72,22 +72,41 @@ class C(val x)
 
 staged module If with
   fun f(x) = if x is
-    C(2) then "C(2)"
-    C then "C"
-    else "else"
+    C(2) then "C(2) "
+    C then "C "
+    else "else "
   fun test() = 
-    f(C(2))
-    f(C(3))
-    f(2)
+    f(C(2)) + f(C(3)) + f(2)
+  fun test2(x, y) = 
+    if x is 1 and
+      y is 1 then
+        return 1
+      else 
+        2
+    else 
+      3
+    4
 
 If."test_gen"()
+//│ = ["test", {Lit("C(2) C else ")}]
+
+If."test2_gen"(mkLit(1), mkDyn())
+//│ = ["test2_Lit1_Dyn", {Lit(1),Lit(4)}]
+
 print(If."cache$If")
 //│ > module If with
 //│ >   ()
-//│ >   fun f_C_Lit2(x) = "C(2)"
-//│ >   fun f_C_Lit3(x) = "C"
-//│ >   fun f_Lit2(x) = "else"
-//│ >   fun test() = "else"
+//│ >   fun f_C_Lit2(x) = "C(2) "
+//│ >   fun f_C_Lit3(x) = "C "
+//│ >   fun f_Lit2(x) = "else "
+//│ >   fun test() = "C(2) C else "
+//│ >   fun test2_Lit1_Dyn(x, y) =
+//│ >     let {tmp6}
+//│ >     if y is
+//│ >       1 then 1
+//│ >       else
+//│ >         tmp6 = 2
+//│ >     4
 
 class C(val n)
 staged module If2 with
@@ -118,7 +137,7 @@ print(If2."cache$If2")
 //│ >   fun test() = 3
 //│ >   fun test2(dyn) =
 //│ >     let {tmp2}
-//│ >     tmp2 = C(dyn)
+//│ >     tmp2 = If2."C$If2"(dyn)
 //│ >     f_C_Dyn(tmp2)
 //│ >   fun test3() = 1
 
@@ -199,25 +218,25 @@ print(Dispatching."cache$Dispatching")
 //│ >     let {obj_7, obj_8}
 //│ >     if b is
 //│ >       true then
-//│ >         obj_7 = new L2(2)
+//│ >         obj_7 = new! Dispatching."L2$Dispatching"(2)
 //│ >         obj_7
 //│ >       else
-//│ >         obj_8 = new L3(3)
+//│ >         obj_8 = new! Dispatching."L3$Dispatching"(3)
 //│ >         obj_8
 //│ >   fun pick_L2_Lit2_L3_Lit3_Litfalse(x, y, b) =
 //│ >     let {obj_5}
-//│ >     obj_5 = new L3(3)
+//│ >     obj_5 = new! Dispatching."L3$Dispatching"(3)
 //│ >     obj_5
 //│ >   fun pick_L2_Lit2_L3_Lit3_Littrue(x, y, b) =
 //│ >     let {obj_2}
-//│ >     obj_2 = new L2(2)
+//│ >     obj_2 = new! Dispatching."L2$Dispatching"(2)
 //│ >     obj_2
 //│ >   fun test(b) =
 //│ >     let {y1, m, tmp1, tmp2, tmp3}
-//│ >     tmp1 = new L1(1)
+//│ >     tmp1 = new! Dispatching."L1$Dispatching"(1)
 //│ >     y1 = 11
-//│ >     tmp2 = new L2(2)
-//│ >     tmp3 = new L3(3)
+//│ >     tmp2 = new! Dispatching."L2$Dispatching"(2)
+//│ >     tmp3 = new! Dispatching."L3$Dispatching"(3)
 //│ >     m = pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
 //│ >     twice_Union_L2_Lit2_L3_Lit3_end_Lit5(m, 5)
 //│ >   fun test_Litfalse(b) = 29
@@ -228,13 +247,13 @@ print(Dispatching."cache$Dispatching")
 //│ >   fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f, x) =
 //│ >     let {tmp}
 //│ >     if f is
-//│ >       L2 then
+//│ >       Dispatching."L2$Dispatching" then
 //│ >         tmp = f.call_L2_Lit2_dot_Lit5(x)
-//│ >       L3 then
+//│ >       Dispatching."L3$Dispatching" then
 //│ >         tmp = f.call_L3_Lit3_dot_Lit5(x)
 //│ >     if f is
-//│ >       L2 then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
-//│ >       L3 then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
+//│ >       Dispatching."L2$Dispatching" then f.call_L2_Lit2_dot_Union_Lit7_Lit13_end(tmp)
+//│ >       Dispatching."L3$Dispatching" then f.call_L3_Lit3_dot_Union_Lit7_Lit13_end(tmp)
 
 print(L1.class."class$cache$L1")
 print(L2.class."class$cache$L2")
@@ -257,6 +276,21 @@ print(L3.class."class$cache$L3")
 //│ >     tmp1 = *(x, 2)
 //│ >     tmp1 + 3
 
+staged class Bar(val x) with
+  fun bar() = x
+staged class Foo(val x) with
+  fun foo(b) =
+    if b is
+      1 then x.bar() + 1
+      2 then x.bar() + 2
+      else x.bar()
+
+staged module Dispatching2 with
+  fun baz(b) = Foo(Bar(1)).foo(b)
+
+Dispatching2."baz_gen"(mkDyn())
+//│ = ["baz", {Lit(1),Lit(2),Lit(3)}]
+
 staged class A(val x: Int) with
   fun f(y: Int) = x + y
 staged class B(val x: Int) with
@@ -267,9 +301,11 @@ staged module This with
   fun test2(y) = B(1).x + y
 
 This."test_gen"(mkLit(1))
+This."test2_gen"(mkLit(1))
 print(This."cache$This")
 //│ > module This with
 //│ >   ()
+//│ >   fun test2_Lit1(y) = 2
 //│ >   fun test_Lit1(x) = 3
 
 print(A.class."class$cache$A")
@@ -297,11 +333,11 @@ Inheritance."test_gen"()
 //│ = ["test", {Lit(5)}]
 
 staged module NonTermination with
-  fun f(x, y) = if y is
-    1 then 0
+  fun f(x, y) = if y
+    == x then 0
     else f(x, y + 1)
 
-:fixme
+:re
 // NonTermination."f_gen"(mkDyn(), mkLit(0))
 
 fun g(x, y) = x + y
@@ -309,8 +345,8 @@ fun g(x, y) = x + y
 staged module GlobalFunction with
   fun test(x) = g(x, x)
 
-GlobalFunction."test_gen"(union(mkLit(1), mkLit(2)))
-//│ = ["test_Union_Lit1_Lit2_end", {Dyn()}]
+GlobalFunction."test_gen"(mkLit(1))
+//│ = ["test_Lit1", {Dyn()}]
 
 staged module Comparison with
   fun test(x) = x < 5
@@ -321,3 +357,11 @@ Comparison."test_gen"(union(mkLit(3), mkLit(4)))
 Comparison."test_gen"(union(mkLit(4), mkLit(6)))
 //│ = ["test_Union_Lit4_Lit6_end", {Dyn()}]
 
+:fixme
+class C
+module Opaque with
+  fun f() = new C
+staged module M with
+  fun f() = Opaque.f()
+M."f_gen"()
+//│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/ShapeSet.mls:201)
