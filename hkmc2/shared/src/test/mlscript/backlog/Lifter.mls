@@ -60,8 +60,14 @@ fun test(x) =
     fun bar = x
   B()
 test(0).toString()
-//│ ═══[RUNTIME ERROR] Expected: '"B()"', got: '"(x) => {       this.#x = x;       return this;     }"'
-//│ = "(x) => {       this.#x = x;       return this;     }"
+//│ ╔══[INTERNAL ERROR] Compiler reached an unsupported state: mismatched ctor arg and cls param sizes
+//│ ╟── The compilation result may be incorrect.
+//│ ╙── This is a known compiler limitation; if it is a blocker for you, please report it to the maintainers.
+//│ ╔══[INTERNAL ERROR] Compiler reached an unsupported state: mismatched ctor arg and cls param sizes
+//│ ╟── The compilation result may be incorrect.
+//│ ╙── This is a known compiler limitation; if it is a blocker for you, please report it to the maintainers.
+//│ ═══[RUNTIME ERROR] Expected: '"B()"', got: '"(x1) => {       this.#x = x1;       return this;     }"'
+//│ = "(x1) => {       this.#x = x1;       return this;     }"
 
 // In fact, the correct way (using the current "constructor returns a lambda" hack) is this:
 // return (params) => {
@@ -134,7 +140,7 @@ fun foo(x, y) =
       x + y + test
   M.foo()
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.130: 	  module M with
+//│ ║  l.136: 	  module M with
 //│ ╙──       	         ^
 
 :expect 14
@@ -149,7 +155,7 @@ fun foo(x, y) =
   fun foo = M.foo()
   foo
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.145: 	  module M with
+//│ ║  l.151: 	  module M with
 //│ ╙──       	         ^
 
 :expect 12
@@ -162,7 +168,7 @@ data class A(x) with
     fun getB() = x
   fun getA() = M.getB()
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.161: 	  module M with
+//│ ║  l.167: 	  module M with
 //│ ╙──       	         ^
 
 :expect 2
@@ -178,11 +184,11 @@ fun foo(x) =
   (new Bar).self2
 foo(2)
 //│ ╔══[COMPILATION ERROR] Expected a statically known class; found reference of type Foo.
-//│ ║  l.177: 	  class Bar extends Foo
+//│ ║  l.183: 	  class Bar extends Foo
 //│ ║         	                    ^^^
 //│ ╙── The 'new' keyword requires a statically known class; use the 'new!' operator for dynamic instantiation.
 //│ ╔══[WARNING] Objects are not yet lifted.
-//│ ║  l.174: 	  object Foo with
+//│ ║  l.180: 	  object Foo with
 //│ ╙──       	         ^^^
 //│ ═══[WARNING] Cannot yet lift definition `Bar` as it extends an expression.
 //│ ═══[RUNTIME ERROR] TypeError: Class extends value [object Object] is not a constructor or null
@@ -198,19 +204,19 @@ fun f =
       h
   M.g
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.195: 	  module M with
+//│ ║  l.201: 	  module M with
 //│ ╙──       	         ^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'M'
-//│ ║  l.197: 	      fun h = M.g
+//│ ║  l.203: 	      fun h = M.g
 //│ ║         	              ^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.195: 	  module M with
+//│ ║  l.201: 	  module M with
 //│ ║         	         ^^^^^^
-//│ ║  l.196: 	    fun g =
+//│ ║  l.202: 	    fun g =
 //│ ║         	^^^^^^^^^^^
-//│ ║  l.197: 	      fun h = M.g
+//│ ║  l.203: 	      fun h = M.g
 //│ ║         	^^^^^^^^^^^^^^^^^
-//│ ║  l.198: 	      h
+//│ ║  l.204: 	      h
 //│ ╙──       	^^^^^^^
 
 
