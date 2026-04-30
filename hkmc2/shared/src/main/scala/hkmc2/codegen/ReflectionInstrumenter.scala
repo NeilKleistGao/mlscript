@@ -492,11 +492,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         (tsym, sym, reconstruct(key))
       )
 
-    // FIXME: Commented out so that SimpleStagedExample works without the ordering issue
-    def previousStageDecl(b: Block) = b
-      // previousStageValues.foldRight(b)({ case ((tsym, sym, key), acc) => b
-      //   Define(ValDefn(tsym, sym, key)(N), acc)
-      // })
+    def previousStageDecl(b: Block) =
+      previousStageValues.foldRight(b)({ case ((tsym, sym, key), acc) => b
+        Define(ValDefn(tsym, sym, key)(N), acc)
+      })
     
     (entryFunDef, propFunDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(previousStageDecl(b))))
 
