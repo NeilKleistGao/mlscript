@@ -165,6 +165,20 @@ fun sov(v, valueMap): ShapeSet =
       mkClassFromMap(classSymbol, argsMap, None) // FIXME
     else throw Error("unknown value from sov", v.toString())
 
+fun registerShapeClasses(valueMap, s) = if s is
+  Class(sym, params) then
+    if sym is ConcreteClassSymbol and not (sym.value is undefined) do
+      valueMap.set(getActualClass(sym.value), sym)
+    params.forEach(p => registerShapeClasses(valueMap, p))
+  Arr(shapes) then
+    shapes.forEach(p => registerShapeClasses(valueMap, p))
+  else ()
+
+// returns true so it composes with `and` chains
+fun registerShapeSetClasses(valueMap, ss) =
+  ss.values().forEach(s => registerShapeClasses(valueMap, s))
+  true
+
 // shape of path
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   Some(s) then s
@@ -196,7 +210,9 @@ fun subLitPath(ctx, p) = if p is
   Select(qual, name) then Select(subLitPath(ctx, qual), name)
   ValueRef(_) and
     let s = sop(ctx, p)
-    staticSet(s) and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [End(), res] then res
+    staticSet(s)
+      and registerShapeSetClasses(ctx.valueNameCtx, s)
+      and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [End(), res] then res
   else p
 
 
@@ -282,9 +298,10 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       let f_gen = genMap.get(fld) 
       not (f_gen is Runtime.Unit) and  // staged function
         let res = f_gen(...argShapes)
-        staticSet(res.1) then
-          let v2p = val2path(valOfSet(res.1), ctx.allocs, ctx.valueNameCtx)
-          [v2p.0, v2p.1, res.1]
+        staticSet(res.1)
+          and registerShapeSetClasses(ctx.valueNameCtx, res.1) then
+            let v2p = val2path(valOfSet(res.1), ctx.allocs, ctx.valueNameCtx)
+            [v2p.0, v2p.1, res.1]
         else
           let filteredArgs = args.filter((_, i, _) => not res.2.(i))
           [End(), Call(Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), filteredArgs), res.1]
@@ -307,7 +324,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
 fun sor(ctx, r) = if r is 
   Path and
     let s = sop(ctx, r)
-    staticSet(s) and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [blk, res] then [blk, res, s]
+    staticSet(s)
+      and registerShapeSetClasses(ctx.valueNameCtx, s)
+      and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [blk, res] then [blk, res, s]
     else [End(), subLitPath(ctx, r), s]
   Instantiate(cls, args) then sorInstantiate(ctx, r, cls, args)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
@@ -562,6 +581,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         
         let actualRetShape = res.1
+        actualRetShape.values().forEach(collectClasses)
 
         let finalBody = if staticSet(actualRetShape) then
           let allocs = mut []
