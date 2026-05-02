@@ -51,17 +51,7 @@ private fun add2(x)(y) = x + y
 let f = add2(10)
 f(5)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let add2⁰, f⁰, x², inlinedVal, inlinedLambda⁰;
-//│ define add2⁰ as fun add2¹(x)(y) {
-//│   return +⁰(x, y)
-//│ };
-//│ set x² = 10;
-//│ define inlinedLambda⁰ as fun inlinedLambda¹(y) {
-//│   set inlinedVal = +⁰(x², y);
-//│   return inlinedVal
-//│ };
-//│ set f⁰ = inlinedLambda¹;
-//│ f⁰(5)
+//│ let add2⁰, f⁰; define add2⁰ as fun add2¹(x)(y) { return +⁰(x, y) }; set f⁰ = add2¹(10); f⁰(5)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 15
 //│ f = fun
@@ -72,16 +62,16 @@ f(5)
 private fun triple(x)(y)(z) = x + y + z
 triple(1)(2)(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let triple⁰, x³, y¹, z⁰, inlinedVal, tmp;
+//│ let triple⁰, x², y¹, z⁰, inlinedVal, tmp;
 //│ define triple⁰ as fun triple¹(x)(y)(z) {
 //│   let tmp1;
 //│   set tmp1 = +⁰(x, y);
 //│   return +⁰(tmp1, z)
 //│ };
-//│ set x³ = 1;
+//│ set x² = 1;
 //│ set y¹ = 2;
 //│ set z⁰ = 3;
-//│ set tmp = +⁰(x³, y¹);
+//│ set tmp = +⁰(x², y¹);
 //│ set inlinedVal = +⁰(tmp, z⁰);
 //│ inlinedVal
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

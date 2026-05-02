@@ -83,21 +83,18 @@ foo(1)(2)(3)
 //│ callPrefix(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let foo⁰, callPrefix, lambda⁰, lambda$⁰;
-//│ define foo⁰ as fun foo¹(x)(y) {
-//│   let lambda$here, x1, y1, inlinedVal, inlinedLambda;
+//│ define lambda$⁰ as fun lambda$¹(x, y)(z) {
+//│   let x1, y1, z1, inlinedVal, tmp;
 //│   set x1 = x;
 //│   set y1 = y;
-//│   define inlinedLambda as fun inlinedLambda⁰(z) {
-//│     let x2, y2, z1, inlinedVal1, tmp;
-//│     set x2 = x1;
-//│     set y2 = y1;
-//│     set z1 = z;
-//│     set tmp = +⁰(x2, y2);
-//│     set inlinedVal1 = +⁰(tmp, z1);
-//│     set inlinedVal = inlinedVal1;
-//│     return inlinedVal
-//│   };
-//│   set lambda$here = inlinedLambda⁰;
+//│   set z1 = z;
+//│   set tmp = +⁰(x1, y1);
+//│   set inlinedVal = +⁰(tmp, z1);
+//│   return inlinedVal
+//│ };
+//│ define foo⁰ as fun foo¹(x)(y) {
+//│   let lambda$here;
+//│   set lambda$here = lambda$¹(x, y);
 //│   return lambda$here
 //│ };
 //│ set callPrefix = foo¹(1)(2);
