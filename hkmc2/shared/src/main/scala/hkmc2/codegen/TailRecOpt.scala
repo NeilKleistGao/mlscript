@@ -441,7 +441,7 @@ class TailRecOpt(using State, TL, Raise):
           Call(sel, args ne_:: Nil)(true, false, false),
           false
         )
-        FunDefn(f.owner, f.sym, f.dSym, f.params, newBod)(false, N, f.visibility)
+        FunDefn(f.owner, f.sym, f.dSym, f.params, newBod)(N, f.annotations)
     
     val params =
       val initial = paramSyms.map(Param.simple(_))
@@ -451,7 +451,7 @@ class TailRecOpt(using State, TL, Raise):
     val loopDefn = FunDefn(
       owner, bms, dSym,
       PlainParamList(params) :: Nil,
-      loop)(false, N, Visibility.Public) // Q: maybe should be Private?
+      loop)(N, annotations = Nil) // Q: maybe should be Private?
     
     if funs.size === 1 then
       val f = funs.head
@@ -464,7 +464,7 @@ class TailRecOpt(using State, TL, Raise):
         val internalLoopDefn = FunDefn(
           owner, loopBms, loopDSym,
           PlainParamList(params) :: Nil,
-          loop)(false, N, Visibility.Private)
+          loop)(N, annotations = Annot.Private :: Nil)
         val paramArgs = getParamSyms(f).map(_.asPath.asArg)
         val internalSel = owner match
           case Some(value) => Select(Value.Ref(value, N), Tree.Ident(loopBms.nme))(S(loopDSym))
@@ -473,7 +473,8 @@ class TailRecOpt(using State, TL, Raise):
           Call(internalSel, paramArgs ne_:: Nil)(true, false, false),
           false
         )
-        val wrapperDefn = FunDefn(f.owner, f.sym, f.dSym, f.params, wrapperBod)(false, N, f.visibility)
+        val wrapperDefn = FunDefn(f.owner, f.sym, f.dSym, f.params, wrapperBod)(
+          f.configOverride, annotations = f.annotations)
         (S(internalLoopDefn), wrapperDefn :: Nil)
       else
         (N, loopDefn :: Nil)
@@ -512,13 +513,13 @@ class TailRecOpt(using State, TL, Raise):
       val companion = c.companion.map: comp =>
         val cMtds = optFunctionsFlat(comp.methods, S(comp.isym))
         comp.copy(methods = cMtds)
-      c.copy(companion = companion)(c.configOverride)
+      c.copy(companion = companion)(c.configOverride, c.annotations)
     else
       val mtds = optFunctionsFlat(c.methods, S(c.isym))
       val companion = c.companion.map: comp =>
         val cMtds = optFunctionsFlat(comp.methods, S(comp.isym))
         comp.copy(methods = cMtds)
-      c.copy(methods = mtds, companion = companion)(c.configOverride)
+      c.copy(methods = mtds, companion = companion)(c.configOverride, c.annotations)
   
   def transform(b: Block) =
     /* To avoid `x` being overridden in the following when the lifter is not run:

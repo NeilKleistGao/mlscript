@@ -52,6 +52,12 @@ enum Annot extends AutoLocated:
     case TailCall => TailCall
     case c: Config => c
 
+object Annot:
+  
+  val Private = Modifier(Keyword.`private`)
+  
+end Annot
+
 type AnySelTerm = AnySel & Resolvable
 
 sealed trait AnySel extends ResolvableImpl:

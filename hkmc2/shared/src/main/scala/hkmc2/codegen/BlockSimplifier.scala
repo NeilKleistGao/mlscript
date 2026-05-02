@@ -445,13 +445,13 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
               val newBdy = applyBlock(fun.body)
               newFunctionBody(fun.dSym) = S(newBdy)
               if newBdy is fun.body then fun else
-              FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, newBdy)(fun.forceTailRec, fun.configOverride, fun.visibility)
+              FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, newBdy)(fun.configOverride, fun.annotations)
             case S(N) =>
               // The expansion of the function body itself reaches its own definition, which is impossible
               lastWords("Function body contains its own definition.")
             case S(S(blk)) =>
               if blk is fun.body then fun else
-              FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, blk)(fun.forceTailRec, fun.configOverride, fun.visibility)
+              FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, blk)(fun.configOverride, fun.annotations)
         
         override def applyResult(r: Result)(k: Result => Block): Block = r match
           case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
@@ -488,7 +488,7 @@ class BlockSimplifier(symbolsToPreserve: Set[Local])(using DebugPrinter, State, 
                         // Fewer arg lists than param lists: wrap body in a function with remaining params
                         val lambdaSym = BlockMemberSymbol("inlinedLambda", Nil, false)
                         val lambdaDefn = FunDefn.withFreshSymbol(N, lambdaSym,
-                          remainingParams, newBlk(Return(Value.Ref(resSym), false)))(false, N, Visibility.Private)
+                          remainingParams, newBlk(Return(Value.Ref(resSym), false)))(N, annotations = Annot.Private :: Nil)
                         assert(extraArgss.isEmpty)
                         acc(Scoped(Set(resSym, lambdaSym),
                           Define(lambdaDefn,
