@@ -154,7 +154,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           msg"Extending a class with multiple parameter lists is not supported" -> Loc(cls :: args) :: Nil,
           source = Diagnostic.Source.Compilation
         )
-    lowerCall(
+    lowerSuperCtorCall(
       Value.Ref(State.builtinOpsMap("super")),
       isMlsFun = true,
       isTailCall = false,
@@ -380,27 +380,59 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     blockImpl(imps ::: funs ::: rest, res)
   
-  def lowerCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Opt[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
+  def lowerSuperCtorCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Opt[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
     arg match
-    case S(a) =>
-      lowerCall(fr, isMlsFun, isTailCall, a, loc)(k)
+    case S(arg) =>
+      lowerArgs(arg)(as => k(Call(fr, as ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc)))
     case N =>
-      // * No arguments means a nullary call, e.g., `f()`
+      // * No arguments to a super ctor means a nullary call, e.g., `extends C` means `extends C()`
       k(Call(fr, Nil ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc))
-  def lowerCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Term, loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
-    lowerArg(arg)(as => k(Call(fr, as ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc)))
   
-  /** Lower a call with multiple argument lists into a single `Call` node.
-    * Arguments are lowered left-to-right and collected into `argss`. */
+  /** Lower a call with multiple argument lists into `Call` nodes,
+    * trying to group as many as possible into a single one
+    * when they correspond to parameter lists of the same callee. */
   def lowerMultiCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, args: Ls[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
-    def go(remaining: Ls[Term], acc: Ls[Ls[Arg]]): Block = remaining match
-      case Nil =>
+    def zipArgs(remainingParamss: Ls[ParamList], remainingArgss: Ls[Term], acc: Ls[Ls[Arg]]): Block =
+      (remainingParamss, remainingArgss) match
+      case (ps :: remainingParams, args :: remainingArgs) =>
+        lowerArgs(args)(as => zipArgs(remainingParams, remainingArgs, as :: acc))
+      case (Nil, Nil) =>
         k(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc))
-      case arg :: rest =>
-        lowerArg(arg)(as => go(rest, as :: acc))
-    go(args, Nil)
+      case (Nil, args :: remainingArgss) =>
+        acc.reverse match
+        case Nil => wrapUp(fr, args, remainingArgss)(k)
+        case acc: NELs[Ls[Arg]] =>
+          val tmp = loweringCtx.registerTempSymbol(N, "callPrefix")
+          val call = Call(fr, acc)(isMlsFun, true, isTailCall).withLoc(loc)
+          Assign(tmp, call, wrapUp(Value.Ref(tmp), args, remainingArgss)(k))
+      case _ =>
+        def wrapUp(base: Result, remainingArgss: Ls[Term])(k: Result => Block): Block =
+          remainingArgss match
+          case Nil => k(base)
+          case args :: remainingArgss =>
+            val tmp = loweringCtx.registerTempSymbol(N, "callPrefix")
+            Assign(tmp, base,
+              lowerArgs(args): as =>
+                wrapUp(Call(Value.Ref(tmp), as ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc), remainingArgss)(k))
+        wrapUp(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc), remainingArgss)(k)
+    def wrapUp(base: Path, args: Term, remainingArgss: Ls[Term])(k: Result => Block): Block =
+      lowerArgs(args): as =>
+        val call = Call(base, as ne_:: Nil)(isMlsFun = false, true, isTailCall).withLoc(loc)
+        remainingArgss match
+        case Nil => k(call)
+        case args :: remainingArgss =>
+          val tmp = loweringCtx.registerTempSymbol(N, "callPrefix")
+          Assign(tmp, call,
+            wrapUp(Value.Ref(tmp), args, remainingArgss)(k))
+    fr.targetSymbol match
+    case S(fs: TermSymbol) =>
+      fs.defn match
+      case S(td: TermDefinition) =>
+        zipArgs(td.params, args, Nil)
+      case _ => zipArgs(Nil, args, Nil)
+    case _ => zipArgs(Nil, args, Nil)
   
-  def lowerArg(arg: Term)(k: Ls[Arg] => Block)(using LoweringCtx): Block =
+  def lowerArgs(arg: Term)(k: Ls[Arg] => Block)(using LoweringCtx): Block =
     arg match
     case Tup(fs) =>
       if fs.exists(e => e match
@@ -779,12 +811,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
           as match
           case Nil =>
             k(Instantiate(mut, sr, Nil :: Nil))
-          case a :: Nil => lowerArg(a): asr =>
+          case a :: Nil => lowerArgs(a): asr =>
             k(Instantiate(mut, sr, asr :: Nil))
-          case a :: as => lowerArg(a): asr =>
+          case a :: as => lowerArgs(a): asr =>
             val z = as.foldLeft[Path => Block](k): (acc, arg) => 
               inner =>
-                lowerArg(arg): asr2 =>
+                lowerArgs(arg): asr2 =>
                   val ts = loweringCtx.registerTempSymbol(N)
                   Assign(ts, Call(inner, asr2 ne_:: Nil)(true, true, false), acc(Value.Ref(ts)))
             val ts = loweringCtx.registerTempSymbol(N)

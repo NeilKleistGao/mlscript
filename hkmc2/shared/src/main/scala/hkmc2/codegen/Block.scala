@@ -833,6 +833,10 @@ sealed abstract class Path extends TrivialResult:
   def sel(id: Tree.Ident, sym: DefinitionSymbol[?]): Path = Select(this, id)(S(sym))
   def selSN(id: Str): Path = selN(new Tree.Ident(id))
   def asArg = Arg(spread = N, this)
+  def targetSymbol: Opt[DefinitionSymbol[?]] = this match
+    case sel: Select => sel.symbol
+    case Value.Ref(l, d) => d
+    case _ => N
 
 /**
  * @param symbol The symbol representing the definition that the selection refers to, if known.

@@ -144,7 +144,9 @@ let Runtime1;
         return runtime.safeCall(xs.slice(i, tmp1))
       } 
       static lazySlice(xs, i, j) {
-        return runtime.safeCall(LazyArray.dropLeftRight(i, j))(xs)
+        let callPrefix;
+        callPrefix = runtime.safeCall(LazyArray.dropLeftRight(i, j));
+        return runtime.safeCall(callPrefix(xs))
       } 
       static lazyConcat(...args) {
         return runtime.safeCall(LazyArray.__concat(...args))
@@ -1144,9 +1146,9 @@ let Runtime1;
       if (rhs instanceof Runtime.Int31.class) {
         return lhs + rhs
       }
-      return Runtime.unreachable();
+      return runtime.safeCall(Runtime.unreachable());
     }
-    return Runtime.unreachable();
+    return runtime.safeCall(Runtime.unreachable());
   }
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "Runtime"]; 

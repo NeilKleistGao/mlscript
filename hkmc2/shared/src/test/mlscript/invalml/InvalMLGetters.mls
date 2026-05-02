@@ -68,7 +68,8 @@ test2()
 :ssjs
 test2()(5)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ block$res8 = test21()(5); undefined
+//│ let callPrefix;
+//│ callPrefix = test21(); block$res8 = runtime.safeCall(callPrefix(5)); undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 5
 //│ Type: Int
@@ -84,7 +85,7 @@ fun test2() =
     case n then funny(n - 1) + 1
   funny
 //│ ╔══[WARNING] Pure expression in statement position
-//│ ║  l.83: 	    case 0 then 0
+//│ ║  l.84: 	    case 0 then 0
 //│ ╙──      	    ^^^^^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let test22;
@@ -97,7 +98,7 @@ fun test2() =
 //│       n = caseScrut;
 //│       tmp = funny();
 //│       tmp1 = n - 1;
-//│       tmp2 = tmp(tmp1);
+//│       tmp2 = runtime.safeCall(tmp(tmp1));
 //│       return tmp2 + 1
 //│     });
 //│     return lambda1
@@ -105,16 +106,16 @@ fun test2() =
 //│   return funny()
 //│ };
 //│ ╔══[WARNING] Pure expression in statement position
-//│ ║  l.83: 	    case 0 then 0
+//│ ║  l.84: 	    case 0 then 0
 //│ ╙──      	    ^^^^^^^^^^^^^
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ╔══[COMPILATION ERROR] Function definition shape not yet supported for funny
-//│ ║  l.83: 	    case 0 then 0
+//│ ║  l.84: 	    case 0 then 0
 //│ ║        	         ^^^^^^^^
-//│ ║  l.84: 	    case n then funny(n - 1) + 1
+//│ ║  l.85: 	    case n then funny(n - 1) + 1
 //│ ╙──      	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Variable not found: funny
-//│ ║  l.85: 	  funny
+//│ ║  l.86: 	  funny
 //│ ╙──      	  ^^^^^
 
 
@@ -122,7 +123,7 @@ fun test2() =
 fun test3 =
   print("Hi")
 //│ ╔══[COMPILATION ERROR] Function definition shape not yet supported for test3
-//│ ║  l.123: 	  print("Hi")
+//│ ║  l.124: 	  print("Hi")
 //│ ╙──       	  ^^^^^^^^^^^
 
 
