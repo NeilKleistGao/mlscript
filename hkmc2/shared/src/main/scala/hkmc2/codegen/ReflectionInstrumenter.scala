@@ -463,7 +463,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     
     // grab all defn seen so far
     // TODO: this could be reduced to only contain all the symbols used within the module
-    val previousStageValues = 
+    val previousStageValues = if forClass then Nil else
       scope.getBindings.collect[(DefinitionSymbol[? <: ModuleOrObjectDef | ClassDef], String)]({
         case (m: ModuleOrObjectSymbol, s) if m != State.unitSymbol && m != ownerSym => (m, s)
         case (c: ClassSymbol, s) if !ctx.builtins.virtualClasses(c) && c != ownerSym => (c, s)
@@ -491,7 +491,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       )
 
     def previousStageDecl(b: Block) =
-      previousStageValues.foldRight(b)({case ((tsym, sym, key), acc) =>
+      previousStageValues.iterator.foldRight(b)({case ((tsym, sym, key), acc) =>
         Define(ValDefn(tsym, sym, key)(N), acc)
       })
     
