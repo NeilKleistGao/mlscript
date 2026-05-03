@@ -97,8 +97,10 @@ fun filterSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
 
 fun restSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.rest(_, p))
 
+fun isLitShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l)
 fun isFalseShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is false
 fun isTrueShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is true
+fun isZeroShape(s: ShapeSet) = s.values().length is 1 and s.values().0 is Lit(l) and l is 0
 
 fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) = 
   if 
@@ -109,6 +111,9 @@ fun binOpSet(op: Str, s1: ShapeSet, s2: ShapeSet) =
       "||" and
         isTrueShape(s1) then mkLit(true)
         isTrueShape(s2) then mkLit(true)
+      "*" and
+        isZeroShape(s1) then mkLit(0) // unsound if user writes 0 * "hello" => NaN
+        isZeroShape(s2) then mkLit(0)
     s1.isDyn() then mkDyn()
     s2.isDyn() then mkDyn()
     else
@@ -185,11 +190,12 @@ fun val2path(v, allocs, valueMap) =
   else if Array.isArray(v) then
     let mapped = v.map(val2path(_, allocs, valueMap))
     let blocks = mapped.map(_.0)
+    blocks.reverse()
     let paths = mapped.map(_.1) 
     let tupSym = freshId("tup")
     allocs.push(tupSym)
     let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
-    let fullBlock = foldl((b, acc) => Block.concat(b, acc))(tupAssign, ...blocks)
+    let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
     [fullBlock, Block.ValueRef(tupSym)]
   else if not (v is undefined) and not (v is null) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
     let meta = v.constructor.(Symbols.definitionMetadata)

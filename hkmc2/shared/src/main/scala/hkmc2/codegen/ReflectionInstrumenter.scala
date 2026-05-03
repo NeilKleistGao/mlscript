@@ -400,7 +400,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(new HashMap(), true))
     
 
-  def stageMethods(ownerSym: DefinitionSymbol[?], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str)(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
+  def stageMethods(ownerSym: DefinitionSymbol[?], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str, nestedPropagates: Ls[Path])(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
     // for storing specialized functions in each staged module
     val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
     val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
@@ -448,7 +448,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               ((args, k) => call(_, args, true, "gen_call")(k))
               (genPath)
           )
-        callGenCont(End())
+        nestedPropagates.foldRight(callGenCont(End()))((path, rest) =>
+          call(path.selSN("propagate"), Nil, isMlsFun = true, symName = "tmp")(_ => rest)
+        )
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(false, N, Visibility.Public)
 
     def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
@@ -491,7 +493,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       )
 
     def previousStageDecl(b: Block) =
-      previousStageValues.iterator.foldRight(b)({case ((tsym, sym, key), acc) =>
+      previousStageValues.iterator.foldRight(b)({ case ((tsym, sym, key), acc) =>
         Define(ValDefn(tsym, sym, key)(N), acc)
       })
     
@@ -508,7 +510,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val generatorMapNme = "generatorMap" + suffix
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(false, N, Visibility.Public)
       val newCtorFun = stageCtor(ctorFun)
-      val (entryFun, newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme)(methods)
+      val nestedPropagates = defn.body.blk.stats.collect:
+        case cls: ClassDef if cls.hasStagedModifier.isDefined =>
+          modSym.asPath.sel(Tree.Ident(cls.sym.nme), cls.sym)
+
+      val (entryFun, newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme, nestedPropagates)(methods)
 
       companion.copy(
         methods = entryFun :: newCtorFun :: newMethods,
@@ -550,7 +556,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val newPreCtorFun = stageMethod(preCtorFun)
       val newCtorFun = stageCtor(ctorFun)
       
-      val (entryFun, newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme)(methods)
+      val (entryFun, newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme, Nil)(methods)
       val (companionEntryFun, companionMethods) = companion.methods.partition(_.sym.nme == "generate")
       val combinedEntryFun: FunDefn = companionEntryFun match
         case Nil => entryFun
