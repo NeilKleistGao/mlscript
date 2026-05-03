@@ -89,7 +89,7 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
         case _ => k(call(fun))
     case _: Lambda => lastWords("Lambda functions should be rewritten into function definitions first.")
     case _ => super.applyResult(r)(k)
-
+  
   class DesugarMultipleParamList extends BlockTransformer(new SymbolSubst):
     override def applyFunDefn(fd: FunDefn): FunDefn = fd.params match
       case Nil => fd
@@ -103,21 +103,7 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
             Scoped(Set(funSym), Define(funDef, Return(Value.Ref(funDef.sym, Some(funDef.dSym)), false)))
           case Nil => fd.body
         FunDefn.withFreshSymbol(fd.owner, fd.sym, head :: Nil, rec(tail))(fd.configOverride, fd.annotations)
-    override def applyResult(r: Result)(k: Result => Block): Block = r match
-      case c @ Call(fun, firstArgs :: restArgss) if restArgss.nonEmpty =>
-        // Split multi-arg-list calls into chained single-arg-list calls
-        // so each application after the first goes through the FC transform
-        def chainCalls(currCall: Result, remaining: Ls[Ls[Arg]])(k: Result => Block): Block =
-          remaining match
-            case Nil => k(currCall)
-            case nextArgs :: rest =>
-              val tmp = new TempSymbol(None)
-              Scoped(Set(tmp), Assign(tmp, currCall,
-                chainCalls(Call(tmp.asPath, nextArgs ne_:: Nil)(true, c.mayRaiseEffects, false), rest)(k)))
-        applyResult(Call(fun, firstArgs ne_:: Nil)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c)): firstResult =>
-          chainCalls(firstResult, restArgss)(k)
-      case _ => super.applyResult(r)(k)
-
+  
   def transform(b: Block): Block =
     val desugared = new DesugarMultipleParamList().applyBlock(b)
     new CollectFunDefns().applyBlock(desugared)

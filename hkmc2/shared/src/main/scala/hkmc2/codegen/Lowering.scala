@@ -1169,30 +1169,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       if lift then Lifter(scopeFlattened).transform
       else scopeFlattened
     
-    // When effect handlers are enabled, split multi-arg-list calls into
-    // chained single-arg-list calls so that handler lowering and stack-safe
-    // transforms properly handle each intermediate call result.
-    // Only split at the function body level, not inside lambdas, to avoid
-    // creating Scoped blocks that conflict when inlined into switch cases.
-    // TODO: don't do this when actually calling multi-parameter functions, which don't need splitting
-    val splitCalls =
-      if config.effectHandlers.isDefined then
-        val splitter = new BlockTransformer(SymbolSubst.Id):
-          override def applyLam(lam: Lambda): Lambda = lam // Don't recurse into lambdas
-          override def applyResult(r: Result)(k: Result => Block): Block = r match
-            case c @ Call(fun, firstArgs :: restArgss) if restArgss.nonEmpty =>
-              val firstCall = Call(fun, firstArgs ne_:: Nil)(c.isMlsFun, c.mayRaiseEffects, false)
-              val tmp = TempSymbol(N, "res")
-              super.applyResult(firstCall): res1 =>
-                val remainingCall = Call(tmp.asPath, restArgss.ne_!)(false, c.mayRaiseEffects, c.explicitTailCall)
-                Scoped(Set.single(tmp), Assign(tmp, res1, applyResult(remainingCall)(k)))
-            case _ => super.applyResult(r)(k)
-        splitter.applyBlock(lifted)
-      else lifted
+    val (withHandlers2, stackSafetyInfo) = config.effectHandlers.fold((lifted, Map.empty)): opt =>
+      HandlerLowering(handlerPaths, opt).translateTopLevel(lifted)
     
-    val (withHandlers2, stackSafetyInfo) = config.effectHandlers.fold((splitCalls, Map.empty)): opt =>
-      HandlerLowering(handlerPaths, opt).translateTopLevel(splitCalls)
-      
     val stackSafe = config.stackSafety match
       case N => withHandlers2
       case S(sts) => StackSafeTransform(sts.stackLimit, handlerPaths, stackSafetyInfo).transformTopLevel(withHandlers2)

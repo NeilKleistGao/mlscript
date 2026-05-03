@@ -140,19 +140,14 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       if needsParens(jsOp) then doc"(${res})" else res
     case c @ Call(fun, argss) =>
       val base = subexpression(fun)
-      val firstArgs = argss.headOption.getOrElse(Nil)
-      val firstArgsDoc = firstArgs.map(argument).mkDocument(", ")
-      val firstCall =
-        if c.isMlsFun
-        then if checkMLsCalls
-          then doc"$runtimeVar.checkCall(${base}(${firstArgsDoc}))"
-          else doc"${base}(${firstArgsDoc})"
-        else doc"$runtimeVar.safeCall(${base}(${firstArgsDoc}))"
-      argss.drop(1).foldLeft(firstCall): (acc, args) =>
+      val calls = argss.foldLeft(base): (acc, args) =>
         val argsDoc = args.map(argument).mkDocument(", ")
-        if checkMLsCalls
-        then doc"$runtimeVar.safeCall(${acc}(${argsDoc}))"
-        else doc"${acc}(${argsDoc})"
+        doc"${acc}(${argsDoc})"
+      if c.isMlsFun
+      then if checkMLsCalls
+        then doc"$runtimeVar.checkCall(${calls})"
+        else doc"${calls}"
+      else doc"$runtimeVar.safeCall(${calls})"
     case Lambda(ps, bod) => scope.nest givenIn:
       val (params, bodyDoc) = setupFunction(none, ps, bod, isLambda = true)
       doc"($params) => ${ braced(bodyDoc) }"
