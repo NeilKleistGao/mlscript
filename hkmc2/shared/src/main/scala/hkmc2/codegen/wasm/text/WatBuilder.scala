@@ -929,6 +929,11 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
         errExpr(Ls(msg"Cannot call non-binary builtin symbol '${l.nme}'" -> r.toLoc))
 
     case Call(sel @ Select(qual, _), argss) if sel.symbol.flatMap(predeclaredClassMethodSym).nonEmpty =>
+      if argss.length > 1 then
+        return errExpr(
+          Ls(msg"WatBuilder::result for Call(...) with multiple argument lists is not supported yet" -> r.toLoc),
+          extraInfo = S(r.toString),
+        )
       val methodSym = sel.symbol.flatMap(predeclaredClassMethodSym).get
       call(
         funcidx = ctx.getFunc_!(methodSym),
@@ -937,6 +942,11 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
       )
 
     case c @ Call(fun, argss) =>
+      if argss.length > 1 then
+        return errExpr(
+          Ls(msg"WatBuilder::result for Call(...) with multiple argument lists is not supported yet" -> c.toLoc),
+          extraInfo = S(c.toString),
+        )
       val args = argss.flatten
       wasmIntrinsicName(fun) match
         case S(intrName) =>
@@ -1075,6 +1085,11 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
         )
 
     case Instantiate(_, cls, argss) =>
+      if argss.length > 1 then
+        return errExpr(
+          Ls(msg"WatBuilder::result for Instantiate(...) with multiple argument lists is not supported yet" -> r.toLoc),
+          extraInfo = S(r.toString),
+        )
       val as = argss.flatten
       cls match
         // TODO: Implement proper lowering for Errors with unit payloads.
