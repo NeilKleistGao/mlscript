@@ -196,7 +196,9 @@ fun subLitPath(ctx, p) = if p is
   Select(qual, name) then Select(subLitPath(ctx, qual), name)
   ValueRef(_) and
     let s = sop(ctx, p)
-    staticSet(s) and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [End(), res] then res
+    staticSet(s) and
+      do collectShapeSetClasses(ctx.valueNameCtx, s)
+      val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [End(), res] then res
   else p
 
 
@@ -283,6 +285,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       not (f_gen is Runtime.Unit) and  // staged function
         let res = f_gen(...argShapes)
         staticSet(res.1) then
+          collectShapeSetClasses(ctx.valueNameCtx, res.1)
           let v2p = val2path(valOfSet(res.1), ctx.allocs, ctx.valueNameCtx)
           [v2p.0, v2p.1, res.1]
         else
@@ -307,7 +310,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
 fun sor(ctx, r) = if r is 
   Path and
     let s = sop(ctx, r)
-    staticSet(s) and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [blk, res] then [blk, res, s]
+    staticSet(s) and
+      do collectShapeSetClasses(ctx.valueNameCtx, s)
+      val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [blk, res] then [blk, res, s]
     else [End(), subLitPath(ctx, r), s]
   Instantiate(cls, args) then sorInstantiate(ctx, r, cls, args)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
@@ -471,10 +476,25 @@ fun prop(ctx, b) = if b is
 fun propStub(ctx, body) = 
   [body, mkDyn()]
 
+fun isShapeNameChar(ch) =
+  ch == "_" || ch >= "a" && ch <= "z" || ch >= "A" && ch <= "Z" || ch >= "0" && ch <= "9"
+
+fun encodeShapeNamePart(s: Str) =
+  let parts = mut []
+  fun loop(i) =
+    if i == s.length then parts.join("")
+    else
+      let ch = s.(i)
+      if isShapeNameChar(ch) then parts.push(ch)
+      else parts.push("_" + ch.charCodeAt(0).toString() + "_")
+      loop(i + 1)
+  let encoded = loop(0)
+  if encoded == "" then "_empty" else encoded
+
 fun buildShapeName(s: Shape): Str = if s is
   Dyn then "Dyn"
-  Lit(lit) and lit is Str then "Str" + lit
-  Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
+  Lit(lit) and lit is Str then "Str" + encodeShapeNamePart(lit)
+  Lit(lit) then "Lit" + encodeShapeNamePart(lit.toString())
   Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
   Class(sym, params) and params.length is
     0 then sym.name
@@ -505,6 +525,17 @@ class ValueCollection(defn: Map[Class, Str]) extends Printer(None) with
       ConcreteClassSymbol | ModuleSymbol then defn.set(getActualClass(s.value), s)
       else ()
     ""
+
+fun collectShapeClasses(defn, s) =
+  if s is
+    Class(sym, params) then
+      defn.set(getActualClass(sym.value), sym)
+      params.forEach(collectShapeClasses(defn, _))
+    Arr(shapes) then shapes.forEach(collectShapeClasses(defn, _))
+    else ()
+
+fun collectShapeSetClasses(defn, ss) =
+  ss.values().forEach(collectShapeClasses(defn, _))
 
 fun specialize(cache: FunCache, funName, dflt, shapes) =
   // FIXME
@@ -538,15 +569,8 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 
         // build map from all class/module symbols that are used within the body and the shape of the context
         new ValueCollection(ctx.valueNameCtx).showBlock(body)
-        fun collectClasses(s) = if s is
-          Class(sym, params) then
-            ctx.valueNameCtx.set(getActualClass(sym.value), sym)
-            params.forEach(collectClasses)
-          Arr(shapes) then
-            shapes.forEach(collectClasses)
-          else ()
-        if ctx.thisShape is Some(ts) then ts.values().forEach(collectClasses) else ()
-        ctx.ctx.values().forEach(_.values().forEach(collectClasses))
+        if ctx.thisShape is Some(ts) then collectShapeSetClasses(ctx.valueNameCtx, ts) else ()
+        ctx.ctx.values().forEach(collectShapeSetClasses(ctx.valueNameCtx, _))
         
         // Compute litMask and newPs early so recursive calls use correct filtering
         let litMask = ps.flatMap((p, i, _) => p.map((p2, j, _) =>
@@ -565,6 +589,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 
         let finalBody = if staticSet(actualRetShape) then
           let allocs = mut []
+          collectShapeSetClasses(ctx.valueNameCtx, actualRetShape)
           let v2p = val2path(valOfSet(actualRetShape), allocs, ctx.valueNameCtx)
           wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
         else bodyWithScoped

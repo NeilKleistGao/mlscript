@@ -140,7 +140,7 @@ class Printer(val owner: Opt[Symbol]) with
     if l is 
       undefined then "undefined"
       null then "null"
-      Str then "\"" + l.toString() + "\""
+      Str then JSON.stringify(l)
       else l.toString()
 
   fun showDefnSymbol(s: Symbol) =
@@ -182,7 +182,7 @@ class Printer(val owner: Opt[Symbol]) with
           ValueRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
         else showPath(fun_) + "(" + showArgs(args) + ")"
       Instantiate(cls, args) then 
-        let prefix = if cls is ValueRef(ClassSymbol) and owner is Some(owner) then "new! " + showPath(cls) else "new " + showPath(cls)
+        let prefix = if cls is ValueRef(ClassSymbol) and owner is Some(owner) then "new! " + showPath(cls) else "new! " + showPath(cls)
         prefix + (if args.length != 0 then "(" + showArgs(args) + ")" else "")
       Tuple(elems) then "[" + showArgs(elems) + "]"
       _ then "<unknown result:" ~ r ~ ">"
