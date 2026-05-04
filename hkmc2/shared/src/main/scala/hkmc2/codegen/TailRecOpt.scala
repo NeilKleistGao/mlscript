@@ -337,6 +337,7 @@ class TailRecOpt(using State, TL, Raise):
       val symRewriter = new BlockTransformer(subst)
       
       override def applyBlock(b: Block): Block = b match
+        // Note: the args in `c` have already been rewritten to point to the symbols in `paramSyms`.
         case TailCallShape(calleeSym, c) => dSymIds.get(calleeSym) match
           case None => super.applyBlock(b)
           case Some(id) =>
@@ -360,8 +361,15 @@ class TailRecOpt(using State, TL, Raise):
                   sym -> Lazy(TempSymbol(N, sym.nme + "_tmp")) // Use `Lazy` to avoid generating useless symbols
                 .toMap
               var requiredTmps: Set[(VarSymbol, TempSymbol)] = Set.empty
+              
+              // Rewrites references to mutated parameters to point to a temp variable instead, and
+              // reports that the parameter's value must be assigned to that temp variable
+              // before assigning to the parameters of this arg list.
               val paramRewriter = new BlockDataTransformer(SymbolSubst.Id):
                 override def applyValue(v: Value)(k: Value => Block): Block = v match
+                  // `assignedSyms` contains all of the param symbols that have been assigned to
+                  // before the current assignment, and thus references to them must be rewritten
+                  // to point to a temporary variable.
                   case Value.Ref(l: VarSymbol, disamb) => assignedSyms.get(l) match
                     case S(v) =>
                       val tmpSym = v.force_!
@@ -373,15 +381,26 @@ class TailRecOpt(using State, TL, Raise):
                   case _ => super.applyValue(v)(k)
               
               val argListResults = callee.params.zip(c.argss).map:
-                case (params, args) => (params, args, rewriteArgsList(callee, params, args))
+                case (params, args) => (params, params.paramSyms.map(calleeParamsMap), args, rewriteArgsList(callee, params, args))
+              
+              // Prevent stupid assignments like `set a = a`
+              val selfAssigns = argListResults.flatMap: (_, thisParamSyms, args, argsRes) =>
+                argsRes match
+                  case CallArgsResult.Success(res) => thisParamSyms.zip(res).collect:
+                    case (sym1, Value.Ref(sym2, _)) if sym1 === sym2 => sym1
+                  case CallArgsResult.ForceSpread => List.empty
+              assignedSyms --= selfAssigns
+                
               
               // Algorithm: Apply the args from right to left, but have the resulting assignment order
               // be left to right.
               // 
-              // When applying each arg, keep track of the 
+              // When applying each arg, keep track of the parameters that must be assigned to be a
+              // temporary variable. Also, remove each assigned parameter from `assignedSyms` after assigning
+              // them, so that assignments coming before them will not mistakenly add the param syms from 
+              // future assignments to `requiredTmps`.
               val assignments: Block = argListResults.foldRight(cont):
-                case ((thisParams, ogArgs, argRes), rest) =>
-                  val thisParamSyms = thisParams.paramSyms.map(calleeParamsMap)
+                case ((ogParamList, thisParamSyms, ogArgs, argRes), rest) =>
                   argRes match
                   case CallArgsResult.Success(argVals) =>
                     // Remove symbols from assignedSyms as we encounter them.
@@ -392,6 +411,7 @@ class TailRecOpt(using State, TL, Raise):
                       // Rewrite the result with symbols pointing to the temporary variables as described above.
                       // Note that we already rewrote the result with symbols pointing to the merged function parameters
                       // in `rewrite`. Also note that `paramRewriter` will add all encountered rewritten variables
+                      // to `requiredTmps`.
                       val ret = paramRewriter.applyResult(res)(Assign(sym, _, acc)) match
                         case Assign(sym, Value.Ref(sym1, _), rest) if sym === sym1 => rest // avoid useless assignments
                         case x => x
@@ -399,40 +419,47 @@ class TailRecOpt(using State, TL, Raise):
                   case CallArgsResult.ForceSpread =>
                     // Forcibly spread the args in an array.
                     // Assume the lengths are correct
-                    val paramList = thisParams.params
-                    val restParam = thisParams.restParam
+                    val paramList = ogParamList.params
+                    val restParam = ogParamList.restParam
                     
                     val tupleSym = TempSymbol(N, "argList")
-                    val tupleRes = Tuple(false, ogArgs)
-                    // Main args
-                    def mainArgs(rest: List[Path]) = (0 until paramList.size).toList.foldRight(rest):
-                      case (n, acc) => DynSelect(tupleSym.asPath, Value.Lit(Tree.IntLit(n)), true) :: acc
                     
-                    // If the rest param exists, append a slice
-                    val (initialBlk: (Block => Block), pathList: List[Path]) =
-                      if restParam.isDefined then
-                        val sliceResSym = TempSymbol(N, "sliceRes")
-                        // runtime.Tuple.slice(tupleSym, paramList.length, 0)
-                        val sliceRes = Call(
-                          State.runtimeSymbol.asPath
-                            .sel(Tree.Ident("Tuple"), State.tupleSymbol)
-                            .sel(Tree.Ident("slice"), State.tupleSliceSymbol),
-                          (tupleSym.asPath.asArg
-                            :: Value.Lit(Tree.IntLit(paramList.length)).asArg
-                            :: Value.Lit(Tree.IntLit(0)).asArg
-                            :: Nil) ne_:: Nil
-                        )(true, false, false)
-                        val blk = blockBuilder
-                          .assignScoped(tupleSym, tupleRes)
-                          .assignScoped(sliceResSym, sliceRes)
-                        (blk, mainArgs(sliceResSym.asPath :: Nil))
-                      else
-                        (blockBuilder.assignScoped(tupleSym, tupleRes), mainArgs(Nil))
-                    end val
-                    val paramAssignments = (thisParamSyms zip pathList).foldRight[Block](rest):
-                      case ((sym, path), restBlk) => Assign(sym, path, restBlk)
-                  
-                    initialBlk.rest(paramAssignments)
+                    // We can safely remove all of the symbols from this parameter list from `assignedSyms` at this stage,
+                    // because the RHS of every parameter will be computed when spreading them in the tuple, which happens
+                    // before any of the param symbols are assigned to.
+                    assignedSyms --= thisParamSyms
+                    paramRewriter.applyArgs(ogArgs): newArgs =>
+                      val tupleRes = Tuple(false, newArgs)
+                      
+                      // Main args
+                      def mainArgs(rest: List[Path]) = (0 until paramList.size).toList.foldRight(rest):
+                        case (n, acc) => DynSelect(tupleSym.asPath, Value.Lit(Tree.IntLit(n)), true) :: acc
+                      
+                      // If the rest param exists, append a slice
+                      val (initialBlk: (Block => Block), pathList: List[Path]) =
+                        if restParam.isDefined then
+                          val sliceResSym = TempSymbol(N, "sliceRes")
+                          // runtime.Tuple.slice(tupleSym, paramList.length, 0)
+                          val sliceRes = Call(
+                            State.runtimeSymbol.asPath
+                              .sel(Tree.Ident("Tuple"), State.tupleSymbol)
+                              .sel(Tree.Ident("slice"), State.tupleSliceSymbol),
+                            (tupleSym.asPath.asArg
+                              :: Value.Lit(Tree.IntLit(paramList.length)).asArg
+                              :: Value.Lit(Tree.IntLit(0)).asArg
+                              :: Nil) ne_:: Nil
+                          )(true, false, false)
+                          val blk = blockBuilder
+                            .assignScoped(tupleSym, tupleRes)
+                            .assignScoped(sliceResSym, sliceRes)
+                          (blk, mainArgs(sliceResSym.asPath :: Nil))
+                        else
+                          (blockBuilder.assignScoped(tupleSym, tupleRes), mainArgs(Nil))
+                      end val
+                      val paramAssignments = (thisParamSyms zip pathList).foldRight[Block](rest):
+                        case ((sym, path), restBlk) => Assign(sym, path, restBlk)
+                    
+                      initialBlk.rest(paramAssignments)
               end assignments
               
               // Bind the tmps

@@ -127,40 +127,40 @@ even(9)(0)
 
 // Spreads
 
-// This is the same as a test in `TailRecOpt.mls` but with some parameters separated.
+// This is the same as a test in `TailRecOpt.mls` but with some parameters separated and changed.
 :sir
 fun f(n)(a, b, c, d, ...e)(m) =
-  if n > 0 then @tailcall g(n - 1)(m + 1)
+  if n > 0 then @tailcall g(n)(m + 1)
   else [e, m]
 fun g(n)(m) =
-  @tailcall f(n)(...[1, 2], 3, ...[3, 4], ...[5, n], 7, n)(m)
+  @tailcall f(n - 1)(...[1, 2], 3, ...[3, 4], ...[5, n], 7, n)(m)
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let f⁰, g⁰, f_g⁰;
 //│ define f_g⁰ as fun f_g¹(id, param0, param1, param2, param3, param4, param5, param6) {
 //│   loop loopLabel:
 //│     match id
 //│       0 =>
-//│         let scrut, tmp, tmp1;
+//│         let scrut, tmp;
 //│         set scrut = >⁰(param0, 0);
 //│         match scrut
 //│           true =>
-//│             set tmp = -⁰(param0, 1);
-//│             set tmp1 = +⁰(param6, 1);
-//│             set param0 = tmp;
-//│             set param1 = tmp1;
+//│             set tmp = +⁰(param6, 1);
+//│             set param1 = tmp;
 //│             set id = 1;
 //│             continue loopLabel
 //│           else
 //│             return [param5, param6]
 //│         end
 //│       1 =>
-//│         let tmp, tmp1, tmp2, param1_tmp, argList, sliceRes;
-//│         set tmp = [1, 2];
-//│         set tmp1 = [3, 4];
-//│         set tmp2 = [5, param0];
+//│         let tmp, tmp1, tmp2, tmp3, param1_tmp, argList, param0_tmp, sliceRes;
+//│         set tmp = -⁰(param0, 1);
+//│         set tmp1 = [1, 2];
+//│         set tmp2 = [3, 4];
+//│         set tmp3 = [5, param0];
 //│         set param1_tmp = param1;
-//│         set param0 = param0;
-//│         set argList = [...tmp, 3, ...tmp1, ...tmp2, 7, param0];
+//│         set param0_tmp = param0;
+//│         set param0 = tmp;
+//│         set argList = [...tmp1, 3, ...tmp2, ...tmp3, 7, param0_tmp];
 //│         set sliceRes = runtime⁰.Tuple⁰.slice⁰(argList, 4, 0);
 //│         set param1 = argList.0;
 //│         set param2 = argList.1;
@@ -184,6 +184,6 @@ fun g(n)(m) =
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
-:expect [[4, 5, 0, 7, 0], 10]
+:expect [[4, 5, 1, 7, 1], 9]
 g(10)(0)
-//│ = [[4, 5, 0, 7, 0], 10]
+//│ = [[4, 5, 1, 7, 1], 9]
