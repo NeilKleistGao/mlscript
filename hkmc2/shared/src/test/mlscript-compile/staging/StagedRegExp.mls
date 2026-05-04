@@ -1,0 +1,163 @@
+#config(noFreeze: true)
+#config(funcToCls: true)
+
+module Option with
+  data class Some(value)
+  object None
+
+module SeqHelper with
+  class Seq(val length) with
+    fun concat(other)
+    fun slice(i)
+    fun push(e)
+
+open SeqHelper
+
+fun push(arr, ele) =
+  arr.Seq#push(ele)
+  arr
+
+module CharSet with
+  fun alphabet() = [
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+  ]
+  fun space() = [" ", "\n", "\t", "\r"]
+  fun digit() = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+staged module StagedRegExp with
+  staged class RegExp() with
+    fun derive(c)
+    fun canBeEmpty()
+
+  staged class Empty() extends RegExp with
+    fun derive(c) = Option.None
+    fun canBeEmpty() = true
+
+  staged class Exact(val ch) extends RegExp with
+    fun derive(c) =
+      if ch === c then Option.Some(Empty())
+      else Option.None
+    fun canBeEmpty() = false
+
+  staged class Any() extends RegExp with
+    fun derive(c) = Option.Some(Empty())
+    fun canBeEmpty() = false
+
+  staged class Not(val chars) extends RegExp with
+    fun derive(c) =
+      fun check(c, i) =
+        if i === chars.Seq#length then true
+        else if chars.(i) === c then false
+        else check(c, i + 1)
+      if check(c, 0) then Option.Some(Empty()) else Option.None
+    fun canBeEmpty() = false
+
+  fun notWord() = Not(CharSet.alphabet())
+  fun notSpace() = Not(CharSet.space())
+  fun notDigit() = Not(CharSet.digit())
+
+  staged class Union(val p1, val p2) extends RegExp with
+    fun derive(c) =
+      if [p1.RegExp#derive(c), p2.RegExp#derive(c)] is
+        [Option.Some(p1'), Option.Some(p2')] then Option.Some(Union(p1', p2'))
+        [Option.Some(p1'), Option.None] then Option.Some(p1')
+        [Option.None, Option.Some(p2')] then Option.Some(p2')
+        else Option.None
+    fun canBeEmpty() = p1.RegExp#canBeEmpty() || p2.RegExp#canBeEmpty()
+
+  fun question(r) = Union(r, Empty())
+
+  staged class In(val chars) extends RegExp with
+    fun derive(c) =
+      fun check(c, i) =
+        if i === chars.Seq#length then false
+        else if chars.(i) === c then true
+        else check(c, i + 1)
+      if check(c, 0) then Option.Some(Empty()) else Option.None
+    fun canBeEmpty() = false
+
+  fun words() = In(CharSet.alphabet())
+  fun spaces() = In(CharSet.space())
+  fun digits() = In(CharSet.digit())
+
+  staged class Concat(val p1, val p2) extends RegExp with
+    fun derive(c) =
+      if [p1.RegExp#derive(c), p1.RegExp#canBeEmpty()] is
+        [Option.Some(p1'), true] then
+          if p2.RegExp#derive(c) is
+            Option.Some(p2') then Option.Some(Union(concat(p1', p2), p2'))
+            else Option.Some(concat(p1', p2))
+        [Option.None, true] then p2.RegExp#derive(c)
+        [Option.Some(p1'), false] then Option.Some(concat(p1', p2))
+        else Option.None
+    fun canBeEmpty() = p1.RegExp#canBeEmpty() and p2.RegExp#canBeEmpty()
+
+  fun concat(p1, p2) =
+    if p1 is
+      Empty() then p2
+      else Concat(p1, p2)
+
+  staged class Star(val p) extends RegExp with
+    fun derive(c) =
+      if p.RegExp#derive(c) is
+        Option.Some(p') then Option.Some(concat(p', Star(p)))
+        else Option.None
+    fun canBeEmpty() = true
+
+  fun plus(r) = Concat(r, Star(r))
+  fun nTimes(r, i) =
+    if i === 1 then r
+    else Concat(r, nTimes(r, i - 1))
+
+  fun matchImpl(p, s, acc) =
+    if s.Seq#length === 0 then
+      if p.RegExp#canBeEmpty() then Option.Some(acc)
+      else Option.None
+    else
+      let c = s.(0)
+      if p.RegExp#derive(c) is
+        Option.Some(p') then
+          matchImpl(p', s.Seq#slice(1), acc + c)
+        Option.None and p.RegExp#canBeEmpty() then Option.Some(acc)
+        else Option.None
+  fun match(p, s) = matchImpl(p, s, "")
+
+  fun matchAllImpl(p, s, res) =
+    if s.Seq#length === 0 then res
+    else
+      if match(p, s) is
+        Option.Some(ss) then
+          if ss.Seq#length > 0 then matchAllImpl(p, s.Seq#slice(ss.Seq#length), push(res, ss))
+          else matchAllImpl(p, s.Seq#slice(1), res)
+        else matchAllImpl(p, s.Seq#slice(1), res)
+  fun matchAll(p, s) = matchAllImpl(p, s, [])
+
+  fun matchAllEmail(s) =
+    let p = Concat(plus(words()), Union(Exact("-"), Exact(".")))
+    let email = Concat(Concat(Concat(Star(p), plus(words())), Exact("@")), Concat(plus(p), plus(words())))
+    matchAll(email, s)
+
+  // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
+  fun matchAllURI(s) =
+    let ss = CharSet.space()
+    let n1 = Not(ss.Seq#concat(["/", "?", "#"]))
+    let n2 = Not(ss.Seq#concat(["?", "#"]))
+    let n3 = Not(ss.Seq#concat(["#"]))
+    let head = Concat(plus(words()), Concat(Exact(":"), Concat(Exact("/"), Exact("/"))))
+    let body = Concat(plus(n1), plus(n2))
+    let params = Concat(question(Concat(Exact("?"), Star(Union(words(), Union(digits(), Union(Exact("-"), Exact("_"))))))), question(Concat(Exact("#"), Star(Union(words(), Union(digits(), Union(Exact("-"), Exact("_"))))))))
+    let uri = Concat(head, Concat(body, params))
+    matchAll(uri, s)
+    
+  // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
+  fun matchAllIPv4(s) =
+    let fo = In(["0", "1", "2", "3", "4"])
+    let fi = In(["0", "1", "2", "3", "4", "5"])
+    let s = Union(Concat(Exact("2"), Concat(Exact("5"), fi)), Union(
+      Concat(Exact("2"), Concat(fo, digits)),
+      Concat(question(Exact("1")), Concat(question(digits), digits))
+    ))
+    let ipv4 = Concat(nTimes(Concat(s, Exact(".")), 3), s)
+    matchAll(ipv4, s)
+

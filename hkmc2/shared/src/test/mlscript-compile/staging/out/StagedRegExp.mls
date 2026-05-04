@@ -1,0 +1,189 @@
+import "../StagedRegExp.mls"
+open StagedRegExp
+module StagedRegExp with
+    let {tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13}
+    class RegExp()
+    tmp5 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    val alphabet = tmp5
+    tmp6 = [" ", "\n", "\t", "\r"]
+    val space = tmp6
+    tmp7 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    val digit = tmp7
+    class Empty() with
+      fun derive(c) = Option.None
+      fun canBeEmpty() = true
+    class Exact(ch) with
+      fun derive(c) =
+        let {scrut1, tmp14}
+        scrut1 = ===(Exact.ch, c)
+        if scrut1 is
+          true then
+            tmp14 = Empty()
+            Option.Some(tmp14)
+          else Option.None
+      fun canBeEmpty() = false
+    class Any() with
+      fun derive(c) =
+        let {tmp15}
+        tmp15 = Empty()
+        Option.Some(tmp15)
+      fun canBeEmpty() = false
+    class Not(chars) with
+      fun derive(c) =
+        let {scrut2, tmp16}
+        scrut2 = check(Not, c, 0)
+        if scrut2 is
+          true then
+            tmp16 = Empty()
+            Option.Some(tmp16)
+          else Option.None
+      fun canBeEmpty() = false
+    tmp8 = Not(alphabet)
+    val notWord = tmp8
+    tmp9 = Not(space)
+    val notSpace = tmp9
+    tmp10 = Not(digit)
+    val notDigit = tmp10
+    class Union(p1, p2) with
+      fun derive(c) =
+        let {scrut3, p2__, p1__, p1__1, p2__1, element1_, element0_, arg_Some_0_, arg_Some_0_1, tmp17, tmp18, tmp19}
+        tmp17 = Union.p1.derive(c)
+        tmp18 = Union.p2.derive(c)
+        scrut3 = [tmp17, tmp18]
+        if scrut3 is
+          [_, _] then
+            element0_ = scrut3.0
+            element1_ = scrut3.1
+            if element0_ is
+              Some then
+                arg_Some_0_1 = element0_.value
+                if element1_ is
+                  Some then
+                    arg_Some_0_ = element1_.value
+                    p2__ = arg_Some_0_
+                    p1__ = arg_Some_0_1
+                    tmp19 = Union(p1__, p2__)
+                    Option.Some(tmp19)
+                  None then
+                    p1__1 = arg_Some_0_1
+                    Option.Some(p1__1)
+                  else Option.None
+              None then
+                if element1_ is
+                  Some then
+                    arg_Some_0_ = element1_.value
+                    p2__1 = arg_Some_0_
+                    Option.Some(p2__1)
+                  else Option.None
+              else Option.None
+          else Option.None
+      fun canBeEmpty() =
+        let {tmp20}
+        tmp20 = Union.p1.canBeEmpty()
+        if tmp20 is
+          false then Union.p2.canBeEmpty()
+          else true
+    class In(chars) with
+      fun derive(c) =
+        let {scrut4, tmp21}
+        scrut4 = check(In, c, 0)
+        if scrut4 is
+          true then
+            tmp21 = Empty()
+            Option.Some(tmp21)
+          else Option.None
+      fun canBeEmpty() = false
+    tmp11 = In(alphabet)
+    val words = tmp11
+    tmp12 = In(space)
+    val spaces = tmp12
+    tmp13 = In(digit)
+    val digits = tmp13
+    class Concat(p1, p2) with
+      fun derive(c) =
+        let {scrut5, p1__2, scrut6, p2__2, p1__3, element1_1, element0_1, arg_Some_0_2, tmp22, tmp23, arg_Some_0_3, tmp24, tmp25, tmp26, tmp27}
+        tmp22 = Concat.p1.derive(c)
+        tmp23 = Concat.p1.canBeEmpty()
+        scrut5 = [tmp22, tmp23]
+        if scrut5 is
+          [_, _] then
+            element0_1 = scrut5.0
+            element1_1 = scrut5.1
+            if element0_1 is
+              Some then
+                arg_Some_0_2 = element0_1.value
+                if element1_1 is
+                  true then
+                    p1__2 = arg_Some_0_2
+                    scrut6 = Concat.p2.derive(c)
+                    if scrut6 is
+                      Some then
+                        arg_Some_0_3 = scrut6.value
+                        p2__2 = arg_Some_0_3
+                        tmp24 = concat(p1__2, Concat.p2)
+                        tmp25 = Union(tmp24, p2__2)
+                        Option.Some(tmp25)
+                      else
+                        tmp26 = concat(p1__2, Concat.p2)
+                        Option.Some(tmp26)
+                  false then
+                    p1__3 = arg_Some_0_2
+                    tmp27 = concat(p1__3, Concat.p2)
+                    Option.Some(tmp27)
+                  else Option.None
+              None then
+                if element1_1 is
+                  true then Concat.p2.derive(c)
+                  else Option.None
+              else Option.None
+          else Option.None
+      fun canBeEmpty() =
+        let {scrut7, scrut8}
+        scrut7 = Concat.p1.canBeEmpty()
+        if scrut7 is
+          true then
+            scrut8 = Concat.p2.canBeEmpty()
+            if scrut8 is
+              true then true
+              else false
+          else false
+    class Star(p) with
+      fun derive(c) =
+        let {scrut9, p__, arg_Some_0_4, tmp28, tmp29}
+        scrut9 = Star.p.derive(c)
+        if scrut9 is
+          Some then
+            arg_Some_0_4 = scrut9.value
+            p__ = arg_Some_0_4
+            tmp28 = Star(Star.p)
+            tmp29 = concat(p__, tmp28)
+            Option.Some(tmp29)
+          else Option.None
+      fun canBeEmpty() = true
+    fun concat(p1, p2) =
+      if p1 is
+        Empty then p2
+        else Concat(p1, p2)
+    fun match(p, s) = impl(p, s, "")
+    fun matchAll(p, s) =
+      let {tmp4, tup_1}
+      tmp4 = []
+      tup_1 = []
+      impl(StagedRegExp, p, s, tup_1)
+    fun nTimes(r, i) =
+      let {scrut, tmp2, tmp3}
+      scrut = ===(i, 1)
+      if scrut is
+        true then r
+        else
+          tmp2 = i - 1
+          tmp3 = nTimes(r, tmp2)
+          Concat(r, tmp3)
+    fun plus(r) =
+      let {tmp1}
+      tmp1 = Star(r)
+      Concat(r, tmp1)
+    fun question(r) =
+      let {tmp}
+      tmp = Empty()
+      Union(r, tmp)
