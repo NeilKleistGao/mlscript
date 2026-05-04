@@ -290,7 +290,7 @@ fun generateAll(name, file, ...modules) =
   let code = fold((res, p) => if p is
     [mod, name, source] then
       mod.propagate()
-      [res.0 + "import \"" + source + "\"\n", res.1 + "open " + name + "\n", res.2 + indent(mod.("cache$" + name).toString()) + "\n"]
+      [res.0 + "import \"" + source + "\"\n", res.1, res.2 + indent(mod.("cache$" + name).toString()) + "\n"]
   )(["", "", ""], ...modules)
   let originData = fs.readFileSync(fullpath, "utf8")
   let newData = "#config(noFreeze: true)\n" + "#config(noModuleCheck: true)\n" + code.0 + "\n" + code.1 + "\n" + "module " + name + " with" + indent("\n" + code.2)
