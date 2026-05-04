@@ -196,9 +196,9 @@ class TailRecOpt(using State, TL, Raise):
     acc + (if head.restParam.isDefined then 1 + head.params.length
       else head.params.length)
   
-  // Success:       The tail-call's args were successfully transformed. They may be blindly assigned to the//
-  //                tailrec function's parameters in order, to continue the loop.
-  // ForceSpread:   This tail-call may be rewritten, but contains spread parameters that we must use a tuple
+  // Success:       This arg list was successfully transformed. The args may be blindly assigned to the
+  //                parameters in order.
+  // ForceSpread:   This arg list may be rewritten, but contains spread parameters that we must use a tuple
   //                to correctly extract the arguments correctly.
   private enum CallArgsResult:
     case Success(res: List[Result])
