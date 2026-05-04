@@ -1,15 +1,13 @@
-#config(noFreeze: true)
-#config(noModuleCheck: true)
+#config(noFreeze: true, noModuleCheck: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../SimpleStagedExample.mjs"
 import "../LinkingGeneratedClasses.mjs"
-
 
 module CombinedModule with
   module SimpleStagedExample with
       class Bar(x) with
         ()
         fun bar() = x
-        fun bar_Bar_Lit1_dot_() = 1
+        private fun bar_Bar_Lit1_dot_() = 1
       class Foo(x) with
         ()
         fun foo(b) =
@@ -22,10 +20,9 @@ module CombinedModule with
               tmp1 = x.bar()
               tmp1 + 2
             else x.bar()
-        fun foo_Foo_Bar_Lit1_dot_Lit1() = 2
+        private fun foo_Foo_Bar_Lit1_dot_Lit1() = 2
       fun baz() = 2
       fun f(x, y) = x + y
-      fun f_Lit2_Lit3() = 5
       fun fib(n) =
         let {n1, tmp2, tmp3, tmp4, tmp5}
         if n is
@@ -38,16 +35,6 @@ module CombinedModule with
             tmp4 = n1 - 2
             tmp5 = fib(tmp4)
             tmp3 + tmp5
-      fun fib_Lit1() = 1
-      fun fib_Lit10() = 55
-      fun fib_Lit2() = 1
-      fun fib_Lit3() = 2
-      fun fib_Lit4() = 3
-      fun fib_Lit5() = 5
-      fun fib_Lit6() = 8
-      fun fib_Lit7() = 13
-      fun fib_Lit8() = 21
-      fun fib_Lit9() = 34
       fun foo() = 60
       fun foobar(x) =
         let {y1, z, tmp10, tmp11}
@@ -64,6 +51,17 @@ module CombinedModule with
         let {tup_3}
         tup_3 = ["\t", "\n", "\r"]
         tup_3
+      private fun f_Lit2_Lit3() = 5
+      private fun fib_Lit1() = 1
+      private fun fib_Lit10() = 55
+      private fun fib_Lit2() = 1
+      private fun fib_Lit3() = 2
+      private fun fib_Lit4() = 3
+      private fun fib_Lit5() = 5
+      private fun fib_Lit6() = 8
+      private fun fib_Lit7() = 13
+      private fun fib_Lit8() = 21
+      private fun fib_Lit9() = 34
   module LinkingGeneratedClasses with
       data class D
       fun f() =

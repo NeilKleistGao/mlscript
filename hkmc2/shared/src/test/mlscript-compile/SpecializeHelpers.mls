@@ -73,7 +73,14 @@ class Ctx(
 module Ctx with
   fun empty() = Ctx(new Map(), new Map(), new Map(), mut [], None)
 
-class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, [Block.Block, Shape]]) with
+class FunEntry(
+  val defn: FunDefn,
+  val retShape: ShapeSet,
+  val litMask: Array[Bool],
+  val isPrivate: Bool,
+)
+
+class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, FunEntry]) with
   val printer = Printer(Some(owner))
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
   // this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
@@ -135,7 +142,9 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
-      + indent("\n" + cache.values().map(p => printer.showDefn(p.0)).toArray().sort().join("\n"))
+      + indent("\n" + cache.values().map(e =>
+          if e.isPrivate then printer.showPrivateDefn(e.defn) else printer.showDefn(e.defn)
+        ).toArray().sort().join("\n"))
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map())
 
@@ -486,14 +495,20 @@ fun buildShapeSetName(ss: ShapeSet): Str =
   if vals.length is 1 then buildShapeName(vals.0)
   else "Union_" + vals.map(buildShapeName).join("_") + "_end"
 
-fun specializeName(funName, isMethod, ps, shapes) =
-  let mappedShapes = shapes.map((ss, i, _) =>
+fun specializationParamShapes(isMethod, ps, shapes) =
+  shapes.map((ss, i, _) =>
     if isMethod and i is 0 then ss
     else ss.map((s, j, _) =>
       let psIdx = if isMethod then i - 1 else i
       if ps.(psIdx).(j).constraint is Some(Dynamic) then mkDyn() else s
     )
   )
+
+fun hasAllDynamicParams(isMethod, ps, shapes) =
+  specializationParamShapes(isMethod, ps, shapes).every(_.every(_.isDyn()))
+
+fun specializeName(funName, isMethod, ps, shapes) =
+  let mappedShapes = specializationParamShapes(isMethod, ps, shapes)
   if mappedShapes.every(_.every(_.isDyn())) then funName
   else funName + "_" + mappedShapes.map(pss => pss.map(buildShapeSetName).join("_")).join("_dot_")
 
@@ -516,8 +531,9 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   if defn is FunDefn(Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
     let newName = specializeName(funName, isMethod, ps, shapes)
+    let isPrivate = not hasAllDynamicParams(isMethod, ps, shapes)
     if cache.getFun(newName) is
-      Some(x) then [x.0.sym.name, x.1, x.2]
+      Some(x) then [x.defn.sym.name, x.retShape, x.litMask]
       None then
         let paramShapes = if isMethod then shapes.slice(1) else shapes
 
@@ -556,7 +572,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
           not (not (p2.constraint is Some(Dynamic)) and isLitShape(paramShapes.(i).(j)))
         ))
         // Store placeholder with real litMask so recursive calls use correct filtering
-        cache.setFun(newName, [FunDefn(Symbol(newName), newPs, body), mkDyn(), litMask])
+        cache.setFun(newName, FunEntry(FunDefn(Symbol(newName), newPs, body), mkDyn(), litMask, isPrivate))
 
         let res = prop(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
@@ -570,10 +586,10 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else bodyWithScoped
 
         // Update cache with finalized body and actual return shape
-        let entry = cache.setFun(newName, [FunDefn(Symbol(newName), newPs, finalBody), actualRetShape, litMask])
+        let entry = cache.setFun(newName, FunEntry(FunDefn(Symbol(newName), newPs, finalBody), actualRetShape, litMask, isPrivate))
 
 
-        [entry.0.sym.name, entry.1, entry.2]
+        [entry.defn.sym.name, entry.retShape, entry.litMask]
   else throw Error("instrumented function is not a FunDefn")
 
 // this builds the shape of an instantiation of class through shape propagation of constructor

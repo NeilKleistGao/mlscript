@@ -38,7 +38,6 @@ Simple."test2_gen"(mkDyn())
 print(Simple."cache$Simple")
 //│ > module Simple with
 //│ >   ()
-//│ >   fun f_Lit2_Lit2() = 4
 //│ >   fun fib(n) =
 //│ >     let {n1, tmp2, tmp3, tmp4, tmp5}
 //│ >     if n is
@@ -51,22 +50,23 @@ print(Simple."cache$Simple")
 //│ >         tmp4 = n1 - 2
 //│ >         tmp5 = fib(tmp4)
 //│ >         tmp3 + tmp5
-//│ >   fun fib_Lit1() = 1
-//│ >   fun fib_Lit2() = 1
-//│ >   fun fib_Lit3() = 2
-//│ >   fun fib_Lit4() = 3
-//│ >   fun pyth_Dyn_Lit2(x) =
-//│ >     let {tmp6, tmp7}
-//│ >     tmp6 = Simple."NonStaged$Simple".sq(x)
-//│ >     tmp7 = 4
-//│ >     tmp6 + 4
-//│ >   fun pyth_Lit2_Lit4() = 20
 //│ >   fun test() = 20
 //│ >   fun test2(n) =
 //│ >     let {dyn, tmp10}
 //│ >     dyn = pyth_Dyn_Lit2(n)
 //│ >     tmp10 = *(dyn, 2)
 //│ >     fib(tmp10)
+//│ >   private fun f_Lit2_Lit2() = 4
+//│ >   private fun fib_Lit1() = 1
+//│ >   private fun fib_Lit2() = 1
+//│ >   private fun fib_Lit3() = 2
+//│ >   private fun fib_Lit4() = 3
+//│ >   private fun pyth_Dyn_Lit2(x) =
+//│ >     let {tmp6, tmp7}
+//│ >     tmp6 = Simple."NonStaged$Simple".sq(x)
+//│ >     tmp7 = 4
+//│ >     tmp6 + 4
+//│ >   private fun pyth_Lit2_Lit4() = 20
 
 class C(val x)
 
@@ -96,11 +96,11 @@ If."test2_gen"(mkLit(1), mkDyn())
 print(If."cache$If")
 //│ > module If with
 //│ >   ()
-//│ >   fun f_C_Lit2(x) = "C(2) "
-//│ >   fun f_C_Lit3(x) = "C "
-//│ >   fun f_Lit2() = "else "
 //│ >   fun test() = "C(2) C else "
-//│ >   fun test2_Lit1_Dyn(y) =
+//│ >   private fun f_C_Lit2(x) = "C(2) "
+//│ >   private fun f_C_Lit3(x) = "C "
+//│ >   private fun f_Lit2() = "else "
+//│ >   private fun test2_Lit1_Dyn(y) =
 //│ >     let {tmp6}
 //│ >     if y is
 //│ >       1 then 1
@@ -127,19 +127,19 @@ If2."test3_gen"()
 print(If2."cache$If2")
 //│ > module If2 with
 //│ >   ()
-//│ >   fun f_C_Dyn(x) =
-//│ >     let {y, tmp}
-//│ >     y = x.n
-//│ >     tmp = ()
-//│ >     y + 1
-//│ >   fun f_C_Lit2(x) = 3
-//│ >   fun f_Lit0() = 1
 //│ >   fun test() = 3
 //│ >   fun test2(dyn) =
 //│ >     let {tmp2}
 //│ >     tmp2 = If2."C$If2"(dyn)
 //│ >     f_C_Dyn(tmp2)
 //│ >   fun test3() = 1
+//│ >   private fun f_C_Dyn(x) =
+//│ >     let {y, tmp}
+//│ >     y = x.n
+//│ >     tmp = ()
+//│ >     y + 1
+//│ >   private fun f_C_Lit2(x) = 3
+//│ >   private fun f_Lit0() = 1
 
 staged module LinearAlgebra with
   fun _dot(v1, v2, n, acc) = 
@@ -153,37 +153,37 @@ LinearAlgebra."test_gen"(mkDyn())
 print(LinearAlgebra."cache$LinearAlgebra")
 //│ > module LinearAlgebra with
 //│ >   ()
-//│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2) =
+//│ >   fun test(x) =
+//│ >     let {tmp3, tmp4}
+//│ >     tmp3 = [x, 1, 2]
+//│ >     tmp4 = [3, 4, 1]
+//│ >     dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(tmp3, tmp4)
+//│ >   private fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 1
 //│ >     tmp1 = *(v1.(0), 3)
 //│ >     tmp2 = tmp1 + 0
 //│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, tmp2)
-//│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, acc) =
+//│ >   private fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit1_Dyn(v1, v2, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 2
 //│ >     tmp1 = 4
 //│ >     tmp2 = 4 + acc
 //│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, tmp2)
-//│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, acc) =
+//│ >   private fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit2_Dyn(v1, v2, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = false
 //│ >     tmp = 3
 //│ >     tmp1 = 2
 //│ >     tmp2 = 2 + acc
 //│ >     _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, tmp2)
-//│ >   fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, acc) =
+//│ >   private fun _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit3_Dyn(v1, v2, acc) =
 //│ >     let {scrut, tmp, tmp1, tmp2}
 //│ >     scrut = true
 //│ >     acc
-//│ >   fun dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(v1, v2) = _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2)
-//│ >   fun test(x) =
-//│ >     let {tmp3, tmp4}
-//│ >     tmp3 = [x, 1, 2]
-//│ >     tmp4 = [3, 4, 1]
-//│ >     dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(tmp3, tmp4)
+//│ >   private fun dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end(v1, v2) = _dot_Arr_Dyn_Lit1_Lit2_end_Arr_Lit3_Lit4_Lit1_end_Lit0_Lit0(v1, v2)
 
 staged class L1(val y) with
   fun call(x) = x + 2 + y
@@ -214,23 +214,6 @@ Dispatching."test_gen"(mkDyn())
 print(Dispatching."cache$Dispatching")
 //│ > module Dispatching with
 //│ >   ()
-//│ >   fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
-//│ >     let {obj_7, obj_8}
-//│ >     if b is
-//│ >       true then
-//│ >         obj_7 = new! Dispatching."L2$Dispatching"(2)
-//│ >         obj_7
-//│ >       else
-//│ >         obj_8 = new! Dispatching."L3$Dispatching"(3)
-//│ >         obj_8
-//│ >   fun pick_L2_Lit2_L3_Lit3_Litfalse(x, y) =
-//│ >     let {obj_5}
-//│ >     obj_5 = new! Dispatching."L3$Dispatching"(3)
-//│ >     obj_5
-//│ >   fun pick_L2_Lit2_L3_Lit3_Littrue(x, y) =
-//│ >     let {obj_2}
-//│ >     obj_2 = new! Dispatching."L2$Dispatching"(2)
-//│ >     obj_2
 //│ >   fun test(b) =
 //│ >     let {y1, m, tmp1, tmp2, tmp3}
 //│ >     tmp1 = new! Dispatching."L1$Dispatching"(1)
@@ -239,12 +222,29 @@ print(Dispatching."cache$Dispatching")
 //│ >     tmp3 = new! Dispatching."L3$Dispatching"(3)
 //│ >     m = pick_L2_Lit2_L3_Lit3_Dyn(tmp2, tmp3, b)
 //│ >     twice_Union_L2_Lit2_L3_Lit3_end_Lit5(m)
-//│ >   fun test_Litfalse() = 29
-//│ >   fun test_Littrue() = 9
-//│ >   fun twice_L1_Lit1_Lit5(f) = 11
-//│ >   fun twice_L2_Lit2_Lit5(f) = 9
-//│ >   fun twice_L3_Lit3_Lit5(f) = 29
-//│ >   fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f) =
+//│ >   private fun pick_L2_Lit2_L3_Lit3_Dyn(x, y, b) =
+//│ >     let {obj_7, obj_8}
+//│ >     if b is
+//│ >       true then
+//│ >         obj_7 = new! Dispatching."L2$Dispatching"(2)
+//│ >         obj_7
+//│ >       else
+//│ >         obj_8 = new! Dispatching."L3$Dispatching"(3)
+//│ >         obj_8
+//│ >   private fun pick_L2_Lit2_L3_Lit3_Litfalse(x, y) =
+//│ >     let {obj_5}
+//│ >     obj_5 = new! Dispatching."L3$Dispatching"(3)
+//│ >     obj_5
+//│ >   private fun pick_L2_Lit2_L3_Lit3_Littrue(x, y) =
+//│ >     let {obj_2}
+//│ >     obj_2 = new! Dispatching."L2$Dispatching"(2)
+//│ >     obj_2
+//│ >   private fun test_Litfalse() = 29
+//│ >   private fun test_Littrue() = 9
+//│ >   private fun twice_L1_Lit1_Lit5(f) = 11
+//│ >   private fun twice_L2_Lit2_Lit5(f) = 9
+//│ >   private fun twice_L3_Lit3_Lit5(f) = 29
+//│ >   private fun twice_Union_L2_Lit2_L3_Lit3_end_Lit5(f) =
 //│ >     let {tmp}
 //│ >     if f is
 //│ >       Dispatching."L2$Dispatching" then
@@ -260,18 +260,18 @@ print(L2.class."class$cache$L2")
 print(L3.class."class$cache$L3")
 //│ > class L1(y) with
 //│ >   ()
-//│ >   fun call_L1_Lit1_dot_Lit5() = 8
-//│ >   fun call_L1_Lit1_dot_Lit8() = 11
+//│ >   private fun call_L1_Lit1_dot_Lit5() = 8
+//│ >   private fun call_L1_Lit1_dot_Lit8() = 11
 //│ > class L2(y) with
 //│ >   ()
-//│ >   fun call_L2_Lit2_dot_Lit5() = 7
-//│ >   fun call_L2_Lit2_dot_Lit7() = 9
-//│ >   fun call_L2_Lit2_dot_Union_Lit7_Lit13_end(x) = x + 2
+//│ >   private fun call_L2_Lit2_dot_Lit5() = 7
+//│ >   private fun call_L2_Lit2_dot_Lit7() = 9
+//│ >   private fun call_L2_Lit2_dot_Union_Lit7_Lit13_end(x) = x + 2
 //│ > class L3(y) with
 //│ >   ()
-//│ >   fun call_L3_Lit3_dot_Lit13() = 29
-//│ >   fun call_L3_Lit3_dot_Lit5() = 13
-//│ >   fun call_L3_Lit3_dot_Union_Lit7_Lit13_end(x) =
+//│ >   private fun call_L3_Lit3_dot_Lit13() = 29
+//│ >   private fun call_L3_Lit3_dot_Lit5() = 13
+//│ >   private fun call_L3_Lit3_dot_Union_Lit7_Lit13_end(x) =
 //│ >     let {tmp1}
 //│ >     tmp1 = *(x, 2)
 //│ >     tmp1 + 3
@@ -305,17 +305,17 @@ This."test2_gen"(mkLit(1))
 print(This."cache$This")
 //│ > module This with
 //│ >   ()
-//│ >   fun test2_Lit1() = 2
-//│ >   fun test_Lit1() = 3
+//│ >   private fun test2_Lit1() = 2
+//│ >   private fun test_Lit1() = 3
 
 print(A.class."class$cache$A")
 print(B.class."class$cache$B")
 //│ > class A(x) with
 //│ >   ()
-//│ >   fun f_A_Lit1_dot_Lit1() = 2
+//│ >   private fun f_A_Lit1_dot_Lit1() = 2
 //│ > class B(x) with
 //│ >   ()
-//│ >   fun f_B_Lit1_dot_A_Lit1(y) = 3
+//│ >   private fun f_B_Lit1_dot_A_Lit1(y) = 3
 
 staged class B(val x, val y) with
   val z = x + y
@@ -376,8 +376,8 @@ M."cache$M"
 //│ = module M with \
 //│     () \
 //│     fun f(x, y) = *(x, y) \
-//│     fun f_Lit2_Dyn(y) = *(2, y) \
-//│     fun g(y) = f_Lit2_Dyn(y)
+//│     fun g(y) = f_Lit2_Dyn(y) \
+//│     private fun f_Lit2_Dyn(y) = *(2, y)
 
 staged module M with
   fun f(x) = x.2
