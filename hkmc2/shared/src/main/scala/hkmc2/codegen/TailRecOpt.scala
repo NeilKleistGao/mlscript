@@ -198,7 +198,7 @@ class TailRecOpt(using State, TL, Raise):
   
   // Success:       This arg list was successfully transformed. The args may be blindly assigned to the
   //                parameters in order.
-  // ForceSpread:   This arg list may be rewritten, but contains spread parameters that we must use a tuple
+  // ForceSpread:   This arg list may be rewritten, but contains spread parameters for which must use a tuple
   //                to correctly extract the arguments correctly.
   private enum CallArgsResult:
     case Success(res: List[Result])
