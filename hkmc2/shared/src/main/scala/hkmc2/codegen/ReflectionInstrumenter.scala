@@ -200,7 +200,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
       argss match
         case Nil =>
           raise(ErrorReport(msg"Instantiate with no argument lists not supported in staged module." -> r.toLoc :: Nil))
-          End() 
+          End()
         case args :: Nil =>
           transformArgs(args): xs =>
             transformPath(cls): cls =>
