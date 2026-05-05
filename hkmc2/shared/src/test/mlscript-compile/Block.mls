@@ -171,6 +171,15 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showArgs(args: Array[Arg]) =
     args.map(showArg(_)).join(", ")
+  
+  fun hasClassValue(cls: Path) =
+    if cls is
+      ValueRef(ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
+      Select(_, ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
+      else false
+
+  fun showInstantiatePath(cls: Path) =
+    showPath(cls) + (if hasClassValue(cls) then ".class" else "")
 
   fun showResult(r: Result): Str =
     if r is
@@ -182,7 +191,8 @@ class Printer(val owner: Opt[Symbol]) with
           ValueRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
         else showPath(fun_) + "(" + showArgs(args) + ")"
       Instantiate(cls, args) then 
-        let prefix = if cls is ValueRef(ClassSymbol) and owner is Some(owner) then "new! " + showPath(cls) else "new " + showPath(cls)
+        let classPath = showInstantiatePath(cls)
+        let prefix = if cls is ValueRef(ClassSymbol) and owner is Some(owner) then "new! " + classPath else "new " + classPath
         prefix + (if args.length != 0 then "(" + showArgs(args) + ")" else "")
       Tuple(elems) then "[" + showArgs(elems) + "]"
       _ then "<unknown result:" ~ r ~ ">"

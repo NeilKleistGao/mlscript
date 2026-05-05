@@ -54,11 +54,26 @@ LinkingGeneratedClasses.g().call(3)
 
 import "../../mlscript-compile/staging/StagedClass.mls"
 
-:fixme
-// FIXME: module wasn't staged alongside class
-gen(StagedClass."class", "StagedClass")
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'generate')
+
+gen(StagedClass, "StagedClass")
+
+
+import "../../mlscript-compile/staging/out/StagedClass.mls"
+
+
+StagedClass.foo()
+//│ = Foo
+
+
+StagedClass.bar(false)
+//│ = Bar(1)
+
+StagedClass.bar(true)
+//│ = Bar(0)
+
 
 import "../../mlscript-compile/staging/ImportingFiles.mls"
 
 gen(ImportingFiles, "ImportingFiles")
+
+import "../../mlscript-compile/staging/out/ImportingFiles.mls"
