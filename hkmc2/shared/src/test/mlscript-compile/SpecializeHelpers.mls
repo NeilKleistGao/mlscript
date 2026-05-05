@@ -86,6 +86,7 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
   // this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
   fun setFun(k, v) = cache.set(k, v); v
   fun toString() =
+    let p = printer // FIXME: figure out why we need this p
     let decl = if owner is
       ConcreteClassSymbol then "class "
       ModuleSymbol then "module "
@@ -93,17 +94,19 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       ConcreteClassSymbol(_, _, Some, _, _) then owner.value.class
       else owner.value
     
-    val paramList = if owner is 
+    let paramText = if owner is
       ConcreteClassSymbol and owner.paramsOpt is
-        Some(ps) then [ps, ...owner.auxParams]
-        else owner.auxParams
-      ModuleSymbol then []
+        Some(ps) then printer.showCtorParams(ps) + owner.auxParams.map(pl => p.showParams(pl)).join("")
+        else owner.auxParams.map(pl => p.showParams(pl)).join("")
+      ModuleSymbol then ""
 
     // process preCtor: inline temp variable when printing
     class InlinePrinter(ctx: Map[Symbol, String]) extends Printer(Some(owner)) with
       fun showPath(p) = if p is
         ValueRef(s) and ctx.has(s) then ctx.get(s)
-        Select(qual, name) then showPath(qual) + "." + this.showSymbol(name)
+        Select(qual, name) and
+          qual is ValueRef(sym) and sym == owner then this.showOwnerMemberSymbol(name)
+          else showPath(qual) + "." + this.showSymbol(name)
         DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
         DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
         ValueRef(s) then this.showSymbol(s)
@@ -137,14 +140,15 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     assert ctor is FunDefn
     let params = new Set(ctor.params.flat().map(_.sym))
     let ctorBody = removeExtraValDefn(params, ctor.body)
+    let methodDefns = cache.values().map(e =>
+      if e.isPrivate then printer.showPrivateDefn(e.defn) else printer.showDefn(e.defn)
+    ).toArray().sort().join("\n")
     
-    decl + owner.name + printer.showParamList(paramList)
+    decl + owner.name + paramText
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
-      + indent("\n" + cache.values().map(e =>
-          if e.isPrivate then printer.showPrivateDefn(e.defn) else printer.showDefn(e.defn)
-        ).toArray().sort().join("\n"))
+      + (if methodDefns == "" then "" else indent("\n" + methodDefns))
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map())
 

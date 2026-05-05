@@ -485,7 +485,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               case S(owner: DefinitionSymbol[ModuleOrObjectDef | ClassDef]) =>
                 Select(reconstruct(owner), Tree.Ident(s.nme))(N)
               case N => defn match
-                case l: (ModuleOrObjectDef | ClassDef) => Value.Ref(l.bsym, S(s))
+                case l: (ModuleOrObjectDef | ClassDef) => Value.Ref(l.bsym, N)
                 case l: ClsLikeDefn => Value.Ref(l.sym, S(s))
             case N => s.asPath 
 

@@ -145,6 +145,14 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showDefnSymbol(s: Symbol) =
     s.name.replaceAll("$", "_")
+
+  fun isGeneratedStagedClass(s: Symbol) =
+    if s is
+      ConcreteClassSymbol(_, value, _, _, _) then isStagedClass(value)
+      else false
+
+  fun showOwnerMemberSymbol(s: Symbol) =
+    if isGeneratedStagedClass(s) then showDefnSymbol(s) else showSymbol(s)
   
   fun showSymbol(s: Symbol) =
     if s is ModuleSymbol | ConcreteClassSymbol and owner is Some(owner) and s.redirect
@@ -157,7 +165,7 @@ class Printer(val owner: Opt[Symbol]) with
       Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit, _)) then "()"
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
-        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
+        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showOwnerMemberSymbol(name) // TODO: check if we should use `==` here
         qual is ValueRef(sym) and sym is ClassSymbol then "this." + showSymbol(name)
         else
           showPath(qual) + "." + showSymbol(name)
@@ -174,6 +182,8 @@ class Printer(val owner: Opt[Symbol]) with
   
   fun hasClassValue(cls: Path) =
     if cls is
+      Select(ValueRef(sym), name) and
+        owner is Some(owner) and sym == owner and isGeneratedStagedClass(name) then false
       ValueRef(ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
       Select(_, ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
       else false
@@ -233,7 +243,7 @@ class Printer(val owner: Opt[Symbol]) with
         showFunDefn("", sym, ps, body)
       ClsLikeDefn(sym, methods, _) and sym is ConcreteClassSymbol(_, v, _, _, _) and 
         not isStagedClass(v) then
-          "data class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
+          "class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
             + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
         isStagedClass(v) then getClassCache(v)
       // TODO: used to represent assignments in constructors, which still need some adjustments
