@@ -1091,6 +1091,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         ::: capturesOrdered.map(x => capSymsMap_(x).vs)
         ::: passedSymsOrdered.map(x => passedSymsMap_(x).vs))
       .map(Param.simple(_))
+    val auxParamList = PlainParamList(auxParams)
     
     // Whether this can be lifted without the need to pass extra parameters.
     val isTrivial = auxParams.isEmpty
@@ -1100,45 +1101,43 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     val flattenedSym = BlockMemberSymbol(obj.cls.sym.nme + "$", Nil, true)
     val flattenedDSym = TermSymbol.fromFunBms(flattenedSym, N)
     
+    // Contains *all* parameters, and applies them all at once in a single `Instantiate`
     def mkFlattenedDefn: FunDefn =
+      // Symbols for the aux parameter list
       val auxSyms = auxParams.map(p => VarSymbol(Tree.Ident(p.sym.nme)))
-      val main = obj.cls.paramsOpt match
-        case Some(value) => dupParamList(value)
-        case None => obj.cls.auxParams.headOption match
-          case Some(value) => dupParamList(value)
-          case None => PlainParamList(Nil)
-      val mainSyms = main.params.map(_.sym)
-      val restSym = main.restParam.map(_.sym)
-      val argList1_ = (restSym match
-          case Some(value) => mainSyms.appended(value)
-          case None => mainSyms
-        ).map(s => s.asPath.asArg)
-      val argList2_ = auxSyms.map(s => s.asPath.asArg)
+      val auxParamListLocal = PlainParamList(auxSyms.map(Param.simple(_)))
       
-      val clsIsParamless = cls.paramsOpt.isEmpty && cls.auxParams.length == 0
+      val dupedClsAuxParams = cls.auxParams.map(dupParamList(_))
+      val dupedMainOpt = cls.paramsOpt.map(dupParamList(_))
+      val clsParamLists = dupedMainOpt match
+        case Some(dupedMain) => dupedMain :: dupedClsAuxParams
+        case None => dupedClsAuxParams
+      // Contains aux param list
+      val allParamLists = auxParamListLocal :: clsParamLists
       
-      val argList1 =
-        if clsIsParamless then argList2_
-        else argList1_
-      val argList2 = argList2_
+      // Uses the symbols from pl1.
+      def applyPlToPl(pl1: ParamList, pl2: ParamList): List[Arg] = (pl1.restParam, pl2.restParam) match
+        case (S(rp), S(_)) => pl1.params.foldRight(Arg(S(SpreadKind.Eager), rp.sym.asPath) :: Nil)(_.sym.asPath.asArg :: _)
+        case (N, N) => pl1.paramSyms.map(_.asPath.asArg)
+        case _ => die
       
-      val auxParamList = ParamList(
-        ParamListFlags.empty,
-        auxSyms.map(Param.simple(_)),
-        N
-      )
-      val tmp = TempSymbol(N)
+      // If class has a main param list, the aux list comes after it
+      inline def appliedMainAndAuxArgs(rest: List[List[Arg]]): List[List[Arg]] = (dupedMainOpt, cls.paramsOpt) match
+        case (S(dupedMain), S(clsParams)) => applyPlToPl(dupedMain, clsParams) :: applyPlToPl(auxParamListLocal, auxParamList) :: rest
+        case (N, N) => applyPlToPl(auxParamListLocal, auxParamList) :: rest
+        case _ => die
+      
+      val appliedClsAuxArgs = (dupedClsAuxParams zip cls.auxParams).map(applyPlToPl)
+      
+      // main :: aux :: clsAuxArgs
+      // or aux :: clsAuxArgs
+      val argsList = appliedMainAndAuxArgs(appliedClsAuxArgs)
+      
       val ref = Value.Ref(obj.cls.sym, S(obj.cls.isym))
-      val ret = 
-        if clsIsParamless then Return(tmp.asPath, false)
-        else Return(Call(tmp.asPath, argList2 ne_:: Nil)(true, config.checkInstantiateEffect, false), false)
-      val bod = Scoped(Set(tmp), Assign(tmp, Instantiate(false, ref, argList1 ne_:: Nil), ret))
-      // Curried via multiple param lists: C$(auxArgs)(mainArgs) = new C(mainArgs)(auxArgs)
-      val paramLists =
-        if clsIsParamless then auxParamList :: Nil
-        else auxParamList :: main :: Nil
+      val inst = Instantiate(false, ref, argsList)
+      val bod = Return(inst, false)
       
-      FunDefn(N, flattenedSym, flattenedDSym, paramLists, bod)(N, annotations = Nil)
+      FunDefn(N, flattenedSym, flattenedDSym, allParamLists, bod)(N, annotations = Nil)
     
     private val flat = Lazy[Defn](mkFlattenedDefn)
     
@@ -1208,7 +1207,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       
       val newAuxList = 
         if isTrivial then cls.auxParams
-        else PlainParamList(auxParams) :: cls.auxParams
+        else auxParamList :: cls.auxParams
       
       val LifterResult(newMtds, extras) = rewriteMethods(node, obj.cls.methods)
       
