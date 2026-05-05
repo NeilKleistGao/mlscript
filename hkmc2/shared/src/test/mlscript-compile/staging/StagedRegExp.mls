@@ -1,9 +1,9 @@
 #config(noFreeze: true)
 #config(funcToCls: true)
 
-module Option with
-  data class Some(value)
-  object None
+module Maybe with
+  data class Just(value)
+  object Nothing
 
 module SeqHelper with
   class Seq(val length) with
@@ -30,17 +30,17 @@ staged module StagedRegExp with
     fun canBeEmpty()
 
   staged class Empty() extends RegExp with
-    fun derive(c) = Option.None
+    fun derive(c) = Maybe.Nothing
     fun canBeEmpty() = true
 
   staged class Exact(val ch) extends RegExp with
     fun derive(c) =
-      if ch === c then new Option.Some(new Empty())
-      else Option.None
+      if ch === c then new Maybe.Just(new Empty())
+      else Maybe.Nothing
     fun canBeEmpty() = false
 
   staged class Any() extends RegExp with
-    fun derive(c) = new Option.Some(new Empty())
+    fun derive(c) = new Maybe.Just(new Empty())
     fun canBeEmpty() = false
 
   staged class Not(val chars) extends RegExp with
@@ -49,7 +49,7 @@ staged module StagedRegExp with
         if i === chars.Seq#length then true
         else if chars.(i) === c then false
         else check(c, i + 1)
-      if check(c, 0) then new Option.Some(new Empty()) else Option.None
+      if check(c, 0) then new Maybe.Just(new Empty()) else Maybe.Nothing
     fun canBeEmpty() = false
 
   fun notWord() = new Not(CharSet.alphabet())
@@ -59,21 +59,21 @@ staged module StagedRegExp with
   staged class Union(val p1, val p2) extends RegExp with
     fun derive(c) =
       if [p1.RegExp#derive(c), p2.RegExp#derive(c)] is
-        [Option.Some(p1'), Option.Some(p2')] then new Option.Some(new Union(p1', p2'))
-        [Option.Some(p1'), Option.None] then new Option.Some(p1')
-        [Option.None, Option.Some(p2')] then new Option.Some(p2')
-        else Option.None
+        [Maybe.Just(p1'), Maybe.Just(p2')] then new Maybe.Just(new Union(p1', p2'))
+        [Maybe.Just(p1'), Maybe.Nothing] then new Maybe.Just(p1')
+        [Maybe.Nothing, Maybe.Just(p2')] then new Maybe.Just(p2')
+        else Maybe.Nothing
     fun canBeEmpty() = p1.RegExp#canBeEmpty() || p2.RegExp#canBeEmpty()
 
   fun question(r) = new Union(r, new Empty())
 
   staged class In(val chars) extends RegExp with
+    fun check(c, i) =
+      if i === chars.Seq#length then false
+      else if chars.(i) === c then true
+      else check(c, i + 1)
     fun derive(c) =
-      fun check(c, i) =
-        if i === chars.Seq#length then false
-        else if chars.(i) === c then true
-        else check(c, i + 1)
-      if check(c, 0) then new Option.Some(new Empty()) else Option.None
+      if check(c, 0) then new Maybe.Just(new Empty()) else Maybe.Nothing
     fun canBeEmpty() = false
 
   fun words() = new In(CharSet.alphabet())
@@ -83,13 +83,13 @@ staged module StagedRegExp with
   staged class Concat(val p1, val p2) extends RegExp with
     fun derive(c) =
       if [p1.RegExp#derive(c), p1.RegExp#canBeEmpty()] is
-        [Option.Some(p1'), true] then
+        [Maybe.Just(p1'), true] then
           if p2.RegExp#derive(c) is
-            Option.Some(p2') then new Option.Some(new Union(concat(p1', p2), p2'))
-            else new Option.Some(concat(p1', p2))
-        [Option.None, true] then p2.RegExp#derive(c)
-        [Option.Some(p1'), false] then new Option.Some(concat(p1', p2))
-        else Option.None
+            Maybe.Just(p2') then new Maybe.Just(new Union(concat(p1', p2), p2'))
+            else new Maybe.Just(concat(p1', p2))
+        [Maybe.Nothing, true] then p2.RegExp#derive(c)
+        [Maybe.Just(p1'), false] then new Maybe.Just(concat(p1', p2))
+        else Maybe.Nothing
     fun canBeEmpty() = p1.RegExp#canBeEmpty() and p2.RegExp#canBeEmpty()
 
   fun concat(p1, p2) =
@@ -100,8 +100,8 @@ staged module StagedRegExp with
   staged class Star(val p) extends RegExp with
     fun derive(c) =
       if p.RegExp#derive(c) is
-        Option.Some(p') then new Option.Some(concat(p', new Star(p)))
-        else Option.None
+        Maybe.Just(p') then new Maybe.Just(concat(p', new Star(p)))
+        else Maybe.Nothing
     fun canBeEmpty() = true
 
   fun plus(r) = new Concat(r, new Star(r))
@@ -111,22 +111,22 @@ staged module StagedRegExp with
 
   fun matchImpl(p, s, acc) =
     if s.Seq#length === 0 then
-      if p.RegExp#canBeEmpty() then new Option.Some(acc)
-      else Option.None
+      if p.RegExp#canBeEmpty() then new Maybe.Just(acc)
+      else Maybe.Nothing
     else
       let c = s.(0)
       if p.RegExp#derive(c) is
-        Option.Some(p') then
+        Maybe.Just(p') then
           matchImpl(p', s.Seq#slice(1), acc + c)
-        Option.None and p.RegExp#canBeEmpty() then new Option.Some(acc)
-        else Option.None
+        Maybe.Nothing and p.RegExp#canBeEmpty() then new Maybe.Just(acc)
+        else Maybe.Nothing
   fun match(p, s) = matchImpl(p, s, "")
 
   fun matchAllImpl(p, s, res) =
     if s.Seq#length === 0 then res
     else
       if match(p, s) is
-        Option.Some(ss) then
+        Maybe.Just(ss) then
           if ss.Seq#length > 0 then matchAllImpl(p, s.Seq#slice(ss.Seq#length), push(res, ss))
           else matchAllImpl(p, s.Seq#slice(1), res)
         else matchAllImpl(p, s.Seq#slice(1), res)
