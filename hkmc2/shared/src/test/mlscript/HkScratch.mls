@@ -36,7 +36,7 @@ class A(val x)(val y)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let w = new A(1)
-//│ w = fun
+//│ w = fun w
 
 let h = w(2)
 h.y
@@ -51,7 +51,7 @@ h2.y
 
 
 h.y
-//│ = 3
+//│ = 2
 
 
 
@@ -65,7 +65,7 @@ h.y
 fun foo(x)(y) = z => x + y + z
 foo(1)(2)(3)
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let foo⁰, callPrefix, lambda⁰, lambda$⁰;
+//│ let foo⁰, baseCall, lambda⁰, lambda$⁰;
 //│ define lambda$⁰ as fun lambda$¹(x, y)(z) {
 //│   return lambda¹(x, y, z)
 //│ };
@@ -79,10 +79,10 @@ foo(1)(2)(3)
 //│   set lambda$here = lambda$¹(x, y);
 //│   return lambda$here
 //│ };
-//│ set callPrefix = foo¹(1)(2);
-//│ callPrefix(3)
+//│ set baseCall = foo¹(1)(2);
+//│ baseCall(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let foo⁰, callPrefix, lambda⁰, lambda$⁰;
+//│ let foo⁰, baseCall, lambda⁰, lambda$⁰;
 //│ define lambda$⁰ as fun lambda$¹(x, y)(z) {
 //│   let x1, y1, z1, inlinedVal, tmp;
 //│   set x1 = x;
@@ -97,8 +97,8 @@ foo(1)(2)(3)
 //│   set lambda$here = lambda$¹(x, y);
 //│   return lambda$here
 //│ };
-//│ set callPrefix = foo¹(1)(2);
-//│ callPrefix(3)
+//│ set baseCall = foo¹(1)(2);
+//│ baseCall(3)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 6
 
@@ -116,14 +116,14 @@ fun foo(x)(y) =
 :sir
 foo(loudly(1))(loudly(2))(loudly(3))(loudly(4))
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let tmp, tmp1, callPrefix, tmp2, callPrefix1, tmp3;
+//│ let tmp, tmp1, baseCall, tmp2, callPrefix, tmp3;
 //│ set tmp = loudly⁰(1);
 //│ set tmp1 = loudly⁰(2);
-//│ set callPrefix = foo²(tmp)(tmp1);
+//│ set baseCall = foo²(tmp)(tmp1);
 //│ set tmp2 = loudly⁰(3);
-//│ set callPrefix1 = callPrefix(tmp2);
+//│ set callPrefix = baseCall(tmp2);
 //│ set tmp3 = loudly⁰(4);
-//│ callPrefix1(tmp3)
+//│ callPrefix(tmp3)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi 1
 //│ > hi 2

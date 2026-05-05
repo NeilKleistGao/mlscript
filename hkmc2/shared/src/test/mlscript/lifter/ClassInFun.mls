@@ -1,8 +1,7 @@
 :lift
 :js
 :noInline
-// NOTE: due to conflict between flow analysis and lifter
-:deadParamElim off
+// :deadParamElim off // used to be `off` because lifter changes the parameter lists and DPE used to look at the original ones
 
 // This test was previously used to demonstrate immutable captures names are not properly discriminated,
 // but handler no longer occur before lifting so this now yield the correct result.
@@ -382,16 +381,16 @@ set e.a = 0
 //│ = [0, "hi", 456, 789, 42, 498, 831]
 
 
+// This used to raise a softTODO in DPE
 // The error is because the type tree for classes store parameter list arity information,
 // but the lifter modifies this information, and the equality is enforced by the middle-end
-// flow analysis, which is used by dead param elimination. It is a pain to change all the
+// flow analysis, which is used by dead param elimination. It would be a pain to change all the
 // class symbols because they could be nested in other symbols at an arbitrary depth.
-:fixme
+// :fixme
 :deadParamElim 
 fun f(x) =
   class A(y) with
     fun get = x + y
   new A(2)
-//│ ╔══[INTERNAL ERROR] Compiler reached an unsupported state: mismatched ctor arg and cls param sizes
-//│ ╟── The compilation result may be incorrect.
-//│ ╙── This is a known compiler limitation; if it is a blocker for you, please report it to the maintainers.
+
+

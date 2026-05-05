@@ -182,7 +182,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
       (imps.reverse, funs.reverse, rest.reverse)
   
   
-  def block(stats: Ls[Statement], res: Rcd \/ Term, inStmtPos: Bool = false)(k: Result => Block)(using LoweringCtx): Block =
+  def block(stats: Ls[Statement], res: Rcd \/ Term, inStmtPos: Bool = false)
+        (k: Result => Block)(using LoweringCtx): Block =
     // TODO we should also isolate and reorder classes by inheritance topological sort
     val (imps, funs, rest) = splitBlock(stats, Nil, Nil, Nil)
   
@@ -380,6 +381,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
     
     blockImpl(imps ::: funs ::: rest, res)
   
+  // * Lowers the `super(...)` call we get from the `extends C(...)` syntax
   def lowerSuperCtorCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Opt[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
     arg match
     case S(arg) =>
@@ -400,30 +402,13 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         k(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc))
       case (Nil, args :: remainingArgss) =>
         acc.reverse match
-        case Nil => wrapUp(fr, args, remainingArgss)(k)
+        case Nil => lowerRemainingCalls(fr, args, remainingArgss, isTailCall, loc)(k)
         case acc: NELs[Ls[Arg]] =>
-          val tmp = loweringCtx.registerTempSymbol(N, "callPrefix")
+          val tmp = loweringCtx.registerTempSymbol(N, "baseCall")
           val call = Call(fr, acc)(isMlsFun, true, isTailCall).withLoc(loc)
-          Assign(tmp, call, wrapUp(Value.Ref(tmp), args, remainingArgss)(k))
-      case _ =>
-        def wrapUp(base: Result, remainingArgss: Ls[Term])(k: Result => Block): Block =
-          remainingArgss match
-          case Nil => k(base)
-          case args :: remainingArgss =>
-            val tmp = loweringCtx.registerTempSymbol(N, "callPrefix")
-            Assign(tmp, base,
-              lowerArgs(args): as =>
-                wrapUp(Call(Value.Ref(tmp), as ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc), remainingArgss)(k))
-        wrapUp(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc), remainingArgss)(k)
-    def wrapUp(base: Path, args: Term, remainingArgss: Ls[Term])(k: Result => Block): Block =
-      lowerArgs(args): as =>
-        val call = Call(base, as ne_:: Nil)(isMlsFun = false, true, isTailCall).withLoc(loc)
-        remainingArgss match
-        case Nil => k(call)
-        case args :: remainingArgss =>
-          val tmp = loweringCtx.registerTempSymbol(N, "callPrefix")
-          Assign(tmp, call,
-            wrapUp(Value.Ref(tmp), args, remainingArgss)(k))
+          Assign(tmp, call, lowerRemainingCalls(Value.Ref(tmp), args, remainingArgss, isTailCall, loc)(k))
+      case (_ :: _, Nil) =>
+        k(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc))
     fr.targetSymbol match
     case S(fs: TermSymbol) =>
       fs.defn match
@@ -431,6 +416,81 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         zipArgs(td.params, args, Nil)
       case _ => zipArgs(Nil, args, Nil)
     case _ => zipArgs(Nil, args, Nil)
+  
+  def lowerRemainingCalls(base: Path, args: Term, remainingArgss: Ls[Term], isTailCall: Bool, loc: Opt[Loc])
+        (k: Result => Block)(using LoweringCtx): Block =
+    lowerArgs(args): as =>
+      val call = Call(base, as ne_:: Nil)(isMlsFun = false, true, isTailCall).withLoc(loc)
+      remainingArgss match
+      case Nil => k(call)
+      case args :: remainingArgss =>
+        val tmp = loweringCtx.registerTempSymbol(N, "callPrefix")
+        Assign(tmp, call,
+          lowerRemainingCalls(Value.Ref(tmp), args, remainingArgss, isTailCall, loc)(k))
+  
+  /** Lower an instantiation with multiple argument lists into `Instantiate` and `Call` nodes,
+    * trying to group as many as possible into a single `Instantiate`
+    * when they correspond to constructor parameter lists of the same class.
+    * If fewer argument lists are provided than constructor parameter lists, eta-expands
+    * the missing ones with fresh lambdas (avoiding reliance on mutable JS class curry semantics). */
+  def lowerMultiInstantiate(mut: Bool, cls: Path, args: Ls[Term])(k: Result => Block)(using LoweringCtx): Block =
+    // Nullary instantiations are represented with one empty argument list, matching existing `Instantiate` usage.
+    def buildInstantiate(argss: Ls[Ls[Arg]]): Instantiate =
+      Instantiate(mut, cls, if argss.isEmpty then Nil :: Nil else argss)
+    // * Zip constructor param lists with argument lists, accumulating lowered args.
+    // * Consumes one argument list per constructor param list; when all ctor params are
+    // * consumed but extra args remain, falls back to `Call` nodes on the result.
+    // * When args run out before ctor params are consumed, eta-expands the remaining ones.
+    def zipArgs(remainingCtorParamss: Ls[ParamList], remainingArgss: Ls[Term], acc: Ls[Ls[Arg]]): Block =
+      (remainingCtorParamss, remainingArgss) match
+      case (ps :: remainingParams, args :: remainingArgs) =>
+        lowerArgs(args)(as => zipArgs(remainingParams, remainingArgs, as :: acc))
+      case (Nil, Nil) =>
+        k(buildInstantiate(acc.reverse))
+      case (Nil, args :: remainingArgss) =>
+        val tmp = loweringCtx.registerTempSymbol(N, "baseInst")
+        Assign(tmp, buildInstantiate(acc.reverse),
+          lowerRemainingCalls(Value.Ref(tmp), args, remainingArgss, isTailCall = false, N)(k))
+      case (remainingParamss, Nil) =>
+        // * Eta-expand missing argument lists by creating lambdas for each remaining param list.
+        // * This makes partial `new C(args...)` explicit instead of relying on the JS class curry.
+        def etaExpand(remainingParamss: Ls[ParamList], accArgss: Ls[Ls[Arg]]): Result =
+          remainingParamss match
+          case Nil => buildInstantiate(accArgss)
+          case ps :: rest =>
+            val freshSyms = ps.params.map(p => new VarSymbol(new Tree.Ident(p.sym.nme)))
+            softTODO(ps.restParam.isEmpty, "Eta expanding rest parameters in constructor definitions is not yet supported")
+            val freshParams = (ps.params zip freshSyms).map((p, s) => Param(p.flags, s, N, p.modulefulness))
+            val freshParamList = ParamList(ps.flags, freshParams, N)
+            val freshArgs = freshSyms.map(s => Arg(N, Value.Ref(s)))
+            Lambda(freshParamList, Return(etaExpand(rest, accArgss :+ freshArgs), implct = false))
+        k(etaExpand(remainingParamss, acc.reverse))
+    // * Resolve the class definition to get the constructor param lists.
+    // * The class path typically resolves to a TermSymbol (the constructor function),
+    // * so we also look up the owner InnerSymbol via TermDefinition#owner.
+    // * Note: apparently, this can also be accessed through TermDefinition#companionClass
+    // * (what Copilot initially used), which is weird.
+    val ctorParamLists: Ls[ParamList] =
+      cls.targetSymbol.flatMap: sym =>
+        sym.asClsOrMod.flatMap(_.defn) orElse
+        sym.asTrm.flatMap(_.owner).flatMap(_.asDefnSym.defn)
+      .fold(Nil: Ls[ParamList]): clsDef =>
+        clsDef.paramsOpt.toList ::: clsDef.auxParams
+    if ctorParamLists.isEmpty then
+      // * Need to specially handle no-param classes
+      args match
+      case Nil =>
+        k(buildInstantiate(Nil))
+      case args :: remainingArgss =>
+        lowerArgs(args): as =>
+          remainingArgss match
+          case Nil =>
+            k(buildInstantiate(as :: Nil))
+          case remainingArgss =>
+            val tmp = loweringCtx.registerTempSymbol(N, "baseInst")
+            Assign(tmp, buildInstantiate(as :: Nil),
+              lowerRemainingCalls(Value.Ref(tmp), remainingArgss.head, remainingArgss.tail, isTailCall = false, N)(k))
+    else zipArgs(ctorParamLists, args, Nil)
   
   def lowerArgs(arg: Term)(k: Ls[Arg] => Block)(using LoweringCtx): Block =
     arg match
@@ -807,20 +867,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx):
         case _ => spuriousWarning
       subTerm(cls): sr =>
         rft match
-        case N =>
-          as match
-          case Nil =>
-            k(Instantiate(mut, sr, Nil :: Nil))
-          case a :: Nil => lowerArgs(a): asr =>
-            k(Instantiate(mut, sr, asr :: Nil))
-          case a :: as => lowerArgs(a): asr =>
-            val z = as.foldLeft[Path => Block](k): (acc, arg) => 
-              inner =>
-                lowerArgs(arg): asr2 =>
-                  val ts = loweringCtx.registerTempSymbol(N)
-                  Assign(ts, Call(inner, asr2 ne_:: Nil)(true, true, false), acc(Value.Ref(ts)))
-            val ts = loweringCtx.registerTempSymbol(N)
-            Assign(ts, Instantiate(mut, sr, asr ne_:: Nil), z(Value.Ref(ts)))
+        case N => lowerMultiInstantiate(mut, sr, as)(k)
         case S((isym, rft)) =>
           val sym = new BlockMemberSymbol(isym.name, Nil)
           loweringCtx.collectScopedSym(sym)

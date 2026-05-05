@@ -52,12 +52,12 @@ f(2, 3, 4)
 fun f2(x, y) = x + y
 id(f2)(2)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ let f21, callPrefix;
+//│ let f21, baseCall;
 //│ f21 = function f2(x1, y1) {
 //│   return x1 + y1
 //│ };
-//│ callPrefix = Predef.id(f21);
-//│ block$res5 = runtime.safeCall(callPrefix(2));
+//│ baseCall = Predef.id(f21);
+//│ block$res5 = runtime.safeCall(baseCall(2));
 //│ undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = NaN
@@ -66,10 +66,8 @@ id(f2)(2)
 :re
 id(f)(2)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ let callPrefix1;
-//│ callPrefix1 = runtime.checkCall(Predef.id(f1));
-//│ block$res6 = runtime.safeCall(callPrefix1(2));
-//│ undefined
+//│ let baseCall1;
+//│ baseCall1 = runtime.checkCall(Predef.id(f1)); block$res6 = runtime.safeCall(baseCall1(2)); undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ═══[RUNTIME ERROR] Error: Function 'f' expected 2 arguments but got 1
 
@@ -79,7 +77,7 @@ id(f)(2)
 fun f(x)(y, z) = x + y + z
 id(f)(3)(4)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ let f3, callPrefix2, callPrefix3;
+//│ let f3, baseCall2, callPrefix;
 //│ f3 = function f(x1) {
 //│   runtime.checkArgs("f", 1, true, arguments.length);
 //│   return (y1, z) => {
@@ -88,9 +86,9 @@ id(f)(3)(4)
 //│     return tmp + z
 //│   }
 //│ };
-//│ callPrefix2 = runtime.checkCall(Predef.id(f3));
-//│ callPrefix3 = runtime.safeCall(callPrefix2(3));
-//│ block$res7 = runtime.safeCall(callPrefix3(4));
+//│ baseCall2 = runtime.checkCall(Predef.id(f3));
+//│ callPrefix = runtime.safeCall(baseCall2(3));
+//│ block$res7 = runtime.safeCall(callPrefix(4));
 //│ undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = NaN
@@ -133,7 +131,7 @@ data class Cls(x, y) with
   fun f(z, p)(q, s) = x + y + z + p + q + s
 id(Cls(1, 2)).f(3, 4)(5)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ let Cls5, tmp4, tmp5, callPrefix4;
+//│ let Cls5, tmp4, tmp5, callPrefix1;
 //│ Cls5 = function Cls(x1, y1) {
 //│   return globalThis.Object.freeze(new Cls.class(x1, y1));
 //│ };
@@ -162,8 +160,8 @@ id(Cls(1, 2)).f(3, 4)(5)
 //│ });
 //│ tmp4 = runtime.checkCall(Cls5(1, 2));
 //│ tmp5 = runtime.checkCall(Predef.id(tmp4));
-//│ callPrefix4 = runtime.safeCall(tmp5.f(3, 4));
-//│ block$res12 = runtime.safeCall(callPrefix4(5));
+//│ callPrefix1 = runtime.safeCall(tmp5.f(3, 4));
+//│ block$res12 = runtime.safeCall(callPrefix1(5));
 //│ undefined
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = NaN
