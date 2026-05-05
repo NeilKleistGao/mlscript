@@ -12,7 +12,7 @@ import mlscript.utils.*, shorthands.*
 import semantics.*
 import semantics.Elaborator.{State, Ctx, ctx}
 
-import syntax.{Literal, Tree}
+import syntax.{Keyword, Literal, Tree}
 import hkmc2.syntax.Tree.Ident
 
 // it should be possible to cache some common constructions (End, Option) into the context
@@ -365,7 +365,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block, false))
       (Scoped(Set(argSyms*), rest))
 
-    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false, f.configOverride, f.visibility)
+    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(f.configOverride, f.annotations)
 
   def refreshParamList(ps: ParamList) = 
     PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
@@ -382,7 +382,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       tuple(tups): args =>
         call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
           Return(res, false)
-    FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride, f.visibility)
+    FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(f.configOverride, f.annotations)
   
   def stageCtor(ctorFun: FunDefn): FunDefn = 
     // refresh VarSymbols for ctor
@@ -428,13 +428,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       transformSymbol(ownerSym, pOpt = pOpt)(using Context(new HashMap())): (stagedSym, _) =>
         ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): map =>
           ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
-            Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
+            Define(ValDefn(cacheTsym, cacheSym, funCache)(N, Nil), rest)
 
     def generatorMapDecl(rest: Block) =
       generatorEntries.collectApply: defs =>
         tuple(defs): tup =>
           ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-            Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
+            Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N, Nil), rest)
     
     val propFunDef =
       val sym = BlockMemberSymbol("propagate", Nil)
@@ -451,7 +451,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         nestedPropagates.foldRight(callGenCont(End()))((path, rest) =>
           call(path.selSN("propagate"), Nil, isMlsFun = true, symName = "tmp")(_ => rest)
         )
-      FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(false, N, Visibility.Public)
+      FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(N, Nil)
 
     def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
       call(modSym.asPath.selSN(propFunDef.sym.nme), Nil, true, "tmp")(_ =>
@@ -461,7 +461,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val sourceSym = VarSymbol(Ident("source"))
       val psym = VarSymbol(Ident("path"))
       val params = PlainParamList(Param.simple(sourceSym) :: Param.simple(psym) :: Nil)
-      FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(sourceSym, psym))(false, N, Visibility.Public)
+      FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(sourceSym, psym))(N, Nil)
     
     // grab all defn seen so far
     // TODO: this could be reduced to only contain all the symbols used within the module
@@ -483,9 +483,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                 case l: ClsLikeDefn => l.owner
               owner match
               case S(owner: DefinitionSymbol[ModuleOrObjectDef | ClassDef]) =>
-                reconstruct(owner).sel(Tree.Ident(s.nme), s)
+                Select(reconstruct(owner), Tree.Ident(s.nme))(N)
               case N => defn match
-                case l: (ModuleOrObjectDef | ClassDef) => Value.Ref(l.bsym, S(s))
+                case l: (ModuleOrObjectDef | ClassDef) => Value.Ref(l.bsym, N)
                 case l: ClsLikeDefn => Value.Ref(l.sym, S(s))
             case N => s.asPath 
 
@@ -494,7 +494,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
     def previousStageDecl(b: Block) =
       previousStageValues.iterator.foldRight(b)({ case ((tsym, sym, key), acc) =>
-        Define(ValDefn(tsym, sym, key)(N), acc)
+        Define(ValDefn(tsym, sym, key)(N, Nil), acc)
       })
     
     (entryFunDef, propFunDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(previousStageDecl(b))))
@@ -508,7 +508,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val suffix = "$" + scope.allocateOrGetName(sym)
       val cacheNme = "cache" + suffix
       val generatorMapNme = "generatorMap" + suffix
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(false, N, Visibility.Public)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(N, Nil)
       val newCtorFun = stageCtor(ctorFun)
       val nestedPropagates = defn.body.blk.stats.collect:
         case cls: ClassDef if cls.hasStagedModifier.isDefined =>
@@ -551,8 +551,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val cacheNme = "class$cache" + suffix
       val generatorMapNme = "class$generatorMap" + suffix
 
-      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N, Visibility.Public)
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(false, N, Visibility.Public)
+      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(N, Nil)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(N, Nil)
       val newPreCtorFun = stageMethod(preCtorFun)
       val newCtorFun = stageCtor(ctorFun)
       
@@ -568,7 +568,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             override def mapVarSym(l: VarSymbol): VarSymbol = symMap.getOrElse(l, l)
           )
           val combinedBody = Begin(companionFun.body, transformer.applyBlock(entryFun.body))
-          companionFun.copy(body = combinedBody)(companionFun.forceTailRec, companionFun.configOverride, companionFun.visibility)
+          companionFun.copy(body = combinedBody)(companionFun.configOverride, companionFun.annotations)
         case _ =>
           raise(ErrorReport(msg"There shouldn't be more than one entry function generated in a module." -> N :: Nil))
           entryFun
@@ -578,7 +578,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         methods = combinedEntryFun :: newPreCtorFun :: newCtorFun :: newMethods ++ companionMethods,
         ctor = Begin(companion.ctor, cont(End())),
       )
-      val newClsLikeDefn = defn.copy(companion = S(newCompanion), ctor = applyBlock(ctor))(defn.configOverride)
+      val newClsLikeDefn = defn.copy(companion = S(newCompanion), ctor = applyBlock(ctor))(defn.configOverride, defn.annotations)
       Define(newClsLikeDefn, applyBlock(rest))
     case b => super.applyBlock(b)
 

@@ -94,6 +94,7 @@ class MLsCompiler
       val elab = Elaborator(etl, wd, newCtx)
       val parsed = mainParse.resultBlk
       val (blk0, _) = elab.importFrom(parsed)
+      Config.extractConfigFromStats(blk0).givenIn {
       val resolver = Resolver(rtl)
       resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
       def findQuote(t: semantics.Statement): Bool = t match
@@ -123,12 +124,11 @@ class MLsCompiler
             Nil) ::: blk0.stats,
         blk0.res
       )
-      val effectiveConfig = Config.extractConfigFromStats(blk)
       val low = ltl.givenIn:
-        new codegen.Lowering()(using effectiveConfig)
+        new codegen.Lowering()
           with codegen.LoweringSelSanityChecks
       val jsb = ltl.givenIn:
-        codegen.js.JSBuilder(using effectiveConfig)
+        codegen.js.JSBuilder()
       val le_0 = low.program(blk)
       val nme = file.baseName
       val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
@@ -147,6 +147,7 @@ class MLsCompiler
       val jsStr = je.stripBreaks.mkString(100)
       val out = file.up / io.RelPath(file.baseName + ".mjs")
       cctx.fs.write(out, jsStr)
+      }
   
   
 end MLsCompiler

@@ -145,6 +145,14 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showDefnSymbol(s: Symbol) =
     s.name.replaceAll("$", "_")
+
+  fun isGeneratedStagedClass(s: Symbol) =
+    if s is
+      ConcreteClassSymbol(_, value, _, _, _) then isStagedClass(value)
+      else false
+
+  fun showOwnerMemberSymbol(s: Symbol) =
+    if isGeneratedStagedClass(s) then showDefnSymbol(s) else showSymbol(s)
   
   fun showSymbol(s: Symbol) =
     if s is ModuleSymbol | ConcreteClassSymbol and owner is Some(owner) and s.redirect
@@ -157,7 +165,7 @@ class Printer(val owner: Opt[Symbol]) with
       Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit, _)) then "()"
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
-        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
+        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showOwnerMemberSymbol(name) // TODO: check if we should use `==` here
         qual is ValueRef(sym) and sym is ClassSymbol then "this." + showSymbol(name)
         else
           showPath(qual) + "." + showSymbol(name)
@@ -171,6 +179,17 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showArgs(args: Array[Arg]) =
     args.map(showArg(_)).join(", ")
+  
+  fun hasClassValue(cls: Path) =
+    if cls is
+      Select(ValueRef(sym), name) and
+        owner is Some(owner) and sym == owner and isGeneratedStagedClass(name) then false
+      ValueRef(ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
+      Select(_, ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
+      else false
+
+  fun showInstantiatePath(cls: Path) =
+    showPath(cls) + (if hasClassValue(cls) then ".class" else "")
 
   fun showResult(r: Result): Str =
     if r is
@@ -182,7 +201,8 @@ class Printer(val owner: Opt[Symbol]) with
           ValueRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
         else showPath(fun_) + "(" + showArgs(args) + ")"
       Instantiate(cls, args) then 
-        let prefix = if cls is ValueRef(ClassSymbol) and owner is Some(owner) then "new! " + showPath(cls) else "new " + showPath(cls)
+        let classPath = showInstantiatePath(cls)
+        let prefix = if cls is ValueRef(ClassSymbol) and owner is Some(owner) then "new! " + classPath else "new " + classPath
         prefix + (if args.length != 0 then "(" + showArgs(args) + ")" else "")
       Tuple(elems) then "[" + showArgs(elems) + "]"
       _ then "<unknown result:" ~ r ~ ">"
@@ -213,20 +233,28 @@ class Printer(val owner: Opt[Symbol]) with
   fun showParamList(ps: Array[ParamList]) =
     ps.map(showParams(_)).join("")
 
+  fun showFunDefn(prefix: Str, sym: Symbol, ps: Array[ParamList], body: Block): Str =
+    prefix + "fun " + showDefnSymbol(sym) + showParamList(ps) + " =" +
+    (if body is Return | End then " " else "\n  ") + indent(showBlock(body))
+
   fun showDefn(d: Defn): Str =
     if d is
       FunDefn(sym, ps, body) then
-        "fun " + showDefnSymbol(sym) + showParamList(ps) + " =" +
-        (if body is Return | End then " " else "\n  ") + indent(showBlock(body))
+        showFunDefn("", sym, ps, body)
       ClsLikeDefn(sym, methods, _) and sym is ConcreteClassSymbol(_, v, _, _, _) and 
         not isStagedClass(v) then
-          "data class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
+          "class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
             + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
         isStagedClass(v) then getClassCache(v)
       // TODO: used to represent assignments in constructors, which still need some adjustments
       ValDefn(owner, sym, rhs) then
         "val " + showSymbol(sym) + " = " + showPath(rhs)
       _ then "<unknown defn: " + d.toString() + " >"
+
+  fun showPrivateDefn(d: Defn): Str =
+    if d is
+      FunDefn(sym, ps, body) then showFunDefn("private ", sym, ps, body)
+      else showDefn(d)
 
   fun showBlock(b) =
     if b is
@@ -271,6 +299,14 @@ class Printer(val owner: Opt[Symbol]) with
 module Printer with
   val default = Printer(None)
 
+let configs = 
+  let options = [
+    "noFreeze: true",
+    "noModuleCheck: true",
+    "deadParamElim: Some(DeadParamElim(debug: false, mono: true))"
+  ]
+  "#config(" + options.join(", ") + ")\n"
+
 fun codegen(name, cache, source, file) =
   let fullpath = path.join of process.cwd(), file
   let code = "import \"" + source + "\"\n" + indent(cache.toString())
@@ -278,7 +314,7 @@ fun codegen(name, cache, source, file) =
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
   let originData = fs.readFileSync(fullpath, "utf8")
-  let newData = "#config(noFreeze: true)\n" + "#config(noModuleCheck: true)\n" + code
+  let newData = configs + code
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")
 
@@ -290,9 +326,9 @@ fun generateAll(name, file, ...modules) =
   let code = fold((res, p) => if p is
     [mod, name, source] then
       mod.propagate()
-      [res.0 + "import \"" + source + "\"\n", res.1 + "open " + name + "\n", res.2 + indent(mod.("cache$" + name).toString()) + "\n"]
+      [res.0 + "import \"" + source + "\"\n", res.1 + indent(mod.("cache$" + name).toString()) + "\n"]
   )(["", "", ""], ...modules)
   let originData = fs.readFileSync(fullpath, "utf8")
-  let newData = "#config(noFreeze: true)\n" + "#config(noModuleCheck: true)\n" + code.0 + "\n" + code.1 + "\n" + "module " + name + " with" + indent("\n" + code.2)
+  let newData = configs + code.0 + "\n" + "module " + name + " with" + indent("\n" + code.1)
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")
