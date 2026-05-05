@@ -105,7 +105,8 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       fun showPath(p) = if p is
         ValueRef(s) and ctx.has(s) then ctx.get(s)
         Select(qual, name) and
-          qual is ValueRef(sym) and sym == owner then this.showOwnerMemberSymbol(name)
+          qual is ValueRef(sym) and sym == owner then this.showSymbol(name)
+          qual is ValueRef(ModuleSymbol) and this.isGeneratedStagedClass(name) then this.showSymbol(name)
           else showPath(qual) + "." + this.showSymbol(name)
         DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
         DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
