@@ -774,8 +774,8 @@ class FlowConstraintsCollector(val preAnalyzer: FlowPreAnalyzer, val mono: Bool)
             cls.tree.clsParams.size match
             case 1 =>
               val clsParams = cls.tree.clsParams.head
-              // TODO: uncomment before merge
-              softTODO(argsStrat.size === clsParams.size, s"mismatched ctor arg and cls param sizes")
+              // TODO: properly check the parameter lists, which may change after passes like lifting
+              // softTODO(argsStrat.size === clsParams.size, s"mismatched ctor arg and cls param sizes")
               new Ctor(c.uid, instId)(ctor, clsParams.zip(argsStrat))
             case _ =>
               // - the size of 0 means we don't know the cls param symbols,
