@@ -6,7 +6,7 @@ open SimpleRegExp
 
 :re
 match(RegExp(), "foo")
-//│ ═══[RUNTIME ERROR] Error: Not implemented
+//│ ═══[RUNTIME ERROR] TypeError: p1.derive is not a function
 
 
 match(Exact("x"), "x")
@@ -148,46 +148,46 @@ matchAll(p, "To be or not to be, that is the question.")
 //│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
 
 
-match(email, "foo@bar.baz")
-//│ = Some("foo@bar.baz")
+matchAllEmail("foo@bar.baz")
+//│ = ["foo@bar.baz"]
 
-match(email, "foo-foo@bar.baz")
-//│ = Some("foo-foo@bar.baz")
+matchAllEmail("foo-foo@bar.baz")
+//│ = ["foo-foo@bar.baz"]
 
-match(email, "a.b.c.d@e-f.g.h")
-//│ = Some("a.b.c.d@e-f.g.h")
+matchAllEmail("a.b.c.d@e-f.g.h")
+//│ = ["a.b.c.d@e-f.g.h"]
 
-match(email, "a-b.c.d@e-f.g.h")
-//│ = Some("a-b.c.d@e-f.g.h")
+matchAllEmail("a-b.c.d@e-f.g.h")
+//│ = ["a-b.c.d@e-f.g.h"]
 
-match(email, "foo@bar@baz")
-//│ = None
+matchAllEmail("foo@bar@baz")
+//│ = []
 
-match(email, "f@a")
-//│ = None
-
-
-match(uri, "http://foo.bar.com")
-//│ = Some("http://foo.bar.com")
+matchAllEmail("f@a")
+//│ = []
 
 
-match(uri, "http://foo.bar.com?xxx")
-//│ = Some("http://foo.bar.com?xxx")
+matchAllURI("http://foo.bar.com")
+//│ = ["http://foo.bar.com"]
 
 
-match(uri, "http://foo.bar.com?xxx#42")
-//│ = Some("http://foo.bar.com?xxx#42")
+matchAllURI("http://foo.bar.com?xxx")
+//│ = ["http://foo.bar.com?xxx"]
 
 
-match(uri, "http://foo.bar.com#42")
-//│ = Some("http://foo.bar.com#42")
+matchAllURI("http://foo.bar.com?xxx#42")
+//│ = ["http://foo.bar.com?xxx#42"]
 
 
-match(ipv4, "8.8.8.8")
-//│ = Some("8.8.8.8")
+matchAllURI("http://foo.bar.com#42")
+//│ = ["http://foo.bar.com#42"]
 
-match(ipv4, "192.168.1.1")
-//│ = Some("192.168.1.1")
+
+matchAllIPv4("8.8.8.8")
+//│ = ["8.8.8.8"]
+
+matchAllIPv4("192.168.1.1")
+//│ = ["192.168.1.1"]
 
 
 :silent
