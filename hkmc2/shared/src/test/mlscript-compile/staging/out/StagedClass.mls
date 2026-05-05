@@ -1,17 +1,38 @@
 #config(noFreeze: true, noModuleCheck: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../StagedClass.mls"
 module StagedClass with
+    class Foo
+    class Bar(val x) with
+      fun f(y, z) =
+        let {tmp}
+        tmp = this.x + y
+        tmp + z
     class Baz(val x) with
+      ()
+    class FooBar(val x) with
       ()
     fun bar(b) =
       if b is
-        true then StagedClass."Bar$StagedClass"(0)
-        else new! StagedClass."Bar$StagedClass".class(1)
+        true then Bar(0)
+        else new Bar.class(1)
     fun baz(b) =
       if b is
         true then Baz(1)
         else new Baz(2)
+    fun f(x) =
+      let {x__, y1, arg_Baz_0_, arg_Bar_0_}
+      if x is
+        Foo then 0
+        Bar then
+          arg_Bar_0_ = x.x
+          x__ = arg_Bar_0_
+          x__
+        Baz then
+          arg_Baz_0_ = x.x
+          y1 = arg_Baz_0_
+          y1 + 1
+        else -1
     fun foo() =
       let {obj_8}
-      obj_8 = new! StagedClass."Foo$StagedClass"
+      obj_8 = new! Foo
       obj_8

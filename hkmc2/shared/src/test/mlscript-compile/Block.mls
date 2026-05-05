@@ -151,11 +151,8 @@ class Printer(val owner: Opt[Symbol]) with
       ConcreteClassSymbol(_, value, _, _, _) then isStagedClass(value)
       else false
 
-  fun showOwnerMemberSymbol(s: Symbol) =
-    if isGeneratedStagedClass(s) then showDefnSymbol(s) else showSymbol(s)
-  
   fun showSymbol(s: Symbol) =
-    if s is ModuleSymbol | ConcreteClassSymbol and owner is Some(owner) and s.redirect
+    if s is ModuleSymbol | ConcreteClassSymbol and owner is Some(owner) and s.redirect and not isGeneratedStagedClass(s)
       then owner.name + ".\"" + s.name + "$" + owner.name + "\""
     else s.name.replaceAll("$", "_")
 
@@ -165,7 +162,7 @@ class Printer(val owner: Opt[Symbol]) with
       Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit, _)) then "()"
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
-        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showOwnerMemberSymbol(name) // TODO: check if we should use `==` here
+        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
         qual is ValueRef(sym) and sym is ClassSymbol then "this." + showSymbol(name)
         else
           showPath(qual) + "." + showSymbol(name)
