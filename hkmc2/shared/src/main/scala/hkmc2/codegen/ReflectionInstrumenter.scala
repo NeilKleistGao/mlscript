@@ -565,9 +565,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val cacheNme = "class$cache" + suffix
       val generatorMapNme = "class$generatorMap" + suffix
 
-      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(N, Nil)
+      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), ctorParams, preCtor)(N, Nil)
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(N, Nil)
-      val newPreCtorFun = stageMethod(preCtorFun)
+      val newPreCtorFun = stageCtor(preCtorFun)
       val newCtorFun = stageCtor(ctorFun)
       
       val (entryFun, newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme, Nil)(methods)
