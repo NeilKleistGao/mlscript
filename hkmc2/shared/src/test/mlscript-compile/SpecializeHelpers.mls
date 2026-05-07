@@ -18,15 +18,15 @@ fun wrapScoped(symbols, block) =
   else Scoped(symbols, block)
 
 fun showCtxPath(p) = if p is
-    Select(qual, Symbol(name)) then showCtxPath(qual) + "." + name
-    DynSelect(qual, fld, _) then showCtxPath(qual) + ".(" + showCtxPath(fld) + ")" 
-    ValueRef(l) and
-      l is
-        ConcreteClassSymbol(n, v, _, _, _) then "ClassSymbol(" + n + ")"
-        ModuleSymbol(n, v, _) then "ModuleSymbol(" + n + ")"
-        Symbol(n) then "Symbol(" + n + ")"
-        else throw Error(l)
-    ValueLit(lit) then "Lit(" + lit.toString() + ")"
+  Select(qual, Symbol(name)) then showCtxPath(qual) + "." + name
+  DynSelect(qual, fld, _) then showCtxPath(qual) + ".(" + showCtxPath(fld) + ")" 
+  ValueRef(l) and
+    l is
+      ConcreteClassSymbol(n, v, _, _, _) then "ClassSymbol(" + n + ")"
+      ModuleSymbol(n, v, _) then "ModuleSymbol(" + n + ")"
+      Symbol(n) then "Symbol(" + n + ")"
+      else throw Error(l)
+  ValueLit(lit) then "Lit(" + lit.toString() + ")"
 
 class Ctx(
   // ctx tracks shapes of variables
@@ -80,11 +80,28 @@ class FunEntry(
   val isPrivate: Bool,
 )
 
-class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any, FunEntry]) with
+class FunCache(
+  val owner: ConcreteClassSymbol | ModuleSymbol,
+  val cache: Map[Any, FunEntry],
+  val names: Set[String],
+) with
   val printer = Printer(Some(owner))
   fun getFun(k) = if cache.has(k) then Some(cache.get(k)) else None
   // this will be called at the beginning of specialization to avoid infinite calls when specializing recursive functions
   fun setFun(k, v) = cache.set(k, v); v
+  fun reserveName(name: String) =
+    names.add(name)
+    name
+  fun freshName(funName: String) =
+    let
+      prefix = funName + "_" + owner.name + "_sp_"
+      idx = 0
+      name = prefix + idx
+    while names.has(name) do
+      set
+        idx += 1
+        name = prefix + idx
+    reserveName(name)
   fun toString() =
     let p = printer // FIXME: figure out why we need this p
     let decl = if owner is
@@ -151,7 +168,7 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
       + (if methodDefns == "" then "" else indent("\n" + methodDefns))
 module FunCache with
-  fun empty(owner) = FunCache(owner, new Map())
+  fun empty(owner) = FunCache(owner, new Map(), new Set())
 
 open StagingUtility
 
@@ -512,10 +529,15 @@ fun specializationParamShapes(isMethod, ps, shapes) =
 fun hasAllDynamicParams(isMethod, ps, shapes) =
   specializationParamShapes(isMethod, ps, shapes).every(_.every(_.isDyn()))
 
-fun specializeName(funName, isMethod, ps, shapes) =
+fun specializeKey(funName, isMethod, ps, shapes) =
   let mappedShapes = specializationParamShapes(isMethod, ps, shapes)
   if mappedShapes.every(_.every(_.isDyn())) then funName
   else funName + "_" + mappedShapes.map(pss => pss.map(buildShapeSetName).join("_")).join("_dot_")
+
+fun specializeName(cache, funName, isMethod, ps, shapes) =
+  let mappedShapes = specializationParamShapes(isMethod, ps, shapes)
+  if mappedShapes.every(_.every(_.isDyn())) then funName
+  else cache.freshName(funName)
 
 // abuse Printer for structural induction
 // to do this properly you would need only add the definitions as you go through the tree
@@ -535,11 +557,12 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   // print(defn)
   if defn is FunDefn(Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
-    let newName = specializeName(funName, isMethod, ps, shapes)
+    let specializationKey = specializeKey(funName, isMethod, ps, shapes)
     let isPrivate = not hasAllDynamicParams(isMethod, ps, shapes)
-    if cache.getFun(newName) is
+    if cache.getFun(specializationKey) is
       Some(x) then [x.defn.sym.name, x.retShape, x.litMask]
       None then
+        let newName = specializeName(cache, funName, isMethod, ps, shapes)
         let paramShapes = if isMethod then shapes.slice(1) else shapes
 
         let ctx = if isMethod then
@@ -577,7 +600,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
           not (not (p2.constraint is Some(Dynamic)) and isLitShape(paramShapes.(i).(j)))
         ))
         // Store placeholder with real litMask so recursive calls use correct filtering
-        cache.setFun(newName, FunEntry(FunDefn(Symbol(newName), newPs, body), mkDyn(), litMask, isPrivate))
+        cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), newPs, body), mkDyn(), litMask, isPrivate))
 
         let res = prop(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
@@ -591,7 +614,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else bodyWithScoped
 
         // Update cache with finalized body and actual return shape
-        let entry = cache.setFun(newName, FunEntry(FunDefn(Symbol(newName), newPs, finalBody), actualRetShape, litMask, isPrivate))
+        let entry = cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), newPs, finalBody), actualRetShape, litMask, isPrivate))
 
 
         [entry.defn.sym.name, entry.retShape, entry.litMask]
@@ -602,7 +625,6 @@ fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], c
   let actualClass = getActualClass(classSymb.value)
   let defn = actualClass."class$ctor$_instr"()
   if defn is FunDefn(Symbol(_), ps, body) then
-    let newName = specializeName("class$ctor$", false, ps, [argShapes])
     ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2.sym), argShapes.(j))))
     if not (actualClass."preCtor$_instr" is undefined) and actualClass."preCtor$_instr"() is FunDefn(_, _, preCtorBody) then do 
       prop(ctx, preCtorBody)

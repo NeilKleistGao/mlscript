@@ -17,7 +17,7 @@ M.f_gen(mkDyn())
 
 
 M.f_gen(mkLit(2))
-//│ = ["f_Lit2", {Lit(4)}, [true]]
+//│ = ["f_M_sp_0", {Lit(4)}, [true]]
 
 
 print(M."cache$M")
@@ -27,4 +27,13 @@ print(M."cache$M")
 //│ >     let {y}
 //│ >     y = *(x, 2)
 //│ >     y
-//│ >   private fun f_Lit2() = 4
+//│ >   private fun f_M_sp_0() = 4
+
+
+staged module Clash with
+  fun f(x) = x
+  fun f_gen
+  fun f_Clash_sp_0() = 0
+
+Clash.f_gen(mkLit(1))
+//│ = ["f_Clash_sp_1", {Lit(1)}, [true]]

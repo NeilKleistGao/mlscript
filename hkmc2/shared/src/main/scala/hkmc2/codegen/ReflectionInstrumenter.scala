@@ -400,7 +400,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(new HashMap(), true))
     
 
-  def stageMethods(ownerSym: DefinitionSymbol[?], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str, nestedPropagates: Ls[Path])(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
+  def stageMethods(ownerSym: DefinitionSymbol[? <: ClassLikeDef], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str, nestedPropagates: Ls[Path])(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
     // for storing specialized functions in each staged module
     val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
     val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
@@ -420,15 +420,29 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         tuple(Ls(toValue(f.sym.nme), modSym.asPath.selSN(gen.sym.nme)))
       )
     ).unzip3
+    val reservedNames = getDefn(ownerSym) match
+      case ownerDefn: semantics.ClassLikeDef =>
+        val ownerParamNames = (ownerDefn.paramsOpt.toList ++ ownerDefn.auxParams)
+          .flatMap(_.params.map(_.sym.nme))
+        (ownerDefn.body.members.keys.toList ++ ownerParamNames).distinct
+      case ownerDefn: ClsLikeDefn =>
+        val ownerParamNames = (ownerDefn.paramsOpt.toList ++ ownerDefn.auxParams)
+          .flatMap(_.params.map(_.sym.nme))
+        val ownerFieldNames = ownerDefn.publicFields.map(_._1.nme) ++ ownerDefn.privateFields.map(_.nme)
+        (ownerDefn.methods.map(_.sym.nme) ++ ownerFieldNames ++ ownerParamNames).distinct
+    val reservedNameValues = reservedNames.map(name => (k: Path => Block) => k(toValue(name)))
 
     // initialize cache for the module
     def cacheDecl(rest: Block) =
       val pOpt = if !forClass then S(Value.Ref(ownerSym)) else N
       
       transformSymbol(ownerSym, pOpt = pOpt)(using Context(new HashMap())): (stagedSym, _) =>
-        ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): map =>
-          ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
-            Define(ValDefn(cacheTsym, cacheSym, funCache)(N, Nil), rest)
+        ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): cacheMap =>
+          reservedNameValues.collectApply: defs =>
+            tuple(defs): reservedNames =>
+              ctor(State.globalThisSymbol.asPath.selSN("Set"), Ls(reservedNames)): nameSet =>
+                ctor(helperMod("FunCache"), Ls(stagedSym, cacheMap, nameSet)): funCache =>
+                  Define(ValDefn(cacheTsym, cacheSym, funCache)(N, Nil), rest)
 
     def generatorMapDecl(rest: Block) =
       generatorEntries.collectApply: defs =>
