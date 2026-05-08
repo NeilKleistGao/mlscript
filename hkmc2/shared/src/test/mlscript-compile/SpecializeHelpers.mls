@@ -173,28 +173,26 @@ module FunCache with
 open StagingUtility
 
 // shape of value
-fun sov(v, valueMap): ShapeSet = 
+fun sov(v): ShapeSet = 
   if 
-    typeof(v) is
-      "number" then mkLit(v)
-      "string" then mkLit(v)
-      "boolean" then mkLit(v)
+    typeof(v) is "number" | "string" | "boolean" then mkLit(v)
     Array.isArray(v) then
-      mkArr(v.map(sov, valueMap))
-    not (v is undefined) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
+      mkArr(v.map(sov))
+    not (v is undefined) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) and
       let meta = v.constructor.(Symbols.definitionMetadata)
       let clsName = meta.1
       // if class field is not public, then definitionMetadata in the corresponding field is null
       let paramsOpt = if meta.length < 3 
         then None
         else Some(meta.2.map(p => if p is null then Symbol("") else Symbol(p)))
-      assert valueMap.has(v.constructor)
-      let classSymbol = valueMap.get(v.constructor)
-      let argsMap = new Map()
-      if not (paramsOpt is None) do
-        meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n), valueMap)))
-      mkClassFromMap(classSymbol, argsMap, None) // FIXME
-    else throw Error("unknown value from sov", v.toString())
+      let classSymbol = Runtime.SymbolMap.classMap.get(v.constructor)
+      // TODO: non-staged classes not already referenced in staged code will default to dynamic here
+      classSymbol is Symbol then
+        let argsMap = new Map()
+        if not (paramsOpt is None) do
+          meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n))))
+        mkClassFromMap(classSymbol, argsMap, None) // FIXME
+    else mkDyn() // unknown shape of value
 
 // shape of path
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
@@ -227,7 +225,7 @@ fun subLitPath(ctx, p) = if p is
   Select(qual, name) then Select(subLitPath(ctx, qual), name)
   ValueRef(_) and
     let s = sop(ctx, p)
-    staticSet(s) and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [End(), res] then res
+    staticSet(s) and shapeset2path(s, ctx.allocs) is [End(), res] then res
   else p
 
 
@@ -314,18 +312,20 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
       not (f_gen is Runtime.Unit) and  // staged function
         let res = f_gen(...argShapes)
         staticSet(res.1) then
-          let v2p = val2path(valOfSet(res.1), ctx.allocs, ctx.valueNameCtx)
+          let v2p = shapeset2path(res.1, ctx.allocs)
           [v2p.0, v2p.1, res.1]
         else
           let filteredArgs = args.filter((_, i, _) => not res.2.(i))
           [End(), Call(Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), filteredArgs), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
-    argShapes.every(staticSet) then // non staged function and params known
+    argShapes.every(staticSet) and // non staged function and params known
       let fimp = value.(fld)
       let evaluated = fimp(...argShapes.map(valOfSet))
-      let evaluatedPath = val2path(evaluated, ctx.allocs, ctx.valueNameCtx)
-      [evaluatedPath.0, evaluatedPath.1, sov(evaluated, ctx.valueNameCtx)]
+      let inferredShape = sov(evaluated)
+      staticSet(inferredShape) then // shape can be inferred from runtime value
+        let evaluatedPath = shapeset2path(inferredShape, ctx.allocs)
+        [evaluatedPath.0, evaluatedPath.1, inferredShape]
   else
     let evaledArgs = args.map(a => sor(ctx, a.value))
     let fullBlk = foldl((acc, e) => concat(acc, e.0))(End(), ...evaledArgs)
@@ -338,7 +338,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
 fun sor(ctx, r) = if r is 
   Path and
     let s = sop(ctx, r)
-    staticSet(s) and val2path(valOfSet(s), ctx.allocs, ctx.valueNameCtx) is [blk, res] then [blk, res, s]
+    staticSet(s) and shapeset2path(s, ctx.allocs) is [blk, res] then [blk, res, s]
     else [End(), subLitPath(ctx, r), s]
   Instantiate(cls, args) then sorInstantiate(ctx, r, cls, args)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
@@ -609,7 +609,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 
         let finalBody = if staticSet(actualRetShape) then
           let allocs = mut []
-          let v2p = val2path(valOfSet(actualRetShape), allocs, ctx.valueNameCtx)
+          let v2p = shapeset2path(actualRetShape, allocs)
           wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
         else bodyWithScoped
 

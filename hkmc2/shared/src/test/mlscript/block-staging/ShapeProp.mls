@@ -357,14 +357,13 @@ Comparison."test_gen"(union(mkLit(3), mkLit(4)))
 Comparison."test_gen"(union(mkLit(4), mkLit(6)))
 //│ = ["test_Comparison_sp_1", {Dyn()}, [false]]
 
-:fixme
 class C
 module Opaque with
   fun f() = new C
 staged module M with
   fun f() = Opaque.f()
 M."f_gen"()
-//│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/ShapeSet.mls:202)
+//│ = ["f", {Dyn()}, []]
 
 staged module M with
   fun f(x, y) = x * y
@@ -384,4 +383,3 @@ staged module M with
 
 M."f_gen"(mkArr([mkLit(1), mkDyn(), mkLit(2)]))
 //│ = ["f_M_sp_0", {Lit(2)}, [false]]
-

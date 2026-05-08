@@ -184,34 +184,31 @@ fun freshId(prefix) =
   set idCounter = idCounter + 1
   Block.Symbol(prefix + "_" + idCounter.toString())
 
-fun val2path(v, allocs, valueMap) = 
-  if typeof(v) == "number" || typeof(v) == "string" || typeof(v) == "boolean" then 
-    [Block.End(), Block.ValueLit(v)]
-  else if Array.isArray(v) then
-    let mapped = v.map(val2path(_, allocs, valueMap))
-    let blocks = mapped.map(_.0)
-    blocks.reverse()
-    let paths = mapped.map(_.1) 
-    let tupSym = freshId("tup")
-    allocs.push(tupSym)
-    let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
-    let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
-    [fullBlock, Block.ValueRef(tupSym)]
-  else if not (v is undefined) and not (v is null) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) then
-    let meta = v.constructor.(Symbols.definitionMetadata)
-    assert valueMap.has(v.constructor)
-    let classSym = valueMap.get(v.constructor)
-    let clsName = classSym.nme
-    
-    let paramNames = if meta.2 is
-      undefined then []
-      ps then ps
-    let mapped = paramNames.map((fld, _, _) => val2path(v.(fld), allocs, valueMap))
-    let blocks = mapped.map(_.0)
-    let paths = mapped.map(_.1)
-    let objSym = freshId("obj")
-    allocs.push(objSym)
-    let objAssign = Block.Assign(objSym, Block.Instantiate(Block.ValueRef(classSym), paths.map(Block.Arg(_))), Block.End())
-    let fullBlock = fold((b, acc) => Block.concat(acc, b))(objAssign, ...blocks)
-    [fullBlock, Block.ValueRef(objSym)]
-  else [Block.End(), Block.ValueLit(42)]
+private fun shape2path(s: Shape, allocs) =
+  // assert Shape.static(s)
+  if s is
+    Lit(l) then [Block.End(), Block.ValueLit(l)]
+    Arr(v) then
+      let mapped = v.map(shape2path(_, allocs))
+      let blocks = mapped.map(_.0)
+      blocks.reverse()
+      let paths = mapped.map(_.1) 
+      let tupSym = freshId("tup")
+      allocs.push(tupSym)
+      let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
+      let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
+      [fullBlock, Block.ValueRef(tupSym)]
+    Class(sym, fields) then
+      let mapped = fields.map(shape2path(_, allocs))
+      let blocks = mapped.map(_.0)
+      blocks.reverse()
+      let paths = mapped.map(_.1) 
+      let clsSym = freshId("obj")
+      allocs.push(clsSym)
+      let clsAssign = Block.Assign(clsSym, Block.Instantiate(Block.ValueRef(sym), paths.map(Block.Arg(_))), Block.End())
+      let fullBlock = foldr((acc, b) => Block.concat(b, acc))(clsAssign, ...blocks)
+      [fullBlock, Block.ValueRef(clsSym)]
+  
+fun shapeset2path(s: ShapeSet, allocs) =
+  assert staticSet(s)
+  shape2path(s.values().0, allocs)
