@@ -76,7 +76,6 @@ module Ctx with
 class FunEntry(
   val defn: FunDefn,
   val retShape: ShapeSet,
-  val litMask: Array[Bool],
   val isPrivate: Bool,
 )
 
@@ -315,8 +314,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
           let v2p = shapeset2path(res.1, ctx.allocs)
           [v2p.0, v2p.1, res.1]
         else
-          let filteredArgs = args.filter((_, i, _) => not res.2.(i))
-          [End(), Call(Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), filteredArgs), res.1]
+          [End(), Call(Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) and // non staged function and params known
@@ -376,8 +374,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
       let ret = f_gen(ss_i)(...argShapes)
       let retSym = ret.0
       let retShape = ret.1
-      let filteredArgs = args.filter((_, i, _) => not ret.2.(i))
-      let callRes = Call(Select(p, Symbol(retSym)), filteredArgs)
+      let callRes = Call(Select(p, Symbol(retSym)), args)
       isRet then
         [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
       else
@@ -392,8 +389,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
         let retData = f_gen(ss_i)(...argShapes)
         let retSym = retData.0
         let retShape = retData.1
-        let filteredArgs = args.filter((_, i, _) => not retData.2.(i))
-        let callRes = Call(Select(p, Symbol(retSym)), filteredArgs)
+        let callRes = Call(Select(p, Symbol(retSym)), args)
         if isRet then
           [Arm(Cls(C_i, p), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
         else
@@ -560,7 +556,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
     let specializationKey = specializeKey(funName, isMethod, ps, shapes)
     let isPrivate = not hasAllDynamicParams(isMethod, ps, shapes)
     if cache.getFun(specializationKey) is
-      Some(x) then [x.defn.sym.name, x.retShape, x.litMask]
+      Some(x) then [x.defn.sym.name, x.retShape]
       None then
         let newName = specializeName(cache, funName, isMethod, ps, shapes)
         let paramShapes = if isMethod then shapes.slice(1) else shapes
@@ -592,15 +588,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         if ctx.thisShape is Some(ts) then ts.values().forEach(collectClasses) else ()
         ctx.ctx.values().forEach(_.values().forEach(collectClasses))
         
-        // Compute litMask and newPs early so recursive calls use correct filtering
-        let litMask = ps.flatMap((p, i, _) => p.map((p2, j, _) =>
-          not (p2.constraint is Some(Dynamic)) and isLitShape(paramShapes.(i).(j))
-        ))
-        let newPs = ps.map((p, i, _) => p.filter((p2, j, _) =>
-          not (not (p2.constraint is Some(Dynamic)) and isLitShape(paramShapes.(i).(j)))
-        ))
-        // Store placeholder with real litMask so recursive calls use correct filtering
-        cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), newPs, body), mkDyn(), litMask, isPrivate))
+        cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, body), mkDyn(), isPrivate))
 
         let res = prop(ctx, body)
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
@@ -615,10 +603,10 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else bodyWithScoped
 
         // Update cache with finalized body and actual return shape
-        let entry = cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), newPs, finalBody), actualRetShape, litMask, isPrivate))
+        let entry = cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, finalBody), actualRetShape, isPrivate))
 
 
-        [entry.defn.sym.name, entry.retShape, entry.litMask]
+        [entry.defn.sym.name, entry.retShape]
   else throw Error("instrumented function is not a FunDefn")
 
 // this builds the shape of an instantiation of class through shape propagation of constructor
