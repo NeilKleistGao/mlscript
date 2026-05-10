@@ -537,10 +537,10 @@ val res = prop(Ctx.empty(), nestedBlock)
 res.1
 //│ = {Lit(2)}
 
-val2path(1, mut [], new Map())
+shapeset2path(sov(1), mut[])
 //│ = [End(), ValueLit(1)]
 
-val2path([1, 2, 3], mut [], new Map())
+shapeset2path(sov([1, 2, 3]), mut [])
 //│ = [
 //│   Assign(
 //│     Symbol("tup_1"),
@@ -552,16 +552,6 @@ val2path([1, 2, 3], mut [], new Map())
 
 class TestClass(val a, val b)
 val sym = ConcreteClassSymbol("TestClass", TestClass, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false)
-val map = new Map([[TestClass.class, sym]])
-//│ map = Map(1) {
-//│   class TestClass => ConcreteClassSymbol(
-//│     "TestClass",
-//│     fun TestClass { class: class TestClass },
-//│     Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
-//│     [],
-//│     false
-//│   )
-//│ }
 //│ sym = ConcreteClassSymbol(
 //│   "TestClass",
 //│   fun TestClass { class: class TestClass },
@@ -570,7 +560,18 @@ val map = new Map([[TestClass.class, sym]])
 //│   false
 //│ )
 
-val2path(TestClass(1, 2), mut [], map)
+Runtime.SymbolMap.classMap.set(TestClass.class, sym)
+//│ = Map(1) {
+//│   class TestClass => ConcreteClassSymbol(
+//│     "TestClass",
+//│     fun TestClass { class: class TestClass },
+//│     Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]),
+//│     [],
+//│     false
+//│   )
+//│ }
+
+shapeset2path(sov(TestClass(1, 2)), mut [])
 //│ = [
 //│   Assign(
 //│     Symbol("obj_2"),
@@ -591,7 +592,7 @@ val2path(TestClass(1, 2), mut [], map)
 //│   ValueRef(Symbol("obj_2"))
 //│ ]
 
-val2path(TestClass(1, [1,2]), mut [], map)
+shapeset2path(sov(TestClass(1, [1,2])), mut [])
 //│ = [
 //│   Assign(
 //│     Symbol("tup_3"),
