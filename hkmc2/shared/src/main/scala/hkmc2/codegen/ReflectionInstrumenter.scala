@@ -79,10 +79,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
   def ctor(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Instantiate(false, cls, args.map(asArg)), symName)(k)
+    assign(Instantiate(false, cls, args.map(asArg) :: Nil), symName)(k)
 
   def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Call(fun, args.map(asArg))(isMlsFun, false, false), symName)(k)
+    assign(Call(fun, args.map(asArg) ne_:: Nil)(isMlsFun, false, false), symName)(k)
 
   // helpers for constructing Block IR
 
@@ -232,20 +232,33 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       transformArgs(elems): (xs, ctx) =>
         tuple(xs.map(_._1)): codes =>
           blockCtor("Tuple", Ls(codes), "tup")(k(_, ctx))
-    case Instantiate(mut, cls, args) =>
+    case Instantiate(mut, cls, argss) =>
       if mut then raise(ErrorReport(msg"Mutable instantiations not supported in staged module." -> r.toLoc :: Nil))
-      transformArgs(args): (xs, ctx) =>
-        transformPath(cls)(using ctx): (cls, ctx) =>
-          tuple(xs.map(_._1)): codes =>
-            blockCtor("Instantiate", Ls(cls, codes), "inst")(k(_, ctx))
+      argss match
+        case Nil =>
+          raise(ErrorReport(msg"Instantiate with no argument lists not supported in staged module." -> r.toLoc :: Nil))
+          End()
+        case args :: Nil =>
+          transformArgs(args): (xs, ctx) =>
+            transformPath(cls)(using ctx): (cls, ctx) =>
+              tuple(xs.map(_._1)): codes =>
+                blockCtor("Instantiate", Ls(cls, codes), "inst")(k(_, ctx))
+        case args :: restArgss =>
+          raise(ErrorReport(msg"Instantiate with multiple argument lists not supported in staged module." -> r.toLoc :: Nil))
+          End()
     // desugar Runtime.Tuple.get into Select
-    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx))))) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
+    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
       transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
-    case Call(fun, args) =>
-      transformPath(fun): (stagedFun, ctx) =>
-        transformArgs(args)(using ctx): (args, ctx) =>
-          tuple(args.map(_._1)): tup =>
-            blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, ctx))
+    case Call(fun, argss) =>
+      argss match
+        case args :: Nil =>
+          transformPath(fun): (stagedFun, ctx) =>
+            transformArgs(args)(using ctx): (args, ctx) =>
+              tuple(args.map(_._1)): tup =>
+                blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, ctx))
+        case args :: restArgss =>
+          raise(ErrorReport(msg"Call with multiple argument lists not supported in staged module." -> r.toLoc :: Nil))
+          End()
     case _ =>
       raise(ErrorReport(msg"Other Results not supported in staged module: ${r.getClass.toString()}" -> r.toLoc :: Nil))
       End()
