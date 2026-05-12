@@ -1,5 +1,5 @@
 #config(noFreeze: true, noModuleCheck: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
-import "../StagedClass.mls"
+import "../StagedClass.mls" as StagedClass__Legacy
 module StagedClass with
     class Foo
     class Bar(val x) with
@@ -21,6 +21,26 @@ module StagedClass with
         let {obj_8}
         obj_8 = new! D()
         obj_8
+    class X(val x) with
+      ()
+      fun f(y) =
+        let {scrut}
+        scrut = <(x, y)
+        if scrut is
+          true then new StagedClass.Bar(x)
+          else new StagedClass.Bar(y)
+      fun g(y) =
+        let {tmp1}
+        tmp1 = x + y
+        X."Helper$X".foo(tmp1)
+      fun h(y) =
+        let {tmp2}
+        tmp2 = x + y
+        StagedClass.helpFoo(tmp2)
+      private fun f_X_sp_0(y) =
+        let {obj_11}
+        obj_11 = new! Bar(0)
+        obj_11
     fun bar(b) =
       if b is
         true then Bar(0)
@@ -30,7 +50,7 @@ module StagedClass with
         true then Baz(1)
         else new Baz(2)
     fun f(x) =
-      let {x__, y1, arg_Baz_0_, arg_Bar_0_}
+      let {x__, y4, arg_Baz_0_, arg_Bar_0_}
       if x is
         Foo then 0
         Bar then
@@ -39,8 +59,8 @@ module StagedClass with
           x__
         Baz then
           arg_Baz_0_ = x.x
-          y1 = arg_Baz_0_
-          y1 + 1
+          y4 = arg_Baz_0_
+          y4 + 1
         else -1
     fun foo() =
       let {obj_9}
@@ -50,3 +70,8 @@ module StagedClass with
       let {obj_10}
       obj_10 = new! D()
       obj_10
+    fun helpFoo(x) = StagedClass__Legacy."Helper$StagedClass".foo(x)
+    fun xx() =
+      let {obj_12}
+      obj_12 = new! Bar(0)
+      obj_12

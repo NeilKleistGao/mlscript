@@ -31,6 +31,8 @@ module StagingUtility with
 
   fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
 
+  fun legacyName(name) = name + "__Legacy"
+
   fun getStagedClassInfo(c) =
     let actualClass = getActualClass(c)
     let clsName = actualClass.(Symbols.definitionMetadata).1
@@ -44,7 +46,7 @@ module StagingUtility with
     let info = getStagedClassInfo(c)
     info.0.(getCacheName(info.1, true))
 
-open StagingUtility {isStagedClass, getClassCache}
+open StagingUtility {isStagedClass, getClassCache, legacyName}
 
 type Opt[A] = Option[A]
 
@@ -152,8 +154,13 @@ class Printer(val owner: Opt[Symbol]) with
       else false
 
   fun showSymbol(s: Symbol) =
-    if s is ModuleSymbol | ConcreteClassSymbol and owner is Some(owner) and s.redirect and not isGeneratedStagedClass(s)
-      then owner.name + ".\"" + s.name + "$" + owner.name + "\""
+    if s.redirect and not isGeneratedStagedClass(s) then
+      if owner is
+        Some(owner) and owner is ModuleSymbol then // TODO: this must be a top-level module symbol
+          legacyName(owner.name) + ".\"" + s.name + "$" + owner.name + "\""
+        Some(owner) then
+          owner.name + ".\"" + s.name + "$" + owner.name + "\""
+        else s.name.replaceAll("$", "_")
     else s.name.replaceAll("$", "_")
 
   fun showPath(p: Path): Str =
@@ -306,7 +313,7 @@ let configs =
 
 fun codegen(name, cache, source, file) =
   let fullpath = path.join of process.cwd(), file
-  let code = "import \"" + source + "\"\n" + indent(cache.toString())
+  let code = "import \"" + source + "\" as " + legacyName(name) + "\n" + indent(cache.toString())
   if not fs.existsSync(fullpath) do
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
@@ -323,7 +330,7 @@ fun generateAll(name, file, ...modules) =
   let code = fold((res, p) => if p is
     [mod, name, source] then
       mod.propagate()
-      [res.0 + "import \"" + source + "\"\n", res.1 + indent(mod.("cache$" + name).toString()) + "\n"]
+      [res.0 + "import \"" + source + "\" as " + legacyName(name) + "\n", res.1 + indent(mod.("cache$" + name).toString()) + "\n"]
   )(["", "", ""], ...modules)
   let originData = fs.readFileSync(fullpath, "utf8")
   let newData = configs + code.0 + "\n" + "module " + name + " with" + indent("\n" + code.1)

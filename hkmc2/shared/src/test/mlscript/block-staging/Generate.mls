@@ -104,6 +104,34 @@ if StagedClass.C().h() is
   else 0
 //│ = 1
 
+:expect 3
+StagedClass.xx().f(1, 2)
+//│ = 3
+
+
+StagedClass.X(1).f(0)
+//│ = Bar(0)
+
+
+:expect 1
+if StagedClass.X(1).f(0) is
+  StagedClass.Bar then 1
+  else 0
+//│ = 1
+
+
+:fixme we need to support redirection in classes
+:expect 2
+StagedClass.X(0).g(1)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'foo')
+//│ ═══[RUNTIME ERROR] Expected: '2', got: 'undefined'
+
+
+:expect 2
+StagedClass.X(0).h(1)
+//│ = 2
+
+
 import "../../mlscript-compile/staging/ImportingFiles.mls"
 
 gen(ImportingFiles, "ImportingFiles")
