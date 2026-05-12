@@ -124,6 +124,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val rename = sym match
         case _ if pOpt.isDefined => false
         case _ if preserveName => scope.allocateOrGetName(sym); false
+        case c: ClassSymbol if c.defn.exists(_.owner.isDefined) => false
         // avoid name collision
         case _: TempSymbol | _: VarSymbol | _: BaseTypeSymbol => true
         // FIXME: there may be more types of symbols that need to be renamed during staging
