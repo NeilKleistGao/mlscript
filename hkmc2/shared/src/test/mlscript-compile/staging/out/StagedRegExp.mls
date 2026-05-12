@@ -12,6 +12,11 @@ module StagedRegExp with
         let {obj_1}
         obj_1 = new! None()
         obj_1
+      private fun canBeEmpty_Empty_sp_0() = true
+      private fun derive_Empty_sp_0(c) =
+        let {obj_136}
+        obj_136 = new! None()
+        obj_136
     class Exact(val ch) extends RegExp() with
       ()
       fun canBeEmpty() = false
@@ -24,9 +29,26 @@ module StagedRegExp with
             new StagedRegExp.Some(tmp)
           else new StagedRegExp.None()
       private fun canBeEmpty_Exact_sp_0() = false
+      private fun canBeEmpty_Exact_sp_1() = false
       private fun derive_Exact_sp_0(c) =
         let {scrut, tmp}
         scrut = ===("F", c)
+        if scrut is
+          true then
+            tmp = new StagedRegExp.Empty()
+            new StagedRegExp.Some(tmp)
+          else new StagedRegExp.None()
+      private fun derive_Exact_sp_1(c) =
+        let {scrut, tmp}
+        scrut = ===("+", c)
+        if scrut is
+          true then
+            tmp = new StagedRegExp.Empty()
+            new StagedRegExp.Some(tmp)
+          else new StagedRegExp.None()
+      private fun derive_Exact_sp_2(c) =
+        let {scrut, tmp}
+        scrut = ===("-", c)
         if scrut is
           true then
             tmp = new StagedRegExp.Empty()
@@ -102,11 +124,183 @@ module StagedRegExp with
               else new StagedRegExp.None()
           else new StagedRegExp.None()
       private fun canBeEmpty_Union_sp_0() = false
+      private fun canBeEmpty_Union_sp_1() = true
+      private fun canBeEmpty_Union_sp_2() = true
+      private fun canBeEmpty_Union_sp_3() = true
       private fun derive_Union_sp_0(c) =
-        let {scrut4, p2__, p1__, p1__1, p2__1, element1_, element0_, arg_Some_0_, arg_Some_0_1, tmp5, tmp6, tmp7}
+        let {scrut4, p2__, p1__, p1__1, p2__1, element1_, element0_, arg_Some_0_, arg_Some_0_1, tmp5, tmp6, tmp7, obj_97, obj_98, obj_99, obj_100, obj_101, obj_102, obj_103, obj_104, obj_105, obj_106, obj_107, obj_108, obj_109, obj_110, obj_111, obj_112, obj_113, obj_114, obj_115, obj_116, obj_117, obj_118, obj_119, obj_120, obj_121, obj_122, obj_123, obj_124, obj_125, obj_126, obj_127, obj_128, obj_129, obj_130, obj_131, obj_132, obj_133, obj_134, obj_135}
         tmp5 = p1.derive_Exact_sp_0(c)
         tmp6 = p2.derive_Concat_sp_0(c)
         scrut4 = [tmp5, tmp6]
+        element0_ = scrut4.0
+        element1_ = scrut4.1
+        if element0_ is
+          Some then
+            obj_97 = new! Empty()
+            arg_Some_0_1 = obj_97
+            if element1_ is
+              Some then
+                obj_98 = new! Exact("+")
+                obj_99 = new! Empty()
+                obj_100 = new! Union(obj_98, obj_99)
+                obj_101 = new! Exact("-")
+                obj_102 = new! Empty()
+                obj_103 = new! Union(obj_101, obj_102)
+                obj_104 = new! Union(obj_100, obj_103)
+                arg_Some_0_ = obj_104
+                obj_105 = new! Exact("+")
+                obj_106 = new! Empty()
+                obj_107 = new! Union(obj_105, obj_106)
+                obj_108 = new! Exact("-")
+                obj_109 = new! Empty()
+                obj_110 = new! Union(obj_108, obj_109)
+                obj_111 = new! Union(obj_107, obj_110)
+                p2__ = obj_111
+                obj_112 = new! Empty()
+                p1__ = obj_112
+                tmp7 = new StagedRegExp.Union.class(p1__, p2__)
+                new StagedRegExp.Some(tmp7)
+              None then
+                obj_121 = new! Empty()
+                p1__1 = obj_121
+                new StagedRegExp.Some(p1__1)
+          None then
+            if element1_ is
+              Some then
+                obj_122 = new! Exact("+")
+                obj_123 = new! Empty()
+                obj_124 = new! Union(obj_122, obj_123)
+                obj_125 = new! Exact("-")
+                obj_126 = new! Empty()
+                obj_127 = new! Union(obj_125, obj_126)
+                obj_128 = new! Union(obj_124, obj_127)
+                arg_Some_0_ = obj_128
+                obj_129 = new! Exact("+")
+                obj_130 = new! Empty()
+                obj_131 = new! Union(obj_129, obj_130)
+                obj_132 = new! Exact("-")
+                obj_133 = new! Empty()
+                obj_134 = new! Union(obj_132, obj_133)
+                obj_135 = new! Union(obj_131, obj_134)
+                p2__1 = obj_135
+                new StagedRegExp.Some(p2__1)
+              else new StagedRegExp.None()
+      private fun derive_Union_sp_1(c) =
+        let {scrut4, p2__, p1__, p1__1, p2__1, element1_, element0_, arg_Some_0_, arg_Some_0_1, tmp5, tmp6, tmp7, obj_152, obj_153, obj_154, obj_155}
+        if p1 is
+          Empty then
+            tmp5 = p1.derive_Empty_sp_0(c)
+          Union then
+            tmp5 = p1.derive_Union_sp_2(c)
+        tmp6 = p2.derive_Union_sp_3(c)
+        scrut4 = [tmp5, tmp6]
+        element0_ = scrut4.0
+        element1_ = scrut4.1
+        if element0_ is
+          Some then
+            obj_152 = new! Empty()
+            arg_Some_0_1 = obj_152
+            if element1_ is
+              Some then
+                arg_Some_0_ = element1_.x
+                p2__ = arg_Some_0_
+                obj_153 = new! Empty()
+                p1__ = obj_153
+                tmp7 = new StagedRegExp.Union.class(p1__, p2__)
+                new StagedRegExp.Some(tmp7)
+              None then
+                obj_155 = new! Empty()
+                p1__1 = obj_155
+                new StagedRegExp.Some(p1__1)
+          None then
+            if element1_ is
+              Some then
+                arg_Some_0_ = element1_.x
+                p2__1 = arg_Some_0_
+                new StagedRegExp.Some(p2__1)
+              else new StagedRegExp.None()
+      private fun derive_Union_sp_2(c) =
+        let {scrut4, p2__, p1__, p1__1, p2__1, element1_, element0_, arg_Some_0_, arg_Some_0_1, tmp5, tmp6, tmp7, obj_137, obj_138, obj_139}
+        tmp5 = p1.derive_Exact_sp_1(c)
+        tmp6 = p2.derive_Empty_sp_0(c)
+        scrut4 = [tmp5, tmp6]
+        element0_ = scrut4.0
+        obj_137 = new! None()
+        element1_ = obj_137
+        if element0_ is
+          Some then
+            obj_138 = new! Empty()
+            arg_Some_0_1 = obj_138
+            obj_139 = new! Empty()
+            p1__1 = obj_139
+            new StagedRegExp.Some(p1__1)
+          None then new StagedRegExp.None()
+      private fun derive_Union_sp_3(c) =
+        let {scrut4, p2__, p1__, p1__1, p2__1, element1_, element0_, arg_Some_0_, arg_Some_0_1, tmp5, tmp6, tmp7, obj_143, obj_144, obj_145, obj_146, obj_147, obj_148, obj_149, obj_150, obj_151}
+        if p1 is
+          Union then
+            tmp5 = p1.derive_Union_sp_2(c)
+          Exact then
+            tmp5 = p1.derive_Exact_sp_2(c)
+        if p2 is
+          Union then
+            tmp6 = p2.derive_Union_sp_4(c)
+          Empty then
+            tmp6 = p2.derive_Empty_sp_0(c)
+        scrut4 = [tmp5, tmp6]
+        element0_ = scrut4.0
+        element1_ = scrut4.1
+        if element0_ is
+          Some then
+            obj_143 = new! Empty()
+            arg_Some_0_1 = obj_143
+            if element1_ is
+              Some then
+                obj_144 = new! Empty()
+                arg_Some_0_ = obj_144
+                obj_145 = new! Empty()
+                p2__ = obj_145
+                obj_146 = new! Empty()
+                p1__ = obj_146
+                tmp7 = new StagedRegExp.Union.class(p1__, p2__)
+                new StagedRegExp.Some(tmp7)
+              None then
+                obj_149 = new! Empty()
+                p1__1 = obj_149
+                new StagedRegExp.Some(p1__1)
+          None then
+            if element1_ is
+              Some then
+                obj_150 = new! Empty()
+                arg_Some_0_ = obj_150
+                obj_151 = new! Empty()
+                p2__1 = obj_151
+                new StagedRegExp.Some(p2__1)
+              else new StagedRegExp.None()
+      private fun derive_Union_sp_4(c) =
+        let {scrut4, p2__, p1__, p1__1, p2__1, element1_, element0_, arg_Some_0_, arg_Some_0_1, tmp5, tmp6, tmp7, obj_140, obj_141, obj_142}
+        tmp5 = p1.derive_Exact_sp_2(c)
+        tmp6 = p2.derive_Empty_sp_0(c)
+        scrut4 = [tmp5, tmp6]
+        element0_ = scrut4.0
+        obj_140 = new! None()
+        element1_ = obj_140
+        if element0_ is
+          Some then
+            obj_141 = new! Empty()
+            arg_Some_0_1 = obj_141
+            obj_142 = new! Empty()
+            p1__1 = obj_142
+            new StagedRegExp.Some(p1__1)
+          None then new StagedRegExp.None()
+      private fun derive_Union_sp_5(c) =
+        let {obj_161}
+        obj_161 = new! None()
+        obj_161
+      private fun derive_Union_sp_6(c) =
+        let {obj_158}
+        obj_158 = new! None()
+        obj_158
     class In(val chars) extends RegExp() with
       ()
       fun canBeEmpty() = false
@@ -188,12 +382,28 @@ module StagedRegExp with
           else new StagedRegExp.None()
       private fun canBeEmpty_Concat_sp_0() = false
       private fun derive_Concat_sp_0(c) =
-        let {scrut8, p1__2, scrut9, p2__2, p1__3, element1_1, element0_1, arg_Some_0_2, tmp12, tmp13, arg_Some_0_3, tmp14, tmp15, tmp16, tmp17}
+        let {scrut8, p1__2, scrut9, p2__2, p1__3, element1_1, element0_1, arg_Some_0_2, tmp12, tmp13, arg_Some_0_3, tmp14, tmp15, tmp16, tmp17, obj_74, obj_75, obj_90, obj_91, obj_92, obj_93, obj_94, obj_95, obj_96}
         tmp12 = p1.derive_In_sp_0(c)
         tmp13 = p1.canBeEmpty_In_sp_0()
         scrut8 = [tmp12, tmp13]
         element0_1 = scrut8.0
-        element1_1 = scrut8.1
+        element1_1 = false
+        if element0_1 is
+          Some then
+            obj_74 = new! Empty()
+            arg_Some_0_2 = obj_74
+            obj_75 = new! Empty()
+            p1__3 = obj_75
+            obj_90 = new! Exact("+")
+            obj_91 = new! Empty()
+            obj_92 = new! Union(obj_90, obj_91)
+            obj_93 = new! Exact("-")
+            obj_94 = new! Empty()
+            obj_95 = new! Union(obj_93, obj_94)
+            obj_96 = new! Union(obj_92, obj_95)
+            tmp17 = obj_96
+            new StagedRegExp.Some(tmp17)
+          None then new StagedRegExp.None()
     class Star(val p) extends RegExp() with
       ()
       fun canBeEmpty() = true
@@ -313,9 +523,24 @@ module StagedRegExp with
       obj_24 = new! In(tup_23)
       obj_24
     fun test1(s) =
-      let {obj_93}
-      obj_93 = new! None()
-      obj_93
+      let {tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48, tmp49, tmp50, tup_31, obj_37, obj_38, obj_39, obj_45, obj_46, obj_47, obj_48, obj_49, obj_50, obj_51, obj_52, obj_53, tup_54, obj_55, obj_56, obj_57, obj_58, obj_59, obj_60, obj_61, obj_62, obj_63, tup_64, obj_65, obj_66, obj_67, obj_68, obj_69, obj_70, obj_71, obj_72, obj_73}
+      tmp41 = new Exact("F")
+      tmp42 = ["A", "B", "C", "D"]
+      tmp43 = new In(tmp42)
+      tmp44 = new Exact("+")
+      obj_37 = new! Exact("+")
+      obj_38 = new! Empty()
+      obj_39 = new! Union(obj_37, obj_38)
+      tmp45 = obj_39
+      tmp46 = new Exact("-")
+      obj_45 = new! Exact("-")
+      obj_46 = new! Empty()
+      obj_47 = new! Union(obj_45, obj_46)
+      tmp47 = obj_47
+      tmp48 = new Union(tmp45, tmp47)
+      tmp49 = new Concat(tmp43, tmp48)
+      tmp50 = new Union(tmp41, tmp49)
+      match_StagedRegExp_sp_0(tmp50, s)
     fun words() =
       let {tup_19, obj_20}
       tup_19 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
@@ -325,6 +550,16 @@ module StagedRegExp with
       if p1 is
         Empty then p2
         else new Concat(p1, p2)
+    private fun concat_StagedRegExp_sp_1(p1, p2) =
+      let {obj_83, obj_84, obj_85, obj_86, obj_87, obj_88, obj_89}
+      obj_83 = new! Exact("+")
+      obj_84 = new! Empty()
+      obj_85 = new! Union(obj_83, obj_84)
+      obj_86 = new! Exact("-")
+      obj_87 = new! Empty()
+      obj_88 = new! Union(obj_86, obj_87)
+      obj_89 = new! Union(obj_85, obj_88)
+      obj_89
     private fun matchAllImpl_StagedRegExp_sp_0(p, s, res) =
       let {scrut18, scrut19, ss, scrut20, tmp33, arg_Some_0_6, tmp34, tmp35, tmp36, tmp37, tmp38, tmp39, tup_29, tup_30}
       tmp33 = len(s)
@@ -381,24 +616,94 @@ module StagedRegExp with
                 else new None()
             else new None()
     private fun matchImpl_StagedRegExp_sp_1(p, s, acc) =
-      let {obj_89}
-      obj_89 = new! None()
-      obj_89
-    private fun match_StagedRegExp_sp_0(p, s) =
-      let {obj_91}
-      obj_91 = new! None()
-      obj_91
+      let {scrut14, scrut15, c10, scrut16, p__1, scrut17, tmp30, arg_Some_0_5, tmp31, tmp32}
+      tmp30 = len(s)
+      scrut14 = ===(tmp30, 0)
+      if scrut14 is
+        true then
+          scrut15 = p.canBeEmpty_Union_sp_0()
+          new None()
+        else
+          c10 = s.0
+          scrut16 = p.derive_Union_sp_0(c10)
+          if scrut16 is
+            Some then
+              arg_Some_0_5 = scrut16.x
+              p__1 = arg_Some_0_5
+              tmp31 = s.slice(1)
+              tmp32 = "" + c10
+              matchImpl_StagedRegExp_sp_2(p__1, tmp31, tmp32)
+            None then
+              scrut17 = p.canBeEmpty_Union_sp_0()
+              new None()
+    private fun matchImpl_StagedRegExp_sp_2(p, s, acc) =
+      let {scrut14, scrut15, c10, scrut16, p__1, scrut17, tmp30, arg_Some_0_5, tmp31, tmp32}
+      tmp30 = len(s)
+      scrut14 = ===(tmp30, 0)
+      if scrut14 is
+        true then
+          if p is
+            Union then
+              scrut15 = p.canBeEmpty_Union_sp_1()
+            Empty then
+              scrut15 = p.canBeEmpty_Empty_sp_0()
+          new Some(acc)
+        else
+          c10 = s.0
+          if p is
+            Union then
+              scrut16 = p.derive_Union_sp_1(c10)
+            Empty then
+              scrut16 = p.derive_Empty_sp_0(c10)
+          if scrut16 is
+            Some then
+              arg_Some_0_5 = scrut16.x
+              p__1 = arg_Some_0_5
+              tmp31 = s.slice(1)
+              tmp32 = acc + c10
+              matchImpl_StagedRegExp_sp_3(p__1, tmp31, tmp32)
+            None then
+              if p is
+                Union then
+                  scrut17 = p.canBeEmpty_Union_sp_1()
+                Empty then
+                  scrut17 = p.canBeEmpty_Empty_sp_0()
+              new Some(acc)
+    private fun matchImpl_StagedRegExp_sp_3(p, s, acc) =
+      let {scrut14, scrut15, c10, scrut16, p__1, scrut17, tmp30, arg_Some_0_5, tmp31, tmp32}
+      tmp30 = len(s)
+      scrut14 = ===(tmp30, 0)
+      if scrut14 is
+        true then
+          if p is
+            Union then
+              scrut15 = p.canBeEmpty_Union_sp_3()
+            Empty then
+              scrut15 = p.canBeEmpty_Empty_sp_0()
+          new Some(acc)
+        else
+          c10 = s.0
+          if p is
+            Union then
+              scrut16 = p.derive_Union_sp_5(c10)
+            Empty then
+              scrut16 = p.derive_Empty_sp_0(c10)
+          if p is
+            Union then
+              scrut17 = p.canBeEmpty_Union_sp_3()
+            Empty then
+              scrut17 = p.canBeEmpty_Empty_sp_0()
+          new Some(acc)
+    private fun match_StagedRegExp_sp_0(p, s) = matchImpl_StagedRegExp_sp_1(p, s, "")
     private fun question_StagedRegExp_sp_0(r) =
-      let {tup_35, obj_36, obj_37, obj_38}
-      tup_35 = ["A", "B", "C", "D"]
-      obj_36 = new! Exact("+", tup_35)
-      obj_37 = new! Empty()
-      obj_38 = new! Union(obj_36, obj_37)
-      obj_38
+      let {obj_34, obj_35, obj_36}
+      obj_34 = new! Exact("+")
+      obj_35 = new! Empty()
+      obj_36 = new! Union(obj_34, obj_35)
+      obj_36
     private fun question_StagedRegExp_sp_1(r) =
-      let {tup_46, obj_47, obj_48, obj_49}
-      tup_46 = ["A", "B", "C", "D"]
-      obj_47 = new! Exact("-", tup_46)
-      obj_48 = new! Empty()
-      obj_49 = new! Union(obj_47, obj_48)
-      obj_49
+      let {obj_42, obj_43, obj_44}
+      obj_42 = new! Exact("-")
+      obj_43 = new! Empty()
+      obj_44 = new! Union(obj_42, obj_43)
+      obj_44

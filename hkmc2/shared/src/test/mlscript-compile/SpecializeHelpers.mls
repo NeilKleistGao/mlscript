@@ -46,10 +46,7 @@ class Ctx(
   fun getValDefn(name) =
     if valDefnCtx.has(name) then Some(valDefnCtx.get(name)) else None
   fun clone = Ctx(new Map(ctx), valueNameCtx, new Map(valDefnCtx), allocs, thisShape)
-  // For propagation of instantiation of derived class, 
-  // we need to keep track of fields defined in parent class,
-  // which is stored in valDefnCtx
-  fun clearCtx = Ctx(new Map(), valueNameCtx, valDefnCtx, allocs, thisShape)
+  fun clearCtx = Ctx(new Map(), valueNameCtx, new Map(), allocs, thisShape)
   fun sub(other: Ctx) =
     let res = new Map()
     fun otherIsBot(ps) =
@@ -69,6 +66,12 @@ class Ctx(
   // Later ValDefn (in derived class) shadows earlier ValDefn (in base class)
   fun addValDefn(ps: String, ss: ShapeSet) =
     valDefnCtx.set(ps, ss)
+    this
+  fun mergeValDefn(ps: String, ss: ShapeSet) =
+    if valDefnCtx.has(ps) then
+      valDefnCtx.set(ps, union2(valDefnCtx.get(ps), ss))
+    else
+      valDefnCtx.set(ps, ss)
     this
 module Ctx with
   fun empty() = Ctx(new Map(), new Map(), new Map(), mut [], None)
@@ -201,9 +204,10 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
       ctx.getValDefn(name) is Some(s) then s
     Select(Select(ValueRef(clsSymb), Symbol(name)), Symbol(name2)) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then // this.name.name2
       selSet(selSet(thisShape, mkLit(name)), mkLit(name2))
-    Select(qual, Symbol(name)) and // object property 
-      ctx.thisShape is Some(thisShape) then // this.name
+    Select(ValueRef(clsSymb), Symbol(name)) and // this.name
+      clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then
         selSet(thisShape, mkLit(name))
+    Select(qual, Symbol(name)) and // object property 
       name is "length" and // special handle array .length
         let qualShape = sop(ctx, qual)
         let vals = qualShape.values()
@@ -232,14 +236,19 @@ fun subLitPath(ctx, p) = if p is
 class SplitResult(val knownMap: Map[ConcreteClassSymbol, ShapeSet], val unkShape: ShapeSet)
 
 fun fsplit(pss) = 
-  let knownMap = new Map()
+  let knownByClass = new Map()
   let unkShape = foldl((acc, s) => if s is
     Class(sym, params) and isStagedClass(sym.value) then
-      if knownMap.has(sym) then do knownMap.set(sym, union2(knownMap.get(sym), lift(s)))
-      else do knownMap.set(sym, lift(s))
+      let cls = getActualClass(sym.value)
+      if knownByClass.has(cls) then
+        let entry = knownByClass.get(cls)
+        do knownByClass.set(cls, [entry.0, union2(entry.1, lift(s))])
+      else do knownByClass.set(cls, [sym, lift(s)])
       acc
     else union2(acc, mkDyn())
   )(mkBot(), ...pss.values())
+  let knownMap = new Map()
+  knownByClass.forEach(entry => knownMap.set(entry.0, entry.1))
   SplitResult(knownMap, unkShape)
 
 fun lit(l) = [End(), ValueLit(l), mkLit(l)]
@@ -609,6 +618,13 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         [entry.defn.sym.name, entry.retShape]
   else throw Error("instrumented function is not a FunDefn")
 
+fun mergeCtorFields(ctx: Ctx, ss: ShapeSet) =
+  ss.values().forEach(s => if s is
+    Class(sym, fields) and sym.paramsOpt is Some(params) then
+      params.forEach((p, i, _) => ctx.mergeValDefn(p.sym.name, lift(fields.(i))))
+    else ()
+  )
+
 // this builds the shape of an instantiation of class through shape propagation of constructor
 fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx) =
   let actualClass = getActualClass(classSymb.value)
@@ -616,7 +632,8 @@ fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], c
   if defn is FunDefn(Symbol(_), ps, body) then
     ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueRef(p2.sym), argShapes.(j))))
     if not (actualClass."preCtor$_instr" is undefined) and actualClass."preCtor$_instr"() is FunDefn(_, _, preCtorBody) then do 
-      prop(ctx, preCtorBody)
+      let preCtorRes = prop(ctx, preCtorBody)
+      mergeCtorFields(ctx, preCtorRes.1)
     else throw Error("preCtor not found in staged class")
     if not (actualClass."class$ctor$_instr" is undefined) and actualClass."class$ctor$_instr"() is FunDefn(_, _, ctorBody) then do
       prop(ctx, ctorBody)
