@@ -161,7 +161,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               transformParamsOpt(paramsOpt): (paramsOpt, ctx) =>
                 auxParams.map(ps => ctx => transformParamList(ps)(using ctx)).chainContext: (auxParams, ctx) =>
                   tuple(auxParams): auxParams =>
-                    blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams, toValue(rename)), symName)(checkMap("checkClassMap", path, _, ctx))
+                    blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams, toValue(false)), symName)(checkMap("checkClassMap", path, _, ctx))
             case _: ModuleOrObjectSymbol =>
               blockCtor("ModuleSymbol", Ls(toValue(name), path, toValue(rename)), symName)(checkMap("checkModuleMap", path, _, stagingCtx))
         case _ =>

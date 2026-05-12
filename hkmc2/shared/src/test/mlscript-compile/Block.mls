@@ -142,7 +142,13 @@ class Printer(val owner: Opt[Symbol]) with
     if l is 
       undefined then "undefined"
       null then "null"
-      Str then "\"" + l.toString() + "\""
+      Str then "\"" + l
+        .replaceAll("\\", "\\\\")
+        .replaceAll("\"", "\\\"")
+        .replaceAll("\n", "\\n")
+        .replaceAll("\t", "\\t")
+        .replaceAll("\r", "\\r")
+        + "\""
       else l.toString()
 
   fun showDefnSymbol(s: Symbol) =

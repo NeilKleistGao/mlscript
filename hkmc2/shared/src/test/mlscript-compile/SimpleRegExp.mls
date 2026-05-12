@@ -1,0 +1,154 @@
+#config(liftDefns: true)
+
+import "./Predef.mls"
+import "./Option.mls"
+open Predef
+open Option
+
+module SimpleRegExp with
+  class RegExp() with
+    fun derive(c)
+    fun canBeEmpty()
+
+  val alphabet = [
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+  ]
+  val space = [" ", "\n", "\t", "\r"]
+  val digit = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  class Empty() extends RegExp with
+    fun derive(c) = None
+    fun canBeEmpty() = true
+
+  class Exact(val ch) extends RegExp with
+    fun derive(c) =
+      if ch === c then Some(Empty())
+      else None
+    fun canBeEmpty() = false
+
+  class Any() extends RegExp with
+    fun derive(c) = Some(Empty())
+    fun canBeEmpty() = false
+
+  class Not(val chars) extends RegExp with
+    fun derive(c) =
+      fun check(c, i) =
+        if i === chars.length then true
+        else if chars.(i) === c then false
+        else check(c, i + 1)
+      if check(c, 0) then Some(Empty()) else None
+    fun canBeEmpty() = false
+
+  val notWord = Not(alphabet)
+  val notSpace = Not(space)
+  val notDigit = Not(digit)
+
+  class Union(val p1, val p2) extends RegExp with
+    fun derive(c) =
+      if [p1.derive(c), p2.derive(c)] is
+        [Some(p1'), Some(p2')] then Some(Union(p1', p2'))
+        [Some(p1'), None] then Some(p1')
+        [None, Some(p2')] then Some(p2')
+        else None
+    fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
+
+  fun question(r) = Union(r, Empty())
+
+  class In(val chars) extends RegExp with
+    fun derive(c) =
+      fun check(c, i) =
+        if i === chars.length then false
+        else if chars.(i) === c then true
+        else check(c, i + 1)
+      if check(c, 0) then Some(Empty()) else None
+    fun canBeEmpty() = false
+
+  val words = In(alphabet)
+  val spaces = In(space)
+  val digits = In(digit)
+
+  class Concat(val p1, val p2) extends RegExp with
+    fun derive(c) =
+      if [p1.derive(c), p1.canBeEmpty()] is
+        [Some(p1'), true] then
+          if p2.derive(c) is
+            Some(p2') then Some(Union(concat(p1', p2), p2'))
+            else Some(concat(p1', p2))
+        [None, true] then p2.derive(c)
+        [Some(p1'), false] then Some(concat(p1', p2))
+        else None
+    fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
+
+  fun concat(p1, p2) =
+    if p1 is
+      Empty() then p2
+      else Concat(p1, p2)
+
+  class Star(val p) extends RegExp with
+    fun derive(c) =
+      if p.derive(c) is
+        Some(p') then Some(concat(p', Star(p)))
+        None then None
+    fun canBeEmpty() = true
+
+  fun plus(r) = Concat(r, Star(r))
+  fun nTimes(r, i) =
+    if i === 1 then r
+    else Concat(r, nTimes(r, i - 1))
+
+  fun match(p, s) =
+    fun impl(p, s, acc) =
+      if s.length === 0 then
+        if p.canBeEmpty() then Some(acc)
+        else None
+      else
+        let c = s.0
+        if p.derive(c) is
+          Some(p') then
+            impl(p', s.slice(1), acc + c)
+          None and p.canBeEmpty() then Some(acc)
+          else None
+    impl(p, s, "")
+
+  fun matchAll(p, s) =
+    fun impl(p, s, res) =
+      if s.length === 0 then res
+      else
+        if match(p, s) is
+          Some(ss) and ss.length > 0 then impl(p, s.slice(ss.length), res.concat(ss))
+          else impl(p, s.slice(1), res)
+    impl(p, s, [])
+
+  // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
+  val email =
+    let p = Concat(plus(words), Union(Exact("-"), Exact(".")))
+    Concat(Concat(Concat(Star(p), plus(words)), Exact("@")), Concat(plus(p), plus(words)))
+
+  // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
+  val uri =
+    let n1 = Not(["/", "?", "#"].concat(space))
+    let n2 = Not(["?", "#"].concat(space))
+    let n3 = Not(["#".concat(space)])
+    let head = Concat(plus(words), Concat(Exact(":"), Concat(Exact("/"), Exact("/"))))
+    let body = Concat(plus(n1), plus(n2))
+    let params = Concat(question(Concat(Exact("?"), Star(Union(words, Union(digits, Union(Exact("-"), Exact("_"))))))), question(Concat(Exact("#"), Star(Union(words, Union(digits, Union(Exact("-"), Exact("_"))))))))
+    Concat(head, Concat(body, params))
+
+  // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
+  val ipv4 =
+    let fo = In(["0", "1", "2", "3", "4"])
+    let fi = In(["0", "1", "2", "3", "4", "5"])
+    let s = Union(Concat(Exact("2"), Concat(Exact("5"), fi)), Union(
+      Concat(Exact("2"), Concat(fo, digits)),
+      Concat(question(Exact("1")), Concat(question(digits), digits))
+    ))
+    Concat(nTimes(Concat(s, Exact(".")), 3), s)
+
+
+  fun matchAllEmail(s) = matchAll(email, s)
+  fun matchAllURI(s) = matchAll(uri, s)
+  fun matchAllIPv4(s) = matchAll(ipv4, s)
+
+  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), new Union(question(new Exact("+")), question(new Exact("-"))))), s)
+

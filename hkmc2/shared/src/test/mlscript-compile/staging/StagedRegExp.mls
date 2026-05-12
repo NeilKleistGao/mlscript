@@ -1,0 +1,133 @@
+#config(noFreeze: true)
+
+module SeqHelper with
+  fun push(arr, ele) =
+    arr.push(ele)
+    arr
+  fun len(s) = s.length
+
+module CharSet with
+  fun alphabet() = [
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+  ]
+  fun space() = [" ", "\n", "\t", "\r"]
+  fun digit() = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+staged module StagedRegExp with
+  class Some(val x)
+  class None
+
+  fun len(s) = SeqHelper.len(s)
+
+  staged class RegExp() with
+    fun derive(c)
+    fun canBeEmpty()
+
+  staged class Empty() extends RegExp with
+    fun derive(c) = new None
+    fun canBeEmpty() = true
+
+  staged class Exact(val ch) extends RegExp with
+    fun derive(c) =
+      if ch === c then new Some(new Empty())
+      else new None
+    fun canBeEmpty() = false
+
+  staged class Any() extends RegExp with
+    fun derive(c) = new Some(new Empty())
+    fun canBeEmpty() = false
+
+  staged class Not(val chars) extends RegExp with
+    fun check(c, i) =
+      if i === len(chars) then true
+      else if chars.(i) === c then false
+      else check(c, i + 1)
+    fun derive(c) =
+      if check(c, 0) then new Some(new Empty()) else new None
+    fun canBeEmpty() = false
+
+  fun notWord() = new Not(CharSet.alphabet())
+  fun notSpace() = new Not(CharSet.space())
+  fun notDigit() = new Not(CharSet.digit())
+
+  staged class Union(val p1, val p2) extends RegExp with
+    fun derive(c) =
+      if [p1.derive(c), p2.derive(c)] is
+        [Some(p1'), Some(p2')] then new Some(new Union(p1', p2'))
+        [Some(p1'), None] then new Some(p1')
+        [None, Some(p2')] then new Some(p2')
+        else new None
+    fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
+
+  fun question(r) = new Union(r, new Empty())
+
+  staged class In(val chars) extends RegExp with
+    fun check(c, i) =
+      if i === len(chars) then false
+      else if chars.(i) === c then true
+      else check(c, i + 1)
+    fun derive(c) =
+      if check(c, 0) then new Some(new Empty()) else new None
+    fun canBeEmpty() = false
+
+  fun words() = new In(CharSet.alphabet())
+  fun spaces() = new In(CharSet.space())
+  fun digits() = new In(CharSet.digit())
+
+  staged class Concat(val p1, val p2) extends RegExp with
+    fun derive(c) =
+      if [p1.derive(c), p1.canBeEmpty()] is
+        [Some(p1'), true] then
+          if p2.derive(c) is
+            Some(p2') then new Some(new Union(concat(p1', p2), p2'))
+            else new Some(concat(p1', p2))
+        [None, true] then p2.derive(c)
+        [Some(p1'), false] then new Some(concat(p1', p2))
+        else new None
+    fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
+
+  fun concat(p1, p2) =
+    if p1 is
+      Empty() then p2
+      else new Concat(p1, p2)
+
+  staged class Star(val p) extends RegExp with
+    fun derive(c) =
+      if p.derive(c) is
+        Some(p') then new Some(concat(p', new Star(p)))
+        else new None
+    fun canBeEmpty() = true
+
+  fun plus(r) = new Concat(r, new Star(r))
+  fun nTimes(r, i) =
+    if i === 1 then r
+    else new Concat(r, nTimes(r, i - 1))
+
+  fun matchImpl(p, s, acc) =
+    if len(s) === 0 then
+      if p.canBeEmpty() then new Some(acc)
+      else new None
+    else
+      let c = s.0
+      if p.derive(c) is
+        Some(p') then
+          matchImpl(p', s.slice(1), acc + c)
+        None then
+          if p.canBeEmpty() then new Some(acc) else new None
+        else new None
+  fun match(p, s) =
+    matchImpl(p, s, "")
+
+  fun matchAllImpl(p, s, res) =
+    if len(s) === 0 then res
+    else
+      if match(p, s) is
+        Some(ss) then
+          if len(ss) > 0 then matchAllImpl(p, s.slice(len(ss)), SeqHelper.push(res, ss))
+          else matchAllImpl(p, s.slice(1), res)
+        else matchAllImpl(p, s.slice(1), res)
+  fun matchAll(p, s) =
+    matchAllImpl(p, s, [])
+
+  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), new Union(question(new Exact("+")), question(new Exact("-"))))), s)
