@@ -436,7 +436,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     (helperMethods.flatten, b => Begin(cacheDecl(generatorMapDecl(End())), debugCont(b)))
 
   override def applyObjBody(companion: ClsLikeBody) =
-    if companion.isStaged then 
+    if companion.isStaged then
       // staged modules
       val (sym, ctor, methods) = (companion.isym, companion.ctor, companion.methods)
       // avoid name clash of cache and generator map for derived staged classes
@@ -455,7 +455,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   override def applyBlock(b: Block): Block = b match
     // staged classes
-    case Define(defn: ClsLikeDefn, rest) if defn.isym.defn.exists(_.hasStagedModifier.isDefined) => 
+    case Define(defn: ClsLikeDefn, rest) if defn.isStaged =>
       if !defn.privateFields.isEmpty then
         raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
         return End()
@@ -495,7 +495,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val newModule = defn.copy(sym = sym, companion = S(newCompanion))(defn.configOverride, defn.annotations.filter:
         case Annot.Modifier(Keyword.`staged`) => false
         case _ => true)
-      Define(newModule, rest)
+      Define(newModule, applyBlock(rest))
     case b => super.applyBlock(b)
 
   def mkDefnMap(b: Block): Unit =

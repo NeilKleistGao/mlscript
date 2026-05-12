@@ -193,20 +193,39 @@ staged module M with
 staged module M with
   fun f() = x => x
   fun g()() = 1
-//│ > module M with
+//│ > class Function$ extends globalThis.Function() with
 //│ >   ()
-//│ >   fun f() =
-//│ >     let {tmp}
-//│ >     tmp = new Function_
-//│ >     tmp
-//│ >   fun g() =
-//│ >     let {tmp1}
-//│ >     tmp1 = new Function_1
-//│ >     tmp1
-//│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
+//│ >   fun call() = lambda_()
+//│ > Map(1) { 'call' => [Function: call_gen] }
 //│ > SymbolMap {
 //│ >   classMap: Map(2) {
-//│ >     [class Function$1 extends Function] {
+//│ >     [class Function$ extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     },
+//│ >     [Function: Function] => ConcreteClassSymbol {
+//│ >       name: 'Function',
+//│ >       value: [Function: Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(0) {}
+//│ > }
+//│ > class Function$1 extends globalThis.Function() with
+//│ >   ()
+//│ >   fun call(x) = lambda(x)
+//│ > Map(1) { 'call' => [Function: call_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(3) {
+//│ >     [class Function$ extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map],
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
 //│ >     } => ConcreteClassSymbol {
 //│ >       name: 'Function$',
@@ -214,7 +233,56 @@ staged module M with
 //│ >       paramsOpt: None {},
 //│ >       auxParams: []
 //│ >     },
+//│ >     [Function: Function] => ConcreteClassSymbol {
+//│ >       name: 'Function',
+//│ >       value: [Function: Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     },
+//│ >     [class Function$1 extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$1',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(0) {}
+//│ > }
+//│ > module M with
+//│ >   ()
+//│ >   fun f() =
+//│ >     let {tmp}
+//│ >     tmp = new Function_1
+//│ >     tmp
+//│ >   fun g() =
+//│ >     let {tmp1}
+//│ >     tmp1 = new Function_
+//│ >     tmp1
+//│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(3) {
 //│ >     [class Function$ extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     },
+//│ >     [Function: Function] => ConcreteClassSymbol {
+//│ >       name: 'Function',
+//│ >       value: [Function: Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     },
+//│ >     [class Function$1 extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map],
 //│ >       Symbol(mlscript.definitionMetadata): [Array]
 //│ >     } => ConcreteClassSymbol {
 //│ >       name: 'Function$1',
@@ -232,8 +300,18 @@ staged module M with
 :noModuleCheck
 let x = M."f_instr"().body.rest.rhs.cls.l.value
 let y = M."g_instr"().body.rest.rhs.cls.l.value
-//│ x = class Function$
-//│ y = class Function$
+//│ x = class Function$ {
+//│   class$cache$Function$: class Function$1 extends globalThis.Function() with \
+//│       () \
+//│       fun call(x) = lambda(x),
+//│   class$generatorMap$Function$: Map(1) {"call" => fun call_gen}
+//│ }
+//│ y = class Function$ {
+//│   class$cache$Function$: class Function$ extends globalThis.Function() with \
+//│       () \
+//│       fun call() = lambda_(),
+//│   class$generatorMap$Function$: Map(1) {"call" => fun call_gen}
+//│ }
 
 staged module Shadowing with
   fun f(x, x) = x
