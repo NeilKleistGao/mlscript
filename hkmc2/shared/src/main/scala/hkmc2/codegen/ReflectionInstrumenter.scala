@@ -12,7 +12,7 @@ import mlscript.utils.*, shorthands.*
 import semantics.*
 import semantics.Elaborator.{State, Ctx, ctx}
 
-import syntax.{Literal, Tree}
+import syntax.{Keyword, Literal, Tree}
 
 // it should be possible to cache some common constructions (End, Option) into the context
 // this avoids having to rebuild the same shapes everytime they are needed
@@ -345,7 +345,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block, false))
       (Scoped(Set(argSyms*), rest))
 
-    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(false, f.configOverride, f.visibility)
+    FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(N, Nil)
 
   def refreshParamList(ps: ParamList) = 
     PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
@@ -362,7 +362,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       tuple(tups): args =>
         call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
           Return(res, false)
-    FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(false, f.configOverride, f.visibility)
+    FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(N, Nil)
   
   def stageCtor(ctorFun: FunDefn): FunDefn = 
     // refresh VarSymbols for ctor
@@ -416,13 +416,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
             transformSymbol(ownerSym, pOpt)(using Context(new HashMap())): (stagedSym, _) =>
               ctor(helperMod("FunCache"), Ls(stagedSym, map)): funCache =>
-                Define(ValDefn(cacheTsym, cacheSym, funCache)(N), rest)
+                Define(ValDefn(cacheTsym, cacheSym, funCache)(N, Nil), rest)
 
     def generatorMapDecl(rest: Block) =
       generatorEntries.collectApply: defs =>
         tuple(defs): tup =>
           ctor(State.globalThisSymbol.asPath.selSN("Map"), Ls(tup)): map =>
-            Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N), rest)
+            Define(ValDefn(generatorMapTsym, generatorMapSym, map)(N, Nil), rest)
 
     // TODO: remove this. only for testing
     def debugCont(rest: Block) =
@@ -435,23 +435,23 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // cache and generator may update symbolMapSym, so we call them first
     (helperMethods.flatten, b => Begin(cacheDecl(generatorMapDecl(End())), debugCont(b)))
 
-  override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
-    // staged modules
-    case S(defn) if defn.hasStagedModifier.isDefined =>
+  override def applyObjBody(companion: ClsLikeBody) =
+    if companion.isStaged then 
+      // staged modules
       val (sym, ctor, methods) = (companion.isym, companion.ctor, companion.methods)
       // avoid name clash of cache and generator map for derived staged classes
       val modSym = sym
       val suffix = "$" + sym.nme
       val cacheNme = "cache" + suffix
       val generatorMapNme = "generatorMap" + suffix
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(false, N, Visibility.Public)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(N, Nil)
 
       val (newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme)(methods)
       companion.copy(
         methods = stageCtor(ctorFun) :: newMethods,
         ctor = Begin(companion.ctor, cont(End())),
       )
-    case b => super.applyObjBody(companion)
+    else super.applyObjBody(companion)
 
   override def applyBlock(b: Block): Block = b match
     // staged classes
@@ -482,8 +482,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val cacheNme = "class$cache" + suffix
       val generatorMapNme = "class$generatorMap" + suffix
 
-      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(false, N, Visibility.Public)
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(false, N, Visibility.Public)
+      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), Ls(PlainParamList(Nil)), preCtor)(N, Nil)
+      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(N, Nil)
       
       val (newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme)(methods)
 
@@ -492,8 +492,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         methods = stageMethod(preCtorFun) :: stageCtor(ctorFun) :: newMethods ++ companion.methods,
         ctor = Begin(companion.ctor, cont(End())),
       )
-      val newClsLikeDefn = defn.copy(companion = S(newCompanion))(defn.configOverride)
-      Define(newClsLikeDefn, applyBlock(rest))
+      val newModule = defn.copy(sym = sym, companion = S(newCompanion))(defn.configOverride, defn.annotations.filter:
+        case Annot.Modifier(Keyword.`staged`) => false
+        case _ => true)
+      Define(newModule, rest)
     case b => super.applyBlock(b)
 
   def mkDefnMap(b: Block): Unit =
