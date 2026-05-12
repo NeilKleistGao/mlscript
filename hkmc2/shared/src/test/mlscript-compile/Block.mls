@@ -206,7 +206,8 @@ class Printer(val owner: Opt[Symbol]) with
         else showPath(fun_) + "(" + showArgs(args) + ")"
       Instantiate(cls, args) then 
         let classPath = showInstantiatePath(cls)
-        let prefix = if cls is ValueRef(ClassSymbol) and owner is Some(owner) then "new! " + classPath else "new " + classPath
+        // redirections must be dynamic selections, hence the use of new! is required
+        let prefix = if cls is ValueRef(cSym) and cSym.redirect and owner is Some(owner) then "new! " + classPath else "new " + classPath
         prefix + "(" + showArgs(args) + ")"
       Tuple(elems) then "[" + showArgs(elems) + "]"
       _ then "<unknown result:" ~ r ~ ">"
