@@ -369,7 +369,24 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
   let knownMapArr = [...knownMap.entries()]
   let isRet = xOpt is None
 
-  if knownMap.size is 
+  if unkShape.isEmpty() and pss.values().length > 1 then
+    let retShapes = pss.values().map(s =>
+      if s is
+        Class(c_i, _) then
+          let genMap = getClassGenMap(c_i.value)
+          let f_gen = genMap.get(f)
+          let ret = f_gen(lift(s))(...argShapes)
+          ret.1
+        else mkDyn()
+    )
+    let retShape = foldl((acc, rs) => union2(acc, rs))(mkBot(), ...retShapes)
+    let callRes = Call(Select(p, Symbol(f)), args)
+    if isRet then
+      [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
+    else
+      let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
+      [Assign(x, callRes, End()), retShape]
+  else if knownMap.size is 
     0 and
       let dfltMatch = Call(Select(p, Symbol(f)), args)
       isRet then
@@ -377,6 +394,24 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
         [Assign(x, dfltMatch, End()), mkDyn()]
+    1 and unkShape.isEmpty() and
+      let C_i = knownMapArr.0.0
+      let ss_i = knownMapArr.0.1
+      let shapeVals = ss_i.values()
+      shapeVals.length > 1 then
+        let genMap = getClassGenMap(C_i.value)
+        let f_gen = genMap.get(f)
+        let retShapes = shapeVals.map(s =>
+          let ret = f_gen(lift(s))(...argShapes)
+          ret.1
+        )
+        let retShape = foldl((acc, rs) => union2(acc, rs))(mkBot(), ...retShapes)
+        let callRes = Call(Select(p, Symbol(f)), args)
+        if isRet then
+          [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
+        else
+          let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
+          [Assign(x, callRes, End()), retShape]
     1 and unkShape.isEmpty() and
       // If the object is certainly a known class, generate the generated method call directly without pattern matching
       let C_i = knownMapArr.0.0
@@ -510,20 +545,49 @@ fun prop(ctx, b) = if b is
 fun propStub(ctx, body) = 
   [body, mkDyn()]
 
+fun uniqueNames(arr: Array[Str]) =
+  let m = new Map(arr.map(x => [x, x]))
+  m.keys().toArray().toSorted()
+
+fun buildUnionShapeName(names: Array[Str]) =
+  let uniq = uniqueNames(names)
+  if uniq.length is 1 then uniq.0
+  else "Union_" + uniq.join("_") + "_end"
+
+fun semanticShapeMembers(s: Shape): Array[Str] =
+  if s is
+    Class(ConcreteClassSymbol("Union", _, _, _, _), params) then
+      if params.length is 2 then params.flatMap(semanticShapeMembers)
+      else [buildShapeName(s)]
+    else [buildShapeName(s)]
+
 fun buildShapeName(s: Shape): Str = if s is
   Dyn then "Dyn"
   Lit(lit) and lit is Str then "Str" + lit
   Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
   Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
-  Class(sym, params) and params.length is
-    0 then sym.name
-    else sym.name + "_" + params.map(buildShapeName).join("_")
+  Class(sym, params) then
+    if sym is
+      ConcreteClassSymbol("Union", _, _, _, _) then
+        if params.length is 2 then buildUnionShapeName(params.flatMap(semanticShapeMembers))
+        else if params.length is 0 then sym.name
+        else sym.name + "_" + params.map(buildShapeName).join("_")
+      else if params.length is 0 then sym.name
+      else sym.name + "_" + params.map(buildShapeName).join("_")
   else throw Error("unknown shape when building shape name" + s.toString())
+
+fun coversShapeName(names: Array[Str], covered: Array[Str]) =
+  covered.every(n => names.includes(n))
 
 fun buildShapeSetName(ss: ShapeSet): Str =
   let vals = ss.keys().map(k => ss.shapeset.get(k))
-  if vals.length is 1 then buildShapeName(vals.0)
-  else "Union_" + vals.map(buildShapeName).join("_") + "_end"
+  let entries = vals.map(s => [buildShapeName(s), uniqueNames(semanticShapeMembers(s))])
+  let reduced = entries.filter(e =>
+    not entries.some(e2 => e2.0 !== e.0 and coversShapeName(e2.1, e.1))
+  )
+  let names = uniqueNames(reduced.map(_.0))
+  if names.length is 1 then names.0
+  else "Union_" + names.join("_") + "_end"
 
 fun specializationParamShapes(isMethod, ps, shapes) =
   shapes.map((ss, i, _) =>
