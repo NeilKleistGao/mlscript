@@ -63,6 +63,9 @@ class Ctx(
     else
       ctx.set(ps, ss)
     this
+  fun refine(path: Path, ss: ShapeSet) =
+    ctx.set(showCtxPath(path), ss)
+    this
   // Later ValDefn (in derived class) shadows earlier ValDefn (in base class)
   fun addValDefn(ps: String, ss: ShapeSet) =
     valDefnCtx.set(ps, ss)
@@ -466,7 +469,7 @@ fun prop(ctx, b) = if b is
         )
       fun propBranch(body, branchShape) =
         let branchCtx = ctx.clone
-        if not p is ValueLit do branchCtx.add(p, branchShape)
+        if not p is ValueLit do branchCtx.refine(p, branchShape)
         let res = prop(branchCtx, body)
         [...res, branchCtx.sub(ctx)]
       let filteredArms = foldl((r, arm) =>
@@ -518,7 +521,7 @@ fun buildShapeName(s: Shape): Str = if s is
   else throw Error("unknown shape when building shape name" + s.toString())
 
 fun buildShapeSetName(ss: ShapeSet): Str =
-  let vals = ss.values()
+  let vals = ss.keys().map(k => ss.shapeset.get(k))
   if vals.length is 1 then buildShapeName(vals.0)
   else "Union_" + vals.map(buildShapeName).join("_") + "_end"
 

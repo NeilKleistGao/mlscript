@@ -4,6 +4,7 @@ module SeqHelper with
   fun push(arr, ele) =
     arr.push(ele)
     arr
+  fun has(arr, ele) = arr.includes(ele)
   fun len(s) = s.length
 
 module CharSet with
@@ -19,6 +20,7 @@ staged module StagedRegExp with
   class None
 
   fun len(s) = SeqHelper.len(s)
+  fun has(arr, ele) = SeqHelper.has(arr, ele)
 
   staged class RegExp() with
     fun derive(c)
@@ -39,36 +41,31 @@ staged module StagedRegExp with
     fun canBeEmpty() = false
 
   staged class Not(val chars) extends RegExp with
-    fun check(c, i) =
-      if i === len(chars) then true
-      else if chars.(i) === c then false
-      else check(c, i + 1)
     fun derive(c) =
-      if check(c, 0) then new Some(new Empty()) else new None
+      if not has(chars, c) then new Some(new Empty()) else new None
     fun canBeEmpty() = false
 
   fun notWord() = new Not(CharSet.alphabet())
   fun notSpace() = new Not(CharSet.space())
   fun notDigit() = new Not(CharSet.digit())
 
+  fun mkUnion(p1, p2) =
+    if p1 is Empty() and p2 is Empty() then new Empty()
+    else new Union(p1, p2)
+  fun question(r) = mkUnion(r, new Empty())
+
   staged class Union(val p1, val p2) extends RegExp with
     fun derive(c) =
       if [p1.derive(c), p2.derive(c)] is
-        [Some(p1'), Some(p2')] then new Some(new Union(p1', p2'))
+        [Some(p1'), Some(p2')] then new Some(mkUnion(p1', p2'))
         [Some(p1'), None] then new Some(p1')
         [None, Some(p2')] then new Some(p2')
         else new None
     fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
 
-  fun question(r) = new Union(r, new Empty())
-
   staged class In(val chars) extends RegExp with
-    fun check(c, i) =
-      if i === len(chars) then false
-      else if chars.(i) === c then true
-      else check(c, i + 1)
     fun derive(c) =
-      if check(c, 0) then new Some(new Empty()) else new None
+      if has(chars, c) then new Some(new Empty()) else new None
     fun canBeEmpty() = false
 
   fun words() = new In(CharSet.alphabet())
@@ -80,14 +77,14 @@ staged module StagedRegExp with
       if [p1.derive(c), p1.canBeEmpty()] is
         [Some(p1'), true] then
           if p2.derive(c) is
-            Some(p2') then new Some(new Union(concat(p1', p2), p2'))
-            else new Some(concat(p1', p2))
+            Some(p2') then new Some(mkUnion(mkConcat(p1', p2), p2'))
+            else new Some(mkConcat(p1', p2))
         [None, true] then p2.derive(c)
-        [Some(p1'), false] then new Some(concat(p1', p2))
+        [Some(p1'), false] then new Some(mkConcat(p1', p2))
         else new None
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
 
-  fun concat(p1, p2) =
+  fun mkConcat(p1, p2) =
     if p1 is
       Empty() then p2
       else new Concat(p1, p2)
@@ -95,7 +92,7 @@ staged module StagedRegExp with
   staged class Star(val p) extends RegExp with
     fun derive(c) =
       if p.derive(c) is
-        Some(p') then new Some(concat(p', new Star(p)))
+        Some(p') then new Some(mkConcat(p', new Star(p)))
         else new None
     fun canBeEmpty() = true
 
@@ -129,5 +126,87 @@ staged module StagedRegExp with
         else matchAllImpl(p, s.slice(1), res)
   fun matchAll(p, s) =
     matchAllImpl(p, s, [])
+
+  // fun matchEmail(s, res) =
+    // let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
+    // if match(new Star(p), s) is
+    //   Some(s1) then
+    //     let r1 = s.slice(len(s1))
+    //     if match(new Concat(plus(words()), new Exact("@")), r1) is
+    //       Some(s2) then
+    //         let r2 = r1.slice(len(s2))
+    //         if match(plus(p), r2) is
+    //           Some(s3) then
+    //             let r3 = r2.slice(len(s3))
+    //             if match(plus(words()), r3) is
+    //               Some(s4) then matchEmail(r3.slice(len(s4)), SeqHelper.push(res, s1 + s2 + s3 + s4))
+    //               else matchEmail(s.slice(1), res)
+    //           else matchEmail(s.slice(1), res)
+    //       else matchEmail(s.slice(1), res)
+    //   else matchEmail(s.slice(1), res)
+
+  // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
+  // fun matchAllEmail(s) = //matchEmail(s, [])
+  //   let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
+  //   let email = new Concat(new Concat(new Concat(new Star(p), plus(words())), new Exact("@")), new Concat(plus(p), plus(words())))
+  //   matchAll(new Star(p), s)
+
+  // fun matchURI(s, res) =
+  //   if len(s) == 0 then res
+  //   else
+  //     let n1 = new Not(["/", "?", "#", " ", "\n", "\t", "\r"])
+  //     let n2 = new Not(["?", "#", " ", "\n", "\t", "\r"])
+  //     let n3 = new Not(["#", " ", "\n", "\t", "\r"])
+
+  // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
+  // fun matchAllURI(s) =
+  //   let ss = CharSet.space()
+  //   let n1 = new Not(ss.mkConcat(["/", "?", "#"]))
+  //   let n2 = new Not(ss.mkConcat(["?", "#"]))
+  //   let n3 = new Not(ss.mkConcat(["#"]))
+  //   let head = new Concat(plus(words()), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
+  //   let body = new Concat(plus(n1), plus(n2))
+  //   let params = new Concat(question(new Concat(new Exact("?"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))), question(new Concat(new Exact("#"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))))
+  //   let uri = new Concat(head, new Concat(body, params))
+  //   matchAll(uri, s)
+
+  fun matchSeg(s, d) =
+    let fo = new In(["0", "1", "2", "3", "4"])
+    let fi = new In(["0", "1", "2", "3", "4", "5"])
+    let segment = new Union(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Union(
+      new Concat(new Exact("2"), new Concat(fo, digits())),
+      new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
+    ))
+    match(if d then new Concat(segment, new Exact(".")) else segment, s)
+
+  fun matchIPv4(s, res) =
+    if len(s) === 0 then res
+    else
+      if matchSeg(s, true) is
+        Some(s1) then
+          let r1 = s.slice(len(s1))
+          if matchSeg(r1, true) is
+            Some(s2) then
+              let r2 = r1.slice(len(s2))
+              if matchSeg(r2, true) is
+                Some(s3) then
+                  let r3 = r2.slice(len(s3))
+                  if matchSeg(r3, false) is
+                    Some(s4) then matchIPv4(r3.slice(len(s4)), SeqHelper.push(res, s1 + s2 + s3 + s4))
+                    else matchIPv4(s.slice(1), res)
+                else matchIPv4(s.slice(1), res)
+            else matchIPv4(s.slice(1), res)
+        else matchIPv4(s.slice(1), res)
+
+  // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
+  fun matchAllIPv4(s) = matchIPv4(s, [])
+    // let fo = new In(["0", "1", "2", "3", "4"])
+    // let fi = new In(["0", "1", "2", "3", "4", "5"])
+    // let segment = new Union(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Union(
+    //   new Concat(new Exact("2"), new Concat(fo, digits())),
+    //   new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
+    // ))
+    // let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
+    // matchAll(nTimes(new Concat(segment, new Exact(".")), 2), s)
 
   fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), new Union(question(new Exact("+")), question(new Exact("-"))))), s)
