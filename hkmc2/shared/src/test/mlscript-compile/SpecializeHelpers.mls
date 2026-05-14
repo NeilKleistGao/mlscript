@@ -369,24 +369,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
   let knownMapArr = [...knownMap.entries()]
   let isRet = xOpt is None
 
-  if unkShape.isEmpty() and pss.values().length > 1 then
-    let retShapes = pss.values().map(s =>
-      if s is
-        Class(c_i, _) then
-          let genMap = getClassGenMap(c_i.value)
-          let f_gen = genMap.get(f)
-          let ret = f_gen(lift(s))(...argShapes)
-          ret.1
-        else mkDyn()
-    )
-    let retShape = foldl((acc, rs) => union2(acc, rs))(mkBot(), ...retShapes)
-    let callRes = Call(Select(p, Symbol(f)), args)
-    if isRet then
-      [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
-    else
-      let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-      [Assign(x, callRes, End()), retShape]
-  else if knownMap.size is 
+  if knownMap.size is 
     0 and
       let dfltMatch = Call(Select(p, Symbol(f)), args)
       isRet then
@@ -394,24 +377,6 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
         [Assign(x, dfltMatch, End()), mkDyn()]
-    1 and unkShape.isEmpty() and
-      let C_i = knownMapArr.0.0
-      let ss_i = knownMapArr.0.1
-      let shapeVals = ss_i.values()
-      shapeVals.length > 1 then
-        let genMap = getClassGenMap(C_i.value)
-        let f_gen = genMap.get(f)
-        let retShapes = shapeVals.map(s =>
-          let ret = f_gen(lift(s))(...argShapes)
-          ret.1
-        )
-        let retShape = foldl((acc, rs) => union2(acc, rs))(mkBot(), ...retShapes)
-        let callRes = Call(Select(p, Symbol(f)), args)
-        if isRet then
-          [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
-        else
-          let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
-          [Assign(x, callRes, End()), retShape]
     1 and unkShape.isEmpty() and
       // If the object is certainly a known class, generate the generated method call directly without pattern matching
       let C_i = knownMapArr.0.0

@@ -127,29 +127,31 @@ module SimpleRegExp with
   fun matchAll(p, s) =
     matchAllImpl(p, s, [])
 
-  // fun matchEmail(s, res) =
-    // let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
-    // if match(new Star(p), s) is
-    //   Some(s1) then
-    //     let r1 = s.slice(len(s1))
-    //     if match(new Concat(plus(words()), new Exact("@")), r1) is
-    //       Some(s2) then
-    //         let r2 = r1.slice(len(s2))
-    //         if match(plus(p), r2) is
-    //           Some(s3) then
-    //             let r3 = r2.slice(len(s3))
-    //             if match(plus(words()), r3) is
-    //               Some(s4) then matchEmail(r3.slice(len(s4)), SeqHelper.push(res, s1 + s2 + s3 + s4))
-    //               else matchEmail(s.slice(1), res)
-    //           else matchEmail(s.slice(1), res)
-    //       else matchEmail(s.slice(1), res)
-    //   else matchEmail(s.slice(1), res)
+  fun matchEmail(s, res) =
+    if len(s) == 0 then res
+    else
+      let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
+      if match(new Star(p), s) is
+        Some(s1) then
+          let r1 = s.slice(len(s1))
+          if match(new Concat(plus(words()), new Exact("@")), r1) is
+            Some(s2) then
+              let r2 = r1.slice(len(s2))
+              if match(plus(p), r2) is
+                Some(s3) then
+                  let r3 = r2.slice(len(s3))
+                  if match(plus(words()), r3) is
+                    Some(s4) then matchEmail(r3.slice(len(s4)), SeqHelper.push(res, s1 + s2 + s3 + s4))
+                    else matchEmail(s.slice(1), res)
+                else matchEmail(s.slice(1), res)
+            else matchEmail(s.slice(1), res)
+        else matchEmail(s.slice(1), res)
 
   // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
-  // fun matchAllEmail(s) = //matchEmail(s, [])
-  //   let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
-  //   let email = new Concat(new Concat(new Concat(new Star(p), plus(words())), new Exact("@")), new Concat(plus(p), plus(words())))
-  //   matchAll(new Star(p), s)
+  fun matchAllEmail(s) = matchEmail(s, [])
+    // let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
+    // let email = new Concat(new Concat(new Concat(new Star(p), plus(words())), new Exact("@")), new Concat(plus(p), plus(words())))
+    // matchAll(new Star(p), s)
 
   // fun matchURI(s, res) =
   //   if len(s) == 0 then res
@@ -157,6 +159,16 @@ module SimpleRegExp with
   //     let n1 = new Not(["/", "?", "#", " ", "\n", "\t", "\r"])
   //     let n2 = new Not(["?", "#", " ", "\n", "\t", "\r"])
   //     let n3 = new Not(["#", " ", "\n", "\t", "\r"])
+  //     let head = new Concat(plus(words()), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
+  //     let body = new Concat(plus(n1), plus(n2))
+  //     let params = new Concat(question(new Concat(new Exact("?"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))), question(new Concat(new Exact("#"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))))
+  //     if match(head, s) is
+  //       Some(s1) then
+  //         let r1 = s.slice(len(s1))
+  //         if match(body, r1) is
+  //           Some(s2) then 
+  //           else matchURI(s.slice(1), res) 
+  //       else matchURI(s.slice(1), res)
 
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
   // fun matchAllURI(s) =
