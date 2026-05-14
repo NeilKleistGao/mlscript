@@ -136,7 +136,6 @@ test1("C")
 test1("G")
 //│ = None
 
-
 matchAllEmail("foo@bar.baz")
 //│ = ["foo@bar.baz"]
 
@@ -156,6 +155,22 @@ matchAllEmail("f@a")
 //│ = []
 
 
+matchAllURI("http://foo.bar.com")
+//│ = ["http://foo.bar.com"]
+
+
+matchAllURI("http://foo.bar.com?xxx")
+//│ = ["http://foo.bar.com?xxx"]
+
+
+matchAllURI("http://foo.bar.com?xxx#42")
+//│ = ["http://foo.bar.com?xxx#42"]
+
+
+matchAllURI("http://foo.bar.com#42")
+//│ = ["http://foo.bar.com#42"]
+
+
 matchAllIPv4("8.8.8.8")
 //│ = ["8.8.8.8"]
 
@@ -163,19 +178,27 @@ matchAllIPv4("192.168.1.1")
 //│ = ["192.168.1.1"]
 
 
-// :silent
-// import "fs"
+
+:silent
+import "fs"
 
 
-// :silent
-// let text = fs.readFileSync("./hkmc2/shared/src/test/mlscript-compile/staging/benchmark/input-text.txt", "utf8")
+:silent
+let text = fs.readFileSync("./hkmc2/shared/src/test/mlscript-compile/staging/benchmark/input-text.txt", "utf8")
 
 
-// :expect 6
-// matchAll(email, text).length
+:expect 6
+matchAllEmail(text).length
+//│ = 6
 
-// :expect 531
-// matchAll(uri, text).length
+:expect 531
+matchAllURI(text).length
+//│ = 531
+
+:expect 4
+matchAllIPv4(text).length
+//│ = 4
+
 
 // let begin = globalThis.process.hrtime()
 // matchAllIPv4(text)
@@ -187,7 +210,4 @@ matchAllIPv4("192.168.1.1")
 // //│ diff = [0, 564090443]
 // //│ diffTime = 564090443
 
-// :expect 4
-// matchAllIPv4(text).length
-// //│ = 4
 

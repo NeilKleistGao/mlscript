@@ -127,90 +127,35 @@ module SimpleRegExp with
   fun matchAll(p, s) =
     matchAllImpl(p, s, [])
 
-  fun matchEmail(s, res) =
-    if len(s) == 0 then res
-    else
-      let p = new Union(words(), new Union(new Exact("-"), new Exact(".")))
-      if match(new Concat(plus(p), new Exact("@")), s) is
-        Some(s1) then
-          let r1 = s.slice(len(s1))
-          if match(new Concat(new Concat(plus(p), new Exact(".")), plus(p)), r1) is
-            Some(s2) then matchEmail(r1.slice(len(s2)), SeqHelper.push(res, s1 + s2))
-            else matchEmail(s.slice(1), res)
-        else matchEmail(s.slice(1), res)
-
   // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
-  fun matchAllEmail(s) = matchEmail(s, [])
-    // let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
-    // let email = new Concat(new Concat(new Concat(new Star(p), plus(words())), new Exact("@")), new Concat(plus(p), plus(words())))
-    // matchAll(new Star(p), s)
-
-  // fun matchURI(s, res) =
-  //   if len(s) == 0 then res
-  //   else
-  //     let n1 = new Not(["/", "?", "#", " ", "\n", "\t", "\r"])
-  //     let n2 = new Not(["?", "#", " ", "\n", "\t", "\r"])
-  //     let n3 = new Not(["#", " ", "\n", "\t", "\r"])
-  //     let head = new Concat(plus(words()), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
-  //     let body = new Concat(plus(n1), plus(n2))
-  //     let params = new Concat(question(new Concat(new Exact("?"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))), question(new Concat(new Exact("#"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))))
-  //     if match(head, s) is
-  //       Some(s1) then
-  //         let r1 = s.slice(len(s1))
-  //         if match(body, r1) is
-  //           Some(s2) then 
-  //           else matchURI(s.slice(1), res) 
-  //       else matchURI(s.slice(1), res)
+  fun matchAllEmail(s) =
+    let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
+    let email = new Concat(new Concat(new Concat(new Star(p), plus(words())), new Exact("@")), new Concat(plus(p), plus(words())))
+    matchAll(email, s)
 
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
-  // fun matchAllURI(s) =
-  //   let ss = CharSet.space()
-  //   let n1 = new Not(ss.mkConcat(["/", "?", "#"]))
-  //   let n2 = new Not(ss.mkConcat(["?", "#"]))
-  //   let n3 = new Not(ss.mkConcat(["#"]))
-  //   let head = new Concat(plus(words()), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
-  //   let body = new Concat(plus(n1), plus(n2))
-  //   let params = new Concat(question(new Concat(new Exact("?"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))), question(new Concat(new Exact("#"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))))
-  //   let uri = new Concat(head, new Concat(body, params))
-  //   matchAll(uri, s)
+  fun matchAllURI(s) =
+    let n1 = new Not(["/", "?", "#", " ", "\n", "\t", "\r"])
+    let n2 = new Not(["?", "#", " ", "\n", "\t", "\r"])
+    let n3 = new Not(["#", " ", "\n", "\t", "\r"])
+    let head = new Concat(plus(words()), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
+    let body = new Concat(plus(n1), plus(n2))
+    let params = new Concat(question(new Concat(new Exact("?"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))), question(new Concat(new Exact("#"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))))
+    let uri = new Concat(head, new Concat(body, params))
+    matchAll(uri, s)
 
-  fun matchSeg(s, d) =
+  // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
+  fun matchAllIPv4(s) =
     let fo = new In(["0", "1", "2", "3", "4"])
     let fi = new In(["0", "1", "2", "3", "4", "5"])
     let segment = new Union(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Union(
       new Concat(new Exact("2"), new Concat(fo, digits())),
       new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
     ))
-    match(if d then new Concat(segment, new Exact(".")) else segment, s)
+    let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
+    matchAll(ipv4, s)
 
-  fun matchIPv4(s, res) =
-    if len(s) === 0 then res
-    else
-      if matchSeg(s, true) is
-        Some(s1) then
-          let r1 = s.slice(len(s1))
-          if matchSeg(r1, true) is
-            Some(s2) then
-              let r2 = r1.slice(len(s2))
-              if matchSeg(r2, true) is
-                Some(s3) then
-                  let r3 = r2.slice(len(s3))
-                  if matchSeg(r3, false) is
-                    Some(s4) then matchIPv4(r3.slice(len(s4)), SeqHelper.push(res, s1 + s2 + s3 + s4))
-                    else matchIPv4(s.slice(1), res)
-                else matchIPv4(s.slice(1), res)
-            else matchIPv4(s.slice(1), res)
-        else matchIPv4(s.slice(1), res)
+  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), question(new Union(new Exact("+"), new Exact("-"))))), s)
 
-  // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
-  fun matchAllIPv4(s) = matchIPv4(s, [])
-    // let fo = new In(["0", "1", "2", "3", "4"])
-    // let fi = new In(["0", "1", "2", "3", "4", "5"])
-    // let segment = new Union(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Union(
-    //   new Concat(new Exact("2"), new Concat(fo, digits())),
-    //   new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
-    // ))
-    // let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
-    // matchAll(nTimes(new Concat(segment, new Exact(".")), 2), s)
-
-  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), new Union(question(new Exact("+")), question(new Exact("-"))))), s)
+  fun test2(s) =
+    match(new Concat(new Star(new Union(new Exact("A"), new Exact("B"))), new Concat(new Exact("A"), new Concat(new Exact("A"), new Exact("B")))), s)
