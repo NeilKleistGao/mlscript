@@ -130,20 +130,12 @@ module SimpleRegExp with
   fun matchEmail(s, res) =
     if len(s) == 0 then res
     else
-      let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
-      if match(new Star(p), s) is
+      let p = new Union(words(), new Union(new Exact("-"), new Exact(".")))
+      if match(new Concat(plus(p), new Exact("@")), s) is
         Some(s1) then
           let r1 = s.slice(len(s1))
-          if match(new Concat(plus(words()), new Exact("@")), r1) is
-            Some(s2) then
-              let r2 = r1.slice(len(s2))
-              if match(plus(p), r2) is
-                Some(s3) then
-                  let r3 = r2.slice(len(s3))
-                  if match(plus(words()), r3) is
-                    Some(s4) then matchEmail(r3.slice(len(s4)), SeqHelper.push(res, s1 + s2 + s3 + s4))
-                    else matchEmail(s.slice(1), res)
-                else matchEmail(s.slice(1), res)
+          if match(new Concat(new Concat(plus(p), new Exact(".")), plus(p)), r1) is
+            Some(s2) then matchEmail(r1.slice(len(s2)), SeqHelper.push(res, s1 + s2))
             else matchEmail(s.slice(1), res)
         else matchEmail(s.slice(1), res)
 

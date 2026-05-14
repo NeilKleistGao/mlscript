@@ -510,49 +510,20 @@ fun prop(ctx, b) = if b is
 fun propStub(ctx, body) = 
   [body, mkDyn()]
 
-fun uniqueNames(arr: Array[Str]) =
-  let m = new Map(arr.map(x => [x, x]))
-  m.keys().toArray().toSorted()
-
-fun buildUnionShapeName(names: Array[Str]) =
-  let uniq = uniqueNames(names)
-  if uniq.length is 1 then uniq.0
-  else "Union_" + uniq.join("_") + "_end"
-
-fun semanticShapeMembers(s: Shape): Array[Str] =
-  if s is
-    Class(ConcreteClassSymbol("Union", _, _, _, _), params) then
-      if params.length is 2 then params.flatMap(semanticShapeMembers)
-      else [buildShapeName(s)]
-    else [buildShapeName(s)]
-
 fun buildShapeName(s: Shape): Str = if s is
   Dyn then "Dyn"
   Lit(lit) and lit is Str then "Str" + lit
   Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
   Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
-  Class(sym, params) then
-    if sym is
-      ConcreteClassSymbol("Union", _, _, _, _) then
-        if params.length is 2 then buildUnionShapeName(params.flatMap(semanticShapeMembers))
-        else if params.length is 0 then sym.name
-        else sym.name + "_" + params.map(buildShapeName).join("_")
-      else if params.length is 0 then sym.name
-      else sym.name + "_" + params.map(buildShapeName).join("_")
+  Class(sym, params) and params.length is
+    0 then sym.name
+    else sym.name + "_" + params.map(buildShapeName).join("_")
   else throw Error("unknown shape when building shape name" + s.toString())
-
-fun coversShapeName(names: Array[Str], covered: Array[Str]) =
-  covered.every(n => names.includes(n))
 
 fun buildShapeSetName(ss: ShapeSet): Str =
   let vals = ss.keys().map(k => ss.shapeset.get(k))
-  let entries = vals.map(s => [buildShapeName(s), uniqueNames(semanticShapeMembers(s))])
-  let reduced = entries.filter(e =>
-    not entries.some(e2 => e2.0 !== e.0 and coversShapeName(e2.1, e.1))
-  )
-  let names = uniqueNames(reduced.map(_.0))
-  if names.length is 1 then names.0
-  else "Union_" + names.join("_") + "_end"
+  if vals.length is 1 then buildShapeName(vals.0)
+  else "Union_" + vals.map(buildShapeName).join("_") + "_end"
 
 fun specializationParamShapes(isMethod, ps, shapes) =
   shapes.map((ss, i, _) =>

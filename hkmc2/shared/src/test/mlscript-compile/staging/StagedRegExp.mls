@@ -127,28 +127,20 @@ staged module StagedRegExp with
   fun matchAll(p, s) =
     matchAllImpl(p, s, [])
 
-  fun matchEmail(s, res) =
-    if len(s) == 0 then res
-    else
-      let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
-      if match(new Star(p), s) is
-        Some(s1) then
-          let r1 = s.slice(len(s1))
-          if match(new Concat(plus(words()), new Exact("@")), r1) is
-            Some(s2) then
-              let r2 = r1.slice(len(s2))
-              if match(plus(p), r2) is
-                Some(s3) then
-                  let r3 = r2.slice(len(s3))
-                  if match(plus(words()), r3) is
-                    Some(s4) then matchEmail(r3.slice(len(s4)), SeqHelper.push(res, s1 + s2 + s3 + s4))
-                    else matchEmail(s.slice(1), res)
-                else matchEmail(s.slice(1), res)
-            else matchEmail(s.slice(1), res)
-        else matchEmail(s.slice(1), res)
+  // fun matchEmail(s, res) =
+  //   if len(s) == 0 then res
+  //   else
+  //     let p = new Union(words(), new Union(new Exact("-"), new Exact(".")))
+  //     if match(new Concat(plus(p), new Exact("@")), s) is
+  //       Some(s1) then
+  //         let r1 = s.slice(len(s1))
+  //         if match(new Concat(new Concat(plus(p), new Exact(".")), plus(p)), r1) is
+  //           Some(s2) then matchEmail(r1.slice(len(s2)), SeqHelper.push(res, s1 + s2))
+  //           else matchEmail(s.slice(1), res)
+  //       else matchEmail(s.slice(1), res)
 
-  // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
-  fun matchAllEmail(s) = matchEmail(s, [])
+  // // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
+  // fun matchAllEmail(s) = matchEmail(s, [])
     // let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
     // let email = new Concat(new Concat(new Concat(new Star(p), plus(words())), new Exact("@")), new Concat(plus(p), plus(words())))
     // matchAll(new Star(p), s)
@@ -211,7 +203,7 @@ staged module StagedRegExp with
     // let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
     // matchAll(nTimes(new Concat(segment, new Exact(".")), 2), s)
 
-  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), new Union(question(new Exact("+")), question(new Exact("-"))))), s)
+  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), question(new Union(new Exact("+"), new Exact("-"))))), s)
 
-  fun test2(s) =
-    match(new Concat(new Star(new Union(new Exact("A"), new Exact("B"))), new Concat(new Exact("A"), new Concat(new Exact("A"), new Exact("B")))), s)
+  // fun test2(s) =
+  //   match(new Concat(new Star(new Union(new Exact("A"), new Exact("B"))), new Concat(new Exact("A"), new Concat(new Exact("A"), new Exact("B")))), s)
