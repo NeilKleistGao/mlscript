@@ -4,6 +4,7 @@ module SeqHelper with
   fun push(arr, ele) =
     arr.push(ele)
     arr
+  fun concat(lhs, rhs) = lhs.concat(rhs)
   fun has(arr, ele) = arr.includes(ele)
   fun len(s) = s.length
 
@@ -129,8 +130,9 @@ staged module StagedRegExp with
 
   // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
   fun matchAllEmail(s) =
-    let p = new Concat(plus(words()), new Union(new Exact("-"), new Exact(".")))
-    let email = new Concat(new Concat(new Concat(new Star(p), plus(words())), new Exact("@")), new Concat(plus(p), plus(words())))
+    let w = words()
+    let p = mkConcat(plus(w), mkUnion(new Exact("-"), new Exact(".")))
+    let email = mkConcat(mkConcat(mkConcat(new Star(p), plus(w)), new Exact("@")), mkConcat(plus(p), plus(w)))
     matchAll(email, s)
 
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
@@ -138,24 +140,27 @@ staged module StagedRegExp with
     let n1 = new Not(["/", "?", "#", " ", "\n", "\t", "\r"])
     let n2 = new Not(["?", "#", " ", "\n", "\t", "\r"])
     let n3 = new Not(["#", " ", "\n", "\t", "\r"])
-    let head = new Concat(plus(words()), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
-    let body = new Concat(plus(n1), plus(n2))
-    let params = new Concat(question(new Concat(new Exact("?"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))), question(new Concat(new Exact("#"), new Star(new Union(words(), new Union(digits(), new Union(new Exact("-"), new Exact("_"))))))))
-    let uri = new Concat(head, new Concat(body, params))
+    let w = words()
+    let d = digits()
+    let p = SeqHelper.concat(CharSet.alphabet(), SeqHelper.concat(CharSet.digit(), ["-", "_"]))
+    let head = mkConcat(plus(w), mkConcat(new Exact(":"), mkConcat(new Exact("/"), new Exact("/"))))
+    let body = mkConcat(plus(n1), plus(n2))
+    let params = mkConcat(question(mkConcat(new Exact("?"), new Star(new In(p)))), question(mkConcat(new Exact("#"), new Star(new In(p)))))
+    let uri = mkConcat(head, mkConcat(body, params))
     matchAll(uri, s)
 
   // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
   fun matchAllIPv4(s) =
     let fo = new In(["0", "1", "2", "3", "4"])
     let fi = new In(["0", "1", "2", "3", "4", "5"])
-    let segment = new Union(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Union(
-      new Concat(new Exact("2"), new Concat(fo, digits())),
-      new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
+    let segment = mkUnion(mkConcat(new Exact("2"), mkConcat(new Exact("5"), fi)), mkUnion(
+      mkConcat(new Exact("2"), mkConcat(fo, digits())),
+      mkConcat(question(new Exact("1")), mkConcat(question(digits()), digits()))
     ))
-    let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
+    let ipv4 = mkConcat(nTimes(mkConcat(segment, new Exact(".")), 3), segment)
     matchAll(ipv4, s)
 
-  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), question(new Union(new Exact("+"), new Exact("-"))))), s)
+  fun test1(s) = match(mkUnion(new Exact("F"), mkConcat(new In(["A", "B", "C", "D"]), question(mkUnion(new Exact("+"), new Exact("-"))))), s)
 
   fun test2(s) =
-    match(new Concat(new Star(new Union(new Exact("A"), new Exact("B"))), new Concat(new Exact("A"), new Concat(new Exact("A"), new Exact("B")))), s)
+    match(mkConcat(new Star(mkUnion(new Exact("A"), new Exact("B"))), mkConcat(new Exact("A"), mkConcat(new Exact("A"), new Exact("B")))), s)
