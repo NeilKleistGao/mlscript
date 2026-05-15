@@ -259,7 +259,7 @@ class Printer(val owner: Opt[Symbol]) with
         not isStagedClass(v) then
           "class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
             + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
-        isStagedClass(v) then getClassCache(v)
+        isStagedClass(v) then getClassCache(v).ownerString()
       // TODO: used to represent assignments in constructors, which still need some adjustments
       ValDefn(owner, sym, rhs) then
         "val " + showSymbol(sym) + " = " + showPath(rhs)
@@ -323,7 +323,7 @@ let configs =
 
 fun codegen(name, cache, source, file) =
   let fullpath = path.join of process.cwd(), file
-  let code = "import \"" + source + "\" as " + legacyName(name) + "\n" + indent(cache.toString())
+  let code = "import \"" + source + "\" as " + legacyName(name) + "\n" + cache.toString()
   if not fs.existsSync(fullpath) do
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
@@ -340,9 +340,14 @@ fun generateAll(name, file, ...modules) =
   let code = fold((res, p) => if p is
     [mod, name, source] then
       mod.propagate()
-      [res.0 + "import \"" + source + "\" as " + legacyName(name) + "\n", res.1 + indent(mod.("cache$" + name).toString()) + "\n"]
+      let cache = mod.("cache$" + name)
+      [
+        res.0 + "import \"" + source + "\" as " + legacyName(name) + "\n",
+        res.1 + cache.ownerString() + "\n",
+        res.2 + cache.allTopLevelString() + "\n",
+      ]
   )(["", "", ""], ...modules)
   let originData = fs.readFileSync(fullpath, "utf8")
-  let newData = configs + code.0 + "\n" + "module " + name + " with" + indent("\n" + code.1)
+  let newData = configs + code.0 + "\n" + "module " + name + " with" + indent("\n" + code.1 + code.2)
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")

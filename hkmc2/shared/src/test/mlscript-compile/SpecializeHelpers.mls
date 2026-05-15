@@ -109,7 +109,7 @@ class FunCache(
         idx += 1
         name = prefix + idx
     reserveName(name)
-  fun toString() =
+  fun ownerString() =
     let p = printer // FIXME: figure out why we need this p
     let decl = if owner is
       ConcreteClassSymbol then "class "
@@ -165,19 +165,95 @@ class FunCache(
     assert ctor is FunDefn
     let params = new Set(ctor.params.flat().map(_.sym))
     let ctorBody = removeExtraValDefn(params, ctor.body)
-    let methodDefns = cache.values().map(e =>
-      if e.isPrivate then printer.showPrivateDefn(e.defn) else printer.showDefn(e.defn)
-    ).toArray().sort().join("\n")
+    let entries = cache.values().toArray()
+    let ownerEntries = entries.filter(e => not e.isPrivate)
+    let methodDefns = ownerEntries.map(e => printer.showDefn(e.defn)).sort().join("\n")
     
     decl + owner.name + paramText
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
       + (if methodDefns == "" then "" else indent("\n" + methodDefns))
+  fun topLevelString(ownerOpt) =
+    cache.values().toArray()
+      .filter(e => e.isPrivate)
+      .map(e => HoistedPrinter(ownerOpt).showDefn(e.defn))
+      .sort()
+      .join("\n")
+  fun allTopLevelString() =
+    let ownerOpt = if owner is ModuleSymbol then Some(owner) else None
+    let selfTopLevelDefns = topLevelString(ownerOpt)
+    let classTopLevelDefns = if owner is ModuleSymbol then
+      let runtimeClass = owner.value
+      let ctor = runtimeClass."ctor$_instr"()
+      assert ctor is FunDefn
+      collectClassTopLevelStrings(ownerOpt, ctor.body)
+    else ""
+    [classTopLevelDefns, selfTopLevelDefns].filter(_ != "").join("\n")
+  fun toString() =
+    let ownerText = ownerString()
+    let topLevelDefns = allTopLevelString()
+    ownerText + (if topLevelDefns == "" then "" else "\n" + topLevelDefns)
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map(), new Set())
 
 open StagingUtility
+
+fun ownsModuleClass(owner, sym) = if sym is
+  ConcreteClassSymbol(name, value, _, _, _) then
+    let member = owner.value.(name)
+    not (member is undefined) and getActualClass(member) == getActualClass(value)
+  else false
+
+fun ownsModuleMember(owner, sym) =
+  not (owner.value.(sym.name) is undefined)
+
+class HoistedPrinter(ownerOpt) extends Printer(None) with
+  fun showSymbol(s) =
+    if s.redirect and not this.isGeneratedStagedClass(s) and ownerOpt is Some(owner) then
+      if owner is ModuleSymbol then
+        legacyName(owner.name) + ".\"" + s.name + "$" + owner.name + "\""
+      else owner.name + ".\"" + s.name + "$" + owner.name + "\""
+    else s.name.replaceAll("$", "_")
+  fun showCase(c) =
+    if c.hasOwnProperty("lit") then this.showLiteral(c.lit)
+    else if c.hasOwnProperty("cls") then
+      let cls = c.cls
+      if ownerOpt is Some(owner) and ownsModuleClass(owner, cls) then
+        owner.name + "." + this.showSymbol(cls)
+      else this.showSymbol(cls)
+    else if c.hasOwnProperty("len") then
+      "[" + Array(c.len).fill("_").join(", ") + "]"
+    else "<unknown case>"
+  fun showPath(p) = if p is
+    Select(ValueRef(sym), name) and ownerOpt is Some(owner) and sym == owner then
+      owner.name + "." + this.showSymbol(name)
+    ValueRef(sym) and sym.redirect and not this.isGeneratedStagedClass(sym) then this.showSymbol(sym)
+    ValueRef(sym) and ownerOpt is Some(owner) and ownsModuleClass(owner, sym) then
+      owner.name + "." + this.showSymbol(sym)
+    ValueRef(sym) and ownerOpt is Some(owner) and ownsModuleMember(owner, sym) then
+      owner.name + "." + this.showSymbol(sym)
+    Select(qual, name) then showPath(qual) + "." + this.showSymbol(name)
+    DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
+    DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
+    ValueRef(s) then this.showSymbol(s)
+    ValueLit(lit) then this.showLiteral(lit)
+
+fun collectClassTopLevelStrings(ownerOpt, block) = if block is
+  Match(_, arms, dflt, rest) then
+    [
+      ...arms.map(arm => collectClassTopLevelStrings(ownerOpt, arm.body)),
+      if dflt is Some(b) then collectClassTopLevelStrings(ownerOpt, b) else "",
+      collectClassTopLevelStrings(ownerOpt, rest),
+    ].filter(_ != "").join("\n")
+  Assign(_, _, rest) then collectClassTopLevelStrings(ownerOpt, rest)
+  Define(defn, rest) then
+    let curr = if defn is
+      ClsLikeDefn(sym, _, _) and isStagedClass(sym.value) then getClassCache(sym.value).topLevelString(ownerOpt)
+      else ""
+    [curr, collectClassTopLevelStrings(ownerOpt, rest)].filter(_ != "").join("\n")
+  Scoped(_, rest) then collectClassTopLevelStrings(ownerOpt, rest)
+  else ""
 
 // shape of value
 fun sov(v): ShapeSet = 
@@ -344,7 +420,8 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
           let v2p = shapeset2path(res.1, ctx.allocs)
           [v2p.0, v2p.1, res.1]
         else
-          [End(), Call(Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
+          let callPath = if res.0 == fld then Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)) else ValueRef(Symbol(res.0))
+          [End(), Call(callPath, args), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) and // non staged function and params known
@@ -404,7 +481,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
       let ret = f_gen(ss_i)(...argShapes)
       let retSym = ret.0
       let retShape = ret.1
-      let callRes = Call(Select(p, Symbol(retSym)), args)
+      let callRes = specializedMethodCall(p, f, args, retSym)
       isRet then
         [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
       else
@@ -419,7 +496,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
         let retData = f_gen(ss_i)(...argShapes)
         let retSym = retData.0
         let retShape = retData.1
-        let callRes = Call(Select(p, Symbol(retSym)), args)
+        let callRes = specializedMethodCall(p, f, args, retSym)
         if isRet then
           [Arm(Cls(C_i, p), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
         else
@@ -565,6 +642,124 @@ fun specializeName(cache, funName, isMethod, ps, shapes) =
   if mappedShapes.every(_.every(_.isDyn())) then funName
   else cache.freshName(funName)
 
+fun rebindSelfPath(owner, selfSym, p) = if p is
+  Select(ValueRef(sym), name) and sym == owner then Select(ValueRef(selfSym), name)
+  Select(qual, name) then Select(rebindSelfPath(owner, selfSym, qual), name)
+  DynSelect(qual, fld, arrayIdx) then DynSelect(rebindSelfPath(owner, selfSym, qual), rebindSelfPath(owner, selfSym, fld), arrayIdx)
+  else p
+
+fun rebindSelfResult(owner, selfSym, r) = if r is
+  Call(f, args) then Call(rebindSelfPath(owner, selfSym, f), args.map(arg => Arg(rebindSelfPath(owner, selfSym, arg.value))))
+  Instantiate(cls, args) then Instantiate(rebindSelfPath(owner, selfSym, cls), args.map(arg => Arg(rebindSelfPath(owner, selfSym, arg.value))))
+  Tuple(elems) then Tuple(elems.map(arg => Arg(rebindSelfPath(owner, selfSym, arg.value))))
+  Path then rebindSelfPath(owner, selfSym, r)
+
+fun rebindSelfCase(owner, selfSym, cse) = if cse is
+  Cls(cls, path) then Cls(cls, rebindSelfPath(owner, selfSym, path))
+  else cse
+
+fun rebindSelfDefn(owner, selfSym, defn) = if defn is
+  ValDefn(ownerOpt, sym, rhs) then ValDefn(ownerOpt, sym, rebindSelfPath(owner, selfSym, rhs))
+  FunDefn(sym, ps, body) then FunDefn(sym, ps, rebindSelfBlock(owner, selfSym, body))
+  ClsLikeDefn(sym, methods, companion) then ClsLikeDefn(sym, methods.map(m => rebindSelfDefn(owner, selfSym, m)), companion)
+
+fun rebindSelfBlock(owner, selfSym, block) = if block is
+  Match(scrut, arms, dflt, rest) then
+    Match(
+      rebindSelfPath(owner, selfSym, scrut),
+      arms.map(arm => Arm(rebindSelfCase(owner, selfSym, arm.cse), rebindSelfBlock(owner, selfSym, arm.body))),
+      if dflt is Some(b) then Some(rebindSelfBlock(owner, selfSym, b)) else None,
+      rebindSelfBlock(owner, selfSym, rest),
+    )
+  Return(res, implct) then Return(rebindSelfResult(owner, selfSym, res), implct)
+  Assign(lhs, rhs, rest) then Assign(lhs, rebindSelfResult(owner, selfSym, rhs), rebindSelfBlock(owner, selfSym, rest))
+  Define(defn, rest) then Define(rebindSelfDefn(owner, selfSym, defn), rebindSelfBlock(owner, selfSym, rest))
+  Scoped(symbols, rest) then Scoped(symbols, rebindSelfBlock(owner, selfSym, rest))
+  End then block
+
+fun collectSymbolNamesFromPath(names: Set[Str], p) = if p is
+  Select(qual, _) then collectSymbolNamesFromPath(names, qual)
+  DynSelect(qual, fld, _) then
+    collectSymbolNamesFromPath(names, qual)
+    collectSymbolNamesFromPath(names, fld)
+  ValueRef(sym) then names.add(sym.name)
+  else ()
+
+fun collectSymbolNamesFromResult(names: Set[Str], r) = if r is
+  Call(f, args) then
+    collectSymbolNamesFromPath(names, f)
+    args.forEach(arg => collectSymbolNamesFromPath(names, arg.value))
+  Instantiate(cls, args) then
+    collectSymbolNamesFromPath(names, cls)
+    args.forEach(arg => collectSymbolNamesFromPath(names, arg.value))
+  Tuple(elems) then elems.forEach(arg => collectSymbolNamesFromPath(names, arg.value))
+  Path then collectSymbolNamesFromPath(names, r)
+
+fun collectSymbolNamesFromCase(names: Set[Str], cse) = if cse is
+  Cls(_, path) then collectSymbolNamesFromPath(names, path)
+  else ()
+
+fun collectSymbolNamesFromDefn(names: Set[Str], defn) = if defn is
+  ValDefn(_, sym, rhs) then
+    names.add(sym.name)
+    collectSymbolNamesFromPath(names, rhs)
+  FunDefn(sym, ps, body) then
+    names.add(sym.name)
+    ps.flat().forEach(p => names.add(p.sym.name))
+    collectSymbolNamesFromBlock(names, body)
+  ClsLikeDefn(sym, methods, _) then
+    names.add(sym.name)
+    methods.forEach(m => collectSymbolNamesFromDefn(names, m))
+
+fun collectSymbolNamesFromBlock(names: Set[Str], block) = if block is
+  Match(scrut, arms, dflt, rest) then
+    collectSymbolNamesFromPath(names, scrut)
+    arms.forEach(arm =>
+      collectSymbolNamesFromCase(names, arm.cse)
+      collectSymbolNamesFromBlock(names, arm.body)
+    )
+    if dflt is Some(b) then collectSymbolNamesFromBlock(names, b) else ()
+    collectSymbolNamesFromBlock(names, rest)
+  Return(res, _) then collectSymbolNamesFromResult(names, res)
+  Assign(lhs, rhs, rest) then
+    names.add(lhs.name)
+    collectSymbolNamesFromResult(names, rhs)
+    collectSymbolNamesFromBlock(names, rest)
+  Define(defn, rest) then
+    collectSymbolNamesFromDefn(names, defn)
+    collectSymbolNamesFromBlock(names, rest)
+  Scoped(symbols, rest) then
+    symbols.forEach(sym => names.add(sym.name))
+    collectSymbolNamesFromBlock(names, rest)
+  End then ()
+
+fun freshSelfSymbol(ps, body) =
+  let names = new Set()
+  ps.flat().forEach(p => names.add(p.sym.name))
+  collectSymbolNamesFromBlock(names, body)
+  let
+    idx = 0
+    name = "self"
+  while names.has(name) do
+    set
+      name = "self_" + idx
+      idx += 1
+  Symbol(name)
+
+fun maybeHoistMethod(cache: FunCache, isPrivate, newName, ps, body) =
+  if isPrivate and cache.owner is ConcreteClassSymbol then
+    let selfSym = freshSelfSymbol(ps, body)
+    let selfParam = Param(None, selfSym)
+    let newPs = if ps is
+      [] then [[selfParam]]
+      [first, ...rest] then [[selfParam, ...first], ...rest]
+    FunDefn(Symbol(newName), newPs, rebindSelfBlock(cache.owner, selfSym, body))
+  else FunDefn(Symbol(newName), ps, body)
+
+fun specializedMethodCall(p, f, args, retSym) =
+  if retSym == f then Call(Select(p, Symbol(retSym)), args)
+  else Call(ValueRef(Symbol(retSym)), [Arg(p), ...args])
+
 // abuse Printer for structural induction
 // to do this properly you would need only add the definitions as you go through the tree
 class ValueCollection(defn: Map[Class, Str]) extends Printer(None) with
@@ -633,7 +828,8 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else bodyWithScoped
 
         // Update cache with finalized body and actual return shape
-        let entry = cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, finalBody), actualRetShape, isPrivate))
+        let finalDefn = maybeHoistMethod(cache, isPrivate, newName, ps, finalBody)
+        let entry = cache.setFun(specializationKey, FunEntry(finalDefn, actualRetShape, isPrivate))
 
 
         [entry.defn.sym.name, entry.retShape]
