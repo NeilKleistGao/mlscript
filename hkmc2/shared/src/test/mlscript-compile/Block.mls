@@ -142,7 +142,13 @@ class Printer(val owner: Opt[Symbol]) with
     if l is 
       undefined then "undefined"
       null then "null"
-      Str then "\"" + l.toString() + "\""
+      Str then "\"" + l
+        .replaceAll("\\", "\\\\")
+        .replaceAll("\"", "\\\"")
+        .replaceAll("\n", "\\n")
+        .replaceAll("\t", "\\t")
+        .replaceAll("\r", "\\r")
+        + "\""
       else l.toString()
 
   fun showDefnSymbol(s: Symbol) =
@@ -199,6 +205,8 @@ class Printer(val owner: Opt[Symbol]) with
     if r is
       Path then showPath(r)
       Call(fun_, args) and
+        args is [arg] and fun_ is
+          ValueRef(Symbol("!")) then "not " + showArg(arg)
         // use infix to avoid parsing + and - as taking a unary argument
         args is [lhs, rhs] and fun_ is
           ValueRef(Symbol("+")) then showArg(lhs) + " + " + showArg(rhs)

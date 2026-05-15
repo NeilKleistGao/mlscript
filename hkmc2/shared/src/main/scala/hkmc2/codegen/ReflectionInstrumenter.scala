@@ -196,12 +196,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             dfltStaged: (dflt, ctx) =>
               blockCtor("Match", Ls(x, arms, dflt, e), symName)(k(_, ctx))
 
-  private def desugarEscaping(l: Value.Lit) = l.lit match
-    case s: Tree.StrLit =>
-      val desugard = s.idStr
-      Value.Lit(Tree.StrLit(desugard.substring(1, desugard.length() - 1)))
-    case _ => l
-
   // transformations of Block
 
   def transformPath(p: Path)(using ctx: Context)(k: (Path, Context) => Block): Block =
@@ -212,7 +206,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformSymbol(disamb.getOrElse(l)): (sym, ctx) =>
             blockCtor("ValueRef", Ls(sym), "var")(k(_, ctx))
         case l: Value.Lit =>
-          blockCtor("ValueLit", Ls(desugarEscaping(l)), "lit")(k(_, ctx))
+          blockCtor("ValueLit", Ls(l), "lit")(k(_, ctx))
         case s @ Select(p, Tree.Ident(name)) =>
           transformPath(p): (x, ctx) =>
             s.symbol match
