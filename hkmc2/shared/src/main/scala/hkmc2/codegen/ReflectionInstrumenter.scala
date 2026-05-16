@@ -409,9 +409,15 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           if (nb is bd) && (s is ns) then b else Scoped(ns, nb)
         case _ => applySubBlock(b)
     stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(true))
-    
 
-  def stageMethods(ownerSym: DefinitionSymbol[? <: ClassLikeDef], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str, nestedPropagates: Ls[Path])(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
+  case class StagingCfg(ownerSym: DefinitionSymbol[? <: ClassLikeDef], modSym: InnerSymbol, nestedPropagates: Ls[Path]):
+    val forClass = ownerSym != modSym
+    val suffix = "$" + scope.allocateOrGetName(ownerSym)
+    val cacheNme = (if forClass then "class$" else "") + "cache" + suffix
+    val generatorMapNme = (if forClass then "class$" else "") + "generatorMap" + suffix
+
+  def stageMethods(cfg: StagingCfg)(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
+    import cfg._
     // for storing specialized functions in each staged module
     val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
     val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
@@ -530,16 +536,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val (sym, ctor, methods) = (companion.isym, companion.ctor, companion.methods)
       // avoid name clash of cache and generator map for derived staged classes
       val modSym = sym
-      val suffix = "$" + scope.allocateOrGetName(sym)
-      val cacheNme = "cache" + suffix
-      val generatorMapNme = "generatorMap" + suffix
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(N, Nil)
       val newCtorFun = stageCtor(ctorFun)
       val nestedPropagates = defn.body.blk.stats.collect:
         case cls: ClassDef if cls.hasStagedModifier.isDefined =>
           modSym.asPath.sel(Tree.Ident(cls.sym.nme), cls.sym)
-
-      val (entryFun, newMethods, cont) = stageMethods(companion.isym, modSym, false, cacheNme, generatorMapNme, nestedPropagates)(methods)
+      
+      val cfg = new StagingCfg(companion.isym, modSym, nestedPropagates)
+      val (entryFun, newMethods, cont) = stageMethods(cfg)(methods)
 
       companion.copy(
         methods = entryFun :: newCtorFun :: newMethods,
@@ -572,16 +576,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         (defn.sym, defn.ctor, ctorParams, defn.methods)
       
       val modSym = companion.isym
-      val suffix = "$" + scope.allocateOrGetName(defn.isym)
-      val cacheNme = "class$cache" + suffix
-      val generatorMapNme = "class$generatorMap" + suffix
 
       val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), ctorParams, preCtor)(N, Nil)
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(N, Nil)
       val newPreCtorFun = stageCtor(preCtorFun)
       val newCtorFun = stageCtor(ctorFun)
       
-      val (entryFun, newMethods, cont) = stageMethods(defn.isym, modSym, true, cacheNme, generatorMapNme, Nil)(methods)
+      val cfg = new StagingCfg(defn.isym, modSym, Nil)
+      val (entryFun, newMethods, cont) = stageMethods(cfg)(methods)
       val (companionEntryFun, companionMethods) = companion.methods.partition(_.sym.nme == "generate")
       val combinedEntryFun: FunDefn = companionEntryFun match
         case Nil => entryFun
