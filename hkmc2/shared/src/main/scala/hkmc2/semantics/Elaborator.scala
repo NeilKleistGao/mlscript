@@ -571,40 +571,26 @@ extends Importer with ucs.SplitElaborator:
   trace[Term](s"Elab term ${tree.showDbg}", r => s"~> $r"):
     val unders = mutable.ArrayBuffer.empty[VarSymbol]
     given UnderCtx = new UnderCtx(S(unders))
-    val st = subterm(tree, inAppPrefix = false, inTyAppPrefix = false)
+    val st = subterm(tree)
     val params = unders.iterator.map: sym =>
         Param(FldFlags.empty, sym, N, Modulefulness.none)
       .toList
     if params.isEmpty then st
     else Term.Lam(PlainParamList(params), st)
   
-  def subterm(tree: Tree, inAppPrefix: Bool = false, inTyAppPrefix: Bool = false): Ctxl[UnderCtx ?=> Term] =
+  def subterm(tree: Tree): Ctxl[UnderCtx ?=> Term] =
   trace[Term](s"Elab subterm ${tree.showDbg}", r => s"~> $r"):
     
     /** Fallback to a normal selection + application when label-specific handling does not apply. */
     def mkNonLabelSelectionApp(tree: App, sel: Sel, args: Ls[Tree]): Term =
       val sym = FlowSymbol.app()
-      val lt = subterm(sel, inAppPrefix = true)
-      val rt = subterm(Tup(args), inAppPrefix = false, inTyAppPrefix = false)
+      val lt = subterm(sel)
+      val rt = subterm(Tup(args))
       Term.App(lt, rt)(tree, N, sym)
     
     def elaborateSelection(tree: Sel): Term =
       val preTrm = subterm(tree.prefix)
       val sym = resolveField(tree.name, preTrm.symbol, tree.name)
-      sym match
-      // * Enforcing [invariant:1]
-      case S(ms: BlockMemberSymbol)
-        // FIXME[Harry]: move the check to resolver because preTrm's symbol may not be resolved yet.
-        if
-          // * If we're selecting a parameterized class method without applying it, an error should be reported.
-          // * Note that module methods are fine to select without applying, since they don't use `this`.
-          !inAppPrefix && ms.isParameterizedMethod && !preTrm.symbol.exists(_.existsModuleful)
-      =>
-        raise:
-          ErrorReport(
-            msg"[debinding error] Method '${tree.name.name}' cannot be accessed without being called."
-              -> tree.name.toLoc :: Nil)
-      case S(_) | N => ()
       if sym.contains(ctx.builtins.source.line) then
         val loc = tree.toLoc.getOrElse(???)
         val (line, _, _) = loc.origin.fph.getLineColAt(loc.spanStart)
@@ -728,7 +714,7 @@ extends Importer with ucs.SplitElaborator:
       raise(ErrorReport(msg"Name not found: $name" -> id.toLoc :: Nil))
       Term.Error
     case TyApp(lhs, targs) =>
-      Term.TyApp(subterm(lhs, inTyAppPrefix = true), targs.map {
+      Term.TyApp(subterm(lhs), targs.map {
         case Modified(Keywrd(Keyword.`in`), arg) => Term.WildcardTy(S(subterm(arg)), N)
         case Modified(Keywrd(Keyword.`out`), arg) => Term.WildcardTy(N, S(subterm(arg)))
         case Tup(Modified(Keywrd(Keyword.`in`), arg1) :: Modified(Keywrd(Keyword.`out`), arg2) :: Nil) =>
@@ -787,7 +773,7 @@ extends Importer with ucs.SplitElaborator:
       block(tree :: Nil, hasResult = false)._1
     case PrefixApp(kw @ Keywrd(Keyword.`not`), rhs) =>
       Term.App(State.builtinOpsMap("!").ref(new Ident("not").withLocOf(kw)), Term.Tup(
-        PlainFld(subterm(rhs, inAppPrefix = true)) :: Nil)(DummyTup))(DummyApp, N, FlowSymbol("not-app"))
+        PlainFld(subterm(rhs)) :: Nil)(DummyTup))(DummyApp, N, FlowSymbol("not-app"))
     case tree @ InfixApp(lhs, Keywrd(Keyword.`is` | Keyword.`and` | Keyword.`or`), rhs) =>
       Term.IfLike(Keyword.`if`, IfLikeForm.ReturningIf, shorthandSplit(tree))
     case InfixApp(Sel(pre, idn: Ident), Keywrd(Keyword.`#`), idp: Ident) =>
@@ -868,13 +854,13 @@ extends Importer with ucs.SplitElaborator:
         mkNonLabelSelectionApp(tree, sel, args)
     case tree @ App(lhs, rhs) =>
       val sym = FlowSymbol.app()
-      val lt = subterm(lhs, inAppPrefix = true)
+      val lt = subterm(lhs)
       val rt = subterm(rhs)
       Term.App(lt, rt)(tree, N, sym)
     case tree @ OpApp(lhs, op, rhss) =>
       val sym = FlowSymbol.app()
-      val lt = subterm(lhs, inAppPrefix = true)
-      val ot = subterm(op, inAppPrefix = true)
+      val lt = subterm(lhs)
+      val ot = subterm(op)
       val rts = rhss.map(r => PlainFld(subterm(r)))
       Term.App(ot, Term.Tup(PlainFld(lt) :: rts)(DummyTup))(
         DummyApp, N, sym)
@@ -956,7 +942,7 @@ extends Importer with ucs.SplitElaborator:
       val (mut, c2) = c match
         case Modified(Keywrd(Keyword.`mut`), c) => (true, c)
         case c => (false, c)
-      val base = new Term.DynNew(subterm(c2, inAppPrefix = inAppPrefix), args.map(subterm(_))).withLocOf(tree)
+      val base = new Term.DynNew(subterm(c2), args.map(subterm(_))).withLocOf(tree)
       if mut then Term.Mut(base) else base
     // case New(c, rfto) =>
     //   assert(rfto.isEmpty)
@@ -1098,12 +1084,12 @@ extends Importer with ucs.SplitElaborator:
           val res = go(acc, lhs :: Nil)
           val sym = FlowSymbol.app()
           val fl = Fld(FldFlags.empty, res, N)
-          val app = Term.App(subterm(f, inAppPrefix = true), Term.Tup(
+          val app = Term.App(subterm(f), Term.Tup(
             fl :: args.map(fld))(tup))(ap, N, sym)
           go(app, trees)
         case (ap @ App(f, tup @ Tup(args))) :: trees =>
           val sym = FlowSymbol.app()
-          go(Term.App(subterm(f, inAppPrefix = true),
+          go(Term.App(subterm(f),
               Term.Tup(Fld(FldFlags.empty, acc, N) :: args.map(fld))(tup)
             )(ap, N, sym), trees)
         case Block(sts) :: trees =>
@@ -1117,7 +1103,7 @@ extends Importer with ucs.SplitElaborator:
       raise(ErrorReport(msg"Illegal position for 'open' statement." -> tree.toLoc :: Nil))
       Term.Error
     case OpenIn(op, body) =>
-      subterm(Block(Open(op) :: body :: Nil), inAppPrefix)
+      subterm(Block(Open(op) :: body :: Nil))
     case DynAccess(obj, rhs) =>
       rhs match
       case Bra(bk @ (Round | Square), fld) => Term.DynSel(subterm(obj), subterm(fld), bk is Square)
