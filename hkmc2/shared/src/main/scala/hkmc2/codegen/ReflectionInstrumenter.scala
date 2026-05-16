@@ -23,6 +23,9 @@ case class Context(cache: HashMap[Path | Symbol, Path], allowMultipleParamList: 
   def addCache(p: Path | Symbol, v: Path): Context = Context(cache.clone() += (p -> v), allowMultipleParamList)
   def delCache(p: Path | Symbol): Context = Context(cache.clone() -= p, allowMultipleParamList)
 
+object Context:
+  def apply(allowMultipleParamList: Bool): Context = Context(new HashMap(), allowMultipleParamList)
+
 extension [A, B](ls: Iterable[(A => B) => B])
   def collectApply(f: Ls[A] => B): B =
     // defer applying k while prepending new elements to the list
@@ -114,12 +117,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   // preserveName overrides the renaming of symbols within the function
   // if sym is ClassSymbol, we may need pOpt to link to the path pointing to the value of the symbol
-  def transformSymbol(sym: Symbol, preserveName: Bool = false, pOpt: Option[Path] = N, symName: Str = "sym")(using stagingCtx: Context)(k: (Path, Context) => Block): Block =
+  def transformSymbol(sym: Symbol, preserveName: Bool = false, pOpt: Option[Path] = N, symName: Str = "sym")(using ctx: Context)(k: (Path, Context) => Block): Block =
     def cachedK(p: Path, ctx: Context) =
       k(p, ctx.addCache(sym, p))
     def checkMap(mapType: Str, key: Path, p: Path, ctx: Context) =
       call(State.runtimeSymbol.asPath.selSN("SymbolMap").selSN(mapType), Ls(key, p))(cachedK(_, ctx))
-    stagingCtx.getCache(sym).map(cachedK(_, stagingCtx)).getOrElse:
+    ctx.getCache(sym).map(cachedK(_, ctx)).getOrElse:
       // add name to scope to avoid shadowing by other symbols
       val rename = sym match
         case _ if pOpt.isDefined => false
@@ -140,9 +143,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           // no need to perform caching for redirecting call
           transformSymbol(t.defn.get.sym.asClsOrMod.get, rename, pOpt, symName)(k)
         case _: NoSymbol =>
-          blockCtor("NoSymbol", Nil, symName)(cachedK(_, stagingCtx))
-        case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
-          blockCtor("VirtualClassSymbol", Ls(toValue(name)), symName)(checkMap("checkClassMap", toValue(name), _, stagingCtx))
+          blockCtor("NoSymbol", Nil, symName)(cachedK(_, ctx))
+        case clsSym: ClassSymbol if Elaborator.ctx.builtins.virtualClasses(clsSym) =>
+          blockCtor("VirtualClassSymbol", Ls(toValue(name)), symName)(checkMap("checkClassMap", toValue(name), _, ctx))
         case baseSym: BaseTypeSymbol =>
           val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
             case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
@@ -164,9 +167,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                   tuple(auxParams): auxParams =>
                     blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams, toValue(rename)), symName)(checkMap("checkClassMap", path, _, ctx))
             case _: ModuleOrObjectSymbol =>
-              blockCtor("ModuleSymbol", Ls(toValue(name), path, toValue(rename)), symName)(checkMap("checkModuleMap", path, _, stagingCtx))
+              blockCtor("ModuleSymbol", Ls(toValue(name), path, toValue(rename)), symName)(checkMap("checkModuleMap", path, _, ctx))
         case _ =>
-          blockCtor("Symbol", Ls(toValue(name)), symName)(cachedK(_, stagingCtx))
+          blockCtor("Symbol", Ls(toValue(name)), symName)(cachedK(_, ctx))
 
   def transformOption[A](xOpt: Opt[A], f: A => ((Path, Context) => Block) => Block)(using Context)(k: (Path, Context) => Block): Block = xOpt match
     case S(x) => f(x)((p, ctx) => optionSome(p)(k(_, ctx)))
@@ -362,7 +365,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         transformBlock(f.body)(using ctx): (body, ctx) =>
           blockCtor("FunDefn", Ls(sym, paramList, body))(k(_, ctx))
 
-  def stageMethod(f: FunDefn, ctx: Context = Context(new HashMap())): FunDefn =
+  def stageMethod(f: FunDefn, ctx: Context = Context(false)): FunDefn =
     val stageSymName = f.sym.nme + "_instr"
     val stageSym = BlockMemberSymbol(stageSymName, Nil, false)
 
@@ -405,7 +408,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           val ns = s.map(applyLocal)
           if (nb is bd) && (s is ns) then b else Scoped(ns, nb)
         case _ => applySubBlock(b)
-    stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(new HashMap(), true))
+    stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(true))
     
 
   def stageMethods(ownerSym: DefinitionSymbol[? <: ClassLikeDef], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str, nestedPropagates: Ls[Path])(methods: Ls[FunDefn]): (FunDefn, Ls[FunDefn], Block => Block) =
@@ -444,7 +447,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     def cacheDecl(rest: Block) =
       val pOpt = if !forClass then S(Value.Ref(ownerSym)) else N
       
-      transformSymbol(ownerSym, pOpt = pOpt)(using Context(new HashMap())): (stagedSym, _) =>
+      transformSymbol(ownerSym, pOpt = pOpt)(using Context(false)): (stagedSym, _) =>
         ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): cacheMap =>
           reservedNameValues.collectApply: defs =>
             tuple(defs): reservedNames =>
