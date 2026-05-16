@@ -432,9 +432,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
   Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
     let genMap = value.(mapPropName)
-    not (genMap is undefined) then
+    not (genMap is undefined) and
       let f_gen = genMap.get(fld)
-      if not (f_gen is Runtime.Unit) then  // staged function
+      not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
         let callPath = if res.0 == fld then Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)) else ValueRef(Symbol(res.0))
         [End(), Call(callPath, args), res.1]
