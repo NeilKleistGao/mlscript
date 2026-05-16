@@ -332,22 +332,6 @@ fun fsplit(pss) =
   knownByClass.forEach(entry => knownMap.set(entry.0, entry.1))
   SplitResult(knownMap, unkShape)
 
-fun mergeKnownShape(s1: Shape, s2: Shape): Shape =
-  if [s1, s2] is
-    [Class(sym1, params1), Class(sym2, params2)] then
-      if getActualClass(sym1.value) == getActualClass(sym2.value) and params1.length == params2.length then
-        Class(sym1, params1.map((p, i, _) =>
-          let other = params2.(i)
-          if p.hash() == other.hash() then p else Dyn()
-        ))
-      else Dyn()
-    else Dyn()
-
-fun mergeKnownShapeSet(ss: ShapeSet): ShapeSet =
-  let vals = ss.values()
-  if vals.length > 1 then lift(vals.reduce((acc, next) => mergeKnownShape(acc, next)))
-  else ss
-
 fun lit(l) = [End(), ValueLit(l), mkLit(l)]
 
 
@@ -461,7 +445,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
   let splitRes = fsplit(pss)
   let knownMap = splitRes.knownMap
   let unkShape = splitRes.unkShape
-  let knownMapArr = [...knownMap.entries()].map(entry => [entry.0, mergeKnownShapeSet(entry.1)])
+  let knownMapArr = [...knownMap.entries()]
   let isRet = xOpt is None
 
   if knownMap.size is 

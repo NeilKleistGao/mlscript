@@ -36,21 +36,68 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 module ShapeSet with
   fun empty = ShapeSet(new Map)
 
-fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
+let classMergeThreshold = 8
+
+fun mergeClassShapeGroup(group: Array[Shape]) =
+  let first = group.0
+  if first is Class(sym, fields) then
+    let sameArity = group.every(s => if s is Class(_, otherFields) then otherFields.length == fields.length else false)
+    if sameArity then
+      Class(sym, fields.map((field, i, _) =>
+        if group.every(s => if s is Class(_, otherFields) then otherFields.(i).hash() == field.hash() else false) then field
+        else Dyn()
+      ))
+    else Dyn()
+  else first
+
+fun hasDynField(s: Shape) =
+  if s is Class(_, fields) then fields.some(field => field is Dyn)
+  else false
+
+fun normalizeShapeMap(shapeMap: Map[String, Shape]) =
+  let byClass = new Map()
+  shapeMap.values().toArray().forEach(s => if s is
+    Class(sym, _) then
+      let cls = if sym.value is undefined then sym else Shape.getActualClass(sym.value)
+      if byClass.has(cls) then do byClass.get(cls).push(s)
+      else do byClass.set(cls, [s])
+    else ()
+  )
+  let removed = new Set()
+  let merged = []
+  byClass.forEach(group =>
+    if group.length > 1 and group.0 is Class(_, fields) then
+      let tooLarge = fields.length * group.length > classMergeThreshold
+      let alreadyMerged = group.some(hasDynField)
+      if tooLarge || alreadyMerged then
+          group.forEach(s => removed.add(s.hash()))
+          merged.push(mergeClassShapeGroup(group))
+      else ()
+    else ()
+  )
+  if removed.size == 0 then shapeMap
+  else
+    let entries = shapeMap.entries().toArray().filter(e => not removed.has(e.0))
+    merged.forEach(s => entries.push([s.hash(), s]))
+    new Map(entries)
+
+fun makeShapeSet(entries) = ShapeSet(normalizeShapeMap(new Map(entries)))
+
+fun lift(s: Shape) = makeShapeSet([[s.hash(), s]])
 
 fun liftMany(arr: Array[Shape]) = 
-  ShapeSet(new Map(arr.map(s => [s.hash(), s])))
+  makeShapeSet(arr.map(s => [s.hash(), s]))
 
 fun union2(s1: ShapeSet, s2: ShapeSet) = 
   if s1.isDyn() then s1
   else if s2.isDyn() then s2
-  else ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
+  else makeShapeSet([...s1.shapeset, ...s2.shapeset])
 
 fun union(...s) =
   if s.length is 0 then ShapeSet.empty
   else s.reduce((acc, next) => union2(acc, next))
 
-fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.shapeset.entries().toArray()).flat()))
+fun flat(arr: Array[ShapeSet]) = makeShapeSet(arr.map(_.shapeset.entries().toArray()).flat())
 
 fun prod(xs) = xs.reduce((a, b) => a.flatMap(d => b.map(e => [...d, e])), [[]])
 
