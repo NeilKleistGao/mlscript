@@ -394,18 +394,13 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
   ValueRef(symb) then sorBuiltinOp(ctx, r, f, symb.name, args)  // built-in or top-level
   Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
-    let cachePropName = getCacheName(name, false)
     let genMap = value.(mapPropName)
-    not (genMap is undefined) and
-      let f_gen = genMap.get(fld) 
-      not (f_gen is Runtime.Unit) and  // staged function
+    not (genMap is undefined) then
+      let f_gen = genMap.get(fld)
+      if not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
-        staticSet(res.1) then
-          let v2p = shapeset2path(res.1, ctx.allocs)
-          [v2p.0, v2p.1, res.1]
-        else
-          let callPath = if res.0 == fld then Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)) else ValueRef(Symbol(res.0))
-          [End(), Call(callPath, args), res.1]
+        let callPath = if res.0 == fld then Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)) else ValueRef(Symbol(res.0))
+        [End(), Call(callPath, args), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) and // non staged function and params known
