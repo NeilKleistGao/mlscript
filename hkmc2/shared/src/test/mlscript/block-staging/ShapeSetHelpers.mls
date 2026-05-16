@@ -136,7 +136,7 @@ open SpecializeHelpers { Ctx, sop, sor, prop }
 
 let ctx = Ctx.empty()
 let x = ValueRef(Symbol("x"))
-//│ ctx = Ctx(Map(0) {}, Map(0) {}, Map(0) {}, [], None)
+//│ ctx = Ctx(Map(0) {}, Map(0) {}, Map(0) {}, Map(0) {}, [], None)
 //│ x = ValueRef(Symbol("x"))
 
 ctx.add(x, mkLit(1))
@@ -159,6 +159,7 @@ ctx2.get(y)
 //│ = Some({Lit("a"),Lit("b")})
 //│ ctx2 = Ctx(
 //│   Map(2) {"Symbol(x)" => {Lit(1),Lit(2)}, "Symbol(y)" => {Lit("a"),Lit("b")}},
+//│   Map(0) {},
 //│   Map(0) {},
 //│   Map(0) {},
 //│   [],
@@ -199,6 +200,7 @@ sop(ctx, selPath)
 //│   Map(1) {
 //│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false), [Lit("pass")])}
 //│   },
+//│   Map(0) {},
 //│   Map(0) {},
 //│   Map(0) {},
 //│   [],
@@ -384,7 +386,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.385: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
+//│ ║  l.387: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M, false))
@@ -407,6 +409,7 @@ val ctxXY = Ctx.empty()
   .add(ValueRef(y), mkLit(32))
 //│ ctxXY = Ctx(
 //│   Map(2) {"Symbol(x)" => {Lit(10)}, "Symbol(y)" => {Lit(32)}},
+//│   Map(0) {},
 //│   Map(0) {},
 //│   Map(0) {},
 //│   [],

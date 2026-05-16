@@ -8,10 +8,7 @@ module StagedRegExp with
   class Empty() extends RegExp() with
     ()
     fun canBeEmpty() = true
-    fun derive(c) =
-      let {obj_1}
-      obj_1 = new! None()
-      obj_1
+    fun derive(c) = new StagedRegExp.None()
   class Exact(val ch) extends RegExp() with
     ()
     fun canBeEmpty() = false
@@ -27,10 +24,9 @@ module StagedRegExp with
     ()
     fun canBeEmpty() = false
     fun derive(c) =
-      let {obj_2, obj_3}
-      obj_2 = new! Empty()
-      obj_3 = new! Some(obj_2)
-      obj_3
+      let {tmp1}
+      tmp1 = new StagedRegExp.Empty()
+      new StagedRegExp.Some(tmp1)
   class Not(val chars) extends RegExp() with
     ()
     fun canBeEmpty() = false
@@ -152,10 +148,10 @@ module StagedRegExp with
           new StagedRegExp.Some(tmp16)
         else new StagedRegExp.None()
   fun digits() =
-    let {tup_20, obj_21}
-    tup_20 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-    obj_21 = new! In(tup_20)
-    obj_21
+    let {tmp23, tup_6}
+    tup_6 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    tmp23 = tup_6
+    new In(tmp23)
   fun has(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
   fun len(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
   fun match(p, s) = matchImpl_StagedRegExp_sp_0(p, s, "")
@@ -236,7 +232,7 @@ module StagedRegExp with
             tmp36 = s.slice(1)
             matchAllImpl(p, tmp36, res)
   fun matchAllURI(s) =
-    let {n1, n2, n3, w1, d, p8, head, body, params, uri, tmp50, tmp51, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tup_275, tup_276, tup_277, tup_278}
+    let {n1, n2, n3, w1, d, p8, head, body, params, uri, tmp50, tmp51, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tup_7, tup_8, tup_9, tup_10}
     tmp50 = ["/", "?", "#", " ", "\n", "\t", "\r"]
     n1 = new Not(tmp50)
     tmp51 = ["?", "#", " ", "\n", "\t", "\r"]
@@ -245,15 +241,15 @@ module StagedRegExp with
     n3 = new Not(tmp52)
     w1 = words()
     d = digits()
-    tup_275 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-    tmp53 = tup_275
-    tup_276 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-    tmp54 = tup_276
+    tup_7 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    tmp53 = tup_7
+    tup_8 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    tmp54 = tup_8
     tmp55 = ["-", "_"]
-    tup_277 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-    tmp56 = tup_277
-    tup_278 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-    p8 = tup_278
+    tup_9 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
+    tmp56 = tup_9
+    tup_10 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
+    p8 = tup_10
     tmp57 = plus_StagedRegExp_sp_0(w1)
     tmp58 = new Exact(":")
     tmp59 = new Exact("/")
@@ -325,20 +321,20 @@ module StagedRegExp with
         tmp26 = nTimes(r, tmp25)
         new Concat(r, tmp26)
   fun notDigit() =
-    let {tup_11, obj_12}
-    tup_11 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-    obj_12 = new! Not(tup_11)
-    obj_12
+    let {tmp19, tup_3}
+    tup_3 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    tmp19 = tup_3
+    new Not(tmp19)
   fun notSpace() =
-    let {tup_8, obj_9}
-    tup_8 = [" ", "\n", "\t", "\r"]
-    obj_9 = new! Not(tup_8)
-    obj_9
+    let {tmp18, tup_2}
+    tup_2 = [" ", "\n", "\t", "\r"]
+    tmp18 = tup_2
+    new Not(tmp18)
   fun notWord() =
-    let {tup_5, obj_6}
-    tup_5 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-    obj_6 = new! Not(tup_5)
-    obj_6
+    let {tmp17, tup_1}
+    tup_1 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    tmp17 = tup_1
+    new Not(tmp17)
   fun plus(r) =
     let {tmp24}
     tmp24 = new Star(r)
@@ -348,10 +344,10 @@ module StagedRegExp with
     tmp20 = new Empty()
     mkUnion_StagedRegExp_sp_0(r, tmp20)
   fun spaces() =
-    let {tup_17, obj_18}
-    tup_17 = [" ", "\n", "\t", "\r"]
-    obj_18 = new! In(tup_17)
-    obj_18
+    let {tmp22, tup_5}
+    tup_5 = [" ", "\n", "\t", "\r"]
+    tmp22 = tup_5
+    new In(tmp22)
   fun test1(s) =
     let {tmp97, tmp98, tmp99, tmp100, tmp101, tmp102, tmp103, tmp104, tmp105}
     tmp97 = new Exact("F")
@@ -378,15 +374,12 @@ module StagedRegExp with
     tmp115 = mkConcat_StagedRegExp_sp_54(tmp109, tmp114)
     match_StagedRegExp_sp_4(tmp115, s)
   fun words() =
-    let {tup_14, obj_15}
-    tup_14 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-    obj_15 = new! In(tup_14)
-    obj_15
+    let {tmp21, tup_4}
+    tup_4 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    tmp21 = tup_4
+    new In(tmp21)
 fun canBeEmpty_Empty_sp_0(self) = true
-fun derive_Empty_sp_0(self, c) =
-  let {obj_933}
-  obj_933 = new StagedRegExp.None()
-  obj_933
+fun derive_Empty_sp_0(self, c) = new StagedRegExp.None()
 fun canBeEmpty_Exact_sp_0(self) = false
 fun canBeEmpty_Exact_sp_1(self) = false
 fun canBeEmpty_Exact_sp_10(self) = false
@@ -2183,19 +2176,7 @@ fun mkConcat_StagedRegExp_sp_0(p1, p2) =
   if p1 is
     StagedRegExp.Empty then p2
     else new StagedRegExp.Concat(p1, p2)
-fun mkConcat_StagedRegExp_sp_1(p1, p2) =
-  let {tup_31, obj_32, tup_33, obj_34, obj_35, obj_36, obj_37, obj_38, obj_39, obj_40}
-  tup_31 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_32 = new StagedRegExp.In(tup_31)
-  tup_33 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_34 = new StagedRegExp.In(tup_33)
-  obj_35 = new StagedRegExp.Star(obj_34)
-  obj_36 = new StagedRegExp.Concat(obj_32, obj_35)
-  obj_37 = new StagedRegExp.Exact("-")
-  obj_38 = new StagedRegExp.Exact(".")
-  obj_39 = new StagedRegExp.Union(obj_37, obj_38)
-  obj_40 = new StagedRegExp.Concat(obj_36, obj_39)
-  obj_40
+fun mkConcat_StagedRegExp_sp_1(p1, p2) = new StagedRegExp.Concat(p1, p2)
 fun mkConcat_StagedRegExp_sp_10(p1, p2) = new StagedRegExp.Concat(p1, p2)
 fun mkConcat_StagedRegExp_sp_11(p1, p2) = new StagedRegExp.Concat(p1, p2)
 fun mkConcat_StagedRegExp_sp_12(p1, p2) =
@@ -2211,271 +2192,22 @@ fun mkConcat_StagedRegExp_sp_15(p1, p2) =
   if p1 is
     StagedRegExp.Empty then p2
     else new StagedRegExp.Concat(p1, p2)
-fun mkConcat_StagedRegExp_sp_16(p1, p2) =
-  let {obj_279, obj_280, obj_281}
-  obj_279 = new StagedRegExp.Exact("/")
-  obj_280 = new StagedRegExp.Exact("/")
-  obj_281 = new StagedRegExp.Concat(obj_279, obj_280)
-  obj_281
-fun mkConcat_StagedRegExp_sp_17(p1, p2) =
-  let {obj_282, obj_283, obj_284, obj_285, obj_286}
-  obj_282 = new StagedRegExp.Exact(":")
-  obj_283 = new StagedRegExp.Exact("/")
-  obj_284 = new StagedRegExp.Exact("/")
-  obj_285 = new StagedRegExp.Concat(obj_283, obj_284)
-  obj_286 = new StagedRegExp.Concat(obj_282, obj_285)
-  obj_286
-fun mkConcat_StagedRegExp_sp_18(p1, p2) =
-  let {tup_287, obj_288, tup_289, obj_290, obj_291, obj_292, obj_293, obj_294, obj_295, obj_296, obj_297, obj_298}
-  tup_287 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_288 = new StagedRegExp.In(tup_287)
-  tup_289 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_290 = new StagedRegExp.In(tup_289)
-  obj_291 = new StagedRegExp.Star(obj_290)
-  obj_292 = new StagedRegExp.Concat(obj_288, obj_291)
-  obj_293 = new StagedRegExp.Exact(":")
-  obj_294 = new StagedRegExp.Exact("/")
-  obj_295 = new StagedRegExp.Exact("/")
-  obj_296 = new StagedRegExp.Concat(obj_294, obj_295)
-  obj_297 = new StagedRegExp.Concat(obj_293, obj_296)
-  obj_298 = new StagedRegExp.Concat(obj_292, obj_297)
-  obj_298
-fun mkConcat_StagedRegExp_sp_19(p1, p2) =
-  let {tup_311, obj_312, tup_313, obj_314, obj_315, obj_316, tup_317, obj_318, tup_319, obj_320, obj_321, obj_322, obj_323}
-  tup_311 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_312 = new StagedRegExp.Not(tup_311)
-  tup_313 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_314 = new StagedRegExp.Not(tup_313)
-  obj_315 = new StagedRegExp.Star(obj_314)
-  obj_316 = new StagedRegExp.Concat(obj_312, obj_315)
-  tup_317 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_318 = new StagedRegExp.Not(tup_317)
-  tup_319 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_320 = new StagedRegExp.Not(tup_319)
-  obj_321 = new StagedRegExp.Star(obj_320)
-  obj_322 = new StagedRegExp.Concat(obj_318, obj_321)
-  obj_323 = new StagedRegExp.Concat(obj_316, obj_322)
-  obj_323
-fun mkConcat_StagedRegExp_sp_2(p1, p2) =
-  let {tup_41, obj_42, tup_43, obj_44, obj_45, obj_46, obj_47, obj_48, obj_49, obj_50, obj_51, tup_52, obj_53, tup_54, obj_55, obj_56, obj_57, obj_58}
-  tup_41 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_42 = new StagedRegExp.In(tup_41)
-  tup_43 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_44 = new StagedRegExp.In(tup_43)
-  obj_45 = new StagedRegExp.Star(obj_44)
-  obj_46 = new StagedRegExp.Concat(obj_42, obj_45)
-  obj_47 = new StagedRegExp.Exact("-")
-  obj_48 = new StagedRegExp.Exact(".")
-  obj_49 = new StagedRegExp.Union(obj_47, obj_48)
-  obj_50 = new StagedRegExp.Concat(obj_46, obj_49)
-  obj_51 = new StagedRegExp.Star(obj_50)
-  tup_52 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_53 = new StagedRegExp.In(tup_52)
-  tup_54 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_55 = new StagedRegExp.In(tup_54)
-  obj_56 = new StagedRegExp.Star(obj_55)
-  obj_57 = new StagedRegExp.Concat(obj_53, obj_56)
-  obj_58 = new StagedRegExp.Concat(obj_51, obj_57)
-  obj_58
-fun mkConcat_StagedRegExp_sp_20(p1, p2) =
-  let {obj_324, tup_325, obj_326, obj_327, obj_328}
-  obj_324 = new StagedRegExp.Exact("?")
-  tup_325 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_326 = new StagedRegExp.In(tup_325)
-  obj_327 = new StagedRegExp.Star(obj_326)
-  obj_328 = new StagedRegExp.Concat(obj_324, obj_327)
-  obj_328
-fun mkConcat_StagedRegExp_sp_21(p1, p2) =
-  let {obj_343, tup_344, obj_345, obj_346, obj_347}
-  obj_343 = new StagedRegExp.Exact("#")
-  tup_344 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_345 = new StagedRegExp.In(tup_344)
-  obj_346 = new StagedRegExp.Star(obj_345)
-  obj_347 = new StagedRegExp.Concat(obj_343, obj_346)
-  obj_347
-fun mkConcat_StagedRegExp_sp_22(p1, p2) =
-  let {obj_362, tup_363, obj_364, obj_365, obj_366, obj_367, obj_368, obj_369, tup_370, obj_371, obj_372, obj_373, obj_374, obj_375, obj_376}
-  obj_362 = new StagedRegExp.Exact("?")
-  tup_363 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_364 = new StagedRegExp.In(tup_363)
-  obj_365 = new StagedRegExp.Star(obj_364)
-  obj_366 = new StagedRegExp.Concat(obj_362, obj_365)
-  obj_367 = new StagedRegExp.Empty()
-  obj_368 = new StagedRegExp.Union(obj_366, obj_367)
-  obj_369 = new StagedRegExp.Exact("#")
-  tup_370 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_371 = new StagedRegExp.In(tup_370)
-  obj_372 = new StagedRegExp.Star(obj_371)
-  obj_373 = new StagedRegExp.Concat(obj_369, obj_372)
-  obj_374 = new StagedRegExp.Empty()
-  obj_375 = new StagedRegExp.Union(obj_373, obj_374)
-  obj_376 = new StagedRegExp.Concat(obj_368, obj_375)
-  obj_376
-fun mkConcat_StagedRegExp_sp_23(p1, p2) =
-  let {tup_377, obj_378, tup_379, obj_380, obj_381, obj_382, tup_383, obj_384, tup_385, obj_386, obj_387, obj_388, obj_389, obj_390, tup_391, obj_392, obj_393, obj_394, obj_395, obj_396, obj_397, tup_398, obj_399, obj_400, obj_401, obj_402, obj_403, obj_404, obj_405}
-  tup_377 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_378 = new StagedRegExp.Not(tup_377)
-  tup_379 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_380 = new StagedRegExp.Not(tup_379)
-  obj_381 = new StagedRegExp.Star(obj_380)
-  obj_382 = new StagedRegExp.Concat(obj_378, obj_381)
-  tup_383 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_384 = new StagedRegExp.Not(tup_383)
-  tup_385 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_386 = new StagedRegExp.Not(tup_385)
-  obj_387 = new StagedRegExp.Star(obj_386)
-  obj_388 = new StagedRegExp.Concat(obj_384, obj_387)
-  obj_389 = new StagedRegExp.Concat(obj_382, obj_388)
-  obj_390 = new StagedRegExp.Exact("?")
-  tup_391 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_392 = new StagedRegExp.In(tup_391)
-  obj_393 = new StagedRegExp.Star(obj_392)
-  obj_394 = new StagedRegExp.Concat(obj_390, obj_393)
-  obj_395 = new StagedRegExp.Empty()
-  obj_396 = new StagedRegExp.Union(obj_394, obj_395)
-  obj_397 = new StagedRegExp.Exact("#")
-  tup_398 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_399 = new StagedRegExp.In(tup_398)
-  obj_400 = new StagedRegExp.Star(obj_399)
-  obj_401 = new StagedRegExp.Concat(obj_397, obj_400)
-  obj_402 = new StagedRegExp.Empty()
-  obj_403 = new StagedRegExp.Union(obj_401, obj_402)
-  obj_404 = new StagedRegExp.Concat(obj_396, obj_403)
-  obj_405 = new StagedRegExp.Concat(obj_389, obj_404)
-  obj_405
-fun mkConcat_StagedRegExp_sp_24(p1, p2) =
-  let {tup_406, obj_407, tup_408, obj_409, obj_410, obj_411, obj_412, obj_413, obj_414, obj_415, obj_416, obj_417, tup_418, obj_419, tup_420, obj_421, obj_422, obj_423, tup_424, obj_425, tup_426, obj_427, obj_428, obj_429, obj_430, obj_431, tup_432, obj_433, obj_434, obj_435, obj_436, obj_437, obj_438, tup_439, obj_440, obj_441, obj_442, obj_443, obj_444, obj_445, obj_446, obj_447}
-  tup_406 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_407 = new StagedRegExp.In(tup_406)
-  tup_408 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_409 = new StagedRegExp.In(tup_408)
-  obj_410 = new StagedRegExp.Star(obj_409)
-  obj_411 = new StagedRegExp.Concat(obj_407, obj_410)
-  obj_412 = new StagedRegExp.Exact(":")
-  obj_413 = new StagedRegExp.Exact("/")
-  obj_414 = new StagedRegExp.Exact("/")
-  obj_415 = new StagedRegExp.Concat(obj_413, obj_414)
-  obj_416 = new StagedRegExp.Concat(obj_412, obj_415)
-  obj_417 = new StagedRegExp.Concat(obj_411, obj_416)
-  tup_418 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_419 = new StagedRegExp.Not(tup_418)
-  tup_420 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_421 = new StagedRegExp.Not(tup_420)
-  obj_422 = new StagedRegExp.Star(obj_421)
-  obj_423 = new StagedRegExp.Concat(obj_419, obj_422)
-  tup_424 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_425 = new StagedRegExp.Not(tup_424)
-  tup_426 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_427 = new StagedRegExp.Not(tup_426)
-  obj_428 = new StagedRegExp.Star(obj_427)
-  obj_429 = new StagedRegExp.Concat(obj_425, obj_428)
-  obj_430 = new StagedRegExp.Concat(obj_423, obj_429)
-  obj_431 = new StagedRegExp.Exact("?")
-  tup_432 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_433 = new StagedRegExp.In(tup_432)
-  obj_434 = new StagedRegExp.Star(obj_433)
-  obj_435 = new StagedRegExp.Concat(obj_431, obj_434)
-  obj_436 = new StagedRegExp.Empty()
-  obj_437 = new StagedRegExp.Union(obj_435, obj_436)
-  obj_438 = new StagedRegExp.Exact("#")
-  tup_439 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_440 = new StagedRegExp.In(tup_439)
-  obj_441 = new StagedRegExp.Star(obj_440)
-  obj_442 = new StagedRegExp.Concat(obj_438, obj_441)
-  obj_443 = new StagedRegExp.Empty()
-  obj_444 = new StagedRegExp.Union(obj_442, obj_443)
-  obj_445 = new StagedRegExp.Concat(obj_437, obj_444)
-  obj_446 = new StagedRegExp.Concat(obj_430, obj_445)
-  obj_447 = new StagedRegExp.Concat(obj_417, obj_446)
-  obj_447
-fun mkConcat_StagedRegExp_sp_25(p1, p2) =
-  let {tup_448, obj_449, obj_450, obj_451, obj_452, obj_453, obj_454, obj_455, obj_456}
-  tup_448 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_449 = new StagedRegExp.In(tup_448)
-  obj_450 = new StagedRegExp.Star(obj_449)
-  obj_451 = new StagedRegExp.Exact(":")
-  obj_452 = new StagedRegExp.Exact("/")
-  obj_453 = new StagedRegExp.Exact("/")
-  obj_454 = new StagedRegExp.Concat(obj_452, obj_453)
-  obj_455 = new StagedRegExp.Concat(obj_451, obj_454)
-  obj_456 = new StagedRegExp.Concat(obj_450, obj_455)
-  obj_456
-fun mkConcat_StagedRegExp_sp_26(p1, p2) =
-  let {tup_457, obj_458, obj_459, obj_460, obj_461, obj_462, obj_463, obj_464, obj_465, tup_466, obj_467, tup_468, obj_469, obj_470, obj_471, tup_472, obj_473, tup_474, obj_475, obj_476, obj_477, obj_478, obj_479, tup_480, obj_481, obj_482, obj_483, obj_484, obj_485, obj_486, tup_487, obj_488, obj_489, obj_490, obj_491, obj_492, obj_493, obj_494, obj_495}
-  tup_457 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_458 = new StagedRegExp.In(tup_457)
-  obj_459 = new StagedRegExp.Star(obj_458)
-  obj_460 = new StagedRegExp.Exact(":")
-  obj_461 = new StagedRegExp.Exact("/")
-  obj_462 = new StagedRegExp.Exact("/")
-  obj_463 = new StagedRegExp.Concat(obj_461, obj_462)
-  obj_464 = new StagedRegExp.Concat(obj_460, obj_463)
-  obj_465 = new StagedRegExp.Concat(obj_459, obj_464)
-  tup_466 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_467 = new StagedRegExp.Not(tup_466)
-  tup_468 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_469 = new StagedRegExp.Not(tup_468)
-  obj_470 = new StagedRegExp.Star(obj_469)
-  obj_471 = new StagedRegExp.Concat(obj_467, obj_470)
-  tup_472 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_473 = new StagedRegExp.Not(tup_472)
-  tup_474 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_475 = new StagedRegExp.Not(tup_474)
-  obj_476 = new StagedRegExp.Star(obj_475)
-  obj_477 = new StagedRegExp.Concat(obj_473, obj_476)
-  obj_478 = new StagedRegExp.Concat(obj_471, obj_477)
-  obj_479 = new StagedRegExp.Exact("?")
-  tup_480 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_481 = new StagedRegExp.In(tup_480)
-  obj_482 = new StagedRegExp.Star(obj_481)
-  obj_483 = new StagedRegExp.Concat(obj_479, obj_482)
-  obj_484 = new StagedRegExp.Empty()
-  obj_485 = new StagedRegExp.Union(obj_483, obj_484)
-  obj_486 = new StagedRegExp.Exact("#")
-  tup_487 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_488 = new StagedRegExp.In(tup_487)
-  obj_489 = new StagedRegExp.Star(obj_488)
-  obj_490 = new StagedRegExp.Concat(obj_486, obj_489)
-  obj_491 = new StagedRegExp.Empty()
-  obj_492 = new StagedRegExp.Union(obj_490, obj_491)
-  obj_493 = new StagedRegExp.Concat(obj_485, obj_492)
-  obj_494 = new StagedRegExp.Concat(obj_478, obj_493)
-  obj_495 = new StagedRegExp.Concat(obj_465, obj_494)
-  obj_495
-fun mkConcat_StagedRegExp_sp_27(p1, p2) =
-  let {obj_496, obj_497, obj_498}
-  obj_496 = new StagedRegExp.Exact("/")
-  obj_497 = new StagedRegExp.Exact("/")
-  obj_498 = new StagedRegExp.Concat(obj_496, obj_497)
-  obj_498
+fun mkConcat_StagedRegExp_sp_16(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_17(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_18(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_19(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_2(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_20(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_21(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_22(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_23(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_24(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_25(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_26(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_27(p1, p2) = p2
 fun mkConcat_StagedRegExp_sp_28(p1, p2) = new StagedRegExp.Concat(p1, p2)
-fun mkConcat_StagedRegExp_sp_29(p1, p2) =
-  let {obj_512}
-  obj_512 = new StagedRegExp.Exact("/")
-  obj_512
-fun mkConcat_StagedRegExp_sp_3(p1, p2) =
-  let {tup_59, obj_60, tup_61, obj_62, obj_63, obj_64, obj_65, obj_66, obj_67, obj_68, obj_69, tup_70, obj_71, tup_72, obj_73, obj_74, obj_75, obj_76, obj_77, obj_78}
-  tup_59 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_60 = new StagedRegExp.In(tup_59)
-  tup_61 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_62 = new StagedRegExp.In(tup_61)
-  obj_63 = new StagedRegExp.Star(obj_62)
-  obj_64 = new StagedRegExp.Concat(obj_60, obj_63)
-  obj_65 = new StagedRegExp.Exact("-")
-  obj_66 = new StagedRegExp.Exact(".")
-  obj_67 = new StagedRegExp.Union(obj_65, obj_66)
-  obj_68 = new StagedRegExp.Concat(obj_64, obj_67)
-  obj_69 = new StagedRegExp.Star(obj_68)
-  tup_70 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_71 = new StagedRegExp.In(tup_70)
-  tup_72 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_73 = new StagedRegExp.In(tup_72)
-  obj_74 = new StagedRegExp.Star(obj_73)
-  obj_75 = new StagedRegExp.Concat(obj_71, obj_74)
-  obj_76 = new StagedRegExp.Concat(obj_69, obj_75)
-  obj_77 = new StagedRegExp.Exact("@")
-  obj_78 = new StagedRegExp.Concat(obj_76, obj_77)
-  obj_78
+fun mkConcat_StagedRegExp_sp_29(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_3(p1, p2) = new StagedRegExp.Concat(p1, p2)
 fun mkConcat_StagedRegExp_sp_30(p1, p2) =
   if p1 is
     StagedRegExp.Empty then p2
@@ -2484,273 +2216,19 @@ fun mkConcat_StagedRegExp_sp_31(p1, p2) =
   if p1 is
     StagedRegExp.Empty then p2
     else new StagedRegExp.Concat(p1, p2)
-fun mkConcat_StagedRegExp_sp_32(p1, p2) =
-  let {obj_513, tup_514, obj_515, obj_516}
-  obj_513 = new StagedRegExp.Exact("5")
-  tup_514 = ["0", "1", "2", "3", "4", "5"]
-  obj_515 = new StagedRegExp.In(tup_514)
-  obj_516 = new StagedRegExp.Concat(obj_513, obj_515)
-  obj_516
-fun mkConcat_StagedRegExp_sp_33(p1, p2) =
-  let {obj_517, obj_518, tup_519, obj_520, obj_521, obj_522}
-  obj_517 = new StagedRegExp.Exact("2")
-  obj_518 = new StagedRegExp.Exact("5")
-  tup_519 = ["0", "1", "2", "3", "4", "5"]
-  obj_520 = new StagedRegExp.In(tup_519)
-  obj_521 = new StagedRegExp.Concat(obj_518, obj_520)
-  obj_522 = new StagedRegExp.Concat(obj_517, obj_521)
-  obj_522
-fun mkConcat_StagedRegExp_sp_34(p1, p2) =
-  let {tup_523, obj_524, tup_525, obj_526, obj_527}
-  tup_523 = ["0", "1", "2", "3", "4"]
-  obj_524 = new StagedRegExp.In(tup_523)
-  tup_525 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_526 = new StagedRegExp.In(tup_525)
-  obj_527 = new StagedRegExp.Concat(obj_524, obj_526)
-  obj_527
-fun mkConcat_StagedRegExp_sp_35(p1, p2) =
-  let {obj_528, tup_529, obj_530, tup_531, obj_532, obj_533, obj_534}
-  obj_528 = new StagedRegExp.Exact("2")
-  tup_529 = ["0", "1", "2", "3", "4"]
-  obj_530 = new StagedRegExp.In(tup_529)
-  tup_531 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_532 = new StagedRegExp.In(tup_531)
-  obj_533 = new StagedRegExp.Concat(obj_530, obj_532)
-  obj_534 = new StagedRegExp.Concat(obj_528, obj_533)
-  obj_534
-fun mkConcat_StagedRegExp_sp_36(p1, p2) =
-  let {tup_549, obj_550, obj_551, obj_552, tup_553, obj_554, obj_555}
-  tup_549 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_550 = new StagedRegExp.In(tup_549)
-  obj_551 = new StagedRegExp.Empty()
-  obj_552 = new StagedRegExp.Union(obj_550, obj_551)
-  tup_553 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_554 = new StagedRegExp.In(tup_553)
-  obj_555 = new StagedRegExp.Concat(obj_552, obj_554)
-  obj_555
-fun mkConcat_StagedRegExp_sp_37(p1, p2) =
-  let {obj_556, obj_557, obj_558, tup_559, obj_560, obj_561, obj_562, tup_563, obj_564, obj_565, obj_566}
-  obj_556 = new StagedRegExp.Exact("1")
-  obj_557 = new StagedRegExp.Empty()
-  obj_558 = new StagedRegExp.Union(obj_556, obj_557)
-  tup_559 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_560 = new StagedRegExp.In(tup_559)
-  obj_561 = new StagedRegExp.Empty()
-  obj_562 = new StagedRegExp.Union(obj_560, obj_561)
-  tup_563 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_564 = new StagedRegExp.In(tup_563)
-  obj_565 = new StagedRegExp.Concat(obj_562, obj_564)
-  obj_566 = new StagedRegExp.Concat(obj_558, obj_565)
-  obj_566
-fun mkConcat_StagedRegExp_sp_38(p1, p2) =
-  let {obj_612, obj_613, tup_614, obj_615, obj_616, obj_617, obj_618, tup_619, obj_620, tup_621, obj_622, obj_623, obj_624, obj_625, obj_626, obj_627, tup_628, obj_629, obj_630, obj_631, tup_632, obj_633, obj_634, obj_635, obj_636, obj_637, obj_638, obj_639}
-  obj_612 = new StagedRegExp.Exact("2")
-  obj_613 = new StagedRegExp.Exact("5")
-  tup_614 = ["0", "1", "2", "3", "4", "5"]
-  obj_615 = new StagedRegExp.In(tup_614)
-  obj_616 = new StagedRegExp.Concat(obj_613, obj_615)
-  obj_617 = new StagedRegExp.Concat(obj_612, obj_616)
-  obj_618 = new StagedRegExp.Exact("2")
-  tup_619 = ["0", "1", "2", "3", "4"]
-  obj_620 = new StagedRegExp.In(tup_619)
-  tup_621 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_622 = new StagedRegExp.In(tup_621)
-  obj_623 = new StagedRegExp.Concat(obj_620, obj_622)
-  obj_624 = new StagedRegExp.Concat(obj_618, obj_623)
-  obj_625 = new StagedRegExp.Exact("1")
-  obj_626 = new StagedRegExp.Empty()
-  obj_627 = new StagedRegExp.Union(obj_625, obj_626)
-  tup_628 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_629 = new StagedRegExp.In(tup_628)
-  obj_630 = new StagedRegExp.Empty()
-  obj_631 = new StagedRegExp.Union(obj_629, obj_630)
-  tup_632 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_633 = new StagedRegExp.In(tup_632)
-  obj_634 = new StagedRegExp.Concat(obj_631, obj_633)
-  obj_635 = new StagedRegExp.Concat(obj_627, obj_634)
-  obj_636 = new StagedRegExp.Union(obj_624, obj_635)
-  obj_637 = new StagedRegExp.Union(obj_617, obj_636)
-  obj_638 = new StagedRegExp.Exact(".")
-  obj_639 = new StagedRegExp.Concat(obj_637, obj_638)
-  obj_639
-fun mkConcat_StagedRegExp_sp_39(p1, p2) =
-  let {obj_811, obj_812, tup_813, obj_814, obj_815, obj_816, obj_817, tup_818, obj_819, tup_820, obj_821, obj_822, obj_823, obj_824, obj_825, obj_826, tup_827, obj_828, obj_829, obj_830, tup_831, obj_832, obj_833, obj_834, obj_835, obj_836, obj_837, obj_838, obj_839, obj_840, tup_841, obj_842, obj_843, obj_844, obj_845, tup_846, obj_847, tup_848, obj_849, obj_850, obj_851, obj_852, obj_853, obj_854, tup_855, obj_856, obj_857, obj_858, tup_859, obj_860, obj_861, obj_862, obj_863, obj_864, obj_865, obj_866, obj_867, obj_868, tup_869, obj_870, obj_871, obj_872, obj_873, tup_874, obj_875, tup_876, obj_877, obj_878, obj_879, obj_880, obj_881, obj_882, tup_883, obj_884, obj_885, obj_886, tup_887, obj_888, obj_889, obj_890, obj_891, obj_892, obj_893, obj_894, obj_895, obj_896, obj_897, obj_898, tup_899, obj_900, obj_901, obj_902, obj_903, tup_904, obj_905, tup_906, obj_907, obj_908, obj_909, obj_910, obj_911, obj_912, tup_913, obj_914, obj_915, obj_916, tup_917, obj_918, obj_919, obj_920, obj_921, obj_922, obj_923}
-  obj_811 = new StagedRegExp.Exact("2")
-  obj_812 = new StagedRegExp.Exact("5")
-  tup_813 = ["0", "1", "2", "3", "4", "5"]
-  obj_814 = new StagedRegExp.In(tup_813)
-  obj_815 = new StagedRegExp.Concat(obj_812, obj_814)
-  obj_816 = new StagedRegExp.Concat(obj_811, obj_815)
-  obj_817 = new StagedRegExp.Exact("2")
-  tup_818 = ["0", "1", "2", "3", "4"]
-  obj_819 = new StagedRegExp.In(tup_818)
-  tup_820 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_821 = new StagedRegExp.In(tup_820)
-  obj_822 = new StagedRegExp.Concat(obj_819, obj_821)
-  obj_823 = new StagedRegExp.Concat(obj_817, obj_822)
-  obj_824 = new StagedRegExp.Exact("1")
-  obj_825 = new StagedRegExp.Empty()
-  obj_826 = new StagedRegExp.Union(obj_824, obj_825)
-  tup_827 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_828 = new StagedRegExp.In(tup_827)
-  obj_829 = new StagedRegExp.Empty()
-  obj_830 = new StagedRegExp.Union(obj_828, obj_829)
-  tup_831 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_832 = new StagedRegExp.In(tup_831)
-  obj_833 = new StagedRegExp.Concat(obj_830, obj_832)
-  obj_834 = new StagedRegExp.Concat(obj_826, obj_833)
-  obj_835 = new StagedRegExp.Union(obj_823, obj_834)
-  obj_836 = new StagedRegExp.Union(obj_816, obj_835)
-  obj_837 = new StagedRegExp.Exact(".")
-  obj_838 = new StagedRegExp.Concat(obj_836, obj_837)
-  obj_839 = new StagedRegExp.Exact("2")
-  obj_840 = new StagedRegExp.Exact("5")
-  tup_841 = ["0", "1", "2", "3", "4", "5"]
-  obj_842 = new StagedRegExp.In(tup_841)
-  obj_843 = new StagedRegExp.Concat(obj_840, obj_842)
-  obj_844 = new StagedRegExp.Concat(obj_839, obj_843)
-  obj_845 = new StagedRegExp.Exact("2")
-  tup_846 = ["0", "1", "2", "3", "4"]
-  obj_847 = new StagedRegExp.In(tup_846)
-  tup_848 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_849 = new StagedRegExp.In(tup_848)
-  obj_850 = new StagedRegExp.Concat(obj_847, obj_849)
-  obj_851 = new StagedRegExp.Concat(obj_845, obj_850)
-  obj_852 = new StagedRegExp.Exact("1")
-  obj_853 = new StagedRegExp.Empty()
-  obj_854 = new StagedRegExp.Union(obj_852, obj_853)
-  tup_855 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_856 = new StagedRegExp.In(tup_855)
-  obj_857 = new StagedRegExp.Empty()
-  obj_858 = new StagedRegExp.Union(obj_856, obj_857)
-  tup_859 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_860 = new StagedRegExp.In(tup_859)
-  obj_861 = new StagedRegExp.Concat(obj_858, obj_860)
-  obj_862 = new StagedRegExp.Concat(obj_854, obj_861)
-  obj_863 = new StagedRegExp.Union(obj_851, obj_862)
-  obj_864 = new StagedRegExp.Union(obj_844, obj_863)
-  obj_865 = new StagedRegExp.Exact(".")
-  obj_866 = new StagedRegExp.Concat(obj_864, obj_865)
-  obj_867 = new StagedRegExp.Exact("2")
-  obj_868 = new StagedRegExp.Exact("5")
-  tup_869 = ["0", "1", "2", "3", "4", "5"]
-  obj_870 = new StagedRegExp.In(tup_869)
-  obj_871 = new StagedRegExp.Concat(obj_868, obj_870)
-  obj_872 = new StagedRegExp.Concat(obj_867, obj_871)
-  obj_873 = new StagedRegExp.Exact("2")
-  tup_874 = ["0", "1", "2", "3", "4"]
-  obj_875 = new StagedRegExp.In(tup_874)
-  tup_876 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_877 = new StagedRegExp.In(tup_876)
-  obj_878 = new StagedRegExp.Concat(obj_875, obj_877)
-  obj_879 = new StagedRegExp.Concat(obj_873, obj_878)
-  obj_880 = new StagedRegExp.Exact("1")
-  obj_881 = new StagedRegExp.Empty()
-  obj_882 = new StagedRegExp.Union(obj_880, obj_881)
-  tup_883 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_884 = new StagedRegExp.In(tup_883)
-  obj_885 = new StagedRegExp.Empty()
-  obj_886 = new StagedRegExp.Union(obj_884, obj_885)
-  tup_887 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_888 = new StagedRegExp.In(tup_887)
-  obj_889 = new StagedRegExp.Concat(obj_886, obj_888)
-  obj_890 = new StagedRegExp.Concat(obj_882, obj_889)
-  obj_891 = new StagedRegExp.Union(obj_879, obj_890)
-  obj_892 = new StagedRegExp.Union(obj_872, obj_891)
-  obj_893 = new StagedRegExp.Exact(".")
-  obj_894 = new StagedRegExp.Concat(obj_892, obj_893)
-  obj_895 = new StagedRegExp.Concat(obj_866, obj_894)
-  obj_896 = new StagedRegExp.Concat(obj_838, obj_895)
-  obj_897 = new StagedRegExp.Exact("2")
-  obj_898 = new StagedRegExp.Exact("5")
-  tup_899 = ["0", "1", "2", "3", "4", "5"]
-  obj_900 = new StagedRegExp.In(tup_899)
-  obj_901 = new StagedRegExp.Concat(obj_898, obj_900)
-  obj_902 = new StagedRegExp.Concat(obj_897, obj_901)
-  obj_903 = new StagedRegExp.Exact("2")
-  tup_904 = ["0", "1", "2", "3", "4"]
-  obj_905 = new StagedRegExp.In(tup_904)
-  tup_906 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_907 = new StagedRegExp.In(tup_906)
-  obj_908 = new StagedRegExp.Concat(obj_905, obj_907)
-  obj_909 = new StagedRegExp.Concat(obj_903, obj_908)
-  obj_910 = new StagedRegExp.Exact("1")
-  obj_911 = new StagedRegExp.Empty()
-  obj_912 = new StagedRegExp.Union(obj_910, obj_911)
-  tup_913 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_914 = new StagedRegExp.In(tup_913)
-  obj_915 = new StagedRegExp.Empty()
-  obj_916 = new StagedRegExp.Union(obj_914, obj_915)
-  tup_917 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_918 = new StagedRegExp.In(tup_917)
-  obj_919 = new StagedRegExp.Concat(obj_916, obj_918)
-  obj_920 = new StagedRegExp.Concat(obj_912, obj_919)
-  obj_921 = new StagedRegExp.Union(obj_909, obj_920)
-  obj_922 = new StagedRegExp.Union(obj_902, obj_921)
-  obj_923 = new StagedRegExp.Concat(obj_896, obj_922)
-  obj_923
-fun mkConcat_StagedRegExp_sp_4(p1, p2) =
-  let {tup_101, obj_102, tup_103, obj_104, obj_105, obj_106, obj_107, obj_108, obj_109, obj_110, tup_111, obj_112, tup_113, obj_114, obj_115, obj_116, obj_117, obj_118, obj_119, obj_120, obj_121, obj_122, tup_123, obj_124, tup_125, obj_126, obj_127, obj_128, obj_129}
-  tup_101 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_102 = new StagedRegExp.In(tup_101)
-  tup_103 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_104 = new StagedRegExp.In(tup_103)
-  obj_105 = new StagedRegExp.Star(obj_104)
-  obj_106 = new StagedRegExp.Concat(obj_102, obj_105)
-  obj_107 = new StagedRegExp.Exact("-")
-  obj_108 = new StagedRegExp.Exact(".")
-  obj_109 = new StagedRegExp.Union(obj_107, obj_108)
-  obj_110 = new StagedRegExp.Concat(obj_106, obj_109)
-  tup_111 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_112 = new StagedRegExp.In(tup_111)
-  tup_113 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_114 = new StagedRegExp.In(tup_113)
-  obj_115 = new StagedRegExp.Star(obj_114)
-  obj_116 = new StagedRegExp.Concat(obj_112, obj_115)
-  obj_117 = new StagedRegExp.Exact("-")
-  obj_118 = new StagedRegExp.Exact(".")
-  obj_119 = new StagedRegExp.Union(obj_117, obj_118)
-  obj_120 = new StagedRegExp.Concat(obj_116, obj_119)
-  obj_121 = new StagedRegExp.Star(obj_120)
-  obj_122 = new StagedRegExp.Concat(obj_110, obj_121)
-  tup_123 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_124 = new StagedRegExp.In(tup_123)
-  tup_125 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_126 = new StagedRegExp.In(tup_125)
-  obj_127 = new StagedRegExp.Star(obj_126)
-  obj_128 = new StagedRegExp.Concat(obj_124, obj_127)
-  obj_129 = new StagedRegExp.Concat(obj_122, obj_128)
-  obj_129
-fun mkConcat_StagedRegExp_sp_40(p1, p2) =
-  let {obj_924, tup_925, obj_926, obj_927}
-  obj_924 = new StagedRegExp.Exact("5")
-  tup_925 = ["0", "1", "2", "3", "4", "5"]
-  obj_926 = new StagedRegExp.In(tup_925)
-  obj_927 = new StagedRegExp.Concat(obj_924, obj_926)
-  obj_927
-fun mkConcat_StagedRegExp_sp_41(p1, p2) =
-  let {tup_928, obj_929, tup_930, obj_931, obj_932}
-  tup_928 = ["0", "1", "2", "3", "4"]
-  obj_929 = new StagedRegExp.In(tup_928)
-  tup_930 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_931 = new StagedRegExp.In(tup_930)
-  obj_932 = new StagedRegExp.Concat(obj_929, obj_931)
-  obj_932
-fun mkConcat_StagedRegExp_sp_42(p1, p2) =
-  let {tup_934, obj_935}
-  tup_934 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_935 = new StagedRegExp.In(tup_934)
-  obj_935
-fun mkConcat_StagedRegExp_sp_43(p1, p2) =
-  let {tup_936, obj_937, obj_938, obj_939, tup_940, obj_941, obj_942}
-  tup_936 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_937 = new StagedRegExp.In(tup_936)
-  obj_938 = new StagedRegExp.Empty()
-  obj_939 = new StagedRegExp.Union(obj_937, obj_938)
-  tup_940 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_941 = new StagedRegExp.In(tup_940)
-  obj_942 = new StagedRegExp.Concat(obj_939, obj_941)
-  obj_942
+fun mkConcat_StagedRegExp_sp_32(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_33(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_34(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_35(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_36(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_37(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_38(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_39(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_4(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_40(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_41(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_42(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_43(p1, p2) = p2
 fun mkConcat_StagedRegExp_sp_44(p1, p2) =
   if p1 is
     StagedRegExp.Empty then p2
@@ -2766,693 +2244,104 @@ fun mkConcat_StagedRegExp_sp_49(p1, p2) =
   if p1 is
     StagedRegExp.Empty then p2
     else new StagedRegExp.Concat(p1, p2)
-fun mkConcat_StagedRegExp_sp_5(p1, p2) =
-  let {tup_130, obj_131, tup_132, obj_133, obj_134, obj_135, obj_136, obj_137, obj_138, obj_139, obj_140, tup_141, obj_142, tup_143, obj_144, obj_145, obj_146, obj_147, obj_148, obj_149, tup_150, obj_151, tup_152, obj_153, obj_154, obj_155, obj_156, obj_157, obj_158, obj_159, tup_160, obj_161, tup_162, obj_163, obj_164, obj_165, obj_166, obj_167, obj_168, obj_169, obj_170, obj_171, tup_172, obj_173, tup_174, obj_175, obj_176, obj_177, obj_178, obj_179}
-  tup_130 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_131 = new StagedRegExp.In(tup_130)
-  tup_132 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_133 = new StagedRegExp.In(tup_132)
-  obj_134 = new StagedRegExp.Star(obj_133)
-  obj_135 = new StagedRegExp.Concat(obj_131, obj_134)
-  obj_136 = new StagedRegExp.Exact("-")
-  obj_137 = new StagedRegExp.Exact(".")
-  obj_138 = new StagedRegExp.Union(obj_136, obj_137)
-  obj_139 = new StagedRegExp.Concat(obj_135, obj_138)
-  obj_140 = new StagedRegExp.Star(obj_139)
-  tup_141 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_142 = new StagedRegExp.In(tup_141)
-  tup_143 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_144 = new StagedRegExp.In(tup_143)
-  obj_145 = new StagedRegExp.Star(obj_144)
-  obj_146 = new StagedRegExp.Concat(obj_142, obj_145)
-  obj_147 = new StagedRegExp.Concat(obj_140, obj_146)
-  obj_148 = new StagedRegExp.Exact("@")
-  obj_149 = new StagedRegExp.Concat(obj_147, obj_148)
-  tup_150 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_151 = new StagedRegExp.In(tup_150)
-  tup_152 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_153 = new StagedRegExp.In(tup_152)
-  obj_154 = new StagedRegExp.Star(obj_153)
-  obj_155 = new StagedRegExp.Concat(obj_151, obj_154)
-  obj_156 = new StagedRegExp.Exact("-")
-  obj_157 = new StagedRegExp.Exact(".")
-  obj_158 = new StagedRegExp.Union(obj_156, obj_157)
-  obj_159 = new StagedRegExp.Concat(obj_155, obj_158)
-  tup_160 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_161 = new StagedRegExp.In(tup_160)
-  tup_162 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_163 = new StagedRegExp.In(tup_162)
-  obj_164 = new StagedRegExp.Star(obj_163)
-  obj_165 = new StagedRegExp.Concat(obj_161, obj_164)
-  obj_166 = new StagedRegExp.Exact("-")
-  obj_167 = new StagedRegExp.Exact(".")
-  obj_168 = new StagedRegExp.Union(obj_166, obj_167)
-  obj_169 = new StagedRegExp.Concat(obj_165, obj_168)
-  obj_170 = new StagedRegExp.Star(obj_169)
-  obj_171 = new StagedRegExp.Concat(obj_159, obj_170)
-  tup_172 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_173 = new StagedRegExp.In(tup_172)
-  tup_174 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_175 = new StagedRegExp.In(tup_174)
-  obj_176 = new StagedRegExp.Star(obj_175)
-  obj_177 = new StagedRegExp.Concat(obj_173, obj_176)
-  obj_178 = new StagedRegExp.Concat(obj_171, obj_177)
-  obj_179 = new StagedRegExp.Concat(obj_149, obj_178)
-  obj_179
-fun mkConcat_StagedRegExp_sp_50(p1, p2) =
-  let {tup_956, obj_957, obj_958, obj_959, obj_960, obj_961, obj_962, obj_963}
-  tup_956 = ["A", "B", "C", "D"]
-  obj_957 = new StagedRegExp.In(tup_956)
-  obj_958 = new StagedRegExp.Exact("+")
-  obj_959 = new StagedRegExp.Exact("-")
-  obj_960 = new StagedRegExp.Union(obj_958, obj_959)
-  obj_961 = new StagedRegExp.Empty()
-  obj_962 = new StagedRegExp.Union(obj_960, obj_961)
-  obj_963 = new StagedRegExp.Concat(obj_957, obj_962)
-  obj_963
-fun mkConcat_StagedRegExp_sp_51(p1, p2) =
-  let {obj_974, obj_975, obj_976, obj_977, obj_978}
-  obj_974 = new StagedRegExp.Exact("+")
-  obj_975 = new StagedRegExp.Exact("-")
-  obj_976 = new StagedRegExp.Union(obj_974, obj_975)
-  obj_977 = new StagedRegExp.Empty()
-  obj_978 = new StagedRegExp.Union(obj_976, obj_977)
-  obj_978
-fun mkConcat_StagedRegExp_sp_52(p1, p2) =
-  let {obj_989, obj_990, obj_991}
-  obj_989 = new StagedRegExp.Exact("A")
-  obj_990 = new StagedRegExp.Exact("B")
-  obj_991 = new StagedRegExp.Concat(obj_989, obj_990)
-  obj_991
-fun mkConcat_StagedRegExp_sp_53(p1, p2) =
-  let {obj_992, obj_993, obj_994, obj_995, obj_996}
-  obj_992 = new StagedRegExp.Exact("A")
-  obj_993 = new StagedRegExp.Exact("A")
-  obj_994 = new StagedRegExp.Exact("B")
-  obj_995 = new StagedRegExp.Concat(obj_993, obj_994)
-  obj_996 = new StagedRegExp.Concat(obj_992, obj_995)
-  obj_996
-fun mkConcat_StagedRegExp_sp_54(p1, p2) =
-  let {obj_997, obj_998, obj_999, obj_1000, obj_1001, obj_1002, obj_1003, obj_1004, obj_1005, obj_1006}
-  obj_997 = new StagedRegExp.Exact("A")
-  obj_998 = new StagedRegExp.Exact("B")
-  obj_999 = new StagedRegExp.Union(obj_997, obj_998)
-  obj_1000 = new StagedRegExp.Star(obj_999)
-  obj_1001 = new StagedRegExp.Exact("A")
-  obj_1002 = new StagedRegExp.Exact("A")
-  obj_1003 = new StagedRegExp.Exact("B")
-  obj_1004 = new StagedRegExp.Concat(obj_1002, obj_1003)
-  obj_1005 = new StagedRegExp.Concat(obj_1001, obj_1004)
-  obj_1006 = new StagedRegExp.Concat(obj_1000, obj_1005)
-  obj_1006
-fun mkConcat_StagedRegExp_sp_55(p1, p2) =
-  let {obj_1007, obj_1008, obj_1009, obj_1010}
-  obj_1007 = new StagedRegExp.Exact("A")
-  obj_1008 = new StagedRegExp.Exact("B")
-  obj_1009 = new StagedRegExp.Union(obj_1007, obj_1008)
-  obj_1010 = new StagedRegExp.Star.class(obj_1009)
-  obj_1010
-fun mkConcat_StagedRegExp_sp_56(p1, p2) =
-  let {obj_1011, obj_1012, obj_1013}
-  obj_1011 = new StagedRegExp.Exact("A")
-  obj_1012 = new StagedRegExp.Exact("B")
-  obj_1013 = new StagedRegExp.Concat(obj_1011, obj_1012)
-  obj_1013
-fun mkConcat_StagedRegExp_sp_57(p1, p2) =
-  let {obj_1028}
-  obj_1028 = new StagedRegExp.Exact("B")
-  obj_1028
+fun mkConcat_StagedRegExp_sp_5(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_50(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_51(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_52(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_53(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_54(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_55(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_56(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_57(p1, p2) = p2
 fun mkConcat_StagedRegExp_sp_58(p1, p2) =
   if p1 is
     StagedRegExp.Empty then p2
     else new StagedRegExp.Concat(p1, p2)
-fun mkConcat_StagedRegExp_sp_6(p1, p2) =
-  let {tup_180, obj_181, obj_182}
-  tup_180 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_181 = new StagedRegExp.In(tup_180)
-  obj_182 = new StagedRegExp.Star(obj_181)
-  obj_182
-fun mkConcat_StagedRegExp_sp_7(p1, p2) =
-  let {tup_183, obj_184, obj_185, obj_186, obj_187, obj_188, obj_189}
-  tup_183 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_184 = new StagedRegExp.In(tup_183)
-  obj_185 = new StagedRegExp.Star(obj_184)
-  obj_186 = new StagedRegExp.Exact("-")
-  obj_187 = new StagedRegExp.Exact(".")
-  obj_188 = new StagedRegExp.Union(obj_186, obj_187)
-  obj_189 = new StagedRegExp.Concat(obj_185, obj_188)
-  obj_189
-fun mkConcat_StagedRegExp_sp_8(p1, p2) =
-  let {tup_190, obj_191, obj_192, obj_193, obj_194, obj_195, obj_196, tup_197, obj_198, tup_199, obj_200, obj_201, obj_202, obj_203, obj_204, obj_205, obj_206, obj_207, obj_208}
-  tup_190 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_191 = new StagedRegExp.In(tup_190)
-  obj_192 = new StagedRegExp.Star(obj_191)
-  obj_193 = new StagedRegExp.Exact("-")
-  obj_194 = new StagedRegExp.Exact(".")
-  obj_195 = new StagedRegExp.Union(obj_193, obj_194)
-  obj_196 = new StagedRegExp.Concat(obj_192, obj_195)
-  tup_197 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_198 = new StagedRegExp.In(tup_197)
-  tup_199 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_200 = new StagedRegExp.In(tup_199)
-  obj_201 = new StagedRegExp.Star(obj_200)
-  obj_202 = new StagedRegExp.Concat(obj_198, obj_201)
-  obj_203 = new StagedRegExp.Exact("-")
-  obj_204 = new StagedRegExp.Exact(".")
-  obj_205 = new StagedRegExp.Union(obj_203, obj_204)
-  obj_206 = new StagedRegExp.Concat(obj_202, obj_205)
-  obj_207 = new StagedRegExp.Star.class(obj_206)
-  obj_208 = new StagedRegExp.Concat(obj_196, obj_207)
-  obj_208
-fun mkConcat_StagedRegExp_sp_9(p1, p2) =
-  let {tup_209, obj_210, obj_211, obj_212, obj_213, obj_214, obj_215, tup_216, obj_217, tup_218, obj_219, obj_220, obj_221, obj_222, obj_223, obj_224, obj_225, obj_226, obj_227, tup_228, obj_229, tup_230, obj_231, obj_232, obj_233, obj_234}
-  tup_209 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_210 = new StagedRegExp.In(tup_209)
-  obj_211 = new StagedRegExp.Star(obj_210)
-  obj_212 = new StagedRegExp.Exact("-")
-  obj_213 = new StagedRegExp.Exact(".")
-  obj_214 = new StagedRegExp.Union(obj_212, obj_213)
-  obj_215 = new StagedRegExp.Concat(obj_211, obj_214)
-  tup_216 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_217 = new StagedRegExp.In(tup_216)
-  tup_218 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_219 = new StagedRegExp.In(tup_218)
-  obj_220 = new StagedRegExp.Star(obj_219)
-  obj_221 = new StagedRegExp.Concat(obj_217, obj_220)
-  obj_222 = new StagedRegExp.Exact("-")
-  obj_223 = new StagedRegExp.Exact(".")
-  obj_224 = new StagedRegExp.Union(obj_222, obj_223)
-  obj_225 = new StagedRegExp.Concat(obj_221, obj_224)
-  obj_226 = new StagedRegExp.Star.class(obj_225)
-  obj_227 = new StagedRegExp.Concat(obj_215, obj_226)
-  tup_228 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_229 = new StagedRegExp.In(tup_228)
-  tup_230 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_231 = new StagedRegExp.In(tup_230)
-  obj_232 = new StagedRegExp.Star(obj_231)
-  obj_233 = new StagedRegExp.Concat(obj_229, obj_232)
-  obj_234 = new StagedRegExp.Concat(obj_227, obj_233)
-  obj_234
+fun mkConcat_StagedRegExp_sp_6(p1, p2) = p2
+fun mkConcat_StagedRegExp_sp_7(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_8(p1, p2) = new StagedRegExp.Concat(p1, p2)
+fun mkConcat_StagedRegExp_sp_9(p1, p2) = new StagedRegExp.Concat(p1, p2)
 fun mkUnion_StagedRegExp_sp_0(p1, p2) =
   if p1 is
     StagedRegExp.Empty then new StagedRegExp.Empty()
     else new StagedRegExp.Union(p1, p2)
-fun mkUnion_StagedRegExp_sp_1(p1, p2) =
-  let {obj_28, obj_29, obj_30}
-  obj_28 = new StagedRegExp.Exact("-")
-  obj_29 = new StagedRegExp.Exact(".")
-  obj_30 = new StagedRegExp.Union(obj_28, obj_29)
-  obj_30
+fun mkUnion_StagedRegExp_sp_1(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_10(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_11(p1, p2) = new StagedRegExp.Union(p1, p2)
-fun mkUnion_StagedRegExp_sp_12(p1, p2) =
-  let {obj_535, obj_536, obj_537}
-  obj_535 = new StagedRegExp.Exact("1")
-  obj_536 = new StagedRegExp.Empty()
-  obj_537 = new StagedRegExp.Union(obj_535, obj_536)
-  obj_537
-fun mkUnion_StagedRegExp_sp_13(p1, p2) =
-  let {tup_541, obj_542, obj_543, obj_544}
-  tup_541 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_542 = new StagedRegExp.In(tup_541)
-  obj_543 = new StagedRegExp.Empty()
-  obj_544 = new StagedRegExp.Union(obj_542, obj_543)
-  obj_544
-fun mkUnion_StagedRegExp_sp_14(p1, p2) =
-  let {obj_567, tup_568, obj_569, tup_570, obj_571, obj_572, obj_573, obj_574, obj_575, obj_576, tup_577, obj_578, obj_579, obj_580, tup_581, obj_582, obj_583, obj_584, obj_585}
-  obj_567 = new StagedRegExp.Exact("2")
-  tup_568 = ["0", "1", "2", "3", "4"]
-  obj_569 = new StagedRegExp.In(tup_568)
-  tup_570 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_571 = new StagedRegExp.In(tup_570)
-  obj_572 = new StagedRegExp.Concat(obj_569, obj_571)
-  obj_573 = new StagedRegExp.Concat(obj_567, obj_572)
-  obj_574 = new StagedRegExp.Exact("1")
-  obj_575 = new StagedRegExp.Empty()
-  obj_576 = new StagedRegExp.Union(obj_574, obj_575)
-  tup_577 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_578 = new StagedRegExp.In(tup_577)
-  obj_579 = new StagedRegExp.Empty()
-  obj_580 = new StagedRegExp.Union(obj_578, obj_579)
-  tup_581 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_582 = new StagedRegExp.In(tup_581)
-  obj_583 = new StagedRegExp.Concat(obj_580, obj_582)
-  obj_584 = new StagedRegExp.Concat(obj_576, obj_583)
-  obj_585 = new StagedRegExp.Union(obj_573, obj_584)
-  obj_585
-fun mkUnion_StagedRegExp_sp_15(p1, p2) =
-  let {obj_586, obj_587, tup_588, obj_589, obj_590, obj_591, obj_592, tup_593, obj_594, tup_595, obj_596, obj_597, obj_598, obj_599, obj_600, obj_601, tup_602, obj_603, obj_604, obj_605, tup_606, obj_607, obj_608, obj_609, obj_610, obj_611}
-  obj_586 = new StagedRegExp.Exact("2")
-  obj_587 = new StagedRegExp.Exact("5")
-  tup_588 = ["0", "1", "2", "3", "4", "5"]
-  obj_589 = new StagedRegExp.In(tup_588)
-  obj_590 = new StagedRegExp.Concat(obj_587, obj_589)
-  obj_591 = new StagedRegExp.Concat(obj_586, obj_590)
-  obj_592 = new StagedRegExp.Exact("2")
-  tup_593 = ["0", "1", "2", "3", "4"]
-  obj_594 = new StagedRegExp.In(tup_593)
-  tup_595 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_596 = new StagedRegExp.In(tup_595)
-  obj_597 = new StagedRegExp.Concat(obj_594, obj_596)
-  obj_598 = new StagedRegExp.Concat(obj_592, obj_597)
-  obj_599 = new StagedRegExp.Exact("1")
-  obj_600 = new StagedRegExp.Empty()
-  obj_601 = new StagedRegExp.Union(obj_599, obj_600)
-  tup_602 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_603 = new StagedRegExp.In(tup_602)
-  obj_604 = new StagedRegExp.Empty()
-  obj_605 = new StagedRegExp.Union(obj_603, obj_604)
-  tup_606 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_607 = new StagedRegExp.In(tup_606)
-  obj_608 = new StagedRegExp.Concat(obj_605, obj_607)
-  obj_609 = new StagedRegExp.Concat(obj_601, obj_608)
-  obj_610 = new StagedRegExp.Union(obj_598, obj_609)
-  obj_611 = new StagedRegExp.Union(obj_591, obj_610)
-  obj_611
+fun mkUnion_StagedRegExp_sp_12(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_13(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_14(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_15(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_16(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_17(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_18(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_19(p1, p2) = new StagedRegExp.Union(p1, p2)
-fun mkUnion_StagedRegExp_sp_2(p1, p2) =
-  let {tup_235, obj_236, obj_237, obj_238, obj_239, obj_240, obj_241, tup_242, obj_243, tup_244, obj_245, obj_246, obj_247, obj_248, obj_249, obj_250, obj_251, obj_252, obj_253, tup_254, obj_255, tup_256, obj_257, obj_258, obj_259, obj_260, tup_261, obj_262, obj_263, obj_264}
-  tup_235 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_236 = new StagedRegExp.In(tup_235)
-  obj_237 = new StagedRegExp.Star(obj_236)
-  obj_238 = new StagedRegExp.Exact("-")
-  obj_239 = new StagedRegExp.Exact(".")
-  obj_240 = new StagedRegExp.Union(obj_238, obj_239)
-  obj_241 = new StagedRegExp.Concat(obj_237, obj_240)
-  tup_242 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_243 = new StagedRegExp.In(tup_242)
-  tup_244 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_245 = new StagedRegExp.In(tup_244)
-  obj_246 = new StagedRegExp.Star(obj_245)
-  obj_247 = new StagedRegExp.Concat(obj_243, obj_246)
-  obj_248 = new StagedRegExp.Exact("-")
-  obj_249 = new StagedRegExp.Exact(".")
-  obj_250 = new StagedRegExp.Union(obj_248, obj_249)
-  obj_251 = new StagedRegExp.Concat(obj_247, obj_250)
-  obj_252 = new StagedRegExp.Star.class(obj_251)
-  obj_253 = new StagedRegExp.Concat(obj_241, obj_252)
-  tup_254 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_255 = new StagedRegExp.In(tup_254)
-  tup_256 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_257 = new StagedRegExp.In(tup_256)
-  obj_258 = new StagedRegExp.Star(obj_257)
-  obj_259 = new StagedRegExp.Concat(obj_255, obj_258)
-  obj_260 = new StagedRegExp.Concat(obj_253, obj_259)
-  tup_261 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_262 = new StagedRegExp.In(tup_261)
-  obj_263 = new StagedRegExp.Star(obj_262)
-  obj_264 = new StagedRegExp.Union(obj_260, obj_263)
-  obj_264
+fun mkUnion_StagedRegExp_sp_2(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_20(p1, p2) = new StagedRegExp.Union(p1, p2)
-fun mkUnion_StagedRegExp_sp_21(p1, p2) =
-  let {obj_943, obj_944, obj_945}
-  obj_943 = new StagedRegExp.Exact("+")
-  obj_944 = new StagedRegExp.Exact("-")
-  obj_945 = new StagedRegExp.Union(obj_943, obj_944)
-  obj_945
-fun mkUnion_StagedRegExp_sp_22(p1, p2) =
-  let {obj_946, obj_947, obj_948, obj_949, obj_950}
-  obj_946 = new StagedRegExp.Exact("+")
-  obj_947 = new StagedRegExp.Exact("-")
-  obj_948 = new StagedRegExp.Union(obj_946, obj_947)
-  obj_949 = new StagedRegExp.Empty()
-  obj_950 = new StagedRegExp.Union(obj_948, obj_949)
-  obj_950
-fun mkUnion_StagedRegExp_sp_23(p1, p2) =
-  let {obj_964, tup_965, obj_966, obj_967, obj_968, obj_969, obj_970, obj_971, obj_972, obj_973}
-  obj_964 = new StagedRegExp.Exact("F")
-  tup_965 = ["A", "B", "C", "D"]
-  obj_966 = new StagedRegExp.In(tup_965)
-  obj_967 = new StagedRegExp.Exact("+")
-  obj_968 = new StagedRegExp.Exact("-")
-  obj_969 = new StagedRegExp.Union(obj_967, obj_968)
-  obj_970 = new StagedRegExp.Empty()
-  obj_971 = new StagedRegExp.Union(obj_969, obj_970)
-  obj_972 = new StagedRegExp.Concat(obj_966, obj_971)
-  obj_973 = new StagedRegExp.Union(obj_964, obj_972)
-  obj_973
-fun mkUnion_StagedRegExp_sp_24(p1, p2) =
-  let {obj_979, obj_980, obj_981, obj_982, obj_983, obj_984, obj_985}
-  obj_979 = new StagedRegExp.Empty()
-  obj_980 = new StagedRegExp.Exact("+")
-  obj_981 = new StagedRegExp.Exact("-")
-  obj_982 = new StagedRegExp.Union(obj_980, obj_981)
-  obj_983 = new StagedRegExp.Empty()
-  obj_984 = new StagedRegExp.Union(obj_982, obj_983)
-  obj_985 = new StagedRegExp.Union(obj_979, obj_984)
-  obj_985
-fun mkUnion_StagedRegExp_sp_25(p1, p2) =
-  let {obj_986, obj_987, obj_988}
-  obj_986 = new StagedRegExp.Exact("A")
-  obj_987 = new StagedRegExp.Exact("B")
-  obj_988 = new StagedRegExp.Union(obj_986, obj_987)
-  obj_988
-fun mkUnion_StagedRegExp_sp_26(p1, p2) =
-  let {obj_1014, obj_1015, obj_1016, obj_1017, obj_1018, obj_1019, obj_1020, obj_1021, obj_1022, obj_1023, obj_1024, obj_1025, obj_1026, obj_1027}
-  obj_1014 = new StagedRegExp.Exact("A")
-  obj_1015 = new StagedRegExp.Exact("B")
-  obj_1016 = new StagedRegExp.Union(obj_1014, obj_1015)
-  obj_1017 = new StagedRegExp.Star(obj_1016)
-  obj_1018 = new StagedRegExp.Exact("A")
-  obj_1019 = new StagedRegExp.Exact("A")
-  obj_1020 = new StagedRegExp.Exact("B")
-  obj_1021 = new StagedRegExp.Concat(obj_1019, obj_1020)
-  obj_1022 = new StagedRegExp.Concat(obj_1018, obj_1021)
-  obj_1023 = new StagedRegExp.Concat(obj_1017, obj_1022)
-  obj_1024 = new StagedRegExp.Exact("A")
-  obj_1025 = new StagedRegExp.Exact("B")
-  obj_1026 = new StagedRegExp.Concat(obj_1024, obj_1025)
-  obj_1027 = new StagedRegExp.Union(obj_1023, obj_1026)
-  obj_1027
+fun mkUnion_StagedRegExp_sp_21(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_22(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_23(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_24(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_25(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_26(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_27(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_28(p1, p2) = new StagedRegExp.Union(p1, p2)
-fun mkUnion_StagedRegExp_sp_3(p1, p2) =
-  let {obj_265}
-  obj_265 = new StagedRegExp.Empty()
-  obj_265
-fun mkUnion_StagedRegExp_sp_4(p1, p2) =
-  let {tup_266, obj_267, obj_268, obj_269, obj_270, obj_271, obj_272, obj_273, obj_274}
-  tup_266 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_267 = new StagedRegExp.In(tup_266)
-  obj_268 = new StagedRegExp.Star(obj_267)
-  obj_269 = new StagedRegExp.Exact("-")
-  obj_270 = new StagedRegExp.Exact(".")
-  obj_271 = new StagedRegExp.Union(obj_269, obj_270)
-  obj_272 = new StagedRegExp.Concat(obj_268, obj_271)
-  obj_273 = new StagedRegExp.Empty()
-  obj_274 = new StagedRegExp.Union(obj_272, obj_273)
-  obj_274
+fun mkUnion_StagedRegExp_sp_3(p1, p2) = new StagedRegExp.Empty()
+fun mkUnion_StagedRegExp_sp_4(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_5(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun mkUnion_StagedRegExp_sp_6(p1, p2) = new StagedRegExp.Union(p1, p2)
-fun mkUnion_StagedRegExp_sp_7(p1, p2) =
-  let {obj_329, tup_330, obj_331, obj_332, obj_333, obj_334, obj_335}
-  obj_329 = new StagedRegExp.Exact("?")
-  tup_330 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_331 = new StagedRegExp.In(tup_330)
-  obj_332 = new StagedRegExp.Star(obj_331)
-  obj_333 = new StagedRegExp.Concat(obj_329, obj_332)
-  obj_334 = new StagedRegExp.Empty()
-  obj_335 = new StagedRegExp.Union(obj_333, obj_334)
-  obj_335
-fun mkUnion_StagedRegExp_sp_8(p1, p2) =
-  let {obj_348, tup_349, obj_350, obj_351, obj_352, obj_353, obj_354}
-  obj_348 = new StagedRegExp.Exact("#")
-  tup_349 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_350 = new StagedRegExp.In(tup_349)
-  obj_351 = new StagedRegExp.Star(obj_350)
-  obj_352 = new StagedRegExp.Concat(obj_348, obj_351)
-  obj_353 = new StagedRegExp.Empty()
-  obj_354 = new StagedRegExp.Union(obj_352, obj_353)
-  obj_354
-fun mkUnion_StagedRegExp_sp_9(p1, p2) =
-  let {tup_499, obj_500, obj_501, obj_502, obj_503, obj_504, obj_505, obj_506, obj_507, obj_508, obj_509, obj_510, obj_511}
-  tup_499 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_500 = new StagedRegExp.In(tup_499)
-  obj_501 = new StagedRegExp.Star(obj_500)
-  obj_502 = new StagedRegExp.Exact(":")
-  obj_503 = new StagedRegExp.Exact("/")
-  obj_504 = new StagedRegExp.Exact("/")
-  obj_505 = new StagedRegExp.Concat(obj_503, obj_504)
-  obj_506 = new StagedRegExp.Concat(obj_502, obj_505)
-  obj_507 = new StagedRegExp.Concat(obj_501, obj_506)
-  obj_508 = new StagedRegExp.Exact("/")
-  obj_509 = new StagedRegExp.Exact("/")
-  obj_510 = new StagedRegExp.Concat(obj_508, obj_509)
-  obj_511 = new StagedRegExp.Union(obj_507, obj_510)
-  obj_511
+fun mkUnion_StagedRegExp_sp_7(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_8(p1, p2) = new StagedRegExp.Union(p1, p2)
+fun mkUnion_StagedRegExp_sp_9(p1, p2) = new StagedRegExp.Union(p1, p2)
 fun nTimes_StagedRegExp_sp_0(r, i) =
-  let {obj_725, obj_726, tup_727, obj_728, obj_729, obj_730, obj_731, tup_732, obj_733, tup_734, obj_735, obj_736, obj_737, obj_738, obj_739, obj_740, tup_741, obj_742, obj_743, obj_744, tup_745, obj_746, obj_747, obj_748, obj_749, obj_750, obj_751, obj_752, obj_753, obj_754, tup_755, obj_756, obj_757, obj_758, obj_759, tup_760, obj_761, tup_762, obj_763, obj_764, obj_765, obj_766, obj_767, obj_768, tup_769, obj_770, obj_771, obj_772, tup_773, obj_774, obj_775, obj_776, obj_777, obj_778, obj_779, obj_780, obj_781, obj_782, tup_783, obj_784, obj_785, obj_786, obj_787, tup_788, obj_789, tup_790, obj_791, obj_792, obj_793, obj_794, obj_795, obj_796, tup_797, obj_798, obj_799, obj_800, tup_801, obj_802, obj_803, obj_804, obj_805, obj_806, obj_807, obj_808, obj_809, obj_810}
-  obj_725 = new StagedRegExp.Exact("2")
-  obj_726 = new StagedRegExp.Exact("5")
-  tup_727 = ["0", "1", "2", "3", "4", "5"]
-  obj_728 = new StagedRegExp.In(tup_727)
-  obj_729 = new StagedRegExp.Concat(obj_726, obj_728)
-  obj_730 = new StagedRegExp.Concat(obj_725, obj_729)
-  obj_731 = new StagedRegExp.Exact("2")
-  tup_732 = ["0", "1", "2", "3", "4"]
-  obj_733 = new StagedRegExp.In(tup_732)
-  tup_734 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_735 = new StagedRegExp.In(tup_734)
-  obj_736 = new StagedRegExp.Concat(obj_733, obj_735)
-  obj_737 = new StagedRegExp.Concat(obj_731, obj_736)
-  obj_738 = new StagedRegExp.Exact("1")
-  obj_739 = new StagedRegExp.Empty()
-  obj_740 = new StagedRegExp.Union(obj_738, obj_739)
-  tup_741 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_742 = new StagedRegExp.In(tup_741)
-  obj_743 = new StagedRegExp.Empty()
-  obj_744 = new StagedRegExp.Union(obj_742, obj_743)
-  tup_745 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_746 = new StagedRegExp.In(tup_745)
-  obj_747 = new StagedRegExp.Concat(obj_744, obj_746)
-  obj_748 = new StagedRegExp.Concat(obj_740, obj_747)
-  obj_749 = new StagedRegExp.Union(obj_737, obj_748)
-  obj_750 = new StagedRegExp.Union(obj_730, obj_749)
-  obj_751 = new StagedRegExp.Exact(".")
-  obj_752 = new StagedRegExp.Concat(obj_750, obj_751)
-  obj_753 = new StagedRegExp.Exact("2")
-  obj_754 = new StagedRegExp.Exact("5")
-  tup_755 = ["0", "1", "2", "3", "4", "5"]
-  obj_756 = new StagedRegExp.In(tup_755)
-  obj_757 = new StagedRegExp.Concat(obj_754, obj_756)
-  obj_758 = new StagedRegExp.Concat(obj_753, obj_757)
-  obj_759 = new StagedRegExp.Exact("2")
-  tup_760 = ["0", "1", "2", "3", "4"]
-  obj_761 = new StagedRegExp.In(tup_760)
-  tup_762 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_763 = new StagedRegExp.In(tup_762)
-  obj_764 = new StagedRegExp.Concat(obj_761, obj_763)
-  obj_765 = new StagedRegExp.Concat(obj_759, obj_764)
-  obj_766 = new StagedRegExp.Exact("1")
-  obj_767 = new StagedRegExp.Empty()
-  obj_768 = new StagedRegExp.Union(obj_766, obj_767)
-  tup_769 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_770 = new StagedRegExp.In(tup_769)
-  obj_771 = new StagedRegExp.Empty()
-  obj_772 = new StagedRegExp.Union(obj_770, obj_771)
-  tup_773 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_774 = new StagedRegExp.In(tup_773)
-  obj_775 = new StagedRegExp.Concat(obj_772, obj_774)
-  obj_776 = new StagedRegExp.Concat(obj_768, obj_775)
-  obj_777 = new StagedRegExp.Union(obj_765, obj_776)
-  obj_778 = new StagedRegExp.Union(obj_758, obj_777)
-  obj_779 = new StagedRegExp.Exact(".")
-  obj_780 = new StagedRegExp.Concat(obj_778, obj_779)
-  obj_781 = new StagedRegExp.Exact("2")
-  obj_782 = new StagedRegExp.Exact("5")
-  tup_783 = ["0", "1", "2", "3", "4", "5"]
-  obj_784 = new StagedRegExp.In(tup_783)
-  obj_785 = new StagedRegExp.Concat(obj_782, obj_784)
-  obj_786 = new StagedRegExp.Concat(obj_781, obj_785)
-  obj_787 = new StagedRegExp.Exact("2")
-  tup_788 = ["0", "1", "2", "3", "4"]
-  obj_789 = new StagedRegExp.In(tup_788)
-  tup_790 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_791 = new StagedRegExp.In(tup_790)
-  obj_792 = new StagedRegExp.Concat(obj_789, obj_791)
-  obj_793 = new StagedRegExp.Concat(obj_787, obj_792)
-  obj_794 = new StagedRegExp.Exact("1")
-  obj_795 = new StagedRegExp.Empty()
-  obj_796 = new StagedRegExp.Union(obj_794, obj_795)
-  tup_797 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_798 = new StagedRegExp.In(tup_797)
-  obj_799 = new StagedRegExp.Empty()
-  obj_800 = new StagedRegExp.Union(obj_798, obj_799)
-  tup_801 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_802 = new StagedRegExp.In(tup_801)
-  obj_803 = new StagedRegExp.Concat(obj_800, obj_802)
-  obj_804 = new StagedRegExp.Concat(obj_796, obj_803)
-  obj_805 = new StagedRegExp.Union(obj_793, obj_804)
-  obj_806 = new StagedRegExp.Union(obj_786, obj_805)
-  obj_807 = new StagedRegExp.Exact(".")
-  obj_808 = new StagedRegExp.Concat(obj_806, obj_807)
-  obj_809 = new StagedRegExp.Concat(obj_780, obj_808)
-  obj_810 = new StagedRegExp.Concat(obj_752, obj_809)
-  obj_810
+  let {scrut9, tmp25, tmp26}
+  scrut9 = false
+  tmp25 = 2
+  tmp26 = nTimes_StagedRegExp_sp_1(r, tmp25)
+  new StagedRegExp.Concat(r, tmp26)
 fun nTimes_StagedRegExp_sp_1(r, i) =
-  let {obj_668, obj_669, tup_670, obj_671, obj_672, obj_673, obj_674, tup_675, obj_676, tup_677, obj_678, obj_679, obj_680, obj_681, obj_682, obj_683, tup_684, obj_685, obj_686, obj_687, tup_688, obj_689, obj_690, obj_691, obj_692, obj_693, obj_694, obj_695, obj_696, obj_697, tup_698, obj_699, obj_700, obj_701, obj_702, tup_703, obj_704, tup_705, obj_706, obj_707, obj_708, obj_709, obj_710, obj_711, tup_712, obj_713, obj_714, obj_715, tup_716, obj_717, obj_718, obj_719, obj_720, obj_721, obj_722, obj_723, obj_724}
-  obj_668 = new StagedRegExp.Exact("2")
-  obj_669 = new StagedRegExp.Exact("5")
-  tup_670 = ["0", "1", "2", "3", "4", "5"]
-  obj_671 = new StagedRegExp.In(tup_670)
-  obj_672 = new StagedRegExp.Concat(obj_669, obj_671)
-  obj_673 = new StagedRegExp.Concat(obj_668, obj_672)
-  obj_674 = new StagedRegExp.Exact("2")
-  tup_675 = ["0", "1", "2", "3", "4"]
-  obj_676 = new StagedRegExp.In(tup_675)
-  tup_677 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_678 = new StagedRegExp.In(tup_677)
-  obj_679 = new StagedRegExp.Concat(obj_676, obj_678)
-  obj_680 = new StagedRegExp.Concat(obj_674, obj_679)
-  obj_681 = new StagedRegExp.Exact("1")
-  obj_682 = new StagedRegExp.Empty()
-  obj_683 = new StagedRegExp.Union(obj_681, obj_682)
-  tup_684 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_685 = new StagedRegExp.In(tup_684)
-  obj_686 = new StagedRegExp.Empty()
-  obj_687 = new StagedRegExp.Union(obj_685, obj_686)
-  tup_688 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_689 = new StagedRegExp.In(tup_688)
-  obj_690 = new StagedRegExp.Concat(obj_687, obj_689)
-  obj_691 = new StagedRegExp.Concat(obj_683, obj_690)
-  obj_692 = new StagedRegExp.Union(obj_680, obj_691)
-  obj_693 = new StagedRegExp.Union(obj_673, obj_692)
-  obj_694 = new StagedRegExp.Exact(".")
-  obj_695 = new StagedRegExp.Concat(obj_693, obj_694)
-  obj_696 = new StagedRegExp.Exact("2")
-  obj_697 = new StagedRegExp.Exact("5")
-  tup_698 = ["0", "1", "2", "3", "4", "5"]
-  obj_699 = new StagedRegExp.In(tup_698)
-  obj_700 = new StagedRegExp.Concat(obj_697, obj_699)
-  obj_701 = new StagedRegExp.Concat(obj_696, obj_700)
-  obj_702 = new StagedRegExp.Exact("2")
-  tup_703 = ["0", "1", "2", "3", "4"]
-  obj_704 = new StagedRegExp.In(tup_703)
-  tup_705 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_706 = new StagedRegExp.In(tup_705)
-  obj_707 = new StagedRegExp.Concat(obj_704, obj_706)
-  obj_708 = new StagedRegExp.Concat(obj_702, obj_707)
-  obj_709 = new StagedRegExp.Exact("1")
-  obj_710 = new StagedRegExp.Empty()
-  obj_711 = new StagedRegExp.Union(obj_709, obj_710)
-  tup_712 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_713 = new StagedRegExp.In(tup_712)
-  obj_714 = new StagedRegExp.Empty()
-  obj_715 = new StagedRegExp.Union(obj_713, obj_714)
-  tup_716 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_717 = new StagedRegExp.In(tup_716)
-  obj_718 = new StagedRegExp.Concat(obj_715, obj_717)
-  obj_719 = new StagedRegExp.Concat(obj_711, obj_718)
-  obj_720 = new StagedRegExp.Union(obj_708, obj_719)
-  obj_721 = new StagedRegExp.Union(obj_701, obj_720)
-  obj_722 = new StagedRegExp.Exact(".")
-  obj_723 = new StagedRegExp.Concat(obj_721, obj_722)
-  obj_724 = new StagedRegExp.Concat(obj_695, obj_723)
-  obj_724
+  let {scrut9, tmp25, tmp26}
+  scrut9 = false
+  tmp25 = 1
+  tmp26 = nTimes_StagedRegExp_sp_2(r, tmp25)
+  new StagedRegExp.Concat(r, tmp26)
 fun nTimes_StagedRegExp_sp_2(r, i) =
-  let {obj_640, obj_641, tup_642, obj_643, obj_644, obj_645, obj_646, tup_647, obj_648, tup_649, obj_650, obj_651, obj_652, obj_653, obj_654, obj_655, tup_656, obj_657, obj_658, obj_659, tup_660, obj_661, obj_662, obj_663, obj_664, obj_665, obj_666, obj_667}
-  obj_640 = new StagedRegExp.Exact("2")
-  obj_641 = new StagedRegExp.Exact("5")
-  tup_642 = ["0", "1", "2", "3", "4", "5"]
-  obj_643 = new StagedRegExp.In(tup_642)
-  obj_644 = new StagedRegExp.Concat(obj_641, obj_643)
-  obj_645 = new StagedRegExp.Concat(obj_640, obj_644)
-  obj_646 = new StagedRegExp.Exact("2")
-  tup_647 = ["0", "1", "2", "3", "4"]
-  obj_648 = new StagedRegExp.In(tup_647)
-  tup_649 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_650 = new StagedRegExp.In(tup_649)
-  obj_651 = new StagedRegExp.Concat(obj_648, obj_650)
-  obj_652 = new StagedRegExp.Concat(obj_646, obj_651)
-  obj_653 = new StagedRegExp.Exact("1")
-  obj_654 = new StagedRegExp.Empty()
-  obj_655 = new StagedRegExp.Union(obj_653, obj_654)
-  tup_656 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_657 = new StagedRegExp.In(tup_656)
-  obj_658 = new StagedRegExp.Empty()
-  obj_659 = new StagedRegExp.Union(obj_657, obj_658)
-  tup_660 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_661 = new StagedRegExp.In(tup_660)
-  obj_662 = new StagedRegExp.Concat(obj_659, obj_661)
-  obj_663 = new StagedRegExp.Concat(obj_655, obj_662)
-  obj_664 = new StagedRegExp.Union(obj_652, obj_663)
-  obj_665 = new StagedRegExp.Union(obj_645, obj_664)
-  obj_666 = new StagedRegExp.Exact(".")
-  obj_667 = new StagedRegExp.Concat(obj_665, obj_666)
-  obj_667
+  let {scrut9, tmp25, tmp26}
+  scrut9 = true
+  r
 fun plus_StagedRegExp_sp_0(r) =
-  let {tup_22, obj_23, tup_24, obj_25, obj_26, obj_27}
-  tup_22 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_23 = new StagedRegExp.In(tup_22)
-  tup_24 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_25 = new StagedRegExp.In(tup_24)
-  obj_26 = new StagedRegExp.Star(obj_25)
-  obj_27 = new StagedRegExp.Concat(obj_23, obj_26)
-  obj_27
+  let {tmp24}
+  tmp24 = new StagedRegExp.Star(r)
+  new StagedRegExp.Concat(r, tmp24)
 fun plus_StagedRegExp_sp_1(r) =
-  let {tup_79, obj_80, tup_81, obj_82, obj_83, obj_84, obj_85, obj_86, obj_87, obj_88, tup_89, obj_90, tup_91, obj_92, obj_93, obj_94, obj_95, obj_96, obj_97, obj_98, obj_99, obj_100}
-  tup_79 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_80 = new StagedRegExp.In(tup_79)
-  tup_81 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_82 = new StagedRegExp.In(tup_81)
-  obj_83 = new StagedRegExp.Star(obj_82)
-  obj_84 = new StagedRegExp.Concat(obj_80, obj_83)
-  obj_85 = new StagedRegExp.Exact("-")
-  obj_86 = new StagedRegExp.Exact(".")
-  obj_87 = new StagedRegExp.Union(obj_85, obj_86)
-  obj_88 = new StagedRegExp.Concat(obj_84, obj_87)
-  tup_89 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_90 = new StagedRegExp.In(tup_89)
-  tup_91 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-  obj_92 = new StagedRegExp.In(tup_91)
-  obj_93 = new StagedRegExp.Star(obj_92)
-  obj_94 = new StagedRegExp.Concat(obj_90, obj_93)
-  obj_95 = new StagedRegExp.Exact("-")
-  obj_96 = new StagedRegExp.Exact(".")
-  obj_97 = new StagedRegExp.Union(obj_95, obj_96)
-  obj_98 = new StagedRegExp.Concat(obj_94, obj_97)
-  obj_99 = new StagedRegExp.Star(obj_98)
-  obj_100 = new StagedRegExp.Concat(obj_88, obj_99)
-  obj_100
+  let {tmp24}
+  tmp24 = new StagedRegExp.Star(r)
+  new StagedRegExp.Concat(r, tmp24)
 fun plus_StagedRegExp_sp_2(r) =
-  let {tup_299, obj_300, tup_301, obj_302, obj_303, obj_304}
-  tup_299 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_300 = new StagedRegExp.Not(tup_299)
-  tup_301 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-  obj_302 = new StagedRegExp.Not(tup_301)
-  obj_303 = new StagedRegExp.Star(obj_302)
-  obj_304 = new StagedRegExp.Concat(obj_300, obj_303)
-  obj_304
+  let {tmp24}
+  tmp24 = new StagedRegExp.Star(r)
+  new StagedRegExp.Concat(r, tmp24)
 fun plus_StagedRegExp_sp_3(r) =
-  let {tup_305, obj_306, tup_307, obj_308, obj_309, obj_310}
-  tup_305 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_306 = new StagedRegExp.Not(tup_305)
-  tup_307 = ["?", "#", " ", "\n", "\t", "\r"]
-  obj_308 = new StagedRegExp.Not(tup_307)
-  obj_309 = new StagedRegExp.Star(obj_308)
-  obj_310 = new StagedRegExp.Concat(obj_306, obj_309)
-  obj_310
+  let {tmp24}
+  tmp24 = new StagedRegExp.Star(r)
+  new StagedRegExp.Concat(r, tmp24)
 fun question_StagedRegExp_sp_0(r) =
-  let {obj_336, tup_337, obj_338, obj_339, obj_340, obj_341, obj_342}
-  obj_336 = new StagedRegExp.Exact("?")
-  tup_337 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_338 = new StagedRegExp.In(tup_337)
-  obj_339 = new StagedRegExp.Star(obj_338)
-  obj_340 = new StagedRegExp.Concat(obj_336, obj_339)
-  obj_341 = new StagedRegExp.Empty()
-  obj_342 = new StagedRegExp.Union(obj_340, obj_341)
-  obj_342
+  let {tmp20}
+  tmp20 = new StagedRegExp.Empty()
+  mkUnion_StagedRegExp_sp_7(r, tmp20)
 fun question_StagedRegExp_sp_1(r) =
-  let {obj_355, tup_356, obj_357, obj_358, obj_359, obj_360, obj_361}
-  obj_355 = new StagedRegExp.Exact("#")
-  tup_356 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-  obj_357 = new StagedRegExp.In(tup_356)
-  obj_358 = new StagedRegExp.Star(obj_357)
-  obj_359 = new StagedRegExp.Concat(obj_355, obj_358)
-  obj_360 = new StagedRegExp.Empty()
-  obj_361 = new StagedRegExp.Union(obj_359, obj_360)
-  obj_361
+  let {tmp20}
+  tmp20 = new StagedRegExp.Empty()
+  mkUnion_StagedRegExp_sp_8(r, tmp20)
 fun question_StagedRegExp_sp_2(r) =
-  let {obj_538, obj_539, obj_540}
-  obj_538 = new StagedRegExp.Exact("1")
-  obj_539 = new StagedRegExp.Empty()
-  obj_540 = new StagedRegExp.Union(obj_538, obj_539)
-  obj_540
+  let {tmp20}
+  tmp20 = new StagedRegExp.Empty()
+  mkUnion_StagedRegExp_sp_12(r, tmp20)
 fun question_StagedRegExp_sp_3(r) =
-  let {tup_545, obj_546, obj_547, obj_548}
-  tup_545 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  obj_546 = new StagedRegExp.In(tup_545)
-  obj_547 = new StagedRegExp.Empty()
-  obj_548 = new StagedRegExp.Union(obj_546, obj_547)
-  obj_548
+  let {tmp20}
+  tmp20 = new StagedRegExp.Empty()
+  mkUnion_StagedRegExp_sp_13(r, tmp20)
 fun question_StagedRegExp_sp_4(r) =
-  let {obj_951, obj_952, obj_953, obj_954, obj_955}
-  obj_951 = new StagedRegExp.Exact("+")
-  obj_952 = new StagedRegExp.Exact("-")
-  obj_953 = new StagedRegExp.Union(obj_951, obj_952)
-  obj_954 = new StagedRegExp.Empty()
-  obj_955 = new StagedRegExp.Union(obj_953, obj_954)
-  obj_955
+  let {tmp20}
+  tmp20 = new StagedRegExp.Empty()
+  mkUnion_StagedRegExp_sp_22(r, tmp20)
