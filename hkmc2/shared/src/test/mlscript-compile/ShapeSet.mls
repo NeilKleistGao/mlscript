@@ -41,13 +41,10 @@ let classMergeThreshold = 8
 fun mergeClassShapeGroup(group: Array[Shape]) =
   let first = group.0
   if first is Class(sym, fields) then
-    let sameArity = group.every(s => if s is Class(_, otherFields) then otherFields.length == fields.length else false)
-    if sameArity then
-      Class(sym, fields.map((field, i, _) =>
-        if group.every(s => if s is Class(_, otherFields) then otherFields.(i).hash() == field.hash() else false) then field
-        else Dyn()
-      ))
-    else Dyn()
+    Class(sym, fields.map((field, i, _) =>
+      if group.every(s => if s is Class(_, otherFields) then otherFields.(i).hash() == field.hash() else false) then field
+      else Dyn()
+    ))
   else first
 
 fun hasDynField(s: Shape) =
@@ -66,14 +63,12 @@ fun normalizeShapeMap(shapeMap: Map[String, Shape]) =
   let removed = new Set()
   let merged = []
   byClass.forEach(group =>
-    if group.length > 1 and group.0 is Class(_, fields) then
+    if group.length > 1 and group.0 is Class(_, fields) do
       let tooLarge = fields.length * group.length > classMergeThreshold
       let alreadyMerged = group.some(hasDynField)
-      if tooLarge || alreadyMerged then
-          group.forEach(s => removed.add(s.hash()))
-          merged.push(mergeClassShapeGroup(group))
-      else ()
-    else ()
+      if tooLarge || alreadyMerged do
+        group.forEach(s => removed.add(s.hash()))
+        merged.push(mergeClassShapeGroup(group))
   )
   if removed.size == 0 then shapeMap
   else
