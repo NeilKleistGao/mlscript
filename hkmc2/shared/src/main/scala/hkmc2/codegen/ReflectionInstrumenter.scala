@@ -499,7 +499,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     val previousStageValues = if forClass then Nil else
       scope.getBindings.toList.collect[(DefinitionSymbol[? <: ModuleOrObjectDef | ClassDef], String)]({ // FIXME: this `toList` should be removed, but now we get something lost without it.
         case (m: ModuleOrObjectSymbol, s) if m != State.unitSymbol && m != ownerSym => (m, s)
-        case (c: ClassSymbol, s) if !ctx.builtins.virtualClasses(c) && c != ownerSym => (c, s)
+        case (c: ClassSymbol, s) if !Elaborator.ctx.builtins.virtualClasses(c) && c != ownerSym => (c, s)
       }).map((key, nme) =>
         val name = nme + "$" + scope.allocateOrGetName(ownerSym)
         val tsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(name))
