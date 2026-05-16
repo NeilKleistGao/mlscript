@@ -552,13 +552,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val used: HashSet[BlockMemberSymbol] = new HashSet()
         override def applySymbol(sym: Symbol) = sym match
           case c: ClassSymbol if c.defn.exists(defn => defn.hasStagedModifier.isDefined && defn.owner.isEmpty) =>
-            println(c)
             used += c.defn.get.bsym
           case _ => ()
       val collector = (new UsedStagedClassesCollector)
       collector.applyCompanionModule(companion)
       val codegenClasses = collector.used
-      println(codegenClasses)
 
       val nestedPropagates = defn.body.blk.stats.collect:
         case cls: ClassDef if cls.hasStagedModifier.isDefined =>
