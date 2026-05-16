@@ -4,7 +4,7 @@ package codegen
 import utils.*
 import hkmc2.Message.MessageContext
 
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{HashMap, HashSet}
 import scala.util.chaining.*
 
 import mlscript.utils.*, shorthands.*
@@ -410,7 +410,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case _ => applySubBlock(b)
     stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(true))
 
-  case class StagingCfg(ownerSym: DefinitionSymbol[? <: ClassLikeDef], modSym: InnerSymbol, nestedPropagates: Ls[Path]):
+  case class StagingCfg(ownerSym: DefinitionSymbol[? <: ClassLikeDef], modSym: InnerSymbol, nestedPropagates: Ls[Path], codegenClasses: Ls[BlockMemberSymbol]):
     val forClass = ownerSym != modSym
     val suffix = "$" + scope.allocateOrGetName(ownerSym)
     val cacheNme = (if forClass then "class$" else "") + "cache" + suffix
@@ -485,8 +485,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(N, Nil)
 
     def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
-      call(modSym.asPath.selSN(propFunDef.sym.nme), Nil, true, "tmp")(_ =>
-        call(blockMod("codegen"), toValue(modSym.nme) :: cachePath :: sourceSym.asPath :: psym.asPath :: Nil, true, "tmp")(_ => End()))
+      call(modSym.asPath.selSN(propFunDef.sym.nme), Nil, true, "tmp"): _ =>
+        tuple(codegenClasses): codegenClasses =>
+          call(blockMod("codegen"), Ls(toValue(modSym.nme), cachePath, sourceSym, psym, codegenClasses), true, "tmp")(_ => End())
     val entryFunDef =
       val sym = BlockMemberSymbol("generate", Nil)
       val sourceSym = VarSymbol(Ident("source"))
@@ -494,6 +495,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val params = PlainParamList(Param.simple(sourceSym) :: Param.simple(psym) :: Nil)
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(sourceSym, psym))(N, Nil)
     
+    val toCodeDef =
+      val sym = BlockMemberSymbol("toCode", Nil)
+      val params = PlainParamList(Nil)
+      val body = tuple(codegenClasses): codegenClasses =>
+        call(blockMod("toCode"), Ls(toValue(modSym.nme), cachePath, codegenClasses), true, "tmp")(p => Return(p, false))
+      FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(N, Nil)
+
     // grab all defn seen so far
     // TODO: this could be reduced to only contain all the symbols used within the module
     val previousStageValues = if forClass then Nil else
@@ -528,7 +536,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         Define(ValDefn(tsym, sym, key)(N, Nil), acc)
       })
     
-    (entryFunDef, propFunDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(previousStageDecl(b))))
+    (entryFunDef, propFunDef :: toCodeDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(previousStageDecl(b))))
 
   override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
     // staged modules
@@ -538,11 +546,25 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val modSym = sym
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(N, Nil)
       val newCtorFun = stageCtor(ctorFun)
+
+      // print top-level staged classes to be printed in the next stage
+      class UsedStagedClassesCollector extends BlockTraverser:
+        val used: HashSet[BlockMemberSymbol] = new HashSet()
+        override def applySymbol(sym: Symbol) = sym match
+          case c: ClassSymbol if c.defn.exists(defn => defn.hasStagedModifier.isDefined && defn.owner.isEmpty) =>
+            println(c)
+            used += c.defn.get.bsym
+          case _ => ()
+      val collector = (new UsedStagedClassesCollector)
+      collector.applyCompanionModule(companion)
+      val codegenClasses = collector.used
+      println(codegenClasses)
+
       val nestedPropagates = defn.body.blk.stats.collect:
         case cls: ClassDef if cls.hasStagedModifier.isDefined =>
           modSym.asPath.sel(Tree.Ident(cls.sym.nme), cls.sym)
       
-      val cfg = new StagingCfg(companion.isym, modSym, nestedPropagates)
+      val cfg = new StagingCfg(companion.isym, modSym, nestedPropagates, codegenClasses.toList)
       val (entryFun, newMethods, cont) = stageMethods(cfg)(methods)
 
       companion.copy(
@@ -582,7 +604,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val newPreCtorFun = stageCtor(preCtorFun)
       val newCtorFun = stageCtor(ctorFun)
       
-      val cfg = new StagingCfg(defn.isym, modSym, Nil)
+      val cfg = new StagingCfg(defn.isym, modSym, Nil, Nil)
       val (entryFun, newMethods, cont) = stageMethods(cfg)(methods)
       val (companionEntryFun, companionMethods) = companion.methods.partition(_.sym.nme == "generate")
       val combinedEntryFun: FunDefn = companionEntryFun match

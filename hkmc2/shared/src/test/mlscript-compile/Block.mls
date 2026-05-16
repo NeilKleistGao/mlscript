@@ -215,7 +215,9 @@ class Printer(val owner: Opt[Symbol]) with
       Instantiate(cls, args) then 
         let classPath = showInstantiatePath(cls)
         // redirections must be dynamic selections, hence the use of new! is required
-        let prefix = if cls is ValueRef(cSym) and cSym.redirect and owner is Some(owner) then "new! " + classPath else "new " + classPath
+        let prefix = if cls is ValueRef(cSym) and cSym.redirect and owner is Some(owner) and not isGeneratedStagedClass(cSym)
+          then "new! " + classPath
+          else "new " + classPath
         prefix + "(" + showArgs(args) + ")"
       Tuple(elems) then "[" + showArgs(elems) + "]"
       _ then "<unknown result:" ~ r ~ ">"
@@ -320,9 +322,16 @@ let configs =
   ]
   "#config(" + options.join(", ") + ")\n"
 
-fun codegen(name, cache, source, file) =
+fun mkImport(source, name) = 
+  "import \"" + source + "\" as " + legacyName(name)
+
+fun toCode(name, cache, usedStagedClasses) =
+  let prefix = usedStagedClasses.map(getClassCache(_).toString() + "\n")
+  prefix + indent(cache.toString())
+
+fun codegen(name, cache, source, file, usedStagedClasses) =
   let fullpath = path.join of process.cwd(), file
-  let code = "import \"" + source + "\" as " + legacyName(name) + "\n" + indent(cache.toString())
+  let code = mkImport(source, name) + "\n" + toCode(name, cache, usedStagedClasses)
   if not fs.existsSync(fullpath) do
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
@@ -339,8 +348,8 @@ fun generateAll(name, file, ...modules) =
   let code = fold((res, p) => if p is
     [mod, name, source] then
       mod.propagate()
-      [res.0 + "import \"" + source + "\" as " + legacyName(name) + "\n", res.1 + indent(mod.("cache$" + name).toString()) + "\n"]
-  )(["", "", ""], ...modules)
+      [res.0 + mkImport(source, name) + "\n", res.1 + mod.toCode() + "\n"]
+  )(["", ""], ...modules)
   let originData = fs.readFileSync(fullpath, "utf8")
   let newData = configs + code.0 + "\n" + "module " + name + " with" + indent("\n" + code.1)
   if newData != originData do
