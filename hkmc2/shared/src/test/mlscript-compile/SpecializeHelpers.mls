@@ -309,7 +309,7 @@ fun subLitPath(ctx, p) = if p is
   Select(qual, name) then Select(subLitPath(ctx, qual), name)
   ValueRef(_) and
     let s = sop(ctx, p)
-    staticSet(s) and shapeset2path(s, ctx.allocs) is [End(), res] then res
+    s.values() is [Lit(lit)] then ValueLit(lit)
   else p
 
 
@@ -420,10 +420,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
 // shape of result: return [blk, res, s] 
 // where blk is the block needed to construct the result res (End() if not needed) and s is the shape
 fun sor(ctx, r) = if r is 
-  Path and
+  Path then
     let s = sop(ctx, r)
-    staticSet(s) and shapeset2path(s, ctx.allocs) is [blk, res] then [blk, res, s]
-    else [End(), subLitPath(ctx, r), s]
+    [End(), subLitPath(ctx, r), s]
   Instantiate(cls, args) then sorInstantiate(ctx, r, cls, args)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args) then sorCall(ctx, r, f, args, args.map((a, _, _) => sop(ctx, a.value)))
