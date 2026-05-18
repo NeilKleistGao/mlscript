@@ -70,7 +70,11 @@ fun decayShapeSet(shapeMap: Map[String, Shape]) =
     merged.forEach(s => entries.push([s.hash(), s]))
     new Map(entries)
 
-fun makeShapeSet(entries) = ShapeSet(decayShapeSet(new Map(entries)))
+fun makeShapeSet(entries) =
+  let shapeMap = new Map(entries)
+  let dyn = Dyn()
+  if shapeMap.has(dyn.hash()) then ShapeSet(new Map([[dyn.hash(), dyn]]))
+  else ShapeSet(decayShapeSet(shapeMap))
 
 fun lift(s: Shape) = makeShapeSet([[s.hash(), s]])
 

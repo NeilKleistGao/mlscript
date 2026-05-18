@@ -468,10 +468,10 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
   let unkShape = splitRes.unkShape
   let knownMapArr = [...knownMap.entries()]
   let isRet = xOpt is None
-  fun mergeReceiverSet(ss: ShapeSet) =
-    let vals = ss.values()
-    if vals.length > 1 then lift(mergeClassShapeGroup(vals))
-    else ss
+  fun decayReceiverSet(ss: ShapeSet) =
+    let decayed = decayShapeSet(ss.shapeset)
+    if decayed.size == ss.shapeset.size then ss
+    else liftMany(decayed.values().toArray())
 
   if knownMap.size is 
     0 and
@@ -484,7 +484,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
     1 and unkShape.isEmpty() and
       // If the object is certainly a known class, generate the generated method call directly without pattern matching
       let C_i = knownMapArr.0.0
-      let ss_i = mergeReceiverSet(knownMapArr.0.1)
+      let ss_i = decayReceiverSet(knownMapArr.0.1)
       let genMap = getClassGenMap(C_i.value)
       let f_gen = genMap.get(f)
       let ret = f_gen(ss_i)(...argShapes)
@@ -499,7 +499,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
     else
       let armsRet = knownMapArr.map(entry =>
         let C_i = entry.0
-        let ss_i = mergeReceiverSet(entry.1)
+        let ss_i = decayReceiverSet(entry.1)
         let genMap = getClassGenMap(C_i.value)
         let f_gen = genMap.get(f)
         let retData = f_gen(ss_i)(...argShapes)
