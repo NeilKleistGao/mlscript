@@ -1,0 +1,25 @@
+#config(noFreeze: true)
+
+module NaiveQuery with
+  class Student(val name, val mathGrade, val physGrade, val chemGrade, val engGrade)
+  class Some(val x)
+  class None
+
+  class Pred with
+    fun test(obj)
+
+  class GreaterThan(val v, val field) with
+    fun test(obj) = obj.(field) > v
+  class GreaterEqThan(val v, val field) with
+    fun test(obj) = obj.(field) >= v
+  class And(val lhs, val rhs) with
+    fun test(obj) = lhs.test(obj) and rhs.test(obj)
+  class Or(val lhs, val rhs) with
+    fun test(obj) = lhs.test(obj) || rhs.test(obj)
+
+  fun isGoodStudent(s, spec) =
+    val basicPred = new And(new And(new GreaterEqThan(80, "mathGrade"), new GreaterEqThan(80, "engGrade")), new And(new GreaterEqThan(80, "physGrade"), new GreaterEqThan(80, "chemGrade")))
+    val pred =
+      if spec then new Or(new Or(new GreaterThan(95, "physGrade"), new GreaterThan(95, "chemGrade")), basicPred)
+      else basicPred
+    pred.test(s)

@@ -1,0 +1,106 @@
+#config(noFreeze: true, noModuleCheck: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+import "../StagedQuery.mls" as StagedQuery__Legacy
+module StagedQuery with
+  class Student(val name, val mathGrade, val physGrade, val chemGrade, val engGrade)
+  class Some(val x)
+  class None
+  class Pred with
+    ()
+  class GreaterThan(val v, val field) with
+    ()
+    fun test(obj) = >(obj.(field), v)
+  class GreaterEqThan(val v, val field) with
+    ()
+    fun test(obj) = >=(obj.(field), v)
+  class And(val lhs, val rhs) with
+    ()
+    fun test(obj) =
+      let {scrut, scrut1}
+      scrut = lhs.test(obj)
+      if scrut is
+        true then
+          scrut1 = rhs.test(obj)
+          if scrut1 is
+            true then true
+            else false
+        else false
+  class Or(val lhs, val rhs) with
+    ()
+    fun test(obj) =
+      let {tmp}
+      tmp = lhs.test(obj)
+      if tmp is
+        false then rhs.test(obj)
+        else true
+  fun isGoodStudent(s, spec) =
+    let {basicPred, pred, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+    tmp1 = new GreaterEqThan(80, "mathGrade")
+    tmp2 = new GreaterEqThan(80, "engGrade")
+    tmp3 = new And(tmp1, tmp2)
+    tmp4 = new GreaterEqThan(80, "physGrade")
+    tmp5 = new GreaterEqThan(80, "chemGrade")
+    tmp6 = new And(tmp4, tmp5)
+    basicPred = new And(tmp3, tmp6)
+    if spec is
+      true then
+        tmp7 = new GreaterEqThan(80, "mathGrade")
+        tmp8 = new GreaterEqThan(80, "engGrade")
+        tmp9 = new And(tmp7, tmp8)
+        tmp10 = new GreaterThan(95, "physGrade")
+        tmp11 = new GreaterThan(95, "chemGrade")
+        tmp12 = new And(tmp10, tmp11)
+        tmp13 = new And(tmp9, tmp12)
+      else
+        tmp14 = new GreaterEqThan(90, "mathGrade")
+        tmp15 = new GreaterEqThan(90, "engGrade")
+        tmp16 = new And(tmp14, tmp15)
+        tmp17 = new GreaterEqThan(90, "physGrade")
+        tmp18 = new GreaterEqThan(90, "chemGrade")
+        tmp19 = new And(tmp17, tmp18)
+        tmp13 = new And(tmp16, tmp19)
+    pred = tmp13
+    test_And_sp_0(pred, s)
+fun test_GreaterThan_sp_0(self, obj) = >(obj.(self.field), 95)
+fun test_GreaterThan_sp_1(self, obj) = >(obj.(self.field), 95)
+fun test_GreaterEqThan_sp_0(self, obj) = >=(obj.(self.field), self.v)
+fun test_GreaterEqThan_sp_1(self, obj) = >=(obj.(self.field), self.v)
+fun test_GreaterEqThan_sp_2(self, obj) = >=(obj.(self.field), 90)
+fun test_GreaterEqThan_sp_3(self, obj) = >=(obj.(self.field), 90)
+fun test_And_sp_0(self, obj) =
+  let {scrut, scrut1}
+  scrut = test_And_sp_1(self.lhs, obj)
+  if scrut is
+    true then
+      scrut1 = test_And_sp_2(self.rhs, obj)
+      if scrut1 is
+        true then true
+        else false
+    else false
+fun test_And_sp_1(self, obj) =
+  let {scrut, scrut1}
+  scrut = test_GreaterEqThan_sp_0(self.lhs, obj)
+  if scrut is
+    true then
+      scrut1 = test_GreaterEqThan_sp_1(self.rhs, obj)
+      if scrut1 is
+        true then true
+        else false
+    else false
+fun test_And_sp_2(self, obj) =
+  let {scrut, scrut1}
+  if self.lhs is
+    StagedQuery.GreaterThan then
+      scrut = test_GreaterThan_sp_0(self.lhs, obj)
+    StagedQuery.GreaterEqThan then
+      scrut = test_GreaterEqThan_sp_2(self.lhs, obj)
+  if scrut is
+    true then
+      if self.rhs is
+        StagedQuery.GreaterThan then
+          scrut1 = test_GreaterThan_sp_1(self.rhs, obj)
+        StagedQuery.GreaterEqThan then
+          scrut1 = test_GreaterEqThan_sp_3(self.rhs, obj)
+      if scrut1 is
+        true then true
+        else false
+    else false

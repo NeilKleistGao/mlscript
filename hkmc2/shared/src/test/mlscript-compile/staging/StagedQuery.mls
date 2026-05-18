@@ -1,0 +1,25 @@
+#config(noFreeze: true)
+
+staged module StagedQuery with
+  class Student(val name, val mathGrade, val physGrade, val chemGrade, val engGrade)
+  class Some(val x)
+  class None
+
+  staged class Pred with
+    fun test(obj)
+
+  staged class GreaterThan(val v, val field) with
+    fun test(obj) = obj.(field) > v
+  staged class GreaterEqThan(val v, val field) with
+    fun test(obj) = obj.(field) >= v
+  staged class And(val lhs, val rhs) with
+    fun test(obj) = lhs.test(obj) and rhs.test(obj)
+  staged class Or(val lhs, val rhs) with
+    fun test(obj) = lhs.test(obj) || rhs.test(obj)
+
+  fun isGoodStudent(s, spec) =
+    let basicPred = new And(new And(new GreaterEqThan(80, "mathGrade"), new GreaterEqThan(80, "engGrade")), new And(new GreaterEqThan(80, "physGrade"), new GreaterEqThan(80, "chemGrade")))
+    let pred =
+      if spec then new And(new And(new GreaterEqThan(80, "mathGrade"), new GreaterEqThan(80, "engGrade")), new And(new GreaterThan(95, "physGrade"), new GreaterThan(95, "chemGrade")))
+      else new And(new And(new GreaterEqThan(90, "mathGrade"), new GreaterEqThan(90, "engGrade")), new And(new GreaterEqThan(90, "physGrade"), new GreaterEqThan(90, "chemGrade")))
+    pred.test(s)
