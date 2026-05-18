@@ -643,7 +643,8 @@ fun hasAllDynamicParams(isMethod, ps, shapes) =
 
 fun canMaterializeStaticShape(s: Shape) = if s is
   Lit(_) then true
-  Arr(shapes) then shapes.every(canMaterializeStaticShape)
+  Arr(shapes) then shapes.every(x => x is Lit)
+  Class(_, fields) then fields.every(x => x is Lit)
   else false
 
 fun canMaterializeStaticRet(ss: ShapeSet) =
