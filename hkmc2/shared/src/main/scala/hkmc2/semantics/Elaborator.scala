@@ -967,8 +967,8 @@ extends Importer with ucs.SplitElaborator:
         )(N).withLocOf(tree)
         if mut then Term.Mut(inner) else inner
       case N =>
-        Term.New(State.globalThisSymbol.ref().sel(Ident("Object"), S(ctx.builtins.Object)),
-          Nil, bodo)(N).withLocOf(tree)
+        val objectRef = ctx.builtins.Object.bms.get.ref(Ident("Object"))
+        Term.New(objectRef, Nil, bodo)(N).withLocOf(tree)
       // case _ =>
       //   raise(ErrorReport(msg"Illegal new expression." -> tree.toLoc :: Nil))
       
