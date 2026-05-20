@@ -2,7 +2,6 @@
 :js
 
 
-:lot
 :sir
 class Foo with
   fun foo =
@@ -11,83 +10,6 @@ class Foo with
       fun test =
         set state += 1
         state
-//│ —————————————| Lowered IR Tree |————————————————————————————————————————————————————————————————————
-//│ Program:
-//│   main = Scoped(syms = {member:Foo⁰, member:$anon⁰}): 
-//│     body = Define:
-//│       defn = ClsLikeDefn:
-//│         isym = class:$anon¹
-//│         sym = member:$anon⁰
-//│         k = Cls
-//│         parentPath = S of Select{sym=class:Object⁰}:
-//│           qual = Ref:
-//│             l = globalThis:globalThis⁰
-//│           name = Ident of "Object"
-//│         methods = Ls of 
-//│           FunDefn:
-//│             owner = S of class:$anon¹
-//│             sym = member:test⁰
-//│             dSym = term:$anon¹/test¹
-//│             body = Scoped(syms = {tmp:tmp⁰}): 
-//│               body = Assign:
-//│                 lhs = tmp:tmp⁰
-//│                 rhs = Call:
-//│                   fun = Ref:
-//│                     l = builtin:+⁰
-//│                   argss = Ls of 
-//│                     Ls of 
-//│                       Arg:
-//│                         value = Select{sym=term:$anon¹/state⁰}:
-//│                           qual = Ref:
-//│                             l = class:$anon¹
-//│                           name = Ident of "state"
-//│                       Arg:
-//│                         value = Lit of IntLit of 1
-//│                 rest = AssignField: \
-//│                 lhs = Ref:
-//│                   l = class:$anon¹
-//│                 nme = Ident of "state"
-//│                 rhs = Ref:
-//│                   l = tmp:tmp⁰
-//│                 rest = Return: \
-//│                 res = Select{sym=term:$anon¹/state⁰}:
-//│                   qual = Ref:
-//│                     l = class:$anon¹
-//│                   name = Ident of "state"
-//│                 implct = false
-//│         privateFields = Ls of 
-//│           term:$anon¹/state⁰
-//│         preCtor = Return:
-//│           res = Call:
-//│             fun = Ref:
-//│               l = builtin:super⁰
-//│             argss = Ls of 
-//│               Nil
-//│           implct = true
-//│         ctor = AssignField:
-//│           lhs = Ref:
-//│             l = class:$anon¹
-//│           nme = Ident of "state"
-//│           rhs = Lit of IntLit of 0
-//│       rest = Define: \
-//│       defn = ClsLikeDefn:
-//│         isym = class:Foo¹
-//│         sym = member:Foo⁰
-//│         k = Cls
-//│         methods = Ls of 
-//│           FunDefn:
-//│             owner = S of class:Foo¹
-//│             sym = member:foo⁰
-//│             dSym = term:Foo¹/foo¹
-//│             body = Return:
-//│               res = Instantiate:
-//│                 mut = false
-//│                 cls = Ref{disamb=class:$anon¹}:
-//│                   l = member:$anon⁰
-//│                   disamb = S of class:$anon¹
-//│                 argss = Ls of 
-//│                   Nil
-//│               implct = false
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let Foo⁰, $anon⁰;
 //│ define $anon⁰ as class $anon¹ {
@@ -107,4 +29,22 @@ class Foo with
 //│ define Foo⁰ as class Foo¹ { method foo⁰ = fun foo¹ { return new $anon¹() } };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+let f = new Foo
+//│ f = Foo
+
+let o = f.foo
+//│ o = $anon
+
+o.test
+//│ = 1
+
+:expect 2
+o.test
+//│ = 2
+
+:expect 1
+f.foo.test
+//│ = 1
+
 
