@@ -304,7 +304,7 @@ class BlockSimplifier
     //    Note that the capturing definitions won't see the assignments of the captured variable anyway
     //    because that variable will be treated as unknown, since nested definitions start from an empty environment.
     
-    val unstableRefs = MutSet.empty[Local]
+    // val unstableRefs = MutSet.empty[Local]
     // ^ We currently represent private fields using plain TermSymbol references,
     //    so these have to be special-cased as 'unstable'.
     //    TODO: represent them as fields, as they should be!
@@ -326,14 +326,14 @@ class BlockSimplifier
           case _ =>
           super.applyDefn(defn)
         
-        // This override can go once we get rid of `unstableRefs`
-        override def applyBlock(b: Block): Unit =
-          b match
-          case Assign(_: LocalVar, _, _) =>
-          case Assign(lhs, _, _) =>
-            unstableRefs += lhs
-          case _ =>
-          super.applyBlock(b)
+        // // This override can go once we get rid of `unstableRefs`
+        // override def applyBlock(b: Block): Unit =
+        //   b match
+        //   case Assign(_: LocalVar, _, _) =>
+        //   case Assign(lhs, _, _) =>
+        //     unstableRefs += lhs
+        //   case _ =>
+        //   super.applyBlock(b)
 
         override def applyLam(lam: Lambda): Unit =
           capturedVars ++= lam.freeVars.iterator.collect { case v: LocalVar => v }
@@ -476,8 +476,8 @@ class BlockSimplifier
             else
               val rhs2 = assignedResults(sym)
               S(r -> rhs2)
-          case r @ Value.Ref(sym, _) if unstableRefs(sym) =>
-            N
+          // case r @ Value.Ref(sym, _) if unstableRefs(sym) =>
+          //   N
           case r @ Value.Ref(sym, _) =>
             S(r -> Unknown)
           case _ => N

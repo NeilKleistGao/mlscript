@@ -21,11 +21,10 @@ object Foo with
 //│     end
 //│   }
 //│   method test1⁰ = fun test1¹ {
-//│     let res, tmp;
-//│     set res = state⁰;
+//│     let tmp;
 //│     set tmp = +⁰(state⁰, 1);
 //│     set state⁰ = tmp;
-//│     return res
+//│     return state⁰
 //│   }
 //│   method test2⁰ = fun test2¹ { set state⁰ = 0; do Foo¹.this.test1¹; return state⁰ }
 //│ };
@@ -34,11 +33,17 @@ object Foo with
 
 :expect 1
 Foo.test1
-//│ = 1
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:297)
+//│ ═══[RUNTIME ERROR] Expected: '1', got: '2'
+//│ = 2
 
 :expect 2
 Foo.test1
-//│ = 2
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:297)
+//│ ═══[RUNTIME ERROR] Expected: '2', got: '3'
+//│ = 3
 
 :expect 1
 Foo.test2
