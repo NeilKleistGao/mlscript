@@ -485,17 +485,6 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
           case Some(path) => applyResult(rhs): rhs2 =>
             path.assign(rhs2, applySubBlock(rest))
           case _ => super.applyBlock(rewritten)
-        case assign @ AssignField(_, _, rhs, rest) =>
-          assign.symbol match
-            case S(ts: TermSymbol) if ts.isPrivate =>
-              ctx.symbolsMap.get(ts) match
-                case S(LocalPath.Sym(l)) if l is ts => super.applyBlock(rewritten)
-                case S(path) =>
-                  applyResult(rhs): rhs2 =>
-                    path.assign(rhs2, applySubBlock(rest))
-                case N => super.applyBlock(rewritten)
-            case _ => super.applyBlock(rewritten)
-        
         // rewrite object definitions, assigning to the saved symbol
         case Define(d @ ClsLikeDefn(k = syntax.Obj), rest: Block) => ctx.liftedScopes.get(d.isym) match
           case Some(l: LiftedClass) if l.obj.isObj =>
@@ -506,14 +495,6 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       pre.rest(remaining)
     
     override def applyPath(p: Path)(k: Path => Block): Block = p match
-      case sel: Select =>
-        sel.symbol match
-          case S(ts: TermSymbol) if ts.isPrivate =>
-            ctx.symbolsMap.get(ts) match
-              case S(LocalPath.Sym(l)) if l is ts => super.applyPath(p)(k)
-              case S(value) => k(value.read)
-              case N => super.applyPath(p)(k)
-          case _ => super.applyPath(p)(k)
       // This rewrites naked references to locals,
       case Value.Ref(l, _) => ctx.symbolsMap.get(l) match
         case Some(value) => k(value.read)
