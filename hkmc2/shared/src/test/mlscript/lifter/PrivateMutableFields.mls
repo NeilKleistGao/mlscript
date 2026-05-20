@@ -2,7 +2,6 @@
 :js
 
 
-:sir
 class Foo with
   fun foo =
     new with
@@ -10,25 +9,6 @@ class Foo with
       fun test =
         set state += 1
         state
-//│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let Foo⁰, $anon⁰;
-//│ define $anon⁰ as class $anon¹ {
-//│   private val state⁰;
-//│   constructor {
-//│     super⁰();
-//│     set $anon¹.this.state = 0;
-//│     end
-//│   }
-//│   method test⁰ = fun test¹ {
-//│     let tmp;
-//│     set tmp = +⁰($anon¹.this.state⁰, 1);
-//│     set $anon¹.this.state = tmp;
-//│     return $anon¹.this.state⁰
-//│   }
-//│ };
-//│ define Foo⁰ as class Foo¹ { method foo⁰ = fun foo¹ { return new $anon¹() } };
-//│ end
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let f = new Foo
 //│ f = Foo
@@ -46,5 +26,62 @@ o.test
 :expect 1
 f.foo.test
 //│ = 1
+
+
+:sir
+class Foo(x) with
+  fun foo(y) =
+    new with
+      let state = x
+      fun test =
+        set state += 1
+        state + y
+//│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
+//│ let Foo⁰, $anon⁰;
+//│ define $anon⁰ as class $anon¹ {
+//│   private val x⁰;
+//│   private val y⁰;
+//│   private val state⁰;
+//│   constructor(x, y) {
+//│     super⁰();
+//│     set x⁰ = x;
+//│     set y⁰ = y;
+//│     set $anon¹.this.state = $anon¹.this.x⁰;
+//│     end
+//│   }
+//│   method test⁰ = fun test¹ {
+//│     let tmp;
+//│     set tmp = +⁰($anon¹.this.state⁰, 1);
+//│     set $anon¹.this.state = tmp;
+//│     return +⁰($anon¹.this.state⁰, $anon¹.this.y⁰)
+//│   }
+//│ };
+//│ define Foo⁰ as class Foo²(x) {
+//│   private val x¹;
+//│   constructor Foo¹ {
+//│     set Foo².this.x = x;
+//│     end
+//│   }
+//│   method foo⁰ = fun foo¹(y) { return new $anon¹(Foo².this.x¹, y) }
+//│ };
+//│ end
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+let f = new Foo(123)
+//│ f = Foo(_)
+
+let o = f.foo(456)
+//│ o = $anon
+
+o.test
+//│ = 580
+
+:expect 581
+o.test
+//│ = 581
+
+:expect 580
+f.foo(456).test
+//│ = 580
 
 
