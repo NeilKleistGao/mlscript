@@ -72,7 +72,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       ts.owner match
       case S(owner) =>
         doc"${getVar(owner, loc)}${
-          if (ts.k is syntax.LetBind) && !owner.isInstanceOf[semantics.TopLevelSymbol]
+          if ts.isPrivate
           then ".#" + owner.privatesScope.lookup_!(ts, loc)
           else fieldSelect(ts.id.name)
         }"
@@ -86,7 +86,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
   
   private def privateFieldSelect(ts: semantics.TermSymbol, loc: Opt[Loc])(using Raise): Opt[Document] =
     ts.owner.collect:
-      case owner if (ts.k is syntax.LetBind) && !owner.isInstanceOf[semantics.TopLevelSymbol] =>
+      case owner if ts.isPrivate =>
         doc".#${owner.privatesScope.lookup_!(ts, loc)}"
 
   def runtimeVar(using Raise, Scope): Document = getVar(State.runtimeSymbol, N)

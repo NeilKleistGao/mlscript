@@ -515,9 +515,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   
   private def privateFieldSelfSelection(sym: TermSymbol)(using LoweringCtx): Opt[Select] =
     sym.owner.collect:
-      case owner if (sym.k is syntax.LetBind)
-          && !owner.isInstanceOf[TopLevelSymbol]
-          && owner.asClsOrMod.isDefined =>
+      case owner if sym.isPrivate =>
         Select(Value.Ref(owner, N), sym.id)(S(sym))
 
   private def assignSymbol(sym: Local, rhs: Result, rest: Block)(using LoweringCtx): Block =

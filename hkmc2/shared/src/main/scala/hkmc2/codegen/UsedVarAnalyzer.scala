@@ -46,8 +46,7 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
     def unapply(p: Path): Opt[TermSymbol] = p match
       case sel: Select =>
         sel.symbol.collect:
-          case ts: TermSymbol if (ts.k is syntax.LetBind)
-              && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) => ts
+          case ts: TermSymbol if ts.isPrivate => ts
       case _ => N
 
   private def isObj(s: ScopeNode) = s.obj match
@@ -70,8 +69,7 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
           applyBlock(rest)
         case assign @ AssignField(lhs, _, rhs, rest) =>
           assign.symbol.foreach:
-            case ts: TermSymbol if (ts.k is syntax.LetBind)
-                && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) =>
+            case ts: TermSymbol if ts.isPrivate =>
               accessed.accessed.add(ts)
               accessed.mutated.add(ts)
             case _ =>

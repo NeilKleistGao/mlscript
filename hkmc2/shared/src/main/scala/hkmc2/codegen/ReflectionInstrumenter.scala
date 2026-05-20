@@ -291,8 +291,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
       // TODO: Improve. This is a kludge to allow private field initialization in modules;
       //    Ideally, we should just properly reflect these as the private field assignments they are
       assign.symbol match
-        case S(ts: TermSymbol) if (ts.k is syntax.LetBind)
-            && ts.owner.exists(!_.isInstanceOf[semantics.TopLevelSymbol]) =>
+        case S(ts: TermSymbol) if ts.isPrivate =>
           transformResult(r): y =>
             transformSymbol(ts): xSym =>
               blockCtor("ValueRef", Ls(xSym)): xStaged =>

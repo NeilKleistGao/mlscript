@@ -52,8 +52,7 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
   private def privateFieldSelect(p: Path): Opt[TermSymbol] = p match
     case sel: Select =>
       sel.symbol.collect:
-        case ts: TermSymbol if (ts.k is syntax.LetBind)
-            && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) => ts
+        case ts: TermSymbol if ts.isPrivate => ts
     case _ => N
 
   private def getParentLabelOrMatchesAndRestBefore(
