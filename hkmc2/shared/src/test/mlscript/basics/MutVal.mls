@@ -39,7 +39,12 @@ class Foo(x, val y, mut val z)
 //│   private val x⁰;
 //│   val y⁰;
 //│   val z⁰;
-//│   constructor Foo¹ { define y⁰ as val y¹ = y; define z⁰ as val z¹ = z; end }
+//│   constructor Foo¹ {
+//│     set Foo².this.x = x;
+//│     define y⁰ as val y¹ = y;
+//│     define z⁰ as val z¹ = z;
+//│     end
+//│   }
 //│ };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -54,10 +59,10 @@ class Foo(x, val y, mut val z) with
 //│   val y²;
 //│   val z²;
 //│   constructor Foo⁴ {
-//│     set x¹ = x;
+//│     set Foo⁵.this.x = x;
 //│     define y² as val y³ = y;
 //│     define z² as val z³ = z;
-//│     do Predef⁰.print⁰(x¹);
+//│     do Predef⁰.print⁰(Foo⁵.this.x¹);
 //│     end
 //│   }
 //│ };

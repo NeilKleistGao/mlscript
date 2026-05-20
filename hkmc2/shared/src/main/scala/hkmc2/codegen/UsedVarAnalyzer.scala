@@ -42,6 +42,14 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
   object SDSym:
     def unapply(v: DefinitionSymbol[?] | Option[DefinitionSymbol[?]]) = dSymUnapply(scopeData, v)
   
+  object PrivateFieldSelect:
+    def unapply(p: Path): Opt[TermSymbol] = p match
+      case sel: Select =>
+        sel.symbol.collect:
+          case ts: TermSymbol if (ts.k is syntax.LetBind)
+              && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) => ts
+      case _ => N
+
   private def isObj(s: ScopeNode) = s.obj match
     case c: ScopedObject.Class if c.isObj => true
     case _ => false
@@ -74,6 +82,8 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
       
       override def applyPath(p: Path): Unit = p match
         case Value.Ref(_: BuiltinSymbol, _) => super.applyPath(p)
+        case PrivateFieldSelect(ts) =>
+          accessed.accessed.add(ts)
         case RefOfBms(_, SDSym(dSym), _) =>
           val node = scopeData.getNode(dSym)
           node.obj match
@@ -452,6 +462,8 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
         
         override def applyPath(p: Path): Unit = p match
           case RefOfBms(_, SDSym(d), _) => handleScopeRef(d)          
+          case PrivateFieldSelect(ts) =>
+            if hasMutator.contains(ts) then reqCapture += ts
           case Value.Ref(l, _) =>
             if hasMutator.contains(l) then reqCapture += (l)
           case _ => super.applyPath(p)

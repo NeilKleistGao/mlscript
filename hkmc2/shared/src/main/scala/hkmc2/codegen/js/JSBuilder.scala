@@ -84,6 +84,11 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       scope.findThis_!(ts)
     case _ => scope.lookup_!(l, loc)
   
+  private def privateFieldSelect(ts: semantics.TermSymbol, loc: Opt[Loc])(using Raise): Opt[Document] =
+    ts.owner.collect:
+      case owner if (ts.k is syntax.LetBind) && !owner.isInstanceOf[semantics.TopLevelSymbol] =>
+        doc".#${owner.privatesScope.lookup_!(ts, loc)}"
+
   def runtimeVar(using Raise, Scope): Document = getVar(State.runtimeSymbol, N)
   
   def argument(a: Arg)(using Raise, Scope): Document =
@@ -160,14 +165,18 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       val dotClass = s.symbol match
         case S(ds) if ds.shouldBeLifted => doc".class"
         case _ => doc""
+      val field = s.symbol match
+        case S(ts: semantics.TermSymbol) => privateFieldSelect(ts, s.toLoc)
+        case _ => N
       val name = id.name
-      doc"${resultQual(qual)}${
+      val fieldDoc = field.getOrElse {
         if isValidFieldName(name)
         then doc".$name"
         else name.toIntOption match
           case S(index) => doc"[$index]"
           case N => doc"[${makeStringLiteral(name)}]"
-      }${dotClass}"
+      }
+      doc"${resultQual(qual)}${fieldDoc}${dotClass}"
     case DynSelect(qual, fld, ai) =>
       if ai
       then doc"${resultQual(qual)}.at(${result(fld)})"
@@ -281,8 +290,11 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     case Assign(l, r, rst) =>
       doc" # ${getVar(l, l.toLoc // TODO: improve location
         )} = ${result(r)};${returningTerm(rst, endSemi)}"
-    case AssignField(p, n, r, rst) =>
-      doc" # ${result(p)}${fieldSelect(n.name)} = ${result(r)};${returningTerm(rst, endSemi)}"
+    case assign @ AssignField(p, n, r, rst) =>
+      val field = assign.symbol match
+        case S(ts: semantics.TermSymbol) => privateFieldSelect(ts, N)
+        case _ => N
+      doc" # ${result(p)}${field.getOrElse(fieldSelect(n.name))} = ${result(r)};${returningTerm(rst, endSemi)}"
     case AssignDynField(p, f, ai, r, rst) =>
       doc" # ${result(p)}[${result(f)}] = ${result(r)};${returningTerm(rst, endSemi)}"
     case Define(defn, rst) =>

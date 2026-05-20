@@ -101,6 +101,13 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     case InCapture(capturePath: Path, field: TermSymbol)
     
     def read(using ctx: LifterCtxNew): Path = this match
+      case Sym(l: TermSymbol) =>
+        l.owner match
+        case S(owner) if (l.k is syntax.LetBind)
+            && !owner.isInstanceOf[TopLevelSymbol]
+            && owner.asCls.isDefined =>
+          Select(Value.Ref(owner, N), l.id)(S(l))
+        case _ => l.asPath
       case Sym(l) => l.asPath
       case BmsRef(l, d) => Value.Ref(l, S(d))
       case InCapture(path, field) => Select(path, field.id)(S(field))
@@ -491,6 +498,15 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       pre.rest(remaining)
     
     override def applyPath(p: Path)(k: Path => Block): Block = p match
+      case sel: Select =>
+        sel.symbol match
+          case S(ts: TermSymbol) if (ts.k is syntax.LetBind)
+              && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) =>
+            ctx.symbolsMap.get(ts) match
+              case S(LocalPath.Sym(l)) if l is ts => super.applyPath(p)(k)
+              case S(value) => k(value.read)
+              case N => super.applyPath(p)(k)
+          case _ => super.applyPath(p)(k)
       // This rewrites naked references to locals,
       case Value.Ref(l, _) => ctx.symbolsMap.get(l) match
         case Some(value) => k(value.read)

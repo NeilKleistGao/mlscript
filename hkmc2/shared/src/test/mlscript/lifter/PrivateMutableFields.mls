@@ -13,27 +13,8 @@ class Foo with
         state
 //│ —————————————| Lowered IR Tree |————————————————————————————————————————————————————————————————————
 //│ Program:
-//│   main = Scoped(syms = {member:Foo⁰, member:$anon⁰, member:Capture$$anon⁰}): 
+//│   main = Scoped(syms = {member:Foo⁰, member:$anon⁰}): 
 //│     body = Define:
-//│       defn = ClsLikeDefn:
-//│         isym = class:Capture$$anon¹
-//│         sym = member:Capture$$anon⁰
-//│         ctorSym = S of term:Capture$$anon¹/Capture$$anon²
-//│         k = Cls
-//│         auxParams = Ls of 
-//│           ParamList:
-//│             params = Ls of 
-//│               Param:
-//│                 flags = (val)
-//│                 sym = state$0⁰
-//│                 modulefulness = Modulefulness of N
-//│         ctor = Define:
-//│           defn = ValDefn:
-//│             tsym = term:Capture$$anon¹/state$0¹
-//│             sym = member:state$0²
-//│             rhs = Ref:
-//│               l = state$0⁰
-//│       rest = Define: \
 //│       defn = ClsLikeDefn:
 //│         isym = class:$anon¹
 //│         sym = member:$anon⁰
@@ -56,26 +37,25 @@ class Foo with
 //│                   argss = Ls of 
 //│                     Ls of 
 //│                       Arg:
-//│                         value = Select{sym=term:Capture$$anon¹/state$0¹}:
+//│                         value = Select{sym=term:$anon¹/state⁰}:
 //│                           qual = Ref:
-//│                             l = term:$anon¹/$anon$cap⁰
-//│                           name = Ident of "state$0"
+//│                             l = class:$anon¹
+//│                           name = Ident of "state"
 //│                       Arg:
 //│                         value = Lit of IntLit of 1
 //│                 rest = AssignField: \
 //│                 lhs = Ref:
-//│                   l = term:$anon¹/$anon$cap⁰
-//│                 nme = Ident of "state$0"
+//│                   l = class:$anon¹
+//│                 nme = Ident of "state"
 //│                 rhs = Ref:
 //│                   l = tmp:tmp⁰
 //│                 rest = Return: \
-//│                 res = Select{sym=term:Capture$$anon¹/state$0¹}:
+//│                 res = Select{sym=term:$anon¹/state⁰}:
 //│                   qual = Ref:
-//│                     l = term:$anon¹/$anon$cap⁰
-//│                   name = Ident of "state$0"
+//│                     l = class:$anon¹
+//│                   name = Ident of "state"
 //│                 implct = false
 //│         privateFields = Ls of 
-//│           term:$anon¹/$anon$cap¹
 //│           term:$anon¹/state⁰
 //│         preCtor = Return:
 //│           res = Call:
@@ -84,22 +64,10 @@ class Foo with
 //│             argss = Ls of 
 //│               Nil
 //│           implct = true
-//│         ctor = Assign:
-//│           lhs = term:$anon¹/$anon$cap⁰
-//│           rhs = Instantiate:
-//│             mut = true
-//│             cls = Ref{disamb=class:Capture$$anon¹}:
-//│               l = member:Capture$$anon⁰
-//│               disamb = S of class:Capture$$anon¹
-//│             argss = Ls of 
-//│               Ls of 
-//│                 Arg:
-//│                   value = Ref:
-//│                     l = term:$anon¹/state⁰
-//│           rest = AssignField: \
+//│         ctor = AssignField:
 //│           lhs = Ref:
-//│             l = term:$anon¹/$anon$cap⁰
-//│           nme = Ident of "state$0"
+//│             l = class:$anon¹
+//│           nme = Ident of "state"
 //│           rhs = Lit of IntLit of 0
 //│       rest = Define: \
 //│       defn = ClsLikeDefn:
@@ -121,31 +89,22 @@ class Foo with
 //│                   Nil
 //│               implct = false
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let Foo⁰, $anon⁰, Capture$$anon⁰;
-//│ define Capture$$anon⁰ as class Capture$$anon¹ {
-//│   constructor Capture$$anon²(state$0) {
-//│     define state$0² as val state$0¹ = state$0;
-//│     end
-//│   }
-//│ };
+//│ let Foo⁰, $anon⁰;
 //│ define $anon⁰ as class $anon¹ {
-//│   private val $anon$cap¹;
 //│   private val state⁰;
 //│   constructor {
 //│     super⁰();
-//│     set $anon$cap⁰ = new mut Capture$$anon¹(state⁰);
-//│     set $anon$cap⁰.state$0 = 0;
+//│     set $anon¹.this.state = 0;
 //│     end
 //│   }
 //│   method test⁰ = fun test¹ {
 //│     let tmp;
-//│     set tmp = +⁰($anon$cap⁰.state$0¹, 1);
-//│     set $anon$cap⁰.state$0 = tmp;
-//│     return $anon$cap⁰.state$0¹
+//│     set tmp = +⁰($anon¹.this.state⁰, 1);
+//│     set $anon¹.this.state = tmp;
+//│     return $anon¹.this.state⁰
 //│   }
 //│ };
 //│ define Foo⁰ as class Foo¹ { method foo⁰ = fun foo¹ { return new $anon¹() } };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-
 

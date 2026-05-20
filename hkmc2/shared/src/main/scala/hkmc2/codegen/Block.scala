@@ -851,7 +851,9 @@ sealed abstract class Result extends AutoLocated:
   lazy val freeVars: Set[Local] = this match
     case Call(fun, argss) => fun.freeVars ++ argss.flatten.flatMap(_.value.freeVars).toSet
     case Instantiate(mut, cls, argss) => cls.freeVars ++ argss.flatten.flatMap(_.value.freeVars).toSet
-    case Select(qual, name) => qual.freeVars 
+    case sel @ Select(qual, name) => qual.freeVars ++ sel.symbol.collect:
+      case ts: TermSymbol if (ts.k is syntax.LetBind)
+          && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) => ts
     case Lambda(params, body) => body.freeVars -- params.paramSyms
     case Tuple(mut, elems) => elems.flatMap(_.value.freeVars).toSet
     case Record(mut, args) =>
@@ -864,7 +866,9 @@ sealed abstract class Result extends AutoLocated:
   lazy val freeVarsLLIR: Set[Local] = this match
     case Call(fun, argss) => fun.freeVarsLLIR ++ argss.flatten.flatMap(_.value.freeVarsLLIR).toSet
     case Instantiate(mut, cls, argss) => cls.freeVarsLLIR ++ argss.flatten.flatMap(_.value.freeVarsLLIR).toSet
-    case Select(qual, name) => qual.freeVarsLLIR 
+    case sel @ Select(qual, name) => qual.freeVarsLLIR ++ sel.symbol.collect:
+      case ts: TermSymbol if (ts.k is syntax.LetBind)
+          && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) => ts
     case Lambda(params, body) => body.freeVarsLLIR -- params.paramSyms
     case Tuple(mut, elems) => elems.flatMap(_.value.freeVarsLLIR).toSet
     case Record(mut, args) =>

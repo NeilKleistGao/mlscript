@@ -125,6 +125,12 @@ class BlockSimplifier
         
         override def applyPath(p: Path): Unit =
           p match
+            case sel: Select =>
+              sel.symbol.foreach:
+                case ts: TermSymbol if (ts.k is syntax.LetBind)
+                    && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) =>
+                  usedVars += ts
+                case _ =>
             case Value.Ref(loc, _) =>
               usedVars += loc
             case _ =>
