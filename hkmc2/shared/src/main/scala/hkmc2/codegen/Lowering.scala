@@ -38,8 +38,7 @@ object Thrw extends TailOp:
 class LoweringCtx(
   initMap: Map[Local, Value], // No longer in meaningful use and could be removed if we don't find a use for it
   val mayRet: Bool, // For rewriting while loop into tail recursive function, represent whether an explicit return is legal in the current block
-  private val definedSymsDuringLowering: collection.mutable.Set[Symbol], // used to create Scoped blocks
-  val privateFieldSelfOwner: Opt[InnerSymbol],
+  private val definedSymsDuringLowering: collection.mutable.Set[Symbol] // used to create Scoped blocks
 ):
   val map = initMap
   def collectScopedSym(s: Symbol) = definedSymsDuringLowering.add(s)
@@ -63,15 +62,11 @@ class LoweringCtx(
 object LoweringCtx:
   def loweringCtx(using sub: LoweringCtx): LoweringCtx = sub
   val empty =
-    LoweringCtx(Map.empty, mayRet = false, collection.mutable.Set.empty, N)
+    LoweringCtx(Map.empty, mayRet = false, collection.mutable.Set.empty)
   def nestFunc(using sub: LoweringCtx): LoweringCtx =
-    LoweringCtx(sub.map, mayRet = true, sub.definedSymsDuringLowering, sub.privateFieldSelfOwner)
+    LoweringCtx(sub.map, mayRet = true, sub.definedSymsDuringLowering)
   def nestScoped(using sub: LoweringCtx): LoweringCtx =
-    LoweringCtx(sub.map, sub.mayRet, collection.mutable.Set.empty, sub.privateFieldSelfOwner)
-  def withPrivateFieldSelf(owner: InnerSymbol)(using sub: LoweringCtx): LoweringCtx =
-    LoweringCtx(sub.map, sub.mayRet, sub.definedSymsDuringLowering, S(owner))
-  def withoutPrivateFieldSelf(using sub: LoweringCtx): LoweringCtx =
-    LoweringCtx(sub.map, sub.mayRet, sub.definedSymsDuringLowering, N)
+    LoweringCtx(sub.map, sub.mayRet, collection.mutable.Set.empty)
 end LoweringCtx
 
 import LoweringCtx.loweringCtx
@@ -251,9 +246,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
                 Define(ValDefn(td.tsym, td.sym, r)(cfgOverride, td.annotations),
                   blockImpl(stats, res)))(using LoweringCtx.nestFunc)
             case syntax.Fun =>
-              val (paramLists, bodyBlock) =
-                LoweringCtx.withoutPrivateFieldSelf.givenIn:
-                  setupFunctionOrByNameDef(td.params, bod, S(td.sym.nme))
+              val (paramLists, bodyBlock) = setupFunctionOrByNameDef(td.params, bod, S(td.sym.nme))
               val cfgOverride = td.extraAnnotations.collectFirst:
                 case Annot.Config(modify) => modify(config)
               Define(FunDefn(td.owner, td.sym, td.tsym, paramLists, bodyBlock)(cfgOverride, td.annotations),
@@ -337,7 +330,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
                   FunDefn.withFreshSymbol(N, sym, paramLists, bodyBlock)(configOverride = N, annotations = Nil)
               // The return type is intended to be consistent with `gatherMembers`
               (mtds, Nil, Nil, End())
-            case _ => gatherMembers(defn.sym, defn.body)
+            case _ => gatherMembers(defn.body)
           val mod = defn.companion match
             case S(sym) =>
               sym.defn match
@@ -351,7 +344,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
                   )
                 case N =>
                 val (mtds, publicFlds, privateFlds, ctor) =
-                  gatherMembers(mod.sym, mod.body)
+                  gatherMembers(mod.body)
                 S(ClsLikeBody(mod.sym, mtds, privateFlds, publicFlds, ctor, mod.annotations))
               case _ => N
             case _ => N
@@ -524,8 +517,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     sym.owner.collect:
       case owner if (sym.k is syntax.LetBind)
           && !owner.isInstanceOf[TopLevelSymbol]
-          && owner.asCls.isDefined
-          && loweringCtx.privateFieldSelfOwner.exists(_ is owner) =>
+          && owner.asCls.isDefined =>
         Select(Value.Ref(owner, N), sym.id)(S(sym))
 
   private def assignSymbol(sym: Local, rhs: Result, rest: Block)(using LoweringCtx): Block =
@@ -942,7 +934,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         case S((isym, rft)) =>
           val sym = new BlockMemberSymbol(isym.name, Nil)
           loweringCtx.collectScopedSym(sym)
-          val (mtds, publicFlds, privateFlds, ctor) = gatherMembers(isym, rft)
+          val (mtds, publicFlds, privateFlds, ctor) = gatherMembers(rft)
           val pctor = parentConstructor(cls, as)
           val clsDef = ClsLikeDefn(N, isym, sym, N, syntax.Cls, N, Nil, S(sr),
             mtds, privateFlds, publicFlds, pctor, ctor, N, N)(N, Nil)
@@ -1153,14 +1145,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         source = Diagnostic.Source.Compilation
       )
   
-  def gatherMembers(self: InnerSymbol, clsBody: ObjBody)(using LoweringCtx)
+  def gatherMembers(clsBody: ObjBody)(using LoweringCtx)
   : (Ls[FunDefn], Ls[BlockMemberSymbol -> TermSymbol], Ls[TermSymbol], Block) =
     val mtds = clsBody.methods
       .flatMap: td =>
         td.body.map: bod =>
-          val (paramLists, bodyBlock) =
-            LoweringCtx.withPrivateFieldSelf(self).givenIn:
-              setupFunctionDef(td.params, bod, S(td.sym.nme))
+          val (paramLists, bodyBlock) = setupFunctionDef(td.params, bod, S(td.sym.nme))
           reportAnnotations(td, td.extraAnnotations)
           val cfgOverride = td.extraAnnotations.collectFirst:
             case Annot.Config(modify) => modify(config)
@@ -1171,9 +1161,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         reportAnnotations(decl, annotations)
         sym
     val ctor =
-      LoweringCtx.withPrivateFieldSelf(self).givenIn:
-        inScopedBlock:
-          term_nonTail(Blk(clsBody.nonMethods, clsBody.blk.res), inStmtPos = true)(Assign.discard(_, End()))
+      inScopedBlock:
+        term_nonTail(Blk(clsBody.nonMethods, clsBody.blk.res), inStmtPos = true)(Assign.discard(_, End()))
     
     (mtds, publicFlds, privateFlds, ctor)
   

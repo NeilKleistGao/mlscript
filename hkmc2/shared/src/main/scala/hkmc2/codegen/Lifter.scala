@@ -487,6 +487,17 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
           case Some(path) => applyResult(rhs): rhs2 =>
             path.assign(rhs2, applySubBlock(rest))
           case _ => super.applyBlock(rewritten)
+        case assign @ AssignField(_, _, rhs, rest) =>
+          assign.symbol match
+            case S(ts: TermSymbol) if (ts.k is syntax.LetBind)
+                && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) =>
+              ctx.symbolsMap.get(ts) match
+                case S(LocalPath.Sym(l)) if l is ts => super.applyBlock(rewritten)
+                case S(path) =>
+                  applyResult(rhs): rhs2 =>
+                    path.assign(rhs2, applySubBlock(rest))
+                case N => super.applyBlock(rewritten)
+            case _ => super.applyBlock(rewritten)
         
         // rewrite object definitions, assigning to the saved symbol
         case Define(d @ ClsLikeDefn(k = syntax.Obj), rest: Block) => ctx.liftedScopes.get(d.isym) match

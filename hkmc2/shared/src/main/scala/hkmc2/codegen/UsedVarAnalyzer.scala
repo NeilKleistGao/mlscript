@@ -68,6 +68,16 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
           accessed.mutated.add(lhs)
           applyResult(rhs)
           applyBlock(rest)
+        case assign @ AssignField(lhs, _, rhs, rest) =>
+          assign.symbol.foreach:
+            case ts: TermSymbol if (ts.k is syntax.LetBind)
+                && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) =>
+              accessed.accessed.add(ts)
+              accessed.mutated.add(ts)
+            case _ =>
+          applyPath(lhs)
+          applyResult(rhs)
+          applyBlock(rest)
         case l: Label if l.loop =>
           accessed.refdDefns.add(l.label)
         case d: Define => d.defn match
@@ -283,7 +293,11 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
     // In a class, all variables that are mutated by a child scope and accessed by a lifted class must be captured
     val additional = s.obj match
       case _: ScopedObject.Companion | _: ScopedObject.Class =>
-        val (a, b) = s.children.map: c =>
+        val classCaptureChildren = s.children.filterNot: c =>
+            c.obj match
+              case ScopedObject.Func(_, S(MethodKind.ClsMethod | MethodKind.ObjMethod)) => true
+              case _ => false
+        val (a, b) = classCaptureChildren.map: c =>
             val acc = accessMap(c.obj.toInfo)
             val accAll = accessMapWithIgnored(c.obj.toInfo)
             (accAll.mutated, acc.accessed)
