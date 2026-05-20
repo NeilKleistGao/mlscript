@@ -287,6 +287,20 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
               given Context = ctx.clone() += x.asPath -> xStaged
               transformBlock(b): (z, ctx) =>
                 blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+    case assign @ AssignField(lhs, nme, r, rest) =>
+      assign.symbol match
+        case S(ts: TermSymbol) if (ts.k is syntax.LetBind)
+            && ts.owner.exists(!_.isInstanceOf[semantics.TopLevelSymbol]) =>
+          transformResult(r): y =>
+            transformSymbol(ts): xSym =>
+              blockCtor("ValueRef", Ls(xSym)): xStaged =>
+                (Assign(ts, xStaged, _)):
+                  given Context = ctx.clone() += Select(lhs, nme)(S(ts)) -> xStaged
+                  transformBlock(rest): (z, ctx) =>
+                    blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+        case _ =>
+          raise(ErrorReport(msg"Other Blocks not supported in staged module: ${b.getClass.toString()}" -> N :: Nil))
+          End()
     case Define(cls: ClsLikeDefn, rest) =>
       assert(cls.companion.isEmpty, "nested module not supported")
       transformBlock(rest): p =>

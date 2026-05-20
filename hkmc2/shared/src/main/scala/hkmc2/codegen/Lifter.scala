@@ -105,7 +105,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         l.owner match
         case S(owner) if (l.k is syntax.LetBind)
             && !owner.isInstanceOf[TopLevelSymbol]
-            && owner.asCls.isDefined =>
+            && owner.asClsOrMod.isDefined =>
           Select(Value.Ref(owner, N), l.id)(S(l))
         case _ => l.asPath
       case Sym(l) => l.asPath

@@ -49,6 +49,13 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
     case tSym: TermSymbol => tSym.nme
     case n: Int => n.toString
 
+  private def privateFieldSelect(p: Path): Opt[TermSymbol] = p match
+    case sel: Select =>
+      sel.symbol.collect:
+        case ts: TermSymbol if (ts.k is syntax.LetBind)
+            && ts.owner.exists(!_.isInstanceOf[TopLevelSymbol]) => ts
+    case _ => N
+
   private def getParentLabelOrMatchesAndRestBefore(
     matchOrLabelId: MatchOrLabelId
   ): (Iterator[Label | Match], Block) =
@@ -278,7 +285,10 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
         p match
         case s@TrackableSelect(_, _, _) if branchSelSyms.isDefinedAt(s.uid.concreteId) =>
           handleTrackableSel(s)
-        case _ => super.applyPath(p)
+        case _ =>
+          privateFieldSelect(p) match
+          case S(ts) if !inCtx(ts) => freeVars.add(ts)
+          case _ => super.applyPath(p)
       
       override def applyBlock(b: Block): Unit =
         b match
@@ -470,6 +480,10 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
     end Rewriter
     
     class RefreshSymbol(existingMapping: Map[Symbol, Symbol]) extends SymbolRefresher(existingMapping):
+      override def applyPath(p: Path)(k: Path => Block): Block =
+        privateFieldSelect(p).flatMap(existingMapping.get) match
+        case S(sym) => k(Value.Ref(sym, N))
+        case N => super.applyPath(p)(k)
       override def applyScopedBlock(b: Block): Block =
         b match
         case Scoped(syms, body) =>

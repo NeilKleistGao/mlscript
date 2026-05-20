@@ -517,7 +517,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     sym.owner.collect:
       case owner if (sym.k is syntax.LetBind)
           && !owner.isInstanceOf[TopLevelSymbol]
-          && owner.asCls.isDefined =>
+          && owner.asClsOrMod.isDefined =>
         Select(Value.Ref(owner, N), sym.id)(S(sym))
 
   private def assignSymbol(sym: Local, rhs: Result, rest: Block)(using LoweringCtx): Block =
