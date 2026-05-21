@@ -108,7 +108,9 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     def asArg(using ctx: LifterCtxNew) = read.asArg
     
     def assign(value: Result, rest: Block)(using ctx: LifterCtxNew): Block = this match
-      case Sym(l) => Assign(l, value, rest)
+      case Sym(l: LocalVarSymbol) => Assign(l, value, rest)
+      case Sym(l: NoSymbol) => Assign(l, value, rest)
+      case Sym(l) => lastWords(s"Tried to assign to non-variable local ${l.nme}")
       case BmsRef(l, d) => lastWords("Tried to assign to a BlockMemberSymbol")
       case Field(path, field) => AssignField(path, field.id, value, rest)(S(field))
   object LocalPath:
@@ -296,7 +298,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     // Closure symbols that point to an initialized closure in this scope
     var activeClosures: Set[Local] = Set.empty
     // Map from block member symbols to initialized closures
-    val closureMap: MutMap[BlockMemberSymbol, Local] = MutMap.empty
+    val closureMap: MutMap[BlockMemberSymbol, LocalVarSymbol] = MutMap.empty
     val extraLocals: MutSet[Local] = MutSet.empty
     
     def rewrite(b: Block) =
@@ -315,7 +317,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     // always rewritten using `this.defnName` (when accessed internally) or `object.defnName`.
     def rewriteBms(b: Block) =
       // BMS's that need to be created
-      val syms: LinkedHashMap[FunSyms[?], Local] = LinkedHashMap.empty
+      val syms: LinkedHashMap[FunSyms[?], LocalVarSymbol] = LinkedHashMap.empty
       val extraLocals: MutSet[Local] = MutSet.empty
 
       val walker = new BlockDataTransformer(SymbolSubst.Id):
@@ -655,7 +657,13 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
           captureInfo._2.map(
             (sym, _) => sym.asPath.asArg) :: Nil
         )
-        val assign = Assign(captureSym, inst, b)
+        val assign = captureSym match
+          case sym: LocalVarSymbol => Assign(sym, inst, b)
+          case sym: TermSymbol =>
+            sym.owner match
+            case S(owner) => AssignField(Value.Ref(owner, N), sym.id, inst, b)(S(sym))
+            case N => lastWords(s"tried to assign lifted capture to ownerless field ${sym.nme}")
+          case sym => lastWords(s"tried to assign lifted capture to non-variable ${sym.nme}")
         if define then
           Scoped(
             Set(captureSym) ++ objSyms,

@@ -1014,7 +1014,7 @@ class BlockSimplifier
     
     object InlinerReplacer:
       
-      class Copier(resSym: Symbol, existingMapping: Map[Symbol, Symbol])(using State):
+      class Copier(resSym: LocalVarSymbol, existingMapping: Map[Symbol, Symbol])(using State):
         val lblSym = LabelSymbol(N, "inlinedLbl")
         
         object Copier extends SymbolRefresher(existingMapping):

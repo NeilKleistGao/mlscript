@@ -358,7 +358,7 @@ case class Begin(sub: Block, rest: Block) extends Block with ProductWithTail wit
 
 case class TryBlock(sub: Block, finallyDo: Block, rest: Block) extends Block with ProductWithTail with NonBlockTail
 
-case class Assign(lhs: Local, rhs: Result, rest: Block) extends Block with ProductWithTail with NonBlockTail
+case class Assign(lhs: LocalVarSymbol | NoSymbol, rhs: Result, rest: Block) extends Block with ProductWithTail with NonBlockTail
 // case class Assign(lhs: Path, rhs: Result, rest: Block) extends Block with ProductWithTail
 
 case class AssignField(lhs: Path, nme: Tree.Ident, rhs: Result, rest: Block)(val symbol: Opt[MemberSymbol])
@@ -398,7 +398,7 @@ object TryBlock:
       case Scoped(syms, innerRest) => Scoped(syms, TryBlock(body, finallyDo, innerRest))
       case _ => new TryBlock(body, finallyDo, rest)
 object Assign:
-  def apply(lhs: Local, rhs: Result, rest: Block): Block = rest match
+  def apply(lhs: LocalVarSymbol | NoSymbol, rhs: Result, rest: Block): Block = rest match
     case _: Unreachable =>
       if rhs.isPure then rest else new Assign(lhs, rhs, rest)
     case Scoped(syms, body) => Scoped(syms, Assign(lhs, rhs, body))
@@ -486,8 +486,8 @@ object HandleBlock:
     Call(Value.Ref(Elaborator.ctx.builtins.runtime.handle_suspension, N), (tag.asArg :: bodyFun.asArg :: Nil) ne_:: Nil)(true, true, false)
   
   private def create(
-      lhs: Local,
-      res: Local,
+      lhs: LocalVarSymbol,
+      res: LocalVarSymbol,
       par: Path,
       args: Ls[Path],
       cls: ClassSymbol,
@@ -538,8 +538,8 @@ object HandleBlock:
       .rest(rest)
   
   def apply(
-      lhs: Local,
-      res: Local,
+      lhs: LocalVarSymbol,
+      res: LocalVarSymbol,
       par: Path,
       args: Ls[Path],
       cls: ClassSymbol,
@@ -955,8 +955,8 @@ extension (k: Block => Block)
   def rest(b: Block): Block = k(b)
   def transform(f: (Block => Block) => (Block => Block)) = f(k)
   
-  def assign(l: Local, r: Result) = k.chain(Assign(l, r, _))
-  def assignScoped(l: Local, r: Result) = k.scopedVars(Set.single(l)).assign(l, r)
+  def assign(l: LocalVarSymbol | NoSymbol, r: Result) = k.chain(Assign(l, r, _))
+  def assignScoped(l: LocalVarSymbol, r: Result) = k.scopedVars(Set.single(l)).assign(l, r)
   def assignFieldN(lhs: Path, nme: Tree.Ident, rhs: Result) = k.chain(AssignField(lhs, nme, rhs, _)(N))
   def break(l: LabelSymbol): Block = k.rest(Break(l))
   def continue(l: LabelSymbol): Block = k.rest(Continue(l))

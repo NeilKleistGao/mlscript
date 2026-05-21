@@ -61,7 +61,7 @@ object HandlerLowering:
   // currentFun: path to the current function for resumption
   // thisPath: path to `this` binding if the function is a method, `this` will be rebinded on resumption
   private case class FunctionCtx(currentFun: Path, thisPath: Option[Path], resumeInfo: ResumeInfo, debugInfo: DebugInfo, inGetter: Bool):
-    def doUnwind(loc: Value, stateId: BigInt, restoreList: List[Local])(using paths: HandlerPaths) =
+    def doUnwind(loc: Value, stateId: BigInt, restoreList: List[LocalVarSymbol])(using paths: HandlerPaths) =
       Return(Call(paths.unwindPath, (
         currentFun ::
         intLit(stateId) ::
@@ -78,7 +78,7 @@ object HandlerLowering:
   // currentStackSafetySym: The symbol to be used for stack safety
   private case class ResumeInfo(
     argLists: List[Path],
-    currentLocals: List[Local],
+    currentLocals: List[LocalVarSymbol],
     currentStackSafetySym: FnOrCls,
   )
   
@@ -342,7 +342,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
       id -> BlockPartition(replaceStaleLabels.applyBlock(part.blk), part.resumable))
     PartitionedBlock(initId, newMap, allocId, containsCall, containsError)
 
-  private def computeRestoreList(parts: PartitionedBlock)(using ctx: FunctionCtx): List[Local] =
+  private def computeRestoreList(parts: PartitionedBlock)(using ctx: FunctionCtx): List[LocalVarSymbol] =
     // We compute the restore list by taking the union of live variables at each resumption point
     // The live variable analysis uses a classic work list approach
     val locals = ctx.resumeInfo.currentLocals
@@ -366,7 +366,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
       val used = mutable.BitSet.empty
       val outgoing = mutable.HashSet.empty[StateId]
 
-      def assignToSym(l: Local) =
+      def assignToSym(l: LocalVarSymbol) =
         localSetMap.get(l).foreach: idx =>
           assigned += idx
 
@@ -397,20 +397,23 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
             outgoing += labelMap(label)._1
           case Assign(lhs, rhs, rest) =>
             applyResult(rhs)
-            assignToSym(lhs)
+            lhs match
+            case lhs: LocalVarSymbol => assignToSym(lhs)
+            case _: NoSymbol =>
             applyBlock(rest)
           case Define(defn: ValDefn, rest) =>
             applyPath(defn.rhs)
-            assignToSym(defn.sym)
             applyBlock(rest)
           case Define(defn, rest) =>
-            assignToSym(defn.sym)
             applyBlock(rest)
           case _ => super.applyBlock(b)
         override def applySymbol(sym: Symbol): Unit =
-          localSetMap.get(sym).foreach: idx =>
-            if !assigned.contains(idx) then
-              used += idx
+          sym match
+          case sym: LocalVarSymbol =>
+            localSetMap.get(sym).foreach: idx =>
+              if !assigned.contains(idx) then
+                used += idx
+          case _ =>
 
       (used, assigned, outgoing.toList)
 
@@ -539,8 +542,10 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
       val scopedVars = fun.body match
         case Scoped(syms, body) => syms
         case _ => Set()
-      val varList = scopedVars.toList.sortBy(_.uid)
-      val debugInfo = Value.Lit(Tree.StrLit(debugNme)).asArg :: varList.zipWithIndex.filter(_._1.isInstanceOf[VarSymbol])
+      val varList = scopedVars.collect:
+        case sym: LocalVarSymbol => sym
+      val sortedVars = varList.toList.sortBy(_.uid)
+      val debugInfo = Value.Lit(Tree.StrLit(debugNme)).asArg :: sortedVars.zipWithIndex.filter(_._1.isInstanceOf[VarSymbol])
         .flatMap: (sym, idx) =>
           List(intLit(idx), Value.Lit(Tree.StrLit(sym.nme)))
         .map(_.asArg)
@@ -548,7 +553,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
       // TODO: properly support spread argument by calculating the correct length.
       val rtArgLists = intLit(fun.params.length) :: fun.params.flatMap: pl =>
         intLit(pl.params.length) :: pl.params.map(_.sym.asPath)
-      val newCtx = HandlerCtx.FunctionLike(FunctionCtx(funcPath, thisPath, ResumeInfo(rtArgLists, varList, L(fun.sym)),
+      val newCtx = HandlerCtx.FunctionLike(FunctionCtx(funcPath, thisPath, ResumeInfo(rtArgLists, sortedVars, L(fun.sym)),
         DebugInfo(debugNme, if opt.debug then debugInfoSym.asPath else unit), thisPath.isDefined && fun.params.isEmpty))
       val bod2 = translateBlock(fun.body, newCtx, scopedVars)
       val fun2 = if fun.body is bod2 then fun else
@@ -572,7 +577,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
         case defn @ ClsLikeDefn(owner, isym, sym, ctorSym, kind, paramsOpt, auxParams, parentPath, methods, privateFields, publicFields, preCtor, ctor, companion, bufferable) =>
           if !h.allowDefn then
             raise(lifterReport(msg"Unexpected nested class: lambdas may not function correctly." -> isym.toLoc :: Nil))
-          val debugInfos = mutable.ArrayBuffer.empty[(Local, List[Arg])]
+          val debugInfos = mutable.ArrayBuffer.empty[(LocalVarSymbol, List[Arg])]
           val newMtds = methods.map: f =>
             val (debugInfoSym, debugInfo, fun2) = translateFunLike(f, Value.Ref(isym).sel(new Tree.Ident(f.sym.nme), f.dSym),
               S(Value.Ref(isym)), s"${sym.nme}#${f.sym.nme}")
@@ -725,7 +730,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     translateBlock(b, if isModCtor then HandlerCtx.ModCtor(h.innerDefIsTrulyNested) else HandlerCtx.Ctor, Set.empty)
 
   private def translateIllegalEffectCtx(b: Block, onEffect: Call)(using HandlerCtx): Block =
-    def effectCheck(l: Local, r: Result, rst: Block): Block =
+    def effectCheck(l: LocalVarSymbol | NoSymbol, r: Result, rst: Block): Block =
       blockBuilder
         .assign(l, r)
         .ifthen(

@@ -295,8 +295,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
           transformResult(r): y =>
             transformSymbol(ts): xSym =>
               blockCtor("ValueRef", Ls(xSym)): xStaged =>
-                (Assign(ts, xStaged, _)):
-                  given Context = ctx.clone() += Select(lhs, nme)(S(ts)) -> xStaged
+                val xTmp = TempSymbol(N, ts.nme + "$staged")
+                ((b: Block) => Scoped(Set.single(xTmp), Assign(xTmp, xStaged, b))):
+                  given Context = ctx.clone() += Select(lhs, nme)(S(ts)) -> xTmp.asPath
                   transformBlock(rest): (z, ctx) =>
                     blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
         case _ =>

@@ -57,7 +57,13 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
     b match
     case Assign(lhs, rhs, rest) =>
       applyResult(rhs): newRhs =>
-        val newLhs = mapping.getOrElse(lhs, lhs)
+        val newLhs: LocalVarSymbol | NoSymbol = lhs match
+          case lhs: NoSymbol => lhs
+          case lhs: LocalVarSymbol =>
+            mapping.get(lhs) match
+            case Some(sym: LocalVarSymbol) => sym
+            case Some(sym) => lastWords(s"assignment local ${lhs.nme} mapped to non-variable ${sym.nme}")
+            case None => lhs
         val newRest = applyBlock(rest)
         if (newLhs is lhs) && (newRhs is rhs) && (newRest is rest) then b else Assign(newLhs, newRhs, newRest)
     case Label(label, loop, body, rest) =>

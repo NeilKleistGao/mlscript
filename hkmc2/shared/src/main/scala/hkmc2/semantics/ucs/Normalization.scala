@@ -240,11 +240,15 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
       (split: Split, cont: Result => Block)
       (using labels: Labels, form: IfLikeForm)
       (using LoweringCtx)
-      : Block = split match
+      : Block =
+    def localVar(sym: BlockLocalSymbol): LocalVarSymbol = sym match
+      case sym: LocalVarSymbol => sym
+      case _ => lastWords(s"tried to lower split assignment to non-variable symbol ${sym.nme}")
+    split match
     case Split.Let(sym, trm, tl) =>
       LoweringCtx.loweringCtx.collectScopedSym(sym)
       term_nonTail(trm): r =>
-        Assign(sym, r, lowerSplit(tl, cont))
+        Assign(localVar(sym), r, lowerSplit(tl, cont))
     case Split.Cons(Branch(scrut, pat, tail), restSplit) =>
       subTerm_nonTail(scrut): sr =>
         tl.log(s"Binding scrut $scrut to $sr (${summon[LoweringCtx].map})") 
@@ -267,7 +271,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
                   Case.Cls(ctorSym, st) -> lowerSplit(tail, cont)
                 case (param, arg) :: args =>
                   val (cse, blk) = mkArgs(args)
-                  (cse, Assign(arg, Select(sr, new Tree.Ident(param.id.name).withLocOf(arg))(S(param)), blk))
+                  (cse, Assign(localVar(arg), Select(sr, new Tree.Ident(param.id.name).withLocOf(arg))(S(param)), blk))
               mkMatch(mkArgs(clsParams.iterator.zip(args).toList))
             symbol match
               case cls: ClassSymbol if ctx.builtins.virtualClasses contains cls =>
@@ -294,7 +298,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State) e
                 case ((fieldName, fieldSymbol), blk) =>
                   mkMatch(
                     Case.Field(fieldName, safe = true), // we know we have an object, no need to check again
-                    Assign(fieldSymbol, Select(sr, fieldName)(N), blk)
+                    Assign(localVar(fieldSymbol), Select(sr, fieldName)(N), blk)
                   )
             )
     case Split.Else(els) => labels.get(els) match

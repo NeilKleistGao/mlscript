@@ -81,7 +81,7 @@ class BlockTransformer(subst: SymbolSubst):
       if (sub2 is sub) && (fin2 is fin) && (rst2 is rst) then b else TryBlock(sub2, fin2, rst2)
     case Assign(l, r, rst) =>
       applyResult(r): r2 =>
-        val l2 = applyLocal(l)
+        val l2 = applyAssignLhs(l)
         val rst2 = applySubBlock(rst)
         if (l2 is l) && (r2 is r) && (rst2 is rst) then b else Assign(l2, r2, rst2)
     case b @ AssignField(l, n, r, rst) =>
@@ -187,6 +187,10 @@ class BlockTransformer(subst: SymbolSubst):
     case Value.Lit(lit) => k(v)
   
   def applyLocal(sym: Local): Local = sym.subst
+  def applyAssignLhs(sym: LocalVarSymbol | NoSymbol): LocalVarSymbol | NoSymbol = sym match
+    case sym: NoSymbol => sym.subst
+    case sym: TempSymbol => sym.subst
+    case sym: VarSymbol => sym.subst
   
   def applyFunDefn(fun: FunDefn): FunDefn =
     val own2 = fun.owner.mapConserve(_.subst)
