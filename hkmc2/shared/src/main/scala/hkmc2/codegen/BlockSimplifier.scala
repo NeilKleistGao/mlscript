@@ -127,10 +127,6 @@ class BlockSimplifier
                 case _ =>
             case Value.Ref(loc, _) =>
               usedVars += loc
-              loc match
-              case ts: TermSymbol =>
-                usedPrivateVars += ts
-              case _ =>
             case _ =>
           super.applyPath(p)
 
@@ -232,11 +228,6 @@ class BlockSimplifier
       case Assign(lhs, rhs, rst) if localVars(lhs) && !usedVars(lhs) && !symbolsToPreserve(lhs) =>
         registerChange(s"rm ${lhs.showDbg} = ${rhs.showDbg}")
         removedLocals += lhs
-        applyResult(rhs)(r => Assign.discard(r, applyBlock(rst)))
-
-      // * Discard writes to private fields that are still represented as local assignments
-      case Assign(lhs: TermSymbol, rhs, rst) if unusedPrivateVars(lhs) =>
-        registerChange(s"rm unused private field write ${lhs.showDbg} = ${rhs.showDbg}")
         applyResult(rhs)(r => Assign.discard(r, applyBlock(rst)))
 
       // * Discard writes to private fields that are never read
