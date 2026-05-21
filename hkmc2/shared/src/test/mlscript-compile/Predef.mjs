@@ -25,14 +25,14 @@ let Predef1;
         globalThis.Object.freeze(this);
       }
       toString() { return runtime.render(this); }
-      static [definitionMetadata] = ["object", "Symbols"]; 
+      static [definitionMetadata] = ["object", "Symbols"];
     });
     (class Sub {
       static {
         Predef.Sub = this
       }
       toString() { return runtime.render(this); }
-      static [definitionMetadata] = ["class", "Sub"]; 
+      static [definitionMetadata] = ["class", "Sub"];
     });
     (class Eq extends Predef.Sub {
       static {
@@ -42,7 +42,7 @@ let Predef1;
         super();
       }
       toString() { return runtime.render(this); }
-      static [definitionMetadata] = ["class", "Eq"]; 
+      static [definitionMetadata] = ["class", "Eq"];
     });
     (class Refl extends Predef.Eq {
       static {
@@ -60,7 +60,7 @@ let Predef1;
         return x
       }
       toString() { return runtime.render(this); }
-      static [definitionMetadata] = ["object", "Refl"]; 
+      static [definitionMetadata] = ["object", "Refl"];
     });
     this.pass1 = Rendering.pass1;
     this.pass2 = Rendering.pass2;
@@ -83,7 +83,7 @@ let Predef1;
         return runtime.safeCall(Term.print(t))
       }
       toString() { return runtime.render(this); }
-      static [definitionMetadata] = ["class", "meta"]; 
+      static [definitionMetadata] = ["class", "meta"];
     });
   }
   static id(x) {
@@ -316,6 +316,6 @@ let Predef1;
     return runtime.safeCall(Runtime.mkEffect(Runtime.FatalEffect, null))
   }
   toString() { return runtime.render(this); }
-  static [definitionMetadata] = ["class", "Predef"]; 
+  static [definitionMetadata] = ["class", "Predef"];
 });
 let Predef = Predef1; export default Predef;
