@@ -799,9 +799,37 @@ class BlockSimplifier
         
       case _ => super.applyValue(v)(k)
     
+    private def assignedPureCallPrefix(loc: LocalVar): Opt[Call] =
+      def loop(asst: AssignInfo, seen: Set[LocalVar]): Opt[Call] =
+        asst match
+        case Unknown | Uninitialized => N
+        case Assigned(ass, opt) =>
+          ass.rhs match
+          case call: Call if call.isKnownUnsaturatedCall && call.isPure => S(call)
+          case _ =>
+            opt match
+            case S((Value.Ref(next: LocalVar, N), nextAsst))
+              if !capturedVars(next) && !seen(next) && (assignedResults(next) is nextAsst) =>
+              loop(nextAsst, seen + next)
+            case _ => N
+        case Merge(asst1, asst2) =>
+          (loop(asst1, seen), loop(asst2, seen)) match
+          case (S(call1), S(call2)) if call1 == call2 => S(call1)
+          case _ => N
+      loop(assignedResults(loc), Set.single(loc))
+
     override def applyResult(r: Result)(k: Result => Block): Block =
       // Some partial evaluation – TODO: move to IR smart constructors
       r match
+      case c @ Call(Value.Ref(loc: LocalVar, N), argss) if !inDryRun && !capturedVars(loc) =>
+        assignedPureCallPrefix(loc) match
+        case S(prefix) =>
+          registerChange(s"${loc.showDbg} call prefix ~> ${prefix.showDbg}")
+          val combined = Call(prefix.fun, (prefix.argss ::: argss).ne_!)(
+            prefix.isMlsFun, prefix.mayRaiseEffects || c.mayRaiseEffects, c.explicitTailCall,
+          ).withLocOf(c)
+          super.applyResult(combined)(k)
+        case N => super.applyResult(r)(k)
       case Call(Value.Ref(sym: BuiltinSymbol, N), (arg1 :: arg2 :: Nil) :: Nil)
         if sym.nme === "," && arg1.spread.isEmpty && arg2.spread.isEmpty
         =>
