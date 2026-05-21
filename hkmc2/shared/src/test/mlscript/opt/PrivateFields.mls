@@ -100,19 +100,20 @@ Bar.test2
 
 :soir
 object UnusedObjectPrivate with
-  let used = 1
-  let unused = 2
+  let used = print(1)
+  let unused = print(2)
   fun get = used
 module UnusedModulePrivate with
-  let used = 3
-  let unused = 4
+  let used = print(3)
+  let unused = print(4)
   fun get = used
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let UnusedModulePrivate⁰, UnusedObjectPrivate⁰;
 //│ define UnusedObjectPrivate⁰ as object UnusedObjectPrivate¹ {
 //│   private val used⁰;
 //│   constructor {
-//│     set UnusedObjectPrivate¹.this.used = 1;
+//│     set UnusedObjectPrivate¹.this.used = Predef⁰.print⁰(1);
+//│     do Predef⁰.print⁰(2);
 //│     end
 //│   }
 //│   method get⁰ = fun get¹ {
@@ -123,13 +124,20 @@ module UnusedModulePrivate with
 //│ module UnusedModulePrivate² {
 //│   private val used¹;
 //│   constructor {
-//│     set UnusedModulePrivate².this.used = 3;
+//│     set UnusedModulePrivate².this.used = Predef⁰.print⁰(3);
+//│     do Predef⁰.print⁰(4);
 //│     end
 //│   }
 //│   method get² = fun get³ { return UnusedModulePrivate².this.used¹ }
 //│ };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ > 1
+//│ > 2
+//│ > 3
+//│ > 4
 
 UnusedObjectPrivate.get + UnusedModulePrivate.get
-//│ = 4
+//│ = "()()"
+
+
