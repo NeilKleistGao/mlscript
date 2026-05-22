@@ -7,6 +7,20 @@ module SeqHelper with
   fun concat(lhs, rhs) = lhs.concat(rhs)
   fun has(arr, ele) = arr.includes(ele)
   fun len(s) = s.length
+  fun tail(arr) = arr.slice(1)
+  fun eq(arr1, arr2) =
+    arr1.length === arr2.length and arr1.every((v, i) => v === arr2.(i))
+  fun dedup(arr) =
+    let res = []
+    arr.forEach of
+      (v, i) =>
+        let unique = arr.every of (v', j) => j <= i || not v.eq(v')
+        if unique do push(res, v)
+    res
+  fun setEq(s1, s2) =
+    s1.sort()
+    s2.sort()
+    s1.length === s2.length and s1.every((v, i) => v.eq(s2.(i)))
 
 module CharSet with
   fun alphabet() = [
@@ -22,52 +36,99 @@ module SimpleRegExp with
 
   fun len(s) = SeqHelper.len(s)
   fun has(arr, ele) = SeqHelper.has(arr, ele)
+  fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
+  fun push(arr, ele) = SeqHelper.push(arr, ele)
+  fun concat(lhs, rhs) = SeqHelper.concat(lhs, rhs)
+  fun tail(arr) = SeqHelper.tail(arr)
+  fun dedup(arr) = SeqHelper.dedup(arr)
+  fun setEq(s1, s2) = SeqHelper.setEq(s1, s2)
 
   class RegExp() with
     fun derive(c)
     fun canBeEmpty()
+    fun normalize()
+    fun eq(other)
+    fun startsWith(c)
+
+  class Nothing() extends RegExp with
+    fun derive(c) = this
+    fun canBeEmpty() = false
+    fun normalize() = this
+    fun eq(other) = other is Nothing()
+    fun startsWith(c) = false
 
   class Empty() extends RegExp with
-    fun derive(c) = new None
+    fun derive(c) = new Nothing()
     fun canBeEmpty() = true
+    fun normalize() = this
+    fun eq(other) = other is Empty()
+    fun startsWith(c) = false
 
   class Exact(val ch) extends RegExp with
     fun derive(c) =
-      if ch === c then new Some(new Empty())
-      else new None
+      if startsWith(c) then new Empty()
+      else new Nothing()
     fun canBeEmpty() = false
+    fun normalize() = this
+    fun eq(other) =
+      if other is Exact(ch') then ch === ch' else false
+    fun startsWith(c) = ch === c
 
   class Any() extends RegExp with
-    fun derive(c) = new Some(new Empty())
+    fun derive(c) = new Empty()
     fun canBeEmpty() = false
+    fun normalize() = this
+    fun eq(other) = other is Any()
+    fun startsWith(c) = true
 
   class Not(val chars) extends RegExp with
     fun derive(c) =
-      if not has(chars, c) then new Some(new Empty()) else new None
+      if startsWith(c) then new Empty() else new Nothing()
     fun canBeEmpty() = false
+    fun normalize() = this
+    fun eq(other) =
+      if other is Not(chars') then arrEq(chars, chars') else false
+    fun startsWith(c) = not has(chars, c)
 
   fun notWord() = new Not(CharSet.alphabet())
   fun notSpace() = new Not(CharSet.space())
   fun notDigit() = new Not(CharSet.digit())
 
-  fun mkUnion(p1, p2) =
-    if p1 is Empty() and p2 is Empty() then new Empty()
-    else new Union(p1, p2)
-  fun question(r) = mkUnion(r, new Empty())
+  fun mkUnion(arr) =
+    if arr is
+      [p] then p
+      [p1, p2] then new Union(p1, p2)
+      else new Union(arr.0, mkUnion(tail(arr)))
 
   class Union(val p1, val p2) extends RegExp with
     fun derive(c) =
-      if [p1.derive(c), p2.derive(c)] is
-        [Some(p1'), Some(p2')] then new Some(mkUnion(p1', p2'))
-        [Some(p1'), None] then new Some(p1')
-        [None, Some(p2')] then new Some(p2')
-        else new None
+      let p = new Union(p1.derive(c).normalize(), p2.derive(c).normalize())
+      p.normalize()
     fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
+    fun flat() =
+      let p1' = if p1 is Union then p1.flat() else [p1]
+      let p2' = if p2 is Union then p2.flat() else [p2]
+      concat(p1', p2')
+    fun normalize() =
+      let u = new Union(p1.normalize(), p2.normalize())
+      mkUnion(dedup(u.flat()))
+    fun eq(other) =
+      let n = other.normalize()
+      if n is
+        Union then setEq(normalize().flat(), n.flat())
+        else false
+    fun startsWith(c) = p1.startsWith(c) || p2.startsWith(c)
+
+  fun question(r) = (new Union(r, new Empty())).normalize()
 
   class In(val chars) extends RegExp with
     fun derive(c) =
-      if has(chars, c) then new Some(new Empty()) else new None
+      if startsWith(c) then new Empty() else new Nothing()
     fun canBeEmpty() = false
+    fun normalize() = this
+    fun eq(other) =
+      if other is In(chars') then arrEq(chars, chars') else false
+    fun startsWith(c) = has(chars, c)
 
   fun words() = new In(CharSet.alphabet())
   fun spaces() = new In(CharSet.space())
@@ -75,45 +136,46 @@ module SimpleRegExp with
 
   class Concat(val p1, val p2) extends RegExp with
     fun derive(c) =
-      if [p1.derive(c), p1.canBeEmpty()] is
-        [Some(p1'), true] then
-          if p2.derive(c) is
-            Some(p2') then new Some(mkUnion(mkConcat(p1', p2), p2'))
-            else new Some(mkConcat(p1', p2))
-        [None, true] then p2.derive(c)
-        [Some(p1'), false] then new Some(mkConcat(p1', p2))
-        else new None
+      let p1' = p1.derive(c).normalize()
+      if p1.canBeEmpty() then
+        let cc = (new Concat(p1', p2)).normalize()
+        (new Union(cc, p2.derive(c).normalize())).normalize()
+      else (new Concat(p1', p2)).normalize()
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
+    fun normalize() =
+      if p1 is Empty() then p2.normalize()
+      else
+        let p1' = p1.normalize()
+        let p2' = p2.normalize()
+        if p1.eq(p1') and p2.eq(p2') then this else (new Concat(p1', p2')).normalize()
+    fun eq(other) =
+      if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
+    fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
 
-  fun mkConcat(p1, p2) =
-    if p1 is
-      Empty() then p2
-      else new Concat(p1, p2)
-
-  class Star(val p) extends RegExp with
-    fun derive(c) =
-      if p.derive(c) is
-        Some(p') then new Some(mkConcat(p', new Star(p)))
-        else new None
-    fun canBeEmpty() = true
-
-  fun plus(r) = new Concat(r, new Star(r))
   fun nTimes(r, i) =
     if i === 1 then r
     else new Concat(r, nTimes(r, i - 1))
 
+  class Star(val p) extends RegExp with
+    fun derive(c) = (new Concat(p.derive(c).normalize(), this)).normalize()
+    fun canBeEmpty() = true
+    fun normalize() = new Star(p.normalize())
+    fun eq(other) =
+      if other is Star(p') then p.eq(p') else false
+    fun startsWith(c) = p.startsWith(c)
+
+  fun plus(r) = (new Concat(r, new Star(r))).normalize()
+  
   fun matchImpl(p, s, acc) =
     if len(s) === 0 then
       if p.canBeEmpty() then new Some(acc)
       else new None
     else
       let c = s.0
-      if p.derive(c) is
-        Some(p') then
-          matchImpl(p', s.slice(1), acc + c)
-        None then
-          if p.canBeEmpty() then new Some(acc) else new None
-        else new None
+      if p.startsWith(c) then
+        matchImpl(p.derive(c).normalize(), s.slice(1), acc + c)
+      else
+        if p.canBeEmpty() then new Some(acc) else new None
   fun match(p, s) =
     matchImpl(p, s, "")
 
@@ -131,8 +193,8 @@ module SimpleRegExp with
   // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
   fun matchAllEmail(s) =
     let w = words()
-    let p = mkConcat(plus(w), mkUnion(new Exact("-"), new Exact(".")))
-    let email = mkConcat(mkConcat(mkConcat(new Star(p), plus(w)), new Exact("@")), mkConcat(plus(p), plus(w)))
+    let p = new Concat(plus(w), new Union(new Exact("-"), new Exact(".")))
+    let email = new Concat(new Concat(new Concat(new Star(p), plus(w)), new Exact("@")), new Concat(plus(p), plus(w)))
     matchAll(email, s)
 
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
@@ -143,24 +205,21 @@ module SimpleRegExp with
     let w = words()
     let d = digits()
     let p = SeqHelper.concat(CharSet.alphabet(), SeqHelper.concat(CharSet.digit(), ["-", "_"]))
-    let head = mkConcat(plus(w), mkConcat(new Exact(":"), mkConcat(new Exact("/"), new Exact("/"))))
-    let body = mkConcat(plus(n1), plus(n2))
-    let params = mkConcat(question(mkConcat(new Exact("?"), new Star(new In(p)))), question(mkConcat(new Exact("#"), new Star(new In(p)))))
-    let uri = mkConcat(head, mkConcat(body, params))
+    let head = new Concat(plus(w), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
+    let body = new Concat(plus(n1), plus(n2))
+    let params = new Concat(question(new Concat(new Exact("?"), new Star(new In(p)))), question(new Concat(new Exact("#"), new Star(new In(p)))))
+    let uri = new Concat(head, new Concat(body, params))
     matchAll(uri, s)
 
   // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
   fun matchAllIPv4(s) =
     let fo = new In(["0", "1", "2", "3", "4"])
     let fi = new In(["0", "1", "2", "3", "4", "5"])
-    let segment = mkUnion(mkConcat(new Exact("2"), mkConcat(new Exact("5"), fi)), mkUnion(
-      mkConcat(new Exact("2"), mkConcat(fo, digits())),
-      mkConcat(question(new Exact("1")), mkConcat(question(digits()), digits()))
+    let segment = new Union(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Union(
+      new Concat(new Exact("2"), new Concat(fo, digits())),
+      new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
     ))
-    let ipv4 = mkConcat(nTimes(mkConcat(segment, new Exact(".")), 3), segment)
+    let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
     matchAll(ipv4, s)
 
-  fun test1(s) = match(mkUnion(new Exact("F"), mkConcat(new In(["A", "B", "C", "D"]), question(mkUnion(new Exact("+"), new Exact("-"))))), s)
-
-  fun test2(s) =
-    match(mkConcat(new Star(mkUnion(new Exact("A"), new Exact("B"))), mkConcat(new Exact("A"), mkConcat(new Exact("A"), new Exact("B")))), s)
+  fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), question(new Union(new Exact("+"), new Exact("-"))))), s)
