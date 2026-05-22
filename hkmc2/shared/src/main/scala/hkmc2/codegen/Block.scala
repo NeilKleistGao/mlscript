@@ -610,8 +610,6 @@ sealed abstract class Defn:
         -- auxParams.flatMap(_.paramSyms)
   
 
-// NOTE: Setting isTailRec to false does not affect whether the function is optimized.
-// It only affects whether a warning is thrown if the function is not actually tailrec.
 final case class FunDefn(
     owner: Opt[InnerSymbol],
     sym: BlockMemberSymbol,
@@ -624,7 +622,8 @@ final case class FunDefn(
 ) extends Defn:
   val innerSym = N
   val asPath = Value.Ref(sym, S(dSym))
-  lazy val forceTailRec: Bool = annotations.contains(Annot.TailRec)
+  lazy val tailRec: Bool = annotations.contains(Annot.TailRec)
+  lazy val inline: Bool = annotations.contains(Annot.Inline)
   lazy val visibility: Visibility = annotations.collectFirst:
     case Annot.Modifier(Keyword.`private`) => Visibility.Private
     case Annot.Modifier(Keyword.`public`) => Visibility.Public
@@ -814,6 +813,8 @@ sealed abstract class Result extends AutoLocated:
     case _: Value => true
     case sel @ Select(q, n) =>
       q.isPure && sel.symbol.exists(_.isPure)
+    case c @ Call(fun, ass) if c.isKnownUnsaturatedCall =>
+      fun.isPure && ass.forall(_.forall(a => a.spread.isEmpty && a.value.isPure))
     case Call(Value.Ref(bs: BuiltinSymbol, _), ass) if bs.isPure =>
       ass.forall(_.forall(_.value.isPure))
     case Record(mut, args) => args.forall(_.value.isPure)
@@ -849,7 +850,7 @@ sealed abstract class Result extends AutoLocated:
   lazy val freeVars: Set[Local] = this match
     case Call(fun, argss) => fun.freeVars ++ argss.flatten.flatMap(_.value.freeVars).toSet
     case Instantiate(mut, cls, argss) => cls.freeVars ++ argss.flatten.flatMap(_.value.freeVars).toSet
-    case Select(qual, name) => qual.freeVars 
+    case Select(qual, name) => qual.freeVars
     case Lambda(params, body) => body.freeVars -- params.paramSyms
     case Tuple(mut, elems) => elems.flatMap(_.value.freeVars).toSet
     case Record(mut, args) =>
@@ -862,7 +863,7 @@ sealed abstract class Result extends AutoLocated:
   lazy val freeVarsLLIR: Set[Local] = this match
     case Call(fun, argss) => fun.freeVarsLLIR ++ argss.flatten.flatMap(_.value.freeVarsLLIR).toSet
     case Instantiate(mut, cls, argss) => cls.freeVarsLLIR ++ argss.flatten.flatMap(_.value.freeVarsLLIR).toSet
-    case Select(qual, name) => qual.freeVarsLLIR 
+    case Select(qual, name) => qual.freeVarsLLIR
     case Lambda(params, body) => body.freeVarsLLIR -- params.paramSyms
     case Tuple(mut, elems) => elems.flatMap(_.value.freeVarsLLIR).toSet
     case Record(mut, args) =>
@@ -888,7 +889,12 @@ type Local = Symbol
  * regardless of whether the check for effect is inserted or not.
  * Note that the check for effect is inserted during HandlerLowering and setting this to true
  * after handler is lowered does not have any effect on the code generation. */
-case class Call(fun: Path, argss: NELs[Ls[Arg]])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result
+case class Call(fun: Path, argss: NELs[Ls[Arg]])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result:
+  lazy val isKnownUnsaturatedCall: Bool =
+    fun.targetSymbol match
+    case S(ts: TermSymbol) =>
+      ts.defn.exists(td => argss.lengthCompare(td.params.length) < 0)
+    case _ => false
 
 case class Instantiate(mut: Bool, cls: Path, argss: Ls[Ls[Arg]]) extends Result
 
