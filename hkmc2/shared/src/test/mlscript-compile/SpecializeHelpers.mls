@@ -468,10 +468,6 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
   let unkShape = splitRes.unkShape
   let knownMapArr = [...knownMap.entries()]
   let isRet = xOpt is None
-  fun decayReceiverSet(ss: ShapeSet) =
-    let decayed = decayShapeSet(ss.shapeset)
-    if decayed.size == ss.shapeset.size then ss
-    else liftMany(decayed.values().toArray())
 
   if knownMap.size is 
     0 and
@@ -484,7 +480,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
     1 and unkShape.isEmpty() and
       // If the object is certainly a known class, generate the generated method call directly without pattern matching
       let C_i = knownMapArr.0.0
-      let ss_i = decayReceiverSet(knownMapArr.0.1)
+      let ss_i = knownMapArr.0.1
       let genMap = getClassGenMap(C_i.value)
       let f_gen = genMap.get(f)
       let ret = f_gen(ss_i)(...argShapes)
@@ -499,7 +495,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
     else
       let armsRet = knownMapArr.map(entry =>
         let C_i = entry.0
-        let ss_i = decayReceiverSet(entry.1)
+        let ss_i = entry.1
         let genMap = getClassGenMap(C_i.value)
         let f_gen = genMap.get(f)
         let retData = f_gen(ss_i)(...argShapes)
@@ -621,7 +617,7 @@ fun buildShapeName(s: Shape): Str = if s is
   Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
   Class(sym, params) and params.length is
     0 then sym.name
-    else sym.name + "_" + params.map(buildShapeName).join("_")
+    else sym.name + "_" + params.map(buildShapeSetName).join("_")
   else throw Error("unknown shape when building shape name" + s.toString())
 
 fun buildShapeSetName(ss: ShapeSet): Str =
@@ -644,7 +640,9 @@ fun hasAllDynamicParams(isMethod, ps, shapes) =
 fun canMaterializeStaticShape(s: Shape) = if s is
   Lit(_) then true
   Arr(shapes) then shapes.every(x => x is Lit)
-  Class(_, fields) then fields.every(x => x is Lit)
+  Class(_, fields) then fields.every(field =>
+    staticSet(field) and field.values().every(canMaterializeStaticShape)
+  )
   else false
 
 fun canMaterializeStaticRet(ss: ShapeSet) =
@@ -824,7 +822,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         fun collectClasses(s) = if s is
           Class(sym, params) then
             ctx.valueNameCtx.set(getActualClass(sym.value), sym)
-            params.forEach(collectClasses)
+            params.forEach(_.values().forEach(collectClasses))
           Arr(shapes) then
             shapes.forEach(collectClasses)
           else ()
@@ -856,7 +854,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 fun mergeCtorFields(ctx: Ctx, ss: ShapeSet) =
   ss.values().forEach(s => if s is
     Class(sym, fields) and sym.paramsOpt is Some(params) then
-      params.forEach((p, i, _) => ctx.mergeValDefn(p.sym.name, lift(fields.(i))))
+      params.forEach((p, i, _) => ctx.mergeValDefn(p.sym.name, fields.(i)))
     else ()
   )
 

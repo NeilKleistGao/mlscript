@@ -1,11 +1,13 @@
 import "./Block.mls"
 import "./Option.mls"
 import "./CachedHash.mls"
+import "./ShapeSet.mjs"
 
 open Block { Literal, ConcreteClassSymbol, isPrimitiveType, isPrimitiveTypeOf }
 open Option
 
 type Shape = Shape.Shape
+type ShSet = ShapeSet.ShapeSet
 
 module Shape with...
 
@@ -16,21 +18,21 @@ class Shape extends CachedHash with
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[Shape])
-    Class(val sym: ConcreteClassSymbol, val fields: Array[Shape]) // TODO: track the auxParams as well
+    Class(val sym: ConcreteClassSymbol, val fields: Array[ShSet]) // TODO: track the auxParams as well
 
 fun show(s: Shape) =
   if s is
     Dyn then "Dyn"
     Lit(lit) then "Lit(" + printer.showLiteral(lit) + ")"
     Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
-    Class(sym, fields) then "Class(" + printer.showSymbol(sym) + ", {" + [...fields.entries()].map(e => e.0 + ": " + show(e.1)).join(", ") + "})" 
+    Class(sym, fields) then "Class(" + printer.showSymbol(sym) + ", {" + [...fields.entries()].map(e => e.0 + ": " + e.1.toString()).join(", ") + "})" 
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
     [Class(ConcreteClassSymbol(_, _, paramsOpt, auxParams, _), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
       paramsSymb.map(_.sym.name).indexOf(n) is
         -1 then []
-        n then [params.(n)]
+        n then params.(n).values()
     [Class(ConcreteClassSymbol, p), Dyn] then [Dyn()]
     [Dyn, Lit(n)] and 
       n is Str then [Dyn()]
@@ -48,7 +50,10 @@ fun static(s: Shape) =
   if s is
     Dyn then false
     Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
-    Class(_, params) then params.every(static)
+    Class(_, params) then params.every(field =>
+      let values = field.values()
+      values.length is 1 and static(values.0)
+    )
     Arr(shapes) then shapes.every(static)
 
 open Block { Case }
@@ -57,7 +62,7 @@ fun silh(p: Case): Shape = if p is
   Block.Lit(l) then Lit(l)
   Block.Cls(clsSymb, path) then
     let paramsSize = if clsSymb.paramsOpt is Some(params) then params.length else 0
-    Class(clsSymb, Array(paramsSize).fill(Dyn()))
+    Class(clsSymb, Array(paramsSize).fill(ShapeSet.mkDyn()))
   Block.Tup(n) then Arr(Array(n).fill(Dyn()))
 
 fun getActualClass(c) = if not (c."class" is undefined) then c.class else c

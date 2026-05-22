@@ -68,7 +68,7 @@ selSet(mkDyn(), mkLit(5))
 class A(val a, val b)
 let aSym = ConcreteClassSymbol("A", A, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false)
 
-let a = Class(aSym, [Lit(42), Lit("c")])
+let a = Class(aSym, [mkLit(42), mkLit("c")])
 let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)])])
 selSet(x, liftMany([Lit("a"), Lit(2)]))
 //│ = {Dyn()}
@@ -80,7 +80,7 @@ selSet(x, liftMany([Lit("a"), Lit(2)]))
 //│     [],
 //│     false
 //│   ),
-//│   [Lit(42), Lit("c")]
+//│   [{Lit(42)}, {Lit("c")}]
 //│ )
 //│ x = {Dyn()}
 
@@ -88,6 +88,9 @@ selSet(lift(Arr([Dyn(), Lit(1), a])), mkLit(1))
 //│ = {Lit(1)}
 
 // union
+mkClass(aSym, [union2(mkLit(42), mkLit(43)), union2(mkLit("c"), mkLit("d"))])
+//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42),Lit(43)}, {Lit("c"),Lit("d")}])}
+
 
 let x = liftMany([Lit(1), Lit(2)])
 let y = liftMany([Arr([Lit(2)]), Lit(1), Arr([Lit(1)])])
@@ -105,7 +108,7 @@ filterSet(mkDyn(), Block.Tup(2))
 //│ = {Arr([Dyn(), Dyn()])}
 
 let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()]), Arr([Lit(1), Lit(2), Lit(3)]), a])
-//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [Lit(42), Lit("c")]),Lit(1),Lit(null)}
+//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}]),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
@@ -115,7 +118,7 @@ filterSet(filterShapes, Block.Lit(1))
 assert(filterSet(filterShapes, Block.Lit(2)).isEmpty())
 
 filterSet(filterShapes, Block.Cls(aSym, undefined))
-//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [Lit(42), Lit("c")])}
+//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}])}
 
 filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
 //│ = {Lit(1)}
@@ -197,7 +200,7 @@ sop(ctx, selPath)
 //│ C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false)
 //│ ctx = Ctx(
 //│   Map(1) {
-//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false), [Lit("pass")])}
+//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false), [{Lit("pass")}])}
 //│   },
 //│   Map(0) {},
 //│   Map(0) {},
@@ -237,7 +240,7 @@ sor(Ctx.empty(), inst)
 //│     ),
 //│     [Arg(ValueLit(123))]
 //│   ),
-//│   {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [], false), [Lit(123)])}
+//│   {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [], false), [{Lit(123)}])}
 //│ ]
 //│ c = ConcreteClassSymbol(
 //│   "C",
@@ -385,7 +388,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.386: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
+//│ ║  l.389: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M, false))

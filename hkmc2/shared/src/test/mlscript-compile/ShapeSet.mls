@@ -36,45 +36,11 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 module ShapeSet with
   fun empty = ShapeSet(new Map)
 
-let classMergeThreshold = 8
-
-fun mergeClassShapeGroup(group: Array[Shape]) =
-  let first = group.0
-  if first is Class(sym, fields) then
-    Class(sym, fields.map((field, i, _) =>
-      if group.every(s => if s is Class(_, otherFields) then otherFields.(i).hash() == field.hash() else false) then field
-      else Dyn()
-    ))
-  else first
-
-fun decayShapeSet(shapeMap: Map[String, Shape]) =
-  let byClass = new Map()
-  shapeMap.values().toArray().forEach(s => if s is
-    Class(sym, _) then
-      let cls = if sym.value is undefined then sym else Shape.getActualClass(sym.value)
-      if byClass.has(cls) then do byClass.get(cls).push(s)
-      else do byClass.set(cls, [s])
-    else ()
-  )
-  let removed = new Set()
-  let merged = []
-  byClass.forEach(group =>
-    if group.length > 1 and group.0 is Class(_, fields) do
-      if group.length > classMergeThreshold do
-        group.forEach(s => removed.add(s.hash()))
-        merged.push(mergeClassShapeGroup(group))
-  )
-  if removed.size == 0 then shapeMap
-  else
-    let entries = shapeMap.entries().toArray().filter(e => not removed.has(e.0))
-    merged.forEach(s => entries.push([s.hash(), s]))
-    new Map(entries)
-
 fun makeShapeSet(entries) =
   let shapeMap = new Map(entries)
   let dyn = Dyn()
   if shapeMap.has(dyn.hash()) then ShapeSet(new Map([[dyn.hash(), dyn]]))
-  else ShapeSet(decayShapeSet(shapeMap))
+  else ShapeSet(shapeMap)
 
 fun lift(s: Shape) = makeShapeSet([[s.hash(), s]])
 
@@ -110,11 +76,7 @@ fun mkArr(shapes: Array[ShapeSet]) =
     |> liftMany
 
 fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) = 
-  params
-    .map(_.shapeset.values().toArray())
-    |> prod
-    .map(Class(sym, _))
-    |> liftMany
+  lift(Class(sym, params))
 
 fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], psOpt: Option[Array[Array[Param]]]) =
   if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams, redir) then
@@ -129,11 +91,7 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
     )
     let params = entries.map(_.1)
     let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams, redir)
-    params 
-      .map(_.shapeset.values().toArray())
-      |> prod
-      .map(Class(newSym, _))
-      |> liftMany
+    lift(Class(newSym, params))
 
 fun filterSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
 
@@ -213,7 +171,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOf))
+    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOfSet))
     else throw Error("Unknown shape: " + s)
 
 fun valOfSet(s : ShapeSet) = 
@@ -241,7 +199,7 @@ private fun shape2path(s: Shape, allocs) =
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
       [fullBlock, Block.ValueRef(tupSym)]
     Class(sym, fields) then
-      let mapped = fields.map(shape2path(_, allocs))
+      let mapped = fields.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)
       blocks.reverse()
       let paths = mapped.map(_.1) 
