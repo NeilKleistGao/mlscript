@@ -641,7 +641,7 @@ fun canMaterializeStaticShape(s: Shape) = if s is
   Lit(_) then true
   Arr(shapes) then shapes.every(x => x is Lit)
   Class(_, fields) then fields.every(field =>
-    staticSet(field) and field.values().every(canMaterializeStaticShape)
+    staticSet(field) and field.values().every(x => x is Lit)
   )
   else false
 

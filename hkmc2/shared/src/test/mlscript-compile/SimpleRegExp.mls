@@ -9,7 +9,7 @@ module SeqHelper with
   fun len(s) = s.length
   fun tail(arr) = arr.slice(1)
   fun eq(arr1, arr2) =
-    arr1.length === arr2.length and arr1.every((v, i) => v === arr2.(i))
+    arr1.length == arr2.length and arr1.every((v, i) => v == arr2.(i))
   fun dedup(arr) =
     let res = []
     arr.forEach of
@@ -20,7 +20,7 @@ module SeqHelper with
   fun setEq(s1, s2) =
     s1.sort()
     s2.sort()
-    s1.length === s2.length and s1.every((v, i) => v.eq(s2.(i)))
+    s1.length == s2.length and s1.every((v, i) => v.eq(s2.(i)))
 
 module CharSet with
   fun alphabet() = [
@@ -71,8 +71,8 @@ module SimpleRegExp with
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) =
-      if other is Exact(ch') then ch === ch' else false
-    fun startsWith(c) = ch === c
+      if other is Exact(ch') then ch == ch' else false
+    fun startsWith(c) = ch == c
 
   class Any() extends RegExp with
     fun derive(c) = new Empty()
@@ -97,8 +97,13 @@ module SimpleRegExp with
   fun mkUnion(arr) =
     if arr is
       [p] then p
+      [Nothing(), p2] then p2
+      [p1, Nothing()] then p1
       [p1, p2] then new Union(p1, p2)
-      else new Union(arr.0, mkUnion(tail(arr)))
+      else
+        if arr.0 is
+          Nothing() then mkUnion(tail(arr))
+          else new Union(arr.0, mkUnion(tail(arr)))
 
   class Union(val p1, val p2) extends RegExp with
     fun derive(c) = new Union(p1.derive(c), p2.derive(c))
@@ -139,13 +144,18 @@ module SimpleRegExp with
         new Union(new Concat(p1', p2), p2.derive(c))
       else new Concat(p1', p2)
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
-    fun normalize() = new Concat(p1.normalize(), p2.normalize())
+    fun normalize() =
+      let p1' = p1.normalize()
+      if p1' is
+        Empty() then p2.normalize()
+        Nothing() then p1'
+        else new Concat(p1', p2.normalize())
     fun eq(other) =
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
 
   fun nTimes(r, i) =
-    if i === 1 then r
+    if i == 1 then r
     else new Concat(r, nTimes(r, i - 1))
 
   class Star(val p) extends RegExp with
@@ -159,7 +169,7 @@ module SimpleRegExp with
   fun plus(r) = new Concat(r, new Star(r))
 
   fun matchImpl(p, s, acc) =
-    if len(s) === 0 then
+    if len(s) == 0 then
       if p.canBeEmpty() then new Some(acc)
       else new None
     else
@@ -172,7 +182,7 @@ module SimpleRegExp with
     matchImpl(p, s, "")
 
   fun matchAllImpl(p, s, res) =
-    if len(s) === 0 then res
+    if len(s) == 0 then res
     else
       if match(p, s) is
         Some(ss) then

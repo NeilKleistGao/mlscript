@@ -97,8 +97,13 @@ staged module StagedRegExp with
   fun mkUnion(arr) =
     if arr is
       [p] then p
+      [Nothing(), p2] then p2
+      [p1, Nothing()] then p1
       [p1, p2] then new Union(p1, p2)
-      else new Union(arr.0, mkUnion(tail(arr)))
+      else
+        if arr.0 is
+          Nothing() then mkUnion(tail(arr))
+          else new Union(arr.0, mkUnion(tail(arr)))
 
   staged class Union(val p1, val p2) extends RegExp with
     fun derive(c) = new Union(p1.derive(c), p2.derive(c))
@@ -138,7 +143,12 @@ staged module StagedRegExp with
       if p1.canBeEmpty() then new Union(new Concat(p1', p2), p2.derive(c))
       else new Concat(p1', p2)
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
-    fun normalize() = new Concat(p1.normalize(), p2.normalize())
+    fun normalize() =
+      let p1' = p1.normalize()
+      if p1' is
+        Empty() then p2.normalize()
+        Nothing() then p1'
+        else new Concat(p1', p2.normalize())
     fun eq(other) =
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
