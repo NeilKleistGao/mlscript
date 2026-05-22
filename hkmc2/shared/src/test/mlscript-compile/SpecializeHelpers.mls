@@ -659,14 +659,21 @@ fun specializeName(cache, funName, isMethod, ps, shapes) =
   else cache.freshName(funName)
 
 fun rebindSelfPath(owner, selfSym, p) = if p is
+  ValueRef(sym) and sym == owner then ValueRef(selfSym)
   Select(ValueRef(sym), name) and sym == owner then Select(ValueRef(selfSym), name)
   Select(qual, name) then Select(rebindSelfPath(owner, selfSym, qual), name)
   DynSelect(qual, fld, arrayIdx) then DynSelect(rebindSelfPath(owner, selfSym, qual), rebindSelfPath(owner, selfSym, fld), arrayIdx)
   else p
 
+fun rebindSelfClassPath(owner, selfSym, p) = if p is
+  Select(ValueRef(sym), name) and sym == owner then Select(ValueRef(selfSym), name)
+  Select(qual, name) then Select(rebindSelfClassPath(owner, selfSym, qual), name)
+  DynSelect(qual, fld, arrayIdx) then DynSelect(rebindSelfClassPath(owner, selfSym, qual), rebindSelfPath(owner, selfSym, fld), arrayIdx)
+  else p
+
 fun rebindSelfResult(owner, selfSym, r) = if r is
   Call(f, args) then Call(rebindSelfPath(owner, selfSym, f), args.map(arg => Arg(rebindSelfPath(owner, selfSym, arg.value))))
-  Instantiate(cls, args) then Instantiate(rebindSelfPath(owner, selfSym, cls), args.map(arg => Arg(rebindSelfPath(owner, selfSym, arg.value))))
+  Instantiate(cls, args) then Instantiate(rebindSelfClassPath(owner, selfSym, cls), args.map(arg => Arg(rebindSelfPath(owner, selfSym, arg.value))))
   Tuple(elems) then Tuple(elems.map(arg => Arg(rebindSelfPath(owner, selfSym, arg.value))))
   Path then rebindSelfPath(owner, selfSym, r)
 

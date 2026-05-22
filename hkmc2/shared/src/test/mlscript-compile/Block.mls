@@ -183,6 +183,7 @@ class Printer(val owner: Opt[Symbol]) with
           showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
+      ValueRef(sym) and owner is Some(owner) and sym == owner and owner is ConcreteClassSymbol then "this"
       ValueRef(l) then showSymbol(l)
       ValueLit(lit) then showLiteral(lit)
 

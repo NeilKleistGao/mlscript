@@ -51,16 +51,16 @@ staged module StagedRegExp with
     fun startsWith(c)
 
   staged class Nothing() extends RegExp with
-    fun derive(c) = new Nothing()
+    fun derive(c) = this
     fun canBeEmpty() = false
-    fun normalize() = new Nothing()
+    fun normalize() = this
     fun eq(other) = other is Nothing
     fun startsWith(c) = false
 
   staged class Empty() extends RegExp with
     fun derive(c) = new Nothing()
     fun canBeEmpty() = true
-    fun normalize() = new Empty()
+    fun normalize() = this
     fun eq(other) = other is Empty
     fun startsWith(c) = false
 
@@ -69,7 +69,7 @@ staged module StagedRegExp with
       if startsWith(c) then new Empty()
       else new Nothing()
     fun canBeEmpty() = false
-    fun normalize() = new Exact(ch)
+    fun normalize() = this
     fun eq(other) =
       if other is Exact(ch') then ch == ch' else false
     fun startsWith(c) = ch == c
@@ -77,7 +77,7 @@ staged module StagedRegExp with
   staged class Any() extends RegExp with
     fun derive(c) = new Empty()
     fun canBeEmpty() = false
-    fun normalize() = new Any()
+    fun normalize() = this
     fun eq(other) = other is Any()
     fun startsWith(c) = true
 
@@ -85,7 +85,7 @@ staged module StagedRegExp with
     fun derive(c) =
       if startsWith(c) then new Empty() else new Nothing()
     fun canBeEmpty() = false
-    fun normalize() = new Not(chars)
+    fun normalize() = this
     fun eq(other) =
       if other is Not(chars') then arrEq(chars, chars') else false
     fun startsWith(c) = not has(chars, c)
@@ -101,9 +101,7 @@ staged module StagedRegExp with
       else new Union(arr.0, mkUnion(tail(arr)))
 
   staged class Union(val p1, val p2) extends RegExp with
-    fun derive(c) =
-      let p = new Union(p1.derive(c).normalize(), p2.derive(c).normalize())
-      p.normalize()
+    fun derive(c) = new Union(p1.derive(c), p2.derive(c))
     fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
     fun flat() =
       let p1' = if p1 is Union then p1.flat() else [p1]
@@ -119,13 +117,13 @@ staged module StagedRegExp with
         else false
     fun startsWith(c) = p1.startsWith(c) || p2.startsWith(c)
 
-  fun question(r) = (new Union(r, new Empty())).normalize()
+  fun question(r) = new Union(r, new Empty())
 
   staged class In(val chars) extends RegExp with
     fun derive(c) =
       if startsWith(c) then new Empty() else new Nothing()
     fun canBeEmpty() = false
-    fun normalize() = new In(chars)
+    fun normalize() = this
     fun eq(other) =
       if other is In(chars') then arrEq(chars, chars') else false
     fun startsWith(c) = has(chars, c)
@@ -137,9 +135,8 @@ staged module StagedRegExp with
   staged class Concat(val p1, val p2) extends RegExp with
     fun derive(c) =
       let p1' = p1.derive(c)
-      if p1.canBeEmpty() then
-        (new Union(new Concat(p1', p2), p2.derive(c))).normalize()
-      else (new Concat(p1', p2)).normalize()
+      if p1.canBeEmpty() then new Union(new Concat(p1', p2), p2.derive(c))
+      else new Concat(p1', p2)
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
     fun normalize() = new Concat(p1.normalize(), p2.normalize())
     fun eq(other) =
@@ -151,14 +148,14 @@ staged module StagedRegExp with
     else new Concat(r, nTimes(r, i - 1))
 
   staged class Star(val p) extends RegExp with
-    fun derive(c) = new Concat(p.derive(c).normalize(), new Star(p))
+    fun derive(c) = new Concat(p.derive(c), new Star(p))
     fun canBeEmpty() = true
     fun normalize() = new Star(p.normalize())
     fun eq(other) =
       if other is Star(p') then p.eq(p') else false
     fun startsWith(c) = p.startsWith(c)
 
-  fun plus(r) = (new Concat(r, new Star(r))).normalize()
+  fun plus(r) = new Concat(r, new Star(r))
 
   fun matchImpl(p, s, acc) =
     if len(s) == 0 then
