@@ -12,13 +12,7 @@ f(2)
 :sjs
 let f = foo(1, _, _)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f2, f3;
-//│ f3 = function f(_0, _1) {
-//│   let inlinedVal;
-//│   inlinedVal = globalThis.Object.freeze([ 1, _0, _1 ]);
-//│   return inlinedVal
-//│ };
-//│ f2 = f3;
+//│ let f2, f3; f3 = function f(_0, _1) { return globalThis.Object.freeze([ 1, _0, _1 ]) }; f2 = f3;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = fun f
 
@@ -207,7 +201,7 @@ _ - _ of 1, 2
 :pe
 |> 1
 //│ ╔══[PARSE ERROR] Expected end of input; found literal instead
-//│ ║  l.208: 	|> 1
+//│ ║  l.202: 	|> 1
 //│ ╙──       	   ^
 //│ = fun pipeInto
 
@@ -215,7 +209,7 @@ _ - _ of 1, 2
 :re
 |> (1)
 //│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 1
-//│ ║  l.216: 	|> (1)
+//│ ║  l.210: 	|> (1)
 //│ ╙──       	   ^^^
 //│ ═══[RUNTIME ERROR] TypeError: f is not a function
 
@@ -233,14 +227,14 @@ _ - _ of 1, 2
 :sjs
 1 \ (_ - 2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let lambda39; lambda39 = (undefined, function (_0) { return _0 - 2 }); Predef.passTo(1, lambda39)
+//│ let lambda32; lambda32 = (undefined, function (_0) { return _0 - 2 }); Predef.passTo(1, lambda32)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun
 
 :sjs
 1 \ (_ - 2)()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let lambda40; lambda40 = (undefined, function (_0) { return _0 - 2 }); Predef.passTo(1, lambda40)()
+//│ let lambda33; lambda33 = (undefined, function (_0) { return _0 - 2 }); Predef.passTo(1, lambda33)()
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = -1
 
@@ -253,13 +247,13 @@ _ - _ of 1, 2
 :w
 let f = if _ then 1 else 0
 //│ ╔══[WARNING] This catch-all clause makes the following branches unreachable.
-//│ ║  l.254: 	let f = if _ then 1 else 0
+//│ ║  l.248: 	let f = if _ then 1 else 0
 //│ ║         	             ^^^^^^
 //│ ╟── This branch is unreachable.
-//│ ║  l.254: 	let f = if _ then 1 else 0
+//│ ║  l.248: 	let f = if _ then 1 else 0
 //│ ╙──       	                    ^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f14; f14 = 1;
+//│ let f13; f13 = 1;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = 1
 
@@ -269,8 +263,8 @@ fun f(x) =
     0 then 1
     _ then 2
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f15;
-//│ f15 = function f(x3) {
+//│ let f14;
+//│ f14 = function f(x3) {
 //│   let scrut;
 //│   scrut = Predef.equals(x3, 0);
 //│   if (scrut === true) { return 1 }

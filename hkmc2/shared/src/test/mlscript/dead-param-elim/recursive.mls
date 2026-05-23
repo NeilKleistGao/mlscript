@@ -163,7 +163,7 @@ ping(5)(99)
 //│ dead-param-elim > prodfun pong$worker#0 @ <root> -> eliminable: {1}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let ping⁴, pong⁴, pong$worker⁰, ping$worker⁰, inlinedVal;
+//│ let ping⁴, pong⁴, pong$worker⁰, ping$worker⁰;
 //│ @inline @private
 //│ define ping⁴ as fun ping⁵(n)(unused) {
 //│   return ping$worker¹(n)
@@ -176,10 +176,8 @@ ping(5)(99)
 //│     true =>
 //│       return 0
 //│     else
-//│       let inlinedVal1;
 //│       set tmp = -⁰(n, 1);
-//│       set inlinedVal1 = pong$worker¹(tmp);
-//│       return inlinedVal1
+//│       return pong$worker¹(tmp)
 //│   end
 //│ };
 //│ @inline @private
@@ -194,14 +192,11 @@ ping(5)(99)
 //│     true =>
 //│       return 0
 //│     else
-//│       let inlinedVal1;
 //│       set tmp = -⁰(n, 1);
-//│       set inlinedVal1 = ping$worker¹(tmp);
-//│       return inlinedVal1
+//│       return ping$worker¹(tmp)
 //│   end
 //│ };
-//│ set inlinedVal = ping$worker¹(5);
-//│ inlinedVal
+//│ ping$worker¹(5)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
 

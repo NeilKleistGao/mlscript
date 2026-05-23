@@ -1,63 +1,87 @@
 :js
 
-// * TODO: take `private` into accoutn and inline these single-use functions regardless of threshold
 
-
-// Test: Curried function with two parameter lists. Properly fully inlined.
+// * This can be made a tail call
 :soir
-private fun add(x)(y) = x + y
-add(1)(2)
+fun foo() =
+  let x = hide(42)
+  x
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let add⁰; @inline @private define add⁰ as fun add¹(x)(y) { return +⁰(x, y) }; 3
+//│ let foo⁰; define foo⁰ as fun foo¹() { return Predef⁰.hide⁰(42) }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 3
 
-// Test: Function returning a lambda, called with 2 arg lists at use site.
-// We properly inline the outer function, but not yet the inner lambda.
-:inlineThreshold 100
+// * The call should NOT be moved into the conditional, here, as it is impure
 :soir
-private fun mkAdder(x) =
-  (y) => x + y
-mkAdder(10)(20)
+fun foo() =
+  let x = hide(42)
+  if maybe then
+    x
+  else
+    0
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let mkAdder⁰;
-//│ @private
-//│ define mkAdder⁰ as fun mkAdder¹(x) {
-//│   let lambda;
-//│   @private
-//│   define lambda as fun lambda⁰(y) { return +⁰(x, y) };
-//│   return lambda⁰
+//│ let foo²;
+//│ define foo² as fun foo³() {
+//│   let x, scrut;
+//│   set x = Predef⁰.hide⁰(42);
+//│   set scrut = Predef⁰.maybe⁰;
+//│   match scrut
+//│     true =>
+//│       return x
+//│     else
+//│       return 0
+//│   end
 //│ };
-//│ 30
+//│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 30
 
-// Test: Partial application — call with fewer arg lists than param lists
-:soir
-private fun add2(x)(y) = x + y
-let f = add2(10)
-f(5)
-//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let add2⁰, f⁰;
-//│ @inline @private
-//│ define add2⁰ as fun add2¹(x)(y) { return +⁰(x, y) };
-//│ set f⁰ = add2¹(10);
-//│ 15
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 15
-//│ f = fun
 
-// Test: Three parameter lists — all properly inlined
-:inlineThreshold 100
+fun bar(x)(y) = x + y
+
+// * This `bar(42)` call is pure (because unsaturated) and can be moved into tail position
 :soir
-private fun triple(x)(y)(z) = x + y + z
-triple(1)(2)(3)
+:noInline
+fun foo() =
+  let x = bar(42)
+  print("Hello")
+  if maybe then
+    x
+  else
+    0
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let triple⁰;
-//│ @inline @private
-//│ define triple⁰ as fun triple¹(x)(y)(z) { let tmp; set tmp = +⁰(x, y); return +⁰(tmp, z) };
-//│ 6
+//│ let foo⁴;
+//│ define foo⁴ as fun foo⁵() {
+//│   let scrut;
+//│   do Predef⁰.print⁰("Hello");
+//│   set scrut = Predef⁰.maybe⁰;
+//│   match scrut
+//│     true =>
+//│       return bar⁰(42)
+//│     else
+//│       return 0
+//│   end
+//│ };
+//│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 6
+
+// * This can still be made a tail call because the pure statement on the way is dropped
+:soir
+fun foo() =
+  let x = hide(42)
+  let y = bar(42)
+  x
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let foo⁶; define foo⁶ as fun foo⁷() { return Predef⁰.hide⁰(42) }; end
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+
+fun const(x)(y) = x
+
+:soir
+fun main =
+  let x
+  x = const(x)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let main⁰; define main⁰ as fun main¹() { let x; set x = const⁰(x); return runtime⁰.Unit⁰ }; end
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 

@@ -111,7 +111,7 @@ f(1, 2)
 f(1, 2, 3)
 f(1, 2, 3, 4)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f¹², c⁰, c¹, c², inlinedVal;
+//│ let f¹², c⁰, c¹, c²;
 //│ define f¹² as fun f¹³(a, b, ...c) {
 //│   let tmp;
 //│   set tmp = +⁰(a, b);
@@ -126,8 +126,7 @@ f(1, 2, 3, 4)
 //│ do Predef⁰.print⁰(c¹);
 //│ set c² = mut [3, 4];
 //│ do Predef⁰.print⁰(3);
-//│ set inlinedVal = Predef⁰.print⁰(c²);
-//│ inlinedVal
+//│ Predef⁰.print⁰(c²)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 3
 //│ > []
@@ -214,7 +213,7 @@ fun f1(a, b, c) = (a + b + c + 1) * 2
 @inline fun f(a)(b)(c) = f1(a, b, c)
 f(1)(2)(3)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f10, f11, inlinedVal1;
+//│ let f10, f11;
 //│ f11 = function f1(a, b, c3) {
 //│   let tmp8, tmp9, tmp10;
 //│   tmp8 = a + b;
@@ -222,11 +221,8 @@ f(1)(2)(3)
 //│   tmp10 = tmp9 + 1;
 //│   return tmp10 * 2
 //│ };
-//│ f10 = function f(a) {
-//│   return (b) => { return (c3) => { return f11(a, b, c3) } }
-//│ };
-//│ inlinedVal1 = 14;
-//│ inlinedVal1
+//│ f10 = function f(a) { return (b) => { return (c3) => { return f11(a, b, c3) } } };
+//│ 14
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 14
 
@@ -244,22 +240,20 @@ foo(1)(2)(3)
 //│ let foo⁰, lam$⁰, foo$worker⁰;
 //│ @inline @private
 //│ define lam$⁰ as fun lam$¹(x, y)(z) {
-//│   let inlinedVal, tmp;
+//│   let tmp;
 //│   set tmp = +⁰(x, y);
-//│   set inlinedVal = +⁰(tmp, z);
-//│   return inlinedVal
+//│   return +⁰(tmp, z)
 //│ };
 //│ @inline
 //│ define foo⁰ as fun foo¹(x)(y) {
 //│   return foo$worker¹(x, y)
 //│ };
 //│ define foo$worker⁰ as fun foo$worker¹(x, y) {
-//│   let lam$here, inlinedVal, tmp;
-//│   set lam$here = lam$¹(x, y);
+//│   let inlinedVal, tmp;
 //│   set tmp = +⁰(x, y);
 //│   set inlinedVal = +⁰(tmp, 4);
 //│   do Predef⁰.print⁰(inlinedVal);
-//│   return lam$here
+//│   return lam$¹(x, y)
 //│ };
 //│ do Predef⁰.print⁰(7);
 //│ 6
