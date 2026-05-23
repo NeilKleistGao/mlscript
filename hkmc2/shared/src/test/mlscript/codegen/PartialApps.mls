@@ -12,7 +12,13 @@ f(2)
 :sjs
 let f = foo(1, _, _)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f2, f3; f3 = function f(_0, _1) { return foo(1, _0, _1) }; f2 = f3;
+//│ let f2, f3;
+//│ f3 = function f(_0, _1) {
+//│   let inlinedVal;
+//│   inlinedVal = globalThis.Object.freeze([ 1, _0, _1 ]);
+//│   return inlinedVal
+//│ };
+//│ f2 = f3;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = fun f
 
@@ -201,7 +207,7 @@ _ - _ of 1, 2
 :pe
 |> 1
 //│ ╔══[PARSE ERROR] Expected end of input; found literal instead
-//│ ║  l.202: 	|> 1
+//│ ║  l.208: 	|> 1
 //│ ╙──       	   ^
 //│ = fun pipeInto
 
@@ -209,7 +215,7 @@ _ - _ of 1, 2
 :re
 |> (1)
 //│ ╔══[COMPILATION ERROR] Expected 2 arguments, got 1
-//│ ║  l.210: 	|> (1)
+//│ ║  l.216: 	|> (1)
 //│ ╙──       	   ^^^
 //│ ═══[RUNTIME ERROR] TypeError: f is not a function
 
@@ -247,10 +253,10 @@ _ - _ of 1, 2
 :w
 let f = if _ then 1 else 0
 //│ ╔══[WARNING] This catch-all clause makes the following branches unreachable.
-//│ ║  l.248: 	let f = if _ then 1 else 0
+//│ ║  l.254: 	let f = if _ then 1 else 0
 //│ ║         	             ^^^^^^
 //│ ╟── This branch is unreachable.
-//│ ║  l.248: 	let f = if _ then 1 else 0
+//│ ║  l.254: 	let f = if _ then 1 else 0
 //│ ╙──       	                    ^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let f14; f14 = 1;

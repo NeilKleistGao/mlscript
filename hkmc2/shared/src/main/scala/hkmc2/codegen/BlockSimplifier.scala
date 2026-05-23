@@ -616,8 +616,8 @@ class BlockSimplifier
                   case S(tsym: TermSymbol) =>
                     tsym.owner match
                     case S(sym: ClassSymbol) =>
-                      sym.defn match
-                      case S(cls: ClassLikeDef)
+                      sym.irClsLikeDefn match
+                      case S(cls: ClsLikeDefn)
                         if cls.auxParams.isEmpty
                         => Set.single(sym)
                       case _ => giveUp
@@ -626,8 +626,8 @@ class BlockSimplifier
                 case Instantiate(mut, cls, args) =>
                   cls.targetSymbol match
                   case S(sym: ClassSymbol) =>
-                    sym.defn match
-                    case S(cls: ClassLikeDef)
+                    sym.irClsLikeDefn match
+                    case S(cls: ClsLikeDefn)
                       // if the instantiation call is saturated
                       if cls.auxParams.isEmpty || cls.paramsOpt.isEmpty && cls.auxParams.sizeCompare(1) <= 0
                       => Set.single(sym)
@@ -1016,6 +1016,11 @@ class BlockSimplifier
         
         def analyze(blk: Block): InlinerMap =
           applyBlock(blk)
+          map = map ++
+            useCnt.keysIterator.filterNot(map.contains).flatMap: sym =>
+              sym.irDefn.collect:
+                case fd: FunDefn =>
+                  sym -> InlinerFunInfo(fd, fd.owner.nonEmpty, 0, true, false)
           map.foreach: (sym, info) =>
             info.useCount = useCnt(sym)
             info.disallowElimination = info.disallowElimination || disallowElimination(sym)
@@ -1102,7 +1107,7 @@ class BlockSimplifier
         
         override def applyBlock(blk: Block) =
           blk match
-          case Define(defn: FunDefn, rest) if m(defn.dSym).canBeInlineEliminated =>
+          case Define(defn: FunDefn, rest) if m.get(defn.dSym).exists(_.canBeInlineEliminated) =>
             log(s"Inline elimination: ${defn.dSym}")
             registerChange(s"rm inline-eliminated function ${defn.dSym.showDbg}")
             applyBlock(rest)

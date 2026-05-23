@@ -151,7 +151,7 @@ let Predef1;
     }
   }
   static equals(a, b) {
-    let scrut, scrut1, scrut2, scrut3, ac, scrut4, md, scrut5, scrut6, scrut7, scrut8, scrut9, scrut10, lambda, lambda1, tmp, tmp1;
+    let scrut, scrut1, scrut2, ac, scrut3, md, scrut4, scrut5, scrut6, scrut7, scrut8, scrut9, lambda, lambda1, tmp, tmp1;
     scrut = a === b;
     if (scrut === true) {
       return true
@@ -165,45 +165,40 @@ let Predef1;
             tmp2 = runtime.safeCall(b.at(i));
             return Predef.equals(a1, tmp2)
           });
-          scrut2 = runtime.safeCall(a.every(lambda));
-          if (scrut2 === true) {
-            return true
-          }
-          return false;
+          return runtime.safeCall(a.every(lambda))
         }
-        return false;
       }
     }
-    scrut3 = a !== undefined;
-    if (scrut3 === true) {
-      scrut10 = a !== null;
-      if (scrut10 === true) {
-        scrut9 = b !== undefined;
-        if (scrut9 === true) {
-          scrut8 = b !== null;
-          if (scrut8 === true) {
+    scrut2 = a !== undefined;
+    if (scrut2 === true) {
+      scrut9 = a !== null;
+      if (scrut9 === true) {
+        scrut8 = b !== undefined;
+        if (scrut8 === true) {
+          scrut7 = b !== null;
+          if (scrut7 === true) {
             ac = a.constructor;
-            scrut4 = ac !== undefined;
-            if (scrut4 === true) {
-              scrut7 = ac === b.constructor;
-              if (scrut7 === true) {
+            scrut3 = ac !== undefined;
+            if (scrut3 === true) {
+              scrut6 = ac === b.constructor;
+              if (scrut6 === true) {
                 md = ac[Predef.Symbols.definitionMetadata];
-                scrut5 = md !== undefined;
-                if (scrut5 === true) {
+                scrut4 = md !== undefined;
+                if (scrut4 === true) {
                   lambda1 = (undefined, function (field) {
-                    let scrut11, scrut12;
-                    scrut11 = field !== null;
-                    if (scrut11 === true) {
-                      scrut12 = Predef.equals(a[field], b[field]);
-                      if (scrut12 === true) {
+                    let scrut10, scrut11;
+                    scrut10 = field !== null;
+                    if (scrut10 === true) {
+                      scrut11 = Predef.equals(a[field], b[field]);
+                      if (scrut11 === true) {
                         return true
                       }
                       return false;
                     }
                     return false;
                   });
-                  scrut6 = runtime.safeCall(md[2].every(lambda1));
-                  if (scrut6 === true) {
+                  scrut5 = runtime.safeCall(md[2].every(lambda1));
+                  if (scrut5 === true) {
                     tmp = true;
                   } else {
                     tmp = false;

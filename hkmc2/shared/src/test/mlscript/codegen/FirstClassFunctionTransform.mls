@@ -502,26 +502,37 @@ foo(1)
 
 fun foo(f) = f("abc")
 
-// FIXME: should output "abc"
+print("abc")
+//│ > abc
+
+// TODO: should be able to find this info
+:e
 foo(print)
-//│ > 
+//│ ╔══[COMPILATION ERROR] Cannot get print's parameter list.
+//│ ║  l.510: 	foo(print)
+//│ ╙──       	    ^^^^^
+//│ ═══[RUNTIME ERROR] Error: Function 'call' expected 0 arguments but got 1
+
+foo(print(_))
+//│ > abc
 
 :fixme
 :sir
 :expect ["abc"]
 foo(tuple)
+//│ ╔══[COMPILATION ERROR] Cannot get tuple's parameter list.
+//│ ║  l.522: 	foo(tuple)
+//│ ╙──       	    ^^^^^
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let Function$¹⁴, tmp;
 //│ define Function$¹⁴ as class Function$¹⁵ {
-//│   method call¹⁴ = fun call¹⁵(...xs) {
-//│     return Predef⁰.tuple⁰()
-//│   }
+//│   method call¹⁴ = fun call¹⁵() { return Predef⁰.tuple⁰() }
 //│ };
 //│ set tmp = new Function$¹⁵();
 //│ foo⁷(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ ═══[RUNTIME ERROR] Expected: '["abc"]', got: '[]'
-//│ = []
+//│ ═══[RUNTIME ERROR] Error: Function 'call' expected 0 arguments but got 1
+//│ ═══[RUNTIME ERROR] Expected: '["abc"]', got: 'undefined'
 
 
 if true is true then print("true")

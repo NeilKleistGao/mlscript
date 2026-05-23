@@ -236,27 +236,26 @@ fun foo(x)(y) =
   lam
 foo(1)(2)(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let foo⁰, lam$⁰, foo$worker⁰, tmp, lam$here;
+//│ let foo⁰, lam$⁰, foo$worker⁰;
 //│ define lam$⁰ as fun lam$¹(x, y)(z) {
-//│   let inlinedVal, tmp1;
-//│   set tmp1 = +⁰(x, y);
-//│   set inlinedVal = +⁰(tmp1, z);
+//│   let inlinedVal, tmp;
+//│   set tmp = +⁰(x, y);
+//│   set inlinedVal = +⁰(tmp, z);
 //│   return inlinedVal
 //│ };
 //│ define foo⁰ as fun foo¹(x)(y) {
 //│   return foo$worker¹(x, y)
 //│ };
 //│ define foo$worker⁰ as fun foo$worker¹(x, y) {
-//│   let tmp1, lam$here1;
-//│   set lam$here1 = lam$¹(x, y);
-//│   set tmp1 = lam$here1(4);
-//│   do Predef⁰.print⁰(tmp1);
-//│   return lam$here1
+//│   let lam$here, inlinedVal, tmp;
+//│   set lam$here = lam$¹(x, y);
+//│   set tmp = +⁰(x, y);
+//│   set inlinedVal = +⁰(tmp, 4);
+//│   do Predef⁰.print⁰(inlinedVal);
+//│   return lam$here
 //│ };
-//│ set lam$here = lam$¹(1, 2);
-//│ set tmp = lam$here(4);
-//│ do Predef⁰.print⁰(tmp);
-//│ lam$here(3)
+//│ do Predef⁰.print⁰(7);
+//│ 6
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 7
 //│ = 6
