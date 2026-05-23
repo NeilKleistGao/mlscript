@@ -580,6 +580,7 @@ object HandleBlock:
 sealed abstract class Defn:
   val defnSym: Opt[DefinitionSymbol[?]]
   val sym: BlockMemberSymbol
+  val configOverride: Opt[Config]
   val annotations: Ls[Annot]
   def isStaged: Bool = annotations.exists:
     case Annot.Modifier(Keyword.`staged`) => true
