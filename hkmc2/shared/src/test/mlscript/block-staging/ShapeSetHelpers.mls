@@ -28,7 +28,7 @@ mkDyn() == mkDyn()
 //│ = false
 
 mkArr([mkLit(0)])
-//│ = {Arr([Lit(0)])}
+//│ = {Arr([{Lit(0)}])}
 
 assert(mkBot().isEmpty())
 
@@ -40,7 +40,7 @@ Shape.static(Shape.Lit("Hi"))
 valOf(Dyn())
 //│ ═══[RUNTIME ERROR] Error: valOf on Dyn
 
-valOf(Arr([Lit(1), Arr([Lit(2), Lit(3)])]))
+valOf(Arr([mkLit(1), lift(Arr([mkLit(2), mkLit(3)]))]))
 //│ = [1, [2, 3]]
 
 :re
@@ -53,7 +53,7 @@ valOfSet(mkLit(0))
 // sel
 
 let arrSp = mkArr([mkLit(0), mkDyn()])
-//│ arrSp = {Arr([Lit(0), Dyn()])}
+//│ arrSp = {Arr([{Lit(0)}, {Dyn()}])}
 
 selSet(arrSp, mkLit(0))
 //│ = {Lit(0)}
@@ -69,7 +69,7 @@ class A(val a, val b)
 let aSym = ConcreteClassSymbol("A", A, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false)
 
 let a = Class(aSym, [mkLit(42), mkLit("c")])
-let x = liftMany([Dyn(), a, Arr([Lit(100), Lit(false), Lit(undefined)])])
+let x = liftMany([Dyn(), a, Arr([mkLit(100), mkLit(false), mkLit(undefined)])])
 selSet(x, liftMany([Lit("a"), Lit(2)]))
 //│ = {Dyn()}
 //│ a = Class(
@@ -84,20 +84,23 @@ selSet(x, liftMany([Lit("a"), Lit(2)]))
 //│ )
 //│ x = {Dyn()}
 
-selSet(lift(Arr([Dyn(), Lit(1), a])), mkLit(1))
+selSet(lift(Arr([mkDyn(), mkLit(1), lift(a)])), mkLit(1))
 //│ = {Lit(1)}
 
 // union
 mkClass(aSym, [union2(mkLit(42), mkLit(43)), union2(mkLit("c"), mkLit("d"))])
 //│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42),Lit(43)}, {Lit("c"),Lit("d")}])}
 
+mkArr([union2(mkLit(42), mkLit(43)), union2(mkLit("c"), mkLit("d"))])
+//│ = {Arr([{Lit(42),Lit(43)}, {Lit("c"),Lit("d")}])}
+
 
 let x = liftMany([Lit(1), Lit(2)])
-let y = liftMany([Arr([Lit(2)]), Lit(1), Arr([Lit(1)])])
+let y = liftMany([Arr([mkLit(2)]), Lit(1), Arr([mkLit(1)])])
 union(x, y) 
-//│ = {Arr([Lit(1)]),Arr([Lit(2)]),Lit(1),Lit(2)}
+//│ = {Arr([{Lit(1)}]),Arr([{Lit(2)}]),Lit(1),Lit(2)}
 //│ x = {Lit(1),Lit(2)}
-//│ y = {Arr([Lit(1)]),Arr([Lit(2)]),Lit(1)}
+//│ y = {Arr([{Lit(1)}]),Arr([{Lit(2)}]),Lit(1)}
 
 // filterSet
 
@@ -105,10 +108,10 @@ filterSet(mkDyn(), Block.Lit("a"))
 //│ = {Lit("a")}
 
 filterSet(mkDyn(), Block.Tup(2))
-//│ = {Arr([Dyn(), Dyn()])}
+//│ = {Arr([{Dyn()}, {Dyn()}])}
 
-let filterShapes = liftMany([Lit(1), Lit(null), Arr([Dyn()]), Arr([Lit(1), Lit(2), Lit(3)]), a])
-//│ filterShapes = {Arr([Dyn()]),Arr([Lit(1), Lit(2), Lit(3)]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}]),Lit(1),Lit(null)}
+let filterShapes = liftMany([Lit(1), Lit(null), Arr([mkDyn()]), Arr([mkLit(1), mkLit(2), mkLit(3)]), a])
+//│ filterShapes = {Arr([{Dyn()}]),Arr([{Lit(1)}, {Lit(2)}, {Lit(3)}]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}]),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
@@ -124,7 +127,7 @@ filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
 //│ = {Lit(1)}
 
 filterSet(filterShapes, Tup(3))
-//│ = {Arr([Lit(1), Lit(2), Lit(3)])}
+//│ = {Arr([{Lit(1)}, {Lit(2)}, {Lit(3)}])}
 
 filterSet(filterShapes, Tup(4))
 //│ = {}
@@ -218,7 +221,7 @@ sor(Ctx.empty(), tup)
 //│ = [
 //│   End(),
 //│   Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))]),
-//│   {Arr([Lit(1), Lit(true)])}
+//│   {Arr([{Lit(1)}, {Lit(true)}])}
 //│ ]
 //│ tup = Tuple([Arg(ValueLit(1)), Arg(ValueLit(true))])
 
@@ -388,7 +391,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.389: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
+//│ ║  l.392: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M, false))

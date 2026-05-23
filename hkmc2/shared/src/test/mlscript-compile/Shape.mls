@@ -17,14 +17,14 @@ class Shape extends CachedHash with
   constructor
     Dyn()
     Lit(val l: Literal)
-    Arr(val shapes: Array[Shape])
+    Arr(val shapes: Array[ShSet])
     Class(val sym: ConcreteClassSymbol, val fields: Array[ShSet]) // TODO: track the auxParams as well
 
 fun show(s: Shape) =
   if s is
     Dyn then "Dyn"
     Lit(lit) then "Lit(" + printer.showLiteral(lit) + ")"
-    Arr(shapes) then "Arr(" + shapes.map(show).join(", ") + ")"
+    Arr(shapes) then "Arr(" + shapes.map(_.toString()).join(", ") + ")"
     Class(sym, fields) then "Class(" + printer.showSymbol(sym) + ", {" + [...fields.entries()].map(e => e.0 + ": " + e.1.toString()).join(", ") + "})" 
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
@@ -39,10 +39,10 @@ fun sel(s1: Shape, s2: Shape): Array[Shape] =
       n is Int then [Dyn()]
       else throw Error("Unknown selection")
     [Arr(shapes), Lit(n)] and // n can be both string or integer
-      n < shapes.length then [shapes.(n)] // This utilizes the string and number conversion in JS lol
+      n < shapes.length then shapes.(n).values() // This utilizes the string and number conversion in JS lol
       else throw Error("Array out of bound")
     [Arr(shapes), Dyn] then
-      shapes
+      shapes.flatMap(_.values())
     [Dyn, Dyn] then [Dyn()]
     else []
 
@@ -54,7 +54,10 @@ fun static(s: Shape) =
       let values = field.values()
       values.length is 1 and static(values.0)
     )
-    Arr(shapes) then shapes.every(static)
+    Arr(shapes) then shapes.every(field =>
+      let values = field.values()
+      values.length is 1 and static(values.0)
+    )
 
 open Block { Case }
 
@@ -63,7 +66,7 @@ fun silh(p: Case): Shape = if p is
   Block.Cls(clsSymb, path) then
     let paramsSize = if clsSymb.paramsOpt is Some(params) then params.length else 0
     Class(clsSymb, Array(paramsSize).fill(ShapeSet.mkDyn()))
-  Block.Tup(n) then Arr(Array(n).fill(Dyn()))
+  Block.Tup(n) then Arr(Array(n).fill(ShapeSet.mkDyn()))
 
 fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
 fun isSubClassOf(d, b) =

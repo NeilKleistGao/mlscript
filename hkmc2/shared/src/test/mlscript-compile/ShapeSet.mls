@@ -69,11 +69,7 @@ fun mkDyn() = lift(Dyn())
 fun mkLit(l) = lift(Lit(l))
 
 fun mkArr(shapes: Array[ShapeSet]) = 
-  shapes
-    .map(_.shapeset.values().toArray())
-    |> prod
-    .map(x => Arr(x))
-    |> liftMany
+  lift(Arr(shapes))
 
 fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) = 
   lift(Class(sym, params))
@@ -170,7 +166,7 @@ fun valOf(s : Shape) =
   if s is
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
-    Arr(shapes) then shapes.map((x, _, _) => valOf(x))
+    Arr(shapes) then shapes.map((x, _, _) => valOfSet(x))
     Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOfSet))
     else throw Error("Unknown shape: " + s)
 
@@ -189,7 +185,7 @@ private fun shape2path(s: Shape, allocs) =
   if s is
     Lit(l) then [Block.End(), Block.ValueLit(l)]
     Arr(v) then
-      let mapped = v.map(shape2path(_, allocs))
+      let mapped = v.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)
       blocks.reverse()
       let paths = mapped.map(_.1) 

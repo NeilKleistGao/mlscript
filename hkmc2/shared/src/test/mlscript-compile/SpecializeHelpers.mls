@@ -614,7 +614,7 @@ fun buildShapeName(s: Shape): Str = if s is
   Dyn then "Dyn"
   Lit(lit) and lit is Str then "Str" + lit
   Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
-  Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
+  Arr(shapes) then "Arr_" + shapes.map(buildShapeSetName).join("_") + "_end"
   Class(sym, params) and params.length is
     0 then sym.name
     else sym.name + "_" + params.map(buildShapeSetName).join("_")
@@ -639,14 +639,15 @@ fun hasAllDynamicParams(isMethod, ps, shapes) =
 
 fun canMaterializeStaticShape(s: Shape) = if s is
   Lit(_) then true
-  Arr(shapes) then shapes.every(x => x is Lit)
-  Class(_, fields) then fields.every(field =>
-    staticSet(field) and field.values().every(x => x is Lit)
-  )
+  Arr(shapes) then shapes.every(canMaterializeStaticSet)
+  Class(_, fields) then fields.every(canMaterializeStaticSet)
   else false
 
-fun canMaterializeStaticRet(ss: ShapeSet) =
+fun canMaterializeStaticSet(ss: ShapeSet) =
   staticSet(ss) and ss.values().every(canMaterializeStaticShape)
+
+fun canMaterializeStaticRet(ss: ShapeSet) =
+  canMaterializeStaticSet(ss)
 
 fun specializeKey(funName, isMethod, ps, shapes) =
   let mappedShapes = specializationParamShapes(isMethod, ps, shapes)
@@ -831,7 +832,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
             ctx.valueNameCtx.set(getActualClass(sym.value), sym)
             params.forEach(_.values().forEach(collectClasses))
           Arr(shapes) then
-            shapes.forEach(collectClasses)
+            shapes.forEach(_.values().forEach(collectClasses))
           else ()
         if ctx.thisShape is Some(ts) then ts.values().forEach(collectClasses) else ()
         ctx.ctx.values().forEach(_.values().forEach(collectClasses))
