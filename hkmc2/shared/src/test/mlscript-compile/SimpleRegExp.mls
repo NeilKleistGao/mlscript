@@ -194,11 +194,10 @@ module SimpleRegExp with
 
   fun test1(s) = match(new Union(new Exact("F"), new Concat(new In(["A", "B", "C", "D"]), question(new Union(new Exact("+"), new Exact("-"))))), s)
 
-  // (\w+[\.|-])*\w+@(\w+[\.|-])*\w+
+  // [\w\.-]+@[\w\.-]+\.[\w\.-]+
   fun matchAllEmail(s) =
-    let w = words()
-    let p = new Concat(plus(w), new Union(new Exact("-"), new Exact(".")))
-    let email = new Concat(new Concat(new Concat(new Star(p), plus(w)), new Exact("@")), new Concat(plus(p), plus(w)))
+    let p = plus(new In(SeqHelper.concat(CharSet.alphabet(), ["-", "."])))
+    let email = new Concat(p, new Concat(new Exact("@"), new Concat(p, new Concat(new Exact("."), p))))
     matchAll(email, s)
 
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
