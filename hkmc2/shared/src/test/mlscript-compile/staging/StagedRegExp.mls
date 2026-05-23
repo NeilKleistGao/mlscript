@@ -10,13 +10,6 @@ module SeqHelper with
   fun tail(arr) = arr.slice(1)
   fun eq(arr1, arr2) =
     arr1.length == arr2.length and arr1.every((v, i) => v == arr2.(i))
-  fun dedup(arr) =
-    let res = []
-    arr.forEach of
-      (v, i) =>
-        let unique = arr.every of (v', j) => j <= i || not v.eq(v')
-        if unique do push(res, v)
-    res
   fun setEq(s1, s2) =
     s1.sort()
     s2.sort()
@@ -40,8 +33,17 @@ staged module StagedRegExp with
   fun push(arr, ele) = SeqHelper.push(arr, ele)
   fun concat(lhs, rhs) = SeqHelper.concat(lhs, rhs)
   fun tail(arr) = SeqHelper.tail(arr)
-  fun dedup(arr) = SeqHelper.dedup(arr)
   fun setEq(s1, s2) = SeqHelper.setEq(s1, s2)
+
+  staged class DedupSet(val arr) with
+    fun addImp(i, s, e) =
+      if s - i == s then new DedupSet(push(arr, e))
+      else
+        let e' = arr.(s - i)
+        if e.eq(e') then this else addImp(i - 1, s, e)
+    fun add(e) =
+      let s = len(arr)
+      addImp(s, s, e)
 
   staged class RegExp() with
     fun derive(c)
@@ -112,9 +114,16 @@ staged module StagedRegExp with
       let p1' = if p1 is Union then p1.flat() else [p1]
       let p2' = if p2 is Union then p2.flat() else [p2]
       concat(p1', p2')
+    fun iter(st, arr) =
+      if len(arr) == 0 then st
+      else iter(st.add(arr.0), tail(arr))
     fun normalize() =
-      let u = new Union(p1.normalize(), p2.normalize())
-      mkUnion(dedup(u.flat()))
+      let p1' = p1.normalize()
+      let p2' = p2.normalize()
+      let arr1 = if p1' is Union then p1'.flat() else [p1']
+      let arr2 = if p2' is Union then p2'.flat() else [p2']
+      let s = iter(iter(new DedupSet([]), arr1), arr2)
+      mkUnion(s.arr)
     fun eq(other) =
       let n = other.normalize()
       if n is
