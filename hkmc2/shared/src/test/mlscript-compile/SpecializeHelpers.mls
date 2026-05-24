@@ -33,6 +33,9 @@ fun showCtxPath(p) = if p is
 fun staticCallKey(f, argShapes) =
   showCtxPath(f) + "(" + argShapes.map(_.hash()).join(",") + ")"
 
+fun defaultThisShape(clsSymb: ConcreteClassSymbol) =
+  lift(silh(Cls(clsSymb, ValueRef(clsSymb))))
+
 class StaticCallEntry(
   val block: Block.Block,
   val path: Path,
@@ -317,7 +320,8 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
     DynSelect(qual, fld, _) then
       selSet(sop(ctx, qual), sop(ctx, fld))
     ValueLit(lit) then mkLit(lit)
-    ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then thisShape
+    ValueRef(clsSymb) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) and
+      thisShape.values().every(_ is Class(sym', _) and getActualClass(clsSymb.value) == getActualClass(sym'.value)) then thisShape
     ValueRef(l) then mkDyn()
 
 // This sub p.(n) to p.1 if n -> 1
@@ -656,6 +660,16 @@ fun specializationParamShapes(isMethod, ps, shapes) =
 fun hasAllDynamicParams(isMethod, ps, shapes) =
   specializationParamShapes(isMethod, ps, shapes).every(_.every(_.isDyn()))
 
+fun isDefaultThisShape(owner, ss) = if owner is
+  ConcreteClassSymbol and ss.values() is [Class(sym, fields)] then
+    getActualClass(owner.value) == getActualClass(sym.value) and fields.every(_.isDyn())
+  else false
+
+fun defaultMethodKeyShapes(cache, isMethod, shapes) =
+  if isMethod and cache.owner is ConcreteClassSymbol and isDefaultThisShape(cache.owner, shapes.(0).(0)) then
+    [[mkDyn()], ...shapes.slice(1)]
+  else shapes
+
 fun canMaterializeStaticShape(s: Shape) = if s is
   Lit(_) then true
   Arr(shapes) then shapes.every(canMaterializeStaticSet)
@@ -799,6 +813,13 @@ fun maybeHoistMethod(cache: FunCache, isPrivate, newName, ps, body) =
     FunDefn(Symbol(newName), newPs, rebindSelfBlock(cache.owner, selfSym, body))
   else FunDefn(Symbol(newName), ps, body)
 
+fun returnsThis(owner, block) = if block is
+  Return(ValueRef(sym), _) and
+    owner is ConcreteClassSymbol and sym is ConcreteClassSymbol and
+      getActualClass(owner.value) == getActualClass(sym.value) then true
+  Scoped(_, rest) then returnsThis(owner, rest)
+  else false
+
 fun specializedMethodCall(p, f, args, retSym) =
   if retSym == f then Call(Select(p, Symbol(retSym)), args)
   else Call(ValueRef(Symbol(retSym)), [Arg(p), ...args])
@@ -821,12 +842,13 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   // print(defn)
   if defn is FunDefn(Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
-    let specializationKey = specializeKey(funName, isMethod, ps, shapes)
-    let isPrivate = not hasAllDynamicParams(isMethod, ps, shapes)
+    let keyShapes = defaultMethodKeyShapes(cache, isMethod, shapes)
+    let specializationKey = specializeKey(funName, isMethod, ps, keyShapes)
+    let isPrivate = not hasAllDynamicParams(isMethod, ps, keyShapes)
     if cache.getFun(specializationKey) is
       Some(x) then [x.defn.sym.name, x.retShape]
       None then
-        let newName = specializeName(cache, funName, isMethod, ps, shapes)
+        let newName = specializeName(cache, funName, isMethod, ps, keyShapes)
         let paramShapes = if isMethod then shapes.slice(1) else shapes
 
         let ctx = if isMethod then
@@ -864,7 +886,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         let actualRetShape = res.1
         actualRetShape.values().forEach(collectClasses)
 
-        let finalBody = if canMaterializeStaticRet(actualRetShape) then
+        let finalBody = if canMaterializeStaticRet(actualRetShape) and not (isMethod and returnsThis(cache.owner, bodyWithScoped)) then
           let allocs = mut []
           let v2p = shapeset2path(actualRetShape, allocs)
           wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))

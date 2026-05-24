@@ -461,17 +461,23 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val sym = BlockMemberSymbol("propagate", Nil)
       val params = PlainParamList(Nil)
       val body = call(State.shapeSetSymbol.asPath.selSN("mkDyn"), Nil, isMlsFun = true, symName = "tmp_dyn"): dynVal =>
-        def callGenCont(rest: Block) =
-          generatorMethods.foldRight(rest)((gen, rest) =>
-            val genPath = modSym.asPath.selSN(gen.sym.nme)
-            val params = gen.params.map(_.params.map(_ => dynVal))
-            params.foldRight((_: Path) => rest)
-              ((args, k) => call(_, args, true, "gen_call")(k))
-              (genPath)
+        def withReceiverShape(k: Path => Block) =
+          if forClass && generatorMethods.nonEmpty then
+            call(helperMod("defaultThisShape"), Ls(cachePath.selSN("owner")), isMlsFun = true, symName = "tmp_this")(k)
+          else k(dynVal)
+        withReceiverShape: receiverShape =>
+          def callGenCont(rest: Block) =
+            generatorMethods.foldRight(rest)((gen, rest) =>
+              val genPath = modSym.asPath.selSN(gen.sym.nme)
+              val params = gen.params.zipWithIndex.map: (ps, idx) =>
+                ps.params.map(_ => if forClass && idx == 0 then receiverShape else dynVal)
+              params.foldRight((_: Path) => rest)
+                ((args, k) => call(_, args, true, "gen_call")(k))
+                (genPath)
+            )
+          nestedPropagates.foldRight(callGenCont(End()))((path, rest) =>
+            call(path.selSN("propagate"), Nil, isMlsFun = true, symName = "tmp")(_ => rest)
           )
-        nestedPropagates.foldRight(callGenCont(End()))((path, rest) =>
-          call(path.selSN("propagate"), Nil, isMlsFun = true, symName = "tmp")(_ => rest)
-        )
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(N, Nil)
 
     def genOutputBody(sourceSym: VarSymbol, psym: VarSymbol) =
