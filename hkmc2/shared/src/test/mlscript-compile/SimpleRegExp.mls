@@ -36,14 +36,14 @@ module SimpleRegExp with
   fun setEq(s1, s2) = SeqHelper.setEq(s1, s2)
 
   class DedupSet(val arr) with
-    fun addImp(i, s, e) =
-      if s - i == s then new DedupSet(push(arr, e))
-      else
-        let e' = arr.(s - i)
-        if e.eq(e') then this else addImp(i - 1, s, e)
+    fun addImp(s, e) =
+      if s is
+        [] then new DedupSet(push(arr, e))
+        else
+          let e' = s.0
+          if e.eq(e') then this else addImp(tail(s), e)
     fun add(e) =
-      let s = len(arr)
-      addImp(s, s, e)
+      addImp(arr, e)
 
   class RegExp() with
     fun derive(c)
@@ -115,14 +115,15 @@ module SimpleRegExp with
       let p2' = if p2 is Union then p2.flat() else [p2]
       concat(p1', p2')
     fun iter(st, arr) =
-      if len(arr) == 0 then st
-      else iter(st.add(arr.0), tail(arr))
+      if arr is
+        [] then st
+        else iter(st.add(arr.0), tail(arr))
     fun normalize() =
       let p1' = p1.normalize()
       let p2' = p2.normalize()
       let arr1 = if p1' is Union then p1'.flat() else [p1']
       let arr2 = if p2' is Union then p2'.flat() else [p2']
-      let s = iter(iter(new DedupSet([]), arr1), arr2)
+      let s = iter(new DedupSet(arr1), arr2)
       mkUnion(s.arr)
     fun eq(other) =
       let n = other.normalize()

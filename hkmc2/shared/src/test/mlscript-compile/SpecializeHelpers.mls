@@ -404,15 +404,32 @@ fun sorUnknownCall(ctx, f, args) =
 fun seqHelperPushShape(argShapes) = if argShapes is
   [arrShape, eleShape] and
     let arrValues = arrShape.values()
-    arrValues.every(_ is Arr) then
+    arrValues.length is 1 and arrValues.every(_ is Arr) then
       liftMany(arrValues.map(s => if s is
         Arr(shapes) then Arr([...shapes, eleShape])
         else throw Error("Expected Arr shape")
       ))
   else mkDyn()
 
+fun seqHelperTailShape(argShapes) = if argShapes is
+  [arrShape] and
+    let arrValues = arrShape.values()
+    arrValues.length is 1 and arrValues.every(_ is Arr) then
+      liftMany(arrValues.map(s => if s is
+        Arr(shapes) then Arr(shapes.slice(1))
+        else throw Error("Expected Arr shape")
+      ))
+  else mkDyn()
+
 fun sorSeqHelperPushCall(ctx, f, args, argShapes) =
   let shape = seqHelperPushShape(argShapes)
+  let evaledArgs = args.map(a => sor(ctx, a.value))
+  let fullBlk = foldl((acc, e) => concat(acc, e.0))(End(), ...evaledArgs)
+  let newArgs = evaledArgs.map(e => Arg(if e.1 is Path then e.1 else throw Error("expected path")))
+  [fullBlk, Call(f, newArgs), shape]
+
+fun sorSeqHelperTailCall(ctx, f, args, argShapes) =
+  let shape = seqHelperTailShape(argShapes)
   let evaledArgs = args.map(a => sor(ctx, a.value))
   let fullBlk = foldl((acc, e) => concat(acc, e.0))(End(), ...evaledArgs)
   let newArgs = evaledArgs.map(e => Arg(if e.1 is Path then e.1 else throw Error("expected path")))
@@ -464,6 +481,7 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) then sorStaticModuleCall(ctx, f, value, fld, args, argShapes) // non staged function and params known
     name is "SeqHelper" and fld is "push" then sorSeqHelperPushCall(ctx, f, args, argShapes)
+    name is "SeqHelper" and fld is "tail" then sorSeqHelperTailCall(ctx, f, args, argShapes)
   else sorUnknownCall(ctx, f, args) // non staged function and some params unknown
   // else throw Error("unknown call in sor: " + r.toString())
 
