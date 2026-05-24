@@ -1,6 +1,7 @@
 #config(noFreeze: true)
 
 module SeqHelper with
+  fun pushDyn(arr, ele) = push(arr, ele)
   fun push(arr, ele) =
     arr.push(ele)
     arr
@@ -150,7 +151,7 @@ staged module StagedRegExp with
     fun derive(c) =
       let p1' = p1.derive(c)
       if p1.canBeEmpty() then (new Union(new Concat(p1', p2), p2.derive(c))).normalize()
-      else new Concat(p1', p2)
+      else (new Concat(p1', p2)).normalize()
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
     fun normalize() =
       let p1' = p1.normalize()
@@ -181,11 +182,14 @@ staged module StagedRegExp with
       if p.canBeEmpty() then new Some(acc)
       else new None
     else
-      let c = s.0
-      if p.startsWith(c) then
-        matchImpl(p.derive(c), s.slice(1), acc + c)
-      else
-        if p.canBeEmpty() then new Some(acc) else new None
+      if p is
+        Nothing then new None
+        else
+          let c = s.0
+          if p.startsWith(c) then
+            matchImpl(p.derive(c), s.slice(1), acc + c)
+          else
+            if p.canBeEmpty() then new Some(acc) else new None
   fun match(p, s) =
     matchImpl(p, s, "")
 
@@ -194,7 +198,7 @@ staged module StagedRegExp with
     else
       if match(p, s) is
         Some(ss) then
-          if len(ss) > 0 then matchAllImpl(p, s.slice(len(ss)), SeqHelper.push(res, ss))
+          if len(ss) > 0 then matchAllImpl(p, s.slice(len(ss)), SeqHelper.pushDyn(res, ss))
           else matchAllImpl(p, s.slice(1), res)
         else matchAllImpl(p, s.slice(1), res)
   fun matchAll(p, s) =

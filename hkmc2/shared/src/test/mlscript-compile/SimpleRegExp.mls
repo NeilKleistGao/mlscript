@@ -151,7 +151,7 @@ module SimpleRegExp with
       let p1' = p1.derive(c)
       if p1.canBeEmpty() then
         (new Union(new Concat(p1', p2), p2.derive(c))).normalize()
-      else new Concat(p1', p2)
+      else (new Concat(p1', p2)).normalize()
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
     fun normalize() =
       let p1' = p1.normalize()
@@ -182,11 +182,14 @@ module SimpleRegExp with
       if p.canBeEmpty() then new Some(acc)
       else new None
     else
-      let c = s.0
-      if p.startsWith(c) then
-        matchImpl(p.derive(c), s.slice(1), acc + c)
-      else
-        if p.canBeEmpty() then new Some(acc) else new None
+      if p is
+        Nothing then new None
+        else
+          let c = s.0
+          if p.startsWith(c) then
+            matchImpl(p.derive(c), s.slice(1), acc + c)
+          else
+            if p.canBeEmpty() then new Some(acc) else new None
   fun match(p, s) =
     matchImpl(p, s, "")
 
