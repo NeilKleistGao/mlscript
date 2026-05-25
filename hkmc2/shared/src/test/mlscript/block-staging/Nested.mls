@@ -8,7 +8,7 @@
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 staged fun direct() = 1
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let direct⁰; define direct⁰ as staged fun direct¹() { return 1 }; end
+//│ let direct⁰; @staged define direct⁰ as staged fun direct¹() { return 1 }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -22,6 +22,7 @@ staged module LiftedNested with
 //│ set tmp1 = new globalThis⁰.this.Map﹖();
 //│ set tmp2 = new Block⁰.SymbolMap﹖(tmp, tmp1);
 //│ set symbolMap = tmp2;
+//│ @staged
 //│ define g⁰ as staged fun g¹() {
 //│   return 1
 //│ };
@@ -102,6 +103,7 @@ staged module LiftedLambda with
 //│ ═══[COMPILATION ERROR] Staged classes with private fields are not supported.
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let LiftedLambda⁰, lambda⁰, Function$⁰;
+//│ @staged @private
 //│ define lambda⁰ as staged fun lambda¹(x, y) { return +⁰(x, y) };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -112,6 +114,7 @@ staged module LiftedMultParams with
 //│ ═══[COMPILATION ERROR] Staged classes with private fields are not supported.
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let LiftedMultParams⁰, lambda$⁰, Function$¹;
+//│ @staged
 //│ define lambda$⁰ as staged fun lambda$¹(x, y) { return +⁰(x, y) };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
