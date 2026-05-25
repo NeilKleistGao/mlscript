@@ -290,7 +290,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     case Assign(x, r, b) =>
       transformSymbol(x): (xSym, ctx) =>
         blockCtor("ValueRef", Ls(xSym)): xStaged =>
-          (Assign(x, xStaged, _)):
             transformResult(r)(using ctx.addCache(x.asPath, xStaged)): (y, ctx) =>
               transformBlock(b)(using ctx): (z, ctx) =>
                 blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
@@ -302,7 +301,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformResult(r): (y, ctx) =>
             transformSymbol(ts)(using ctx): (xSym, ctx) =>
               blockCtor("ValueRef", Ls(xSym)): xStaged =>
-                (Assign(ts, xStaged, _)):
                   given Context = ctx.addCache(Select(lhs, nme)(S(ts)), xStaged)
                   transformBlock(rest): (z, ctx) =>
                     blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
