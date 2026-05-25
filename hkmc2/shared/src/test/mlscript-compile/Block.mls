@@ -84,7 +84,7 @@ class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicField
 class Block with
   constructor
     Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
-    Return(val res: Result, val implct: Bool)
+    Return(val res: Result)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
     Scoped(val symbols: Array[Symbol], val rest: Block)
@@ -184,7 +184,7 @@ class Printer(val owner: Opt[Class]) with
           + showResult(rhs) + showRestBlock(rest)
       Define(d, rest) then
         showDefn(d) + showRestBlock(rest)
-      Return(res, _) then
+      Return(res) then
         showResult(res)
       Match(scrut, arms, dflt, rest) then
         "if " + showPath(scrut) + " is"

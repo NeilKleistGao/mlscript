@@ -284,9 +284,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       End()
 
   def transformBlock(b: Block)(using ctx: Context)(k: (Path, Context) => Block): Block = b match
-    case Return(res, implct) =>
+    case Return(res) =>
       transformResult(res): (x, ctx) =>
-        blockCtor("Return", Ls(x, toValue(implct)), "return")(k(_, ctx))
+        blockCtor("Return", Ls(x), "return")(k(_, ctx))
     case Assign(x, r, b) =>
       transformSymbol(x): (xSym, ctx) =>
         blockCtor("ValueRef", Ls(xSym)): xStaged =>
@@ -369,7 +369,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(stageSymName))
     val argSyms = f.params.flatMap(_.params).map(_.sym)
     val newBody =
-      val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block, false))
+      val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block))
       (Scoped(Set(argSyms*), rest))
 
     FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(N, Nil)
@@ -388,7 +388,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
       tuple(tups): args =>
         call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
-          Return(res, false)
+          Return(res)
     FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(N, Nil)
   
   def stageCtor(ctorFun: FunDefn): FunDefn = 
