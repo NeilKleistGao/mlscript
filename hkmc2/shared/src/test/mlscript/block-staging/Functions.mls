@@ -212,7 +212,113 @@ staged module Arguments with
     x = 1
     x
   fun g(x)(y, z)() = z
-//│ ═══[COMPILATION ERROR] Staged classes with private fields are not supported.
+//│ > class Function$(z) extends globalThis.Function() with
+//│ >   let {tmp}
+//│ >   tmp = z
+//│ >   val z = tmp
+//│ >   fun call() = lambda_(z)
+//│ > Map(1) { 'call' => [Function: call_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(2) {
+//│ >     [class Function$ extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: [Array]
+//│ >     },
+//│ >     [Function: Function] => ConcreteClassSymbol {
+//│ >       name: 'Function',
+//│ >       value: [Function: Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(0) {}
+//│ > }
+//│ > class Function$1 extends globalThis.Function() with
+//│ >   ()
+//│ >   fun call(y, z) = lambda_(y, z)
+//│ > Map(1) { 'call' => [Function: call_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(3) {
+//│ >     [class Function$ extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: [Array]
+//│ >     },
+//│ >     [Function: Function] => ConcreteClassSymbol {
+//│ >       name: 'Function',
+//│ >       value: [Function: Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     },
+//│ >     [class Function$1 extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$1',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(0) {}
+//│ > }
+//│ > module Arguments with
+//│ >   ()
+//│ >   fun f(x) =
+//│ >     x = 1
+//│ >     x
+//│ >   fun g(x) =
+//│ >     let {tmp1}
+//│ >     tmp1 = new Function_1
+//│ >     tmp1
+//│ > Map(2) { 'f' => [Function: f_gen], 'g' => [Function: g_gen] }
+//│ > SymbolMap {
+//│ >   classMap: Map(3) {
+//│ >     [class Function$ extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: [Array]
+//│ >     },
+//│ >     [Function: Function] => ConcreteClassSymbol {
+//│ >       name: 'Function',
+//│ >       value: [Function: Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     },
+//│ >     [class Function$1 extends Function] {
+//│ >       'class$cache$Function$': [FunCache],
+//│ >       'class$generatorMap$Function$': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     } => ConcreteClassSymbol {
+//│ >       name: 'Function$1',
+//│ >       value: [Function],
+//│ >       paramsOpt: None {},
+//│ >       auxParams: []
+//│ >     }
+//│ >   },
+//│ >   moduleMap: Map(1) {
+//│ >     [class Arguments] {
+//│ >       'cache$Arguments': [FunCache],
+//│ >       'generatorMap$Arguments': [Map]
+//│ >     } => ModuleSymbol { name: 'Arguments', value: [Function] }
+//│ >   }
+//│ > }
+//│ FAILURE: Unexpected lack of error to fix
 
 staged module OtherBlocks with
   fun scope() =
@@ -328,7 +434,11 @@ staged module ClassFunctions with
 //│ >       'cache$ClassFunctions': [FunCache],
 //│ >       'generatorMap$ClassFunctions': Map(0) {}
 //│ >     } => ModuleSymbol { name: 'ClassFunctions', value: [Function] },
-//│ >     undefined => ModuleSymbol { name: 'Arguments', value: undefined }
+//│ >     [class Arguments] {
+//│ >       'cache$Arguments': [FunCache],
+//│ >       'generatorMap$Arguments': [Map],
+//│ >       Symbol(mlscript.definitionMetadata): [Array]
+//│ >     } => ModuleSymbol { name: 'Arguments', value: [Function] }
 //│ >   }
 //│ > }
 
@@ -405,7 +515,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Field assignment is not supported in staged modules: a
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.405: 	  fun g() = {1 : 2}
+//│ ║  l.515: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
