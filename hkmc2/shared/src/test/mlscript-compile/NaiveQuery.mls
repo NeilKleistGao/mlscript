@@ -1,25 +1,44 @@
 #config(noFreeze: true)
 
+module SeqHelper with
+  fun pushDyn(arr, ele) =
+    arr.push(ele)
+    arr
+  fun tail(arr) = arr.slice(1)
+
 module NaiveQuery with
   class Student(val name, val mathGrade, val physGrade, val chemGrade, val engGrade)
-  class Some(val x)
-  class None
 
   class Pred with
     fun test(obj)
 
-  class GreaterThan(val v, val field) with
+  class GreaterThan(val v, val field) extends Pred with
     fun test(obj) = obj.(field) > v
-  class GreaterEqThan(val v, val field) with
+  class GreaterEqThan(val v, val field) extends Pred with
     fun test(obj) = obj.(field) >= v
-  class And(val lhs, val rhs) with
+  class LessThan(val v, val field) extends Pred with
+    fun test(obj) = obj.(field) < v
+  class LessEqThan(val v, val field) extends Pred with
+    fun test(obj) = obj.(field) <= v
+  class Eq(val v, val field) extends Pred with
+    fun test(obj) = obj.(field) == v
+  class NotEq(val v, val field) extends Pred with
+    fun test(obj) = not obj.(field) == v
+  class And(val lhs, val rhs) extends Pred with
     fun test(obj) = lhs.test(obj) and rhs.test(obj)
-  class Or(val lhs, val rhs) with
+  class Or(val lhs, val rhs) extends Pred with
     fun test(obj) = lhs.test(obj) || rhs.test(obj)
+  class Not(val e) extends Pred with
+    fun test(obj) = not e.test(obj)
 
-  fun isGoodStudent(s, spec) =
-    val basicPred = new And(new And(new GreaterEqThan(80, "mathGrade"), new GreaterEqThan(80, "engGrade")), new And(new GreaterEqThan(80, "physGrade"), new GreaterEqThan(80, "chemGrade")))
-    val pred =
-      if spec then new Or(new Or(new GreaterThan(95, "physGrade"), new GreaterThan(95, "chemGrade")), basicPred)
-      else basicPred
-    pred.test(s)
+  fun filterImpl(arr, pred, res) =
+    if arr is
+      [] then res
+      else filterImpl(SeqHelper.tail(arr), pred, if pred.test(arr.0) then SeqHelper.pushDyn(res, arr.0) else res)
+  fun filter(arr, pred) = filterImpl(arr, pred, [])
+
+  fun filterGoodStudents(students, spec) =
+    let pred =
+      if spec then new And(new And(new GreaterEqThan(80, "mathGrade"), new GreaterEqThan(80, "engGrade")), new And(new GreaterThan(95, "physGrade"), new GreaterThan(95, "chemGrade")))
+      else new And(new And(new GreaterEqThan(90, "mathGrade"), new GreaterEqThan(90, "engGrade")), new And(new GreaterEqThan(90, "physGrade"), new GreaterEqThan(90, "chemGrade")))
+    filter(students, pred)

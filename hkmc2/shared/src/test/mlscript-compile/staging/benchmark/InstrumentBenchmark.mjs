@@ -36,15 +36,15 @@ const compileOptions = {
 };
 
 const benchmarkFiles = [
-  ['Transform3D.mls', 'staging/Transform3D.mls'],
-  ['StagedRegExp.mls', 'staging/StagedRegExp.mls'],
-  ['StagedQuery.mls', 'staging/StagedQuery.mls'],
+  // ['Transform3D.mls', 'staging/Transform3D.mls'],
+  // ['StagedRegExp.mls', 'staging/StagedRegExp.mls'],
+  // ['StagedQuery.mls', 'staging/StagedQuery.mls'],
   ['out/Transform3D.mls', 'staging/out/Transform3D.mls'],
   ['out/StagedRegExp.mls', 'staging/out/StagedRegExp.mls'],
-  ['out/StagedQuery.mls', 'staging/out/StagedQuery.mls'],
+  // ['out/StagedQuery.mls', 'staging/out/StagedQuery.mls'],
   ['NaiveTransform3D.mls', 'NaiveTransform3D.mls'],
   ['SimpleRegExp.mls', 'SimpleRegExp.mls'],
-  ['NaiveQuery.mls', 'NaiveQuery.mls'],
+  // ['NaiveQuery.mls', 'NaiveQuery.mls'],
 ];
 
 const benchmarks = benchmarkFiles.map(([name, relativePath]) => [

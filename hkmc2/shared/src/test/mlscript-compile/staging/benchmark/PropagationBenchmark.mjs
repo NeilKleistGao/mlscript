@@ -31,9 +31,9 @@ try {
         void RegExpCompile.generate();
       });
 
-      bench('WhereExpressionCompile.generate', () => {
-        void WhereExpressionCompile.generate();
-      });
+      // bench('WhereExpressionCompile.generate', () => {
+      //   void WhereExpressionCompile.generate();
+      // });
     });
   });
 
