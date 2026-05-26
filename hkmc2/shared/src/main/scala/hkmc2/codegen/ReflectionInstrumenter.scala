@@ -57,6 +57,66 @@ def toValue(lit: Str | Int | BigDecimal | Bool): Value =
     case n: BigDecimal => Tree.DecLit(n)
   Value.Lit(l)
 
+// helpers for constructing Block
+def assign(using State)(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
+  // TODO: skip assignment if res: Path?
+  val sym = new TempSymbol(N, symName)
+  Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
+
+def tuple(using State)(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
+  assign(Tuple(false, elems.map(asArg)), symName)(k)
+
+def ctor(using State)(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
+  assign(Instantiate(false, cls, Ls(args.map(asArg))), symName)(k)
+
+def call(using State)(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
+  assign(Call(fun, args.map(asArg) ne_:: Nil)(isMlsFun, false, false), symName)(k)
+
+// transform fields of the first encountered class from private to public
+class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id):
+  override def applyClsLikeDefn(defn: ClsLikeDefn)(k: Defn => Block) =
+    val addSyms = defn.privateFields.map(f => (f, BlockMemberSymbol(f.name, Nil, false)))
+
+    // add val flag to parameters
+    def applyParamList(ps: ParamList) = ps.copy(params = ps.params.map(param => param.copy(flags = param.flags.copy(isVal = true))))
+    val paramsOpt = defn.paramsOpt.map(applyParamList)
+    val auxParams = defn.auxParams.map(applyParamList)
+
+    // change private field initializations to public
+    val privateFields = addSyms.map({case (f, b) => f.name -> (f, b)}).toMap
+
+    class PrivateFieldDefnRemover extends BlockTransformer(SymbolSubst.Id):
+      override def applyPath(p: Path)(k: Path => Block) =
+        p match
+          // remove outdated definition symbols for private fields
+          case s @ Select(Value.Ref(cls, _), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
+          case _ => k(p)
+
+    val publicInitTransformer = new PrivateFieldDefnRemover:
+      override def applyBlock(b: Block) =
+        b match
+          case AssignField(l @ Value.Ref(cls, _), Tree.Ident(n), r, rest) if cls == defn.isym =>
+            privateFields.get(n) match
+              case S((t, b)) =>
+                applyResult(r): r =>
+                  assign(r): p =>
+                    Define(ValDefn(t, b, p)(N, Nil), applyBlock(rest))
+              case N => super.applyBlock(b)
+          case _ => super.applyBlock(b)
+    val ctor = publicInitTransformer.applyBlock(defn.ctor)
+    val methods = defn.methods.map((new PrivateFieldDefnRemover).applyFunDefn)
+    // replace private fields with the public one
+    val newDefn = defn.copy(
+      paramsOpt = paramsOpt,
+      auxParams = auxParams,
+      publicFields = addSyms.map(syms => syms._2 -> syms._1) ++ defn.publicFields,
+      privateFields = Nil,
+      ctor = ctor,
+      methods = methods,
+    )(defn.configOverride, defn.annotations)
+
+    k(newDefn)
+
 // transform Block to Block IR so that it can be instrumented in mlscript
 class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(SymbolSubst.Id):
   // TODO: there could be a fresh scope per function body, instead of a single one for the entire program
@@ -65,22 +125,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   val defnMap = HashMap[Symbol, ClsLikeDefn | ClsLikeBody]()
   var symbolMapSym: Opt[Symbol] = N
   
-  // helpers for constructing Block
-
-  def assign(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
-    // TODO: skip assignment if res: Path?
-    val sym = new TempSymbol(N, symName)
-    Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
-
-  def tuple(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Tuple(false, elems.map(asArg)), symName)(k)
-
-  def ctor(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Instantiate(false, cls, Ls(args.map(asArg))), symName)(k)
-
-  def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Call(fun, args.map(asArg) ne_:: Nil)(isMlsFun, false, false), symName)(k)
-
   // helpers for constructing Block IR
 
   def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
@@ -484,59 +528,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   lazy val firstClassFunc = Value.Ref(State.globalThisSymbol, Some(State.globalThisSymbol)).sel(Tree.Ident("Function"), ctx.builtins.Function)
 
   override def applyBlock(b: Block): Block = b match
-    // staged classes
     // Lifter adds private variables after lifting function classes after FirstClassFunctionTransformer, but we need the variables to be public for staging
     case Define(defn: ClsLikeDefn, rest) if defn.isStaged && defn.parentPath.exists(_ == firstClassFunc) && !defn.sym.nameIsMeaningful && !defn.privateFields.isEmpty => 
-      // make all private fields of generated classes public for staging
-      val addSyms = defn.privateFields.map(f => (f, BlockMemberSymbol(f.name, Nil, false), VarSymbol(Tree.Ident(f.name))))
-
-      // add val flag to parameters
-      def applyParamList(ps: ParamList) = ps.copy(params = ps.params.map(param => param.copy(flags = param.flags.copy(isVal = true))))
-      val paramsOpt = defn.paramsOpt.map(applyParamList)
-      val auxParams = defn.auxParams.map(applyParamList)
-      // val preCtor = addSyms.foldLeft(defn.preCtor)({case (acc, (t, b, s)) => Define(ValDefn(t, b, s.asPath)(N, Nil), acc)}) // this termsymbol is the problem i think, it leads to this.#x?
-      // val paramsOpt = S(addparams)
-
-      // change private field initializations to public
-      val privateFields = addSyms.map({case (f, b, v) => f.name -> (f, b)}).toMap
-      // println(privateFields)
-
-      class PrivateFieldDefnRemover extends BlockTransformer(SymbolSubst.Id):
-        override def applyPath(p: Path)(k: Path => Block) =
-          // println(p)
-          p match
-            // remove outdated definition symbols for private fields
-            case s @ Select(Value.Ref(cls, _), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
-            case _ => k(p)
-
-      val publicInitTransformer = new PrivateFieldDefnRemover:
-        override def applyBlock(b: Block) =
-          b match
-            case AssignField(l @ Value.Ref(cls, _), Tree.Ident(n), r, rest) if cls == defn.isym =>
-              // println(("A", l, r))
-              privateFields.get(n) match
-                case S((t, b)) =>
-                  applyResult(r): r =>
-                    assign(r): p =>
-                      Define(ValDefn(t, b, p)(N, Nil), applyBlock(rest))
-                case N => super.applyBlock(b)
-            case _ => super.applyBlock(b)
-      val ctor = publicInitTransformer.applyBlock(defn.ctor)
-      val methods = defn.methods.map((new PrivateFieldDefnRemover).applyFunDefn)
-      // println(ctor)
-      // replace private fields with the public one
-      val newDefn = defn.copy(
-        paramsOpt = paramsOpt,
-        auxParams = auxParams,
-        publicFields = addSyms.map(syms => syms._2 -> syms._1) ++ defn.publicFields,
-        privateFields = Nil,
-        ctor = ctor,
-        methods = methods,
-      )(defn.configOverride, defn.annotations)
-      
-      // val newBlock = (new BlockTransformer(SymbolSubst.Id)).applyDefn(newDefn)(Define(_, rest))
-      // println((defn.publicFields, defn.privateFields))
-      applyBlock(Define(newDefn, rest))
+      (new DataClassTransformer).applyClsLikeDefn(defn): defn =>
+        applyBlock(Define(defn, rest))
+    // staged classes
     case Define(defn: ClsLikeDefn, rest) if defn.isStaged =>
       if !defn.privateFields.isEmpty then
         raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
