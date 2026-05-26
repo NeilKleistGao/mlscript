@@ -243,7 +243,7 @@ class BuiltinSymbol
   
   def subst(using sub: SymbolSubst): BuiltinSymbol = sub.mapBuiltInSym(this)
   
-  def isPure: Bool = true // * For now, all builtins are pure
+  def isPure: Bool = nme =/= "super" // * For now, all other builtins are pure
   
   // * A basic approximation of builtin operator types
   lazy val signature : semantics.flow.Producer =
@@ -399,6 +399,14 @@ sealed trait DefinitionSymbol[Defn <: Definition] extends Symbol:
   var decl: Opt[Declaration] = N // NOTE: currently only assigned for class params and only used by deforestation; may want to just remove it once deforestation is improved
   def bms: Opt[BlockMemberSymbol] = defn.map(_.bsym) 
   
+  // * Although the IR is immutable,
+  // * we consider that a given symbol is *owned* by the IR Defn node that defines it.
+  var irDefn: Opt[codegen.Defn] = N
+  def irFunDefn: Opt[codegen.FunDefn] = irDefn.collectFirst:
+    case fd: codegen.FunDefn => fd
+  def irClsLikeDefn: Opt[codegen.ClsLikeDefn] = irDefn.collectFirst:
+    case cd: codegen.ClsLikeDefn => cd
+  
   /** Whether we know it's pure when selected (eg getters are not always pure). */
   def isPure: Bool =
     this match
@@ -412,8 +420,6 @@ sealed trait DefinitionSymbol[Defn <: Definition] extends Symbol:
         case _ => false
   
   def subst(using sub: SymbolSubst): DefinitionSymbol[Defn]
-  
-  def asMemSym: MemberSymbol = this
   
 end DefinitionSymbol
 
@@ -497,4 +503,3 @@ class TopLevelSymbol(blockNme: Str)(using State)
   override def prefix: Str = "globalThis:"
   
   def subst(using sub: SymbolSubst): TopLevelSymbol = sub.mapTopLevelSym(this)
-

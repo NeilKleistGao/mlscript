@@ -103,13 +103,17 @@ class BlockSimplifier
     * hopefully allows more expensive passes such as DataFlowAnalysis to do less work. */
   class DeadCodeElim() extends BlockTransformer(SymbolSubst.Id), Helper:
     
+    var analysisDone = false
+    
     val usedLabels = MutSet.empty[LabelSymbol]
     val definedVars = MutSet.empty[Local]
     val localVars = MutSet.empty[Local]
     val usedVars = MutSet.empty[Local]
     val privateVars = MutSet.empty[TermSymbol]
-    val usedPrivateVars = MutSet.empty[TermSymbol]
-    var unusedPrivateVars = Set.empty[TermSymbol]
+    val usedPrivateFields = MutSet.empty[TermSymbol]
+    lazy val privateFieldsToRemove: Set[TermSymbol] =
+      assert(analysisDone)
+      privateVars.iterator.filterNot(usedPrivateFields).filterNot(symbolsToPreserve).toSet
     var tailLabels = MutSet.empty[LabelSymbol]
     
     def apply(prog: Program): Program =
@@ -123,7 +127,7 @@ class BlockSimplifier
             case sel: Select =>
               sel.symbol.foreach:
                 case ts: TermSymbol =>
-                  usedPrivateVars += ts
+                  usedPrivateFields += ts
                 case _ =>
             case Value.Ref(loc, _) =>
               usedVars += loc
@@ -148,9 +152,7 @@ class BlockSimplifier
             case _ =>
           super.applyBlock(b)
 
-      unusedPrivateVars =
-        privateVars.iterator.filterNot(usedPrivateVars).filterNot(symbolsToPreserve).toSet
-
+      analysisDone = true
       applyProgram(prog)
     
     // Evaluate `thunk` with a new tail label set. This is used for evaluating any sub blocks that is not in the tail position.
@@ -204,36 +206,30 @@ class BlockSimplifier
           bod.analyze
             && !BrokenLabels.analyze(bod).contains(lbl) // if `bod` breaks to `lbl`, then we must consider `rst`
             || rst.analyze
-        case _: Throw | Return(_, false) | _: Unreachable | _: Continue | _: Break => true
-        case Return(_, true) => false
+        case _: Throw | _: Return | _: Unreachable | _: Continue | _: Break => true
         case _: End => false
         
     end AbortiveAnalysis
-    
-    
-    val removedLocals: MutSet[Local] = MutSet.empty
     
     
     override def applyValue(v: Value)(k: Value => Block) = v match
       // * Replace with `undefined` those references to local variables that are never assigned
       case Value.Ref(loc, N) if localVars.contains(loc) && !definedVars.contains(loc) =>
         registerChange(s"${loc.showDbg} is never assigned; replacing read with undefined")
-        if !symbolsToPreserve(loc) then removedLocals += loc
+        // if !symbolsToPreserve(loc) then removedLocals += loc
         k(Value.Lit(syntax.Tree.UnitLit(false)))
       case _ => super.applyValue(v)(k)
     
     override def applyBlock(b: Block): Block = b match
-      
       // * Discard assignments to local variables that are never read (and are not preserved)
       case Assign(lhs, rhs, rst) if localVars(lhs) && !usedVars(lhs) && !symbolsToPreserve(lhs) =>
         registerChange(s"rm ${lhs.showDbg} = ${rhs.showDbg}")
-        removedLocals += lhs
         applyResult(rhs)(r => Assign.discard(r, applyBlock(rst)))
 
       // * Discard writes to private fields that are never read
       case assign @ AssignField(lhs, _, rhs, rst) =>
         assign.symbol match
-        case S(ts: TermSymbol) if unusedPrivateVars(ts) =>
+        case S(ts: TermSymbol) if privateFieldsToRemove(ts) =>
           registerChange(s"rm unused private field write ${ts.showDbg} = ${rhs.showDbg}")
           applyPath(lhs): lhs2 =>
             applyResult(rhs): rhs2 =>
@@ -249,9 +245,8 @@ class BlockSimplifier
         then super.applyBlock(b)
         else
           registerChange(s"rm unused pure defn ${defn.sym.showDbg}")
-          removedLocals += defn.sym
           applyBlock(rest)
-        
+      
       // * Simplify labelled blocks
       case Label(lbl, loop, bod, rst) =>
         if !BrokenLabels.analyze(bod).contains(lbl) && AbortiveAnalysis.analyze(bod) && !rst.isInstanceOf[Unreachable] then
@@ -283,7 +278,7 @@ class BlockSimplifier
 
     private def removeUnusedPrivateFields(fields: Ls[TermSymbol]): Ls[TermSymbol] =
       fields.filterConserve: fld =>
-        val keep = !unusedPrivateVars(fld)
+        val keep = !privateFieldsToRemove(fld)
         if !keep then registerChange(s"rm unused private field ${fld.showDbg}")
         keep
 
@@ -305,21 +300,20 @@ class BlockSimplifier
           k(cls2)
         case other => k(other)
 
-    
     // FIXME: refactor transformers so this is not so error-prone (adding this case to `applyBlock` doesn't work)
     override def applyScopedBlock(b: Block): Block = b match
       // * Delete removed local variables from Scoped blocks
       case Scoped(syms, body) =>
         val body2 = applyBlock(body)
-        // println(s">> $body2 ${body is body2}")
-        // println(s">> $body2 ${changed}")
-        if changed then
-        // if changed || (body isnt body2) then
-          val syms2 = syms.filterNot(removedLocals)
-          // println(s">> $syms $syms2 ${removedLocals}")
-          if syms2.size === syms.size && (body2 is body) then b
-          else Scoped(syms2, body2)
-        else b
+        val fvs = body2.freeVars
+        val syms2 =
+          // * Avoid building sets of symbols if we know that nothing needs to be removed
+          val needsCleanup = syms.exists: sym =>
+            !fvs.contains(sym) && !symbolsToPreserve(sym)
+          if needsCleanup then syms.filter(fvs | symbolsToPreserve)
+          else syms
+        if (syms2 is syms) && (body2 is body) then b
+        else Scoped(syms2, body2)
       case _ => super.applyScopedBlock(b)
     
     override def applyFunBodyLikeBlock(b: Block): Block =
@@ -489,6 +483,7 @@ class BlockSimplifier
             assignedResults = oldAssignedResults
             k(res)
     
+    
     // * Lambda bodies are function boundaries: `makeImpossibleAfter` on a Return inside a lambda
     // * must not leak out and corrupt the outer `assignedResults`.
     override def applyLam(lam: Lambda): Lambda =
@@ -498,10 +493,19 @@ class BlockSimplifier
       assignedResults = oldAssignedResults
       res
     
+    
     override def applyBlock(b: Block): Block =
     // trace[Block](s"Applying block: ${b.abbreviate} with map: ${assignedResults}", res => s"|= ${assignedResults}"):
       b match
-        
+      
+      // * Discard local variables that are assigned just to be returned
+      // * Note: the reason we do this here and not in DeadCodeElim is that we need to check `capturedVars`
+      case Assign(lhs: LocalVar, rhs, Return(Value.Ref(ret, N)))
+        if !inDryRun && (ret is lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs)
+      =>
+        registerChange(s"tail-return ${lhs.showDbg} ~> ${rhs.showDbg}")
+        applyBlock(Return(rhs))
+      
       case ass @ Assign(lhs: LocalVar, rhs, rst) if !capturedVars(lhs) =>
         // log(s"Propagating ${lhs} := ${rhs} (${assignedResults.get(lhs)})")
         
@@ -614,8 +618,8 @@ class BlockSimplifier
                   case S(tsym: TermSymbol) =>
                     tsym.owner match
                     case S(sym: ClassSymbol) =>
-                      sym.defn match
-                      case S(cls: ClassLikeDef)
+                      sym.irClsLikeDefn match
+                      case S(cls: ClsLikeDefn)
                         if cls.auxParams.isEmpty
                         => Set.single(sym)
                       case _ => giveUp
@@ -624,8 +628,8 @@ class BlockSimplifier
                 case Instantiate(mut, cls, args) =>
                   cls.targetSymbol match
                   case S(sym: ClassSymbol) =>
-                    sym.defn match
-                    case S(cls: ClassLikeDef)
+                    sym.irClsLikeDefn match
+                    case S(cls: ClsLikeDefn)
                       // if the instantiation call is saturated
                       if cls.auxParams.isEmpty || cls.paramsOpt.isEmpty && cls.auxParams.sizeCompare(1) <= 0
                       => Set.single(sym)
@@ -696,6 +700,7 @@ class BlockSimplifier
       case _ => 
         super.applyBlock(b)
     
+    
     // FIXME: refactor transformers so this is not so error-prone (adding this case to `applyBlock` doesn't work)
     override def applyScopedBlock(b: Block): Block =
       b match
@@ -715,6 +720,7 @@ class BlockSimplifier
         res
       case _ =>
         super.applyScopedBlock(b)
+    
     
     override def applyValue(v: Value)(k: Value => Block): Block =
       v match
@@ -797,13 +803,58 @@ class BlockSimplifier
         
       case _ => super.applyValue(v)(k)
     
+    
+    private def assignedPureCallPrefix(loc: LocalVar): Opt[Call] =
+      def loop(asst: AssignInfo, seen: Set[LocalVar]): Opt[Call] =
+        asst match
+        case Unknown | Uninitialized => N
+        case Assigned(ass, opt) =>
+          ass.rhs match
+          case call: Call if call.isKnownUnsaturatedCall && call.isPure => S(call)
+          case _ =>
+            opt match
+            case S((Value.Ref(next: LocalVar, N), nextAsst))
+              if !capturedVars(next) && !seen(next) && (assignedResults(next) is nextAsst) =>
+              loop(nextAsst, seen + next)
+            case _ => N
+        case Merge(asst1, asst2) =>
+          (loop(asst1, seen), loop(asst2, seen)) match
+          case (S(call1), S(call2)) if call1 == call2 => S(call1)
+          case _ => N
+      loop(assignedResults(loc), Set.single(loc))
+    
+    
     override def applyResult(r: Result)(k: Result => Block): Block =
       // Some partial evaluation – TODO: move to IR smart constructors
       r match
+      
+      // * Try to propagate pure calls
+      case Value.Ref(loc: LocalVar, N) if !inDryRun && !capturedVars(loc) =>
+        assignedPureCallPrefix(loc) match
+        case S(call) =>
+          registerChange(s"${loc.showDbg} ~> ${call.showDbg}")
+          super.applyResult(call)(k)
+        case N =>
+          super.applyResult(r)(k)
+      
+      // * Try to combine pure calls (typically unsaturated calls) assigned to a variable into the current call
+      case c @ Call(Value.Ref(loc: LocalVar, N), argss) if !inDryRun && !capturedVars(loc) =>
+        assignedPureCallPrefix(loc) match
+        case S(prefix) =>
+          registerChange(s"${loc.showDbg} call prefix ~> ${prefix.showDbg}")
+          val combined = Call(prefix.fun, (prefix.argss ::: argss).ne_!)(
+            prefix.isMlsFun, prefix.mayRaiseEffects || c.mayRaiseEffects, c.explicitTailCall,
+          ).withLocOf(c)
+          super.applyResult(combined)(k)
+        case N => super.applyResult(r)(k)
+      
+      // * Remove uses of the strange builtin comma operator
       case Call(Value.Ref(sym: BuiltinSymbol, N), (arg1 :: arg2 :: Nil) :: Nil)
         if sym.nme === "," && arg1.spread.isEmpty && arg2.spread.isEmpty
         =>
           Assign.discard(arg1.value, k(arg2.value))
+      
+      // * Partially evaluate calls to known builtins with literal arguments
       case Call(Value.Ref(sym: BuiltinSymbol, N), args :: Nil) if args.forall(_.value.isInstanceOf[Value]) =>
         val argValues = args.map(_.value.asInstanceOf[Value])
         args.foreach(a => assert(a.spread.isEmpty))
@@ -812,7 +863,10 @@ class BlockSimplifier
           registerChange(s"Evaluating builtin ${sym.nme} with args ${argValues.map(_.showDbg).mkString(", ")} ~> ${v.showDbg}")
           k(v)
         case N => super.applyResult(r)(k)
-      case r => super.applyResult(r)(k)
+      
+      case r =>
+        super.applyResult(r)(k)
+    
     
     // TODO: mv to smart ctor of Call
     import syntax.Tree.*, Value.Lit
@@ -900,49 +954,54 @@ class BlockSimplifier
         isMethod: Bool,
         private[InlinerAnalyzer] var useCount: Int,
         private[InlinerAnalyzer] var disallowElimination: Bool,
-        private[InlinerAnalyzer] var isLoopBreaker: Bool,
+        private[InlinerAnalyzer] var _isLoopBreaker: Bool,
       ):
         def isPrivate = !symbolsToPreserve.contains(defn.sym)
         
+        inline def isLoopBreaker = _isLoopBreaker
+        
         // Whether this function can be inlined without causing any code duplication,
         // i.e. the original definition can be removed and there is only one usage.
-        def canBeInlineEliminated =
+        def canBeInlineEliminated: Bool =
           isPrivate && !isMethod && useCount <= 1 && !disallowElimination && !isLoopBreaker
           // false
         
-        def shouldBeInlined(newBlk: Block): Bool =
-          if isLoopBreaker then return false
+        def shouldBeInlined(newBlk: Block, threshold: Int): Bool =
           // method requires the capturing of `this`, which is not supported currently.
           if isMethod then return false
-          val threshold = summon[Config.Inliner].inlineThreshold
+          // If the definition is marked with inline, we should inline it regardless of the size of the body.
+          // If both callee and caller are marked with inline, inlining will ignore the stricter @inline limits.
+          // Remark: the case of a recursive function marked with inline will be blocked by loop breaker logic.
+          if defn.inline then return true
           newBlk.size <= threshold || canBeInlineEliminated
         
       type InlinerMap = Map[TermSymbol, InlinerFunInfo]
       
       case class FunLikeContext(
         curFunSym: Opt[TermSymbol],
+        hasInlineAnnot: Bool,
       )
       
       class Traverser extends BlockTraverser:
         var map: InlinerMap = Map.empty
         val useCnt = MutMap.WithDefault(MutMap.empty[TermSymbol, Int], _ => 0)
         val usages = MutMap.WithDefault(MutMap.empty[TermSymbol, List[(Option[TermSymbol], Call)]], _ => Nil)
-        val hasNakedRef = MutMap.WithDefault(MutMap.empty[TermSymbol, Bool], _ => false)
-        var contextList: List[FunLikeContext] = FunLikeContext(N) :: Nil
+        val disallowElimination = MutMap.WithDefault(MutMap.empty[TermSymbol, Bool], _ => false)
+        var contextList: List[FunLikeContext] = FunLikeContext(N, false) :: Nil
         
         def currentContext = contextList.head
         
         def currentFunSym = currentContext.curFunSym
         
-        def nested(ts: Option[TermSymbol])(thunk: => Unit) =
-          contextList = FunLikeContext(ts) :: contextList
+        def nested(ts: Option[TermSymbol], hasInlineAnnot: Bool)(thunk: => Unit) =
+          contextList = FunLikeContext(ts, hasInlineAnnot) :: contextList
           thunk
           val res = contextList.head
           contextList = contextList.tail
           res
         
         def addFunctionAndApplyBody(f: FunDefn, isMethod: Bool) =
-          val r = nested(S(f.dSym)):
+          val r = nested(S(f.dSym), f.inline):
             applyBlock(f.body)
           map = map + (f.dSym -> InlinerFunInfo(f, isMethod, 0, false, false))
         
@@ -954,7 +1013,7 @@ class BlockSimplifier
             c.methods.foreach: f =>
               addFunctionAndApplyBody(f, true)
             // Note: no tracking, since `Instantiate` will not be inlined and won't cause cycles.
-            nested(N):
+            nested(N, false):
               applySubBlock(c.preCtor)
               applySubBlock(c.ctor)
             c.companion.foreach: m =>
@@ -966,6 +1025,9 @@ class BlockSimplifier
         
         override def applyResult(r: Result): Unit = r match
           case c @ Call(TermSymbolPath(ts), argss) =>
+            if currentContext.hasInlineAnnot then
+              // Not eligible for inline elimination
+              disallowElimination(ts) = true
             useCnt(ts) += 1
             usages(ts) ::= (currentFunSym, c)
             argss.foreach(_.foreach(applyArg))
@@ -974,13 +1036,18 @@ class BlockSimplifier
         override def applySymbol(sym: Symbol): Unit =
           sym.asTrm.foreach: ts =>
             useCnt(ts) += 1
-            hasNakedRef(ts) = true
+            disallowElimination(ts) = true
         
         def analyze(blk: Block): InlinerMap =
           applyBlock(blk)
+          map = map ++
+            useCnt.keysIterator.filterNot(map.contains).flatMap: sym =>
+              sym.irDefn.collect:
+                case fd: FunDefn =>
+                  sym -> InlinerFunInfo(fd, fd.owner.nonEmpty, 0, true, false)
           map.foreach: (sym, info) =>
             info.useCount = useCnt(sym)
-            info.disallowElimination = info.disallowElimination || hasNakedRef(sym)
+            info.disallowElimination = info.disallowElimination || disallowElimination(sym)
           val edges: Buffer[(TermSymbol, TermSymbol)] = Buffer.empty
           usages.foreach: (sym, calls) =>
             calls.foreach: (caller, call) =>
@@ -990,19 +1057,24 @@ class BlockSimplifier
                   matchAllArgs(call.argss, map(sym).defn.params).isEmpty
                 caller.foreach: caller =>
                   edges.append((caller, sym))
-          
+
+          def pickLoopBreaker(sccComp: Ls[TermSymbol]): TermSymbol =
+            sccComp.minBy: sym =>
+              (if map(sym).defn.inline then 1 else 0, sym.uid)
+
           @tailrec
           def assignLoopBreakers(): Unit =
             val sccs = partitionScc(edges.filterNot((from, to) => map(to).isLoopBreaker), map.keys)
             if sccs.forall(_.sizeIs == 1) then return
             sccs.foreach: sccComp =>
               if sccComp.sizeIs > 1 then
-                // TODO: Score computation
-                map(sccComp.minBy(_.uid)).isLoopBreaker = true
+                // Prefer breaking cycles at non-inline definitions so tiny wrappers
+                // can still disappear while their workers stop recursive expansion.
+                map(pickLoopBreaker(sccComp))._isLoopBreaker = true
             assignLoopBreakers()
           edges.foreach: (from, to) =>
             if from === to then
-              map(from).isLoopBreaker = true
+              map(from)._isLoopBreaker = true
           assignLoopBreakers()
           map
       
@@ -1028,7 +1100,7 @@ class BlockSimplifier
             res
           
           override def applyBlock(b: Block): Block = b match
-            case Return(res, false) if !currentlyNested =>
+            case Return(res) if !currentlyNested =>
               applyResult(res): r2 =>
                 Assign(resSym, r2, Break(lblSym))
             case _ => super.applyBlock(b)
@@ -1045,13 +1117,21 @@ class BlockSimplifier
         // Key in map but value is None -> the optimized body is being computed
         // Key in map with value -> the function is optimized
         val newFunctionBody = MutMap.empty[TermSymbol, Option[Block]]
+        var insideInlineAnnotatedFunction = false
+
+        inline def enterFunBlock[T](inlineAnnot: Bool, inline thunk: => T): T =
+          val old = insideInlineAnnotatedFunction
+          insideInlineAnnotatedFunction = inlineAnnot
+          val res = thunk
+          insideInlineAnnotatedFunction = old
+          res
         
         override def applyMainBlock(main: Block): Block =
           super.applyMainBlock(main).flattened
         
         override def applyBlock(blk: Block) =
           blk match
-          case Define(defn: FunDefn, rest) if m(defn.dSym).canBeInlineEliminated =>
+          case Define(defn: FunDefn, rest) if m.get(defn.dSym).exists(_.canBeInlineEliminated) =>
             log(s"Inline elimination: ${defn.dSym}")
             registerChange(s"rm inline-eliminated function ${defn.dSym.showDbg}")
             applyBlock(rest)
@@ -1061,7 +1141,7 @@ class BlockSimplifier
           newFunctionBody.get(fun.dSym) match
             case N =>
               newFunctionBody(fun.dSym) = N
-              val newBdy = applyBlock(fun.body)
+              val newBdy = enterFunBlock(fun.inline, applyBlock(fun.body))
               newFunctionBody(fun.dSym) = S(newBdy)
               if newBdy is fun.body then fun else
               FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, newBdy)(fun.configOverride, fun.annotations)
@@ -1074,15 +1154,18 @@ class BlockSimplifier
         
         override def applyResult(r: Result)(k: Result => Block): Block = r match
           case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
+            if m(ts).isLoopBreaker then return super.applyResult(r)(k)
             newFunctionBody.get(ts)
             .getOrElse:
               newFunctionBody(ts) = N
-              val newBdy = applyBlock(m(ts).defn.body)
+              val newBdy = enterFunBlock(m(ts).defn.inline, applyBlock(m(ts).defn.body))
               newFunctionBody(ts) = S(newBdy)
               S(newBdy)
             .fold(super.applyResult(r)(k)): blk =>
               val info = m(ts)
-              if !info.shouldBeInlined(blk) then
+              val cfg = summon[Config.Inliner]
+              val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
+              if !info.shouldBeInlined(blk, threshold) then
                 super.applyResult(r)(k)
               else
                 val matchedArgs = matchAllArgs(argss, info.defn.params)
@@ -1122,5 +1205,3 @@ class BlockSimplifier
   
   
 end BlockSimplifier
-
-

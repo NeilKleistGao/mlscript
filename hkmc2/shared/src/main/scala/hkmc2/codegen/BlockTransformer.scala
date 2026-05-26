@@ -40,9 +40,9 @@ class BlockTransformer(subst: SymbolSubst):
     case Continue(lbl) =>
       val lbl2 = lbl.subst
       if lbl2 is lbl then b else Continue(lbl2)
-    case Return(res, implct) =>
+    case Return(res) =>
       applyResult(res): res2 =>
-        if res2 is res then b else Return(res2, implct)
+        if res2 is res then b else Return(res2)
     case Throw(exc) =>
       applyResult(exc): exc2 =>
         if exc2 is exc then b else Throw(exc2)
@@ -299,7 +299,7 @@ class BlockTransformer(subst: SymbolSubst):
   def applyLam(lam: Lambda): Lambda =
     val params2 = applyParamList(lam.params)
     val body2 = applyFunBodyLikeBlock(lam.body)
-    if (params2 is lam.params) && (body2 is lam.body) then lam else Lambda(params2, body2)
+    if (params2 is lam.params) && (body2 is lam.body) then lam else Lambda(params2, body2)(lam.annot)
   
   def applyListOf[A](ls: List[A], f: (A, (A => Block)) => Block)(k: List[A] => Block): Block =
     def rec(ls: List[A], k: List[A] => Block): Block = ls match

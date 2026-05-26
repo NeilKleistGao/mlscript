@@ -359,7 +359,7 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
             rec(sub) |> merge
             rec(finallyDo) |> merge
             applySubBlock(rest)
-          case Return(res, false) =>
+          case Return(res) =>
             applyResult(res)
             hasReader = Set.empty
             hasMutator = Set.empty

@@ -15,6 +15,26 @@ import semantics.Term.*
 import sem.Elaborator.State
 
 
+/* Important design notes.
+
+The Middle IR (MIR) or "Block IR" or just "IR" is an implementation of a form of imperative ANF.
+
+While the IR is mostly immutable, for easier manipulation and to enable some optimizations,
+we do assume that each DefinitionSymbol coming from the source program is "owned" by at most one IR definition;
+this is implemented by making the `Define` and `ClsLikeDefn` constructors
+set the `irDefn` field of the symbol they define.
+This means that if a program fragment containing definitions is rewritten at all,
+then the rewritten version must be kept as the "currently valid" version, and the old one must no longer be reused,
+as a given symbol can never correspond to more than one IR definition.
+
+Moreover, we generally assume that in a given program, no symbol is every bound more than once
+by any binding form, such as Scoped, Label, Define. (This is currently not completely enforced, though.)
+This means that processes that duplicate binding forms within a program (eg, inlining)
+must refresh the corresponding symbols – see SymbolRefresher for this purpose.
+
+*/
+
+
 case class Program(
   imports: Ls[Local -> Str],
   main: Block,
@@ -34,7 +54,7 @@ sealed abstract class Block extends Product:
     case Unreachable(msg) => s"Unreachable(${msg})"
     case Break(lbl) => s"Break(${lbl.showDbg})"
     case Continue(lbl) => s"Continue(${lbl.showDbg})"
-    case Return(res, implct) => s"Return(${res.showDbg}, implct = $implct)"
+    case Return(res) => s"Return(${res.showDbg})"
     case Match(scrut, arms, dflt, rest) =>
       val armsStr = arms.map((pat, arm) => s"case ${pat.showDbg} => ${arm.showDbg}").mkString("\n")
       val dfltStr = dflt.map(d => s"default => ${d.showDbg}\n").getOrElse("")
@@ -77,7 +97,7 @@ sealed abstract class Block extends Product:
   lazy val isAbortive: Bool = this match
     case _: End => false
     case _: Throw | _: Break | _: Continue | _: Unreachable => true
-    case ret: Return => !ret.implct
+    case _: Return => true
     case Begin(sub, rst) => sub.isAbortive || rst.isAbortive
     case Assign(_, _, rst) => rst.isAbortive
     case AssignField(_, _, _, rst) => rst.isAbortive
@@ -113,18 +133,20 @@ sealed abstract class Block extends Product:
     case Label(lbl, _, bod, rst) => bod.definedVars ++ rst.definedVars
     case Scoped(syms, body) => body.definedVars ++ syms
   
-  lazy val size: Int = this match
-    case _: Return | _: Throw | _: End | _: Break | _: Continue | _: Unreachable => 1
+  lazy val size: Int = 1 + this.match
+    case Return(r: Result) => r.size
+    case Throw(r: Result) => r.size
+    case _: End | _: Break | _: Continue | _: Unreachable => 0
     case Begin(sub, rst) => sub.size + rst.size
-    case Assign(_, _, rst) => 1 + rst.size
-    case AssignField(_, _, _, rst) => 1 + rst.size
-    case AssignDynField(_, _, _, _, rst) => 1 + rst.size
-    case Match(_, arms, dflt, rst) =>
-      1 + arms.map(_._2.size).sum + dflt.map(_.size).getOrElse(0) + rst.size
-    case Define(_, rst) => 1 + rst.size
-    case TryBlock(sub, fin, rst) => 1 + sub.size + fin.size + rst.size
-    case Label(_, _, bod, rst) => 1 + bod.size + rst.size
-    case Scoped(_, body) => body.size
+    case Assign(_, r, rst) => r.size + rst.size
+    case AssignField(p, _, r, rst) => p.size + r.size + rst.size
+    case AssignDynField(p, fld, _, r, rst) => p.size + fld.size + r.size + rst.size
+    case Match(p, arms, dflt, rst) =>
+      p.size + arms.iterator.map(_._2.size).sum + dflt.fold(0)(_.size) + rst.size
+    case Define(defn, rst) => defn.size + rst.size
+    case TryBlock(sub, fin, rst) => sub.size + fin.size + rst.size
+    case Label(_, _, bod, rst) => bod.size + rst.size
+    case Scoped(_, body) => body.size - 1
   
   
   // TODO: make patmat use unreach
@@ -141,7 +163,7 @@ sealed abstract class Block extends Product:
       scrut.freeVars ++ dflt.toList.flatMap(_.freeVars) ++ rest.freeVars
       ++ arms.flatMap:
         (pat, arm) => arm.freeVars -- pat.freeVars
-    case Return(res, implct) => res.freeVars
+    case Return(res) => res.freeVars
     case Throw(exc) => exc.freeVars
     case Label(label, _, body, rest) => (body.freeVars - label) ++ rest.freeVars 
     case Break(label) => Set.single(label)
@@ -161,7 +183,7 @@ sealed abstract class Block extends Product:
       scrut.freeVarsLLIR ++ dflt.toList.flatMap(_.freeVarsLLIR) ++ rest.freeVarsLLIR
       ++ arms.flatMap:
         (pat, arm) => arm.freeVarsLLIR -- pat.freeVarsLLIR
-    case Return(res, implct) => res.freeVarsLLIR
+    case Return(res) => res.freeVarsLLIR
     case Throw(exc) => exc.freeVarsLLIR
     case Label(label, _, body, rest) => (body.freeVarsLLIR - label) ++ rest.freeVarsLLIR 
     case Break(label) => Set.empty
@@ -187,8 +209,8 @@ sealed abstract class Block extends Product:
     case Label(_, _, body, rest) => body :: rest :: Nil
     case Scoped(_, body) => body :: Nil
     
-    // TODO rm Lam from values and thus the need for these cases
-    case Return(r, _) => r.subBlocks
+    // TODO rm Lam from results and thus the need for these cases
+    case Return(r) => r.subBlocks
     case Throw(r) => r.subBlocks
     
     case _: Return | _: Throw | _: Break | _: Continue | _: End | _: Unreachable => Nil
@@ -334,11 +356,7 @@ case class Match(
   rest: Block,
 ) extends Block with ProductWithTail with NonBlockTail
 
-// * `implct`: metadata indicating whether this is a JS implicit return, without the `return` keyword.
-// * This is currenlty only used for the main blocks of modules and diff-test blocks;
-// * for all intents and purposes, one can view an implicit return as a normal return.
-// * I would remove it, but it helps print cleaner outputs for diff tests (eg, using `:sir`).
-case class Return(res: Result, implct: Bool) extends BlockTail
+case class Return(res: Result) extends BlockTail
 
 case class Throw(exc: Result) extends BlockTail
 
@@ -367,7 +385,9 @@ case class AssignField(lhs: Path, nme: Tree.Ident, rhs: Result, rest: Block)(val
 case class AssignDynField(lhs: Path, fld: Path, arrayIdx: Bool, rhs: Result, rest: Block)
   extends Block with ProductWithTail with NonBlockTail
 
-case class Define(defn: Defn, rest: Block) extends Block with ProductWithTail with NonBlockTail
+case class Define(defn: Defn, rest: Block) extends Block with ProductWithTail with NonBlockTail:
+  defn.defnSym.foreach: ds =>
+    ds.irDefn = S(defn)
 
 inline def whenValidatingIR(inline code: => Unit): Unit =
   () // code // * uncomment to run on-the fly IR validations
@@ -512,7 +532,7 @@ object HandleBlock:
         handler.params,
         Scoped(Set(sym, rSym), Define(
           fDef,
-          Return(suspend(cls.asPath, Value.Ref(sym, S(fDef.dSym))), false))))(N, annotations = Nil)
+          Return(suspend(cls.asPath, Value.Ref(sym, S(fDef.dSym)))))))(N, annotations = Nil)
 
     val clsDefn = ClsLikeDefn(
       N, // no owner
@@ -523,7 +543,7 @@ object HandleBlock:
       N, Nil,
       S(par), handlerMtds, Nil, Nil,
       // Apparently, the lifter is not happy with any assignment in the preCtor...
-      Return(Call(Value.Ref(State.builtinOpsMap("super")), args.map(_.asArg) ne_:: Nil)(true, true, false), true),
+      Assign(State.noSymbol, Call(Value.Ref(State.builtinOpsMap("super")), args.map(_.asArg) ne_:: Nil)(true, true, false), End()),
       End(),
       N,
       N,
@@ -554,8 +574,9 @@ object HandleBlock:
 
 
 sealed abstract class Defn:
-  val innerSym: Opt[MemberSymbol]
+  val defnSym: Opt[DefinitionSymbol[?]]
   val sym: BlockMemberSymbol
+  val configOverride: Opt[Config]
   val annotations: Ls[Annot]
   def isStaged: Bool = annotations.exists:
     case Annot.Modifier(Keyword.`staged`) => true
@@ -608,10 +629,14 @@ sealed abstract class Defn:
       preCtor.freeVarsLLIR
         ++ ctor.freeVarsLLIR ++ methods.flatMap(_.freeVarsLLIR) ++ stat.iterator.flatMap(_.freeVarsLLIR)
         -- auxParams.flatMap(_.paramSyms)
+
+  lazy val size: Int = this match
+    case FunDefn(_, _, _, params, body) => 1 + body.size
+    case ValDefn(_, _, rhs) => 1
+    case ClsLikeDefn(_, _, _, _, _, paramsOpt, auxParams, parentSym, methods, privateFields, publicFields, preCtor, ctor, stat, bufferable) =>
+      1 + methods.map(_.size).sum + preCtor.size + ctor.size + stat.fold(0)(_.size)
   
 
-// NOTE: Setting isTailRec to false does not affect whether the function is optimized.
-// It only affects whether a warning is thrown if the function is not actually tailrec.
 final case class FunDefn(
     owner: Opt[InnerSymbol],
     sym: BlockMemberSymbol,
@@ -622,13 +647,35 @@ final case class FunDefn(
     val configOverride: Opt[Config],
     val annotations: Ls[Annot],
 ) extends Defn:
-  val innerSym = N
+  val defnSym = S(dSym)
   val asPath = Value.Ref(sym, S(dSym))
-  lazy val forceTailRec: Bool = annotations.contains(Annot.TailRec)
+  lazy val tailRec: Bool = annotations.contains(Annot.TailRec)
+  lazy val inline: Bool = annotations.contains(Annot.Inline)
   lazy val visibility: Visibility = annotations.collectFirst:
     case Annot.Modifier(Keyword.`private`) => Visibility.Private
     case Annot.Modifier(Keyword.`public`) => Visibility.Public
   .getOrElse(Visibility.Public)
+  lazy val affineInfo: Ls[Int] =
+    annotations.collect:
+      case Annot.Affine(whichParamList) => whichParamList
+  
+  // `configOverride` and `annotations` live in a secondary constructor list,
+  // so case-class equality would otherwise ignore them.
+  // We currently use structural equality in JSBackendDiffMaker.scala
+  // to make sure that structurally equal blocks retain object identity.
+  override def equals(obj: Any): Bool = obj match
+    case that: FunDefn =>
+      owner == that.owner &&
+        sym == that.sym &&
+        dSym == that.dSym &&
+        params == that.params &&
+        body == that.body &&
+        configOverride == that.configOverride &&
+        annotations == that.annotations
+    case _ => false
+  override def hashCode: Int =
+    (owner, sym, dSym, params, body, configOverride, annotations).hashCode
+
 object FunDefn:
   def withFreshSymbol(owner: Opt[InnerSymbol], sym: BlockMemberSymbol, params: Ls[ParamList], body: Block)(configOverride: Opt[Config], annotations: Ls[Annot])(using State) =
     val tSym = TermSymbol(syntax.Fun, owner, Tree.Ident(sym.nme))
@@ -643,7 +690,7 @@ final case class ValDefn(
     val configOverride: Opt[Config],
     val annotations: Ls[Annot],
 ) extends Defn:
-  val innerSym = S(tsym)
+  val defnSym = S(tsym)
   val owner: Opt[InnerSymbol] = tsym.owner
 
 
@@ -715,7 +762,12 @@ final case class ClsLikeDefn(
     val annotations: Ls[Annot],
 ) extends Defn:
   require(k isnt syntax.Mod)
-  val innerSym = S(isym.asMemSym)
+  methods.foreach: m =>
+    m.dSym.irDefn = S(m)
+  companion.foreach: c =>
+    c.methods.foreach: m =>
+      m.dSym.irDefn = S(m)
+  val defnSym = S(isym)
 
 
 // * This is only supposed to be for companion module definitions (notably, not for `object`)
@@ -735,6 +787,7 @@ final case class ClsLikeBody(
   lazy val freeVars: Set[Local] =
     ctor.freeVars ++ methods.flatMap(_.freeVars)
   lazy val freeVarsLLIR: Set[Local] = ???
+  lazy val size = 1 + methods.map(_.size).sum + ctor.size
 
 /*
 object ClsLikeBody:
@@ -816,6 +869,8 @@ sealed abstract class Result extends AutoLocated:
     case _: Value => true
     case sel @ Select(q, n) =>
       q.isPure && sel.symbol.exists(_.isPure)
+    case c @ Call(fun, ass) if c.isKnownUnsaturatedCall =>
+      fun.isPure && ass.forall(_.forall(a => a.spread.isEmpty && a.value.isPure))
     case Call(Value.Ref(bs: BuiltinSymbol, _), ass) if bs.isPure =>
       ass.forall(_.forall(_.value.isPure))
     case Record(mut, args) => args.forall(_.value.isPure)
@@ -883,6 +938,20 @@ sealed abstract class Result extends AutoLocated:
     case Value.Lit(lit) => Set.empty
     case DynSelect(qual, fld, arrayIdx) => qual.freeVarsLLIR ++ fld.freeVarsLLIR
   
+  lazy val size: Int = this match
+    case Call(fun, argss) => fun.size + argss.iterator.flatten.map(_.value.size).sum
+    case Instantiate(mut, cls, argss) => cls.size + argss.iterator.flatten.map(_.value.size).sum
+    case Select(qual, name) => qual.size
+    case Lambda(params, body) => 1 + body.size
+    case Tuple(mut, elems) => elems.iterator.map(_.value.size).sum
+    case Record(mut, args) => args.iterator.map(arg => arg.idx.fold(0)(_.size) + arg.value.size).sum
+    case Value.Ref(l, disamb) => 0
+    case Value.This(sym) => 0
+    case Value.Lit(l: Tree.StrLit) => l.value.length / 4
+    case Value.Lit(lit) => 0
+    case DynSelect(qual, fld, arrayIdx) => qual.size + fld.size
+
+// * TODO: refine this very loose type
 // type Local = LocalSymbol
 type Local = Symbol
 
@@ -890,11 +959,20 @@ type Local = Symbol
  * regardless of whether the check for effect is inserted or not.
  * Note that the check for effect is inserted during HandlerLowering and setting this to true
  * after handler is lowered does not have any effect on the code generation. */
-case class Call(fun: Path, argss: NELs[Ls[Arg]])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result
+case class Call(fun: Path, argss: NELs[Ls[Arg]])(val isMlsFun: Bool, val mayRaiseEffects: Bool, val explicitTailCall: Bool) extends Result:
+  lazy val isKnownUnsaturatedCall: Bool =
+    fun.targetSymbol match
+    case S(ts: TermSymbol) =>
+      ts.irDefn.exists:
+        case fd: FunDefn => argss.lengthCompare(fd.params.length) < 0
+        case _ => false
+    case _ => false
 
 case class Instantiate(mut: Bool, cls: Path, argss: Ls[Ls[Arg]]) extends Result
 
-case class Lambda(params: ParamList, body: Block) extends Result
+case class Lambda(params: ParamList, body: Block)(val annot: Ls[Annot]) extends Result:
+  lazy val affine: Bool = annot.exists(_.isInstanceOf[Annot.Affine])
+
 
 case class Tuple(mut: Bool, elems: Ls[Arg]) extends Result
 
@@ -965,7 +1043,7 @@ extension (k: Block => Block)
   def ifthen(scrut: Path, cse: Case, trm: Block, els: Opt[Block] = N): Block => Block =
     k.chain(Match(scrut, cse -> trm :: Nil, els, _))
   def label(label: LabelSymbol, loop: Bool, body: Block) = k.chain(Label(label, loop, body, _))
-  def ret(r: Result) = k.rest(Return(r, false))
+  def ret(r: Result) = k.rest(Return(r))
   def scopedVars(s: collection.Set[Local]) = k.chain(Scoped(s, _))
   def staticif(b: Boolean, f: (Block => Block) => (Block => Block)) = if b then k.transform(f) else k
   def foldLeft[A](xs: Iterable[A])(f: (Block => Block, A) => Block => Block) = xs.foldLeft(k)(f)
@@ -974,4 +1052,3 @@ def blockBuilder: Block => Block = identity
 
 extension (l: Local)
   def asPath: Path = Value.Ref(l, N)
-
