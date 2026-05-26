@@ -70,7 +70,7 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)
     
     fun inlineAssigments(ctx: Map[Symbol, String])(b) = if b is 
-      Return(res, implct) then inlineResult(ctx)(res)
+      Return(res) then inlineResult(ctx)(res)
       Scoped(_, rest) then inlineAssigments(ctx)(rest)
       Assign(lhs, rhs, rest) then inlineAssigments(ctx.set(lhs, inlineResult(ctx)(rhs)))(rest)
       End then ""

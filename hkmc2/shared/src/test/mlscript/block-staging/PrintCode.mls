@@ -9,7 +9,7 @@ open Option
 
 fun printCode(x) = Printer.default.printCode(x)
 
-printCode(FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false)))
+printCode(FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1))))
 //│ > fun f(x) = 1
 
 printCode(ValueLit(true))
@@ -44,8 +44,8 @@ printCode(Tuple([Arg(ValueRef(Symbol("x"))), Arg(ValueRef(Symbol("y")))]))
 //│ > new D(0)
 //│ > [x, y]
 
-let f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false))
-//│ f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1), false))
+:silent
+let f = FunDefn(Symbol("f"), [[Symbol("x")]], Return(ValueLit(1)))
 
 printCode(f)
 printCode(ClsLikeDefn(dSym, [f], []))
@@ -55,12 +55,12 @@ printCode(ClsLikeDefn(bSym, [], []))
 //│ >   fun f(x) = 1
 //│ > class B
 
-printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), Return(ValueRef(Symbol("x")), true))))
+printCode(Scoped([Symbol("x"), Symbol("y")], Assign(Symbol("x"), ValueLit(4.2), Return(ValueRef(Symbol("x"))))))
 //│ > let {x, y}
 //│ > x = 4.2
 //│ > x
 
-printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(dSym, ValueRef(dSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
+printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2))), Arm(Cls(dSym, ValueRef(dSym)), Return(ValueLit(3)))], Some(Return(ValueRef(Symbol("x")))), End()))
 //│ > if x is
 //│ >   1 then 2
 //│ >   D then 3
@@ -72,17 +72,17 @@ printCode(Define(ValDefn(Some(dSym), Symbol("x"), ValueLit(1)), End()))
 printCode(Define(ValDefn(None, Symbol("a"), ValueLit(1)), End()))
 //│ > val a = 1
 
-printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2), false)), Arm(Cls(bSym, ValueRef(bSym)), Return(ValueLit(3), false))], Some(Return(ValueRef(Symbol("x")), false)), End()))
+printCode(Match(ValueRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2))), Arm(Cls(bSym, ValueRef(bSym)), Return(ValueLit(3)))], Some(Return(ValueRef(Symbol("x")))), End()))
 //│ > if x is
 //│ >   1 then 2
 //│ >   B then 3
 //│ >   else x
 
 printCode(Scoped([Symbol("y")], Match(
-    ValueLit(1), 
-    [Arm(Lit(1), Return(ValueLit(1), false))], 
-    Some(Return(ValueLit(1), false)), 
-    Return(ValueRef(Symbol("y")), false))))
+    ValueLit(1),
+    [Arm(Lit(1), Return(ValueLit(1)))],
+    Some(Return(ValueLit(1))),
+    Return(ValueRef(Symbol("y"))))))
 //│ > let {y}
 //│ > if 1 is
 //│ >   1 then 1
@@ -91,8 +91,8 @@ printCode(Scoped([Symbol("y")], Match(
 
 printCode(Scoped([Symbol("y")], Match(
     ValueLit(1), 
-    [Arm(Lit(1), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))], 
-    Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))), 
+    [Arm(Lit(1), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")))))], 
+    Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y"))))), 
     End())))
 //│ > let {y}
 //│ > if 1 is
@@ -104,14 +104,14 @@ printCode(Scoped([Symbol("y")], Match(
 //│ >     y
 
 printCode(Scoped([Symbol("y")], Match(
-    ValueLit(1), 
+    ValueLit(1),
     [Arm(Lit(1), Match(
         ValueLit(2),
-        [Arm(Lit(2), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")), false)))],
-        Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y")), false))),
+        [Arm(Lit(2), Assign(Symbol("y"), ValueLit(1), Return(ValueRef(Symbol("y")))))],
+        Some(Assign(Symbol("y"), ValueLit(2), Return(ValueRef(Symbol("y"))))),
         End()
-    ))], 
-    Some(Assign(Symbol("y"), ValueLit(3), Return(ValueRef(Symbol("y")), false))), 
+    ))],
+    Some(Assign(Symbol("y"), ValueLit(3), Return(ValueRef(Symbol("y"))))),
     End())))
 //│ > let {y}
 //│ > if 1 is
