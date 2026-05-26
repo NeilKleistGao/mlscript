@@ -34,8 +34,8 @@ class CompilerCtx(
     CompilerCtx(S(newFile, this), beingCompiled + newFile, fs, cache)
   
   def getElaboratedBlock
-        (file: io.Path, prelude: Ctx)
-        (using TL, Raise, Config)
+        (file: io.Path, prelude: Ctx, importerCfg: Config)
+        (using TL, Raise)
         : Artifact =
     
     // println(s"Cache has: ${cache.elabCache.contains(file)} ${cache.elabCache.keys}")
@@ -58,6 +58,11 @@ class CompilerCtx(
     val lastMod = fs.getLastChangedTimestamp(file)
     
     def mk =
+      // * Later, we can draw this from a global root configuration,
+      // * which is set for a whole application.
+      given Config = Config.default(importerCfg.baseDir)
+      
+      /* 
       val parse =
         given CompilerCtx = this
         ParserSetup(file, dbgParsing = false)
@@ -67,7 +72,80 @@ class CompilerCtx(
         given CompilerCtx = derive(parse.origin.fileName)
         Elaborator(tl, file.up, prelude)
       val elabbed = elab.importFrom(resBlk)
-      Artifact(resBlk, elabbed._1, lastMod)
+      
+      // val 
+      */
+      
+      
+      
+      
+      // TODO: !CLEANUP!
+      // TODO adapt logic
+      given SymbolPrinter = new SymbolPrinter(
+        Scope.empty(Scope.Cfg.default.copy(
+          escapeChars = false,
+          useSuperscripts = true,
+          includeZero = true,
+        ))
+      )
+      val etl = new TraceLogger{override def doTrace: Bool = false}
+      val ltl = new TraceLogger{override def doTrace: Bool = false}
+      val dtl = new TraceLogger{override def doTrace: Bool = false}
+      // val ltl = new TraceLogger{override def doTrace: Bool = true}
+      val rtl = new TraceLogger{override def doTrace: Bool = false}
+      
+      
+      val mainParse =
+        given CompilerCtx = this
+        ParserSetup(file, dbgParsing = false)
+      // given Elaborator.Ctx = prelude.copy(mode = Mode.Light).nestLocal("prelude")
+      given Elaborator.Ctx = prelude
+      val elab =
+        given CompilerCtx = derive(mainParse.origin.fileName)
+        Elaborator(tl, file.up, prelude)
+      
+      // val elab = Elaborator(etl, wd, newCtx)
+      val parsed = mainParse.resultBlk
+      val (blk0, _) = elab.importFrom(parsed)
+      
+      Config.extractConfigFromStats(blk0).givenIn:
+        val resolver = Resolver(rtl)
+        resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
+        def findQuote(t: semantics.Statement): Bool = t match
+          case Term.Quoted(_) | Term.Unquoted(_) => true
+          case Term.Ref(sym) => sym === State.termSymbol
+          case _ => t.subTerms.exists(findQuote)
+        val hasQuote = findQuote(blk0)
+        /* 
+        val blk = new Term.Blk(
+          Import(State.runtimeSymbol, runtimeFile.toString, runtimeFile) ::
+            // Only import `Term.mls` when necessary.
+            (if hasQuote then
+              Import(State.termSymbol, termFile.toString, termFile) :: blk0.stats
+            else
+              blk0.stats),
+          blk0.res
+        )
+        */
+        val blk = blk0
+        val low = ltl.givenIn:
+          new codegen.Lowering()
+            with codegen.LoweringSelSanityChecks
+        val jsb = ltl.givenIn:
+          codegen.js.JSBuilder()
+        val lowered = low.program(blk)
+        var optimized = lowered
+        val nme = file.baseName
+        val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
+        optimized =
+          val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
+          optimized = codegen.WorkerWrapper(exportedSymbol.toSet, dtl, printer)(optimized)
+          codegen.BlockSimplifier(exportedSymbol.toSet, dtl, printer)(optimized)
+        ltl.givenIn:
+          optimized = codegen.DeadParamElim(optimized)
+        
+        
+        Artifact(parsed, blk, optimized, lastMod)
     
     cache.upsert(file):
       case N => mk
@@ -88,7 +166,12 @@ end CompilerCtx
 
 object CompilerCache:
   
-  class Artifact(val tree: syntax.Tree.Block, val term: semantics.Term.Blk, val lastChangedTimestamp: Long)
+  class Artifact(
+    val tree: syntax.Tree.Block,
+    val term: semantics.Term.Blk,
+    val ir: codegen.Program,
+    val lastChangedTimestamp: Long,
+  )
   
 end CompilerCache
 
