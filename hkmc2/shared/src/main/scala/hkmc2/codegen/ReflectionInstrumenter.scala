@@ -72,44 +72,44 @@ def ctor(using State)(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k
 def call(using State)(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
   assign(Call(fun, args.map(asArg) ne_:: Nil)(isMlsFun, false, false), symName)(k)
 
-// transform fields of the first encountered class from private to public
+// transform fields of a class from private to public
 class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id):
-  override def applyClsLikeDefn(defn: ClsLikeDefn)(k: Defn => Block) =
-    val addSyms = defn.privateFields.map(f => (f, BlockMemberSymbol(f.name, Nil, false)))
+  // add val flag to each param
+  override def applyParamList(ps: ParamList) =
+    ps.copy(params = ps.params.map(param => param.copy(flags = param.flags.copy(isVal = true))))
 
-    // add val flag to parameters
-    def applyParamList(ps: ParamList) = ps.copy(params = ps.params.map(param => param.copy(flags = param.flags.copy(isVal = true))))
+  override def applyClsLikeDefn(defn: ClsLikeDefn)(k: Defn => Block) =
+    val addSyms = defn.privateFields.map(f => (BlockMemberSymbol(f.name, Nil, false), f))
+    val privateFields = addSyms.map({case (b, f) => f.name -> (b, f)}).toMap
+
     val paramsOpt = defn.paramsOpt.map(applyParamList)
     val auxParams = defn.auxParams.map(applyParamList)
 
-    // change private field initializations to public
-    val privateFields = addSyms.map({case (f, b) => f.name -> (f, b)}).toMap
-
     class PrivateFieldDefnRemover extends BlockTransformer(SymbolSubst.Id):
-      override def applyPath(p: Path)(k: Path => Block) =
-        p match
-          // remove outdated definition symbols for private fields
-          case s @ Select(Value.Ref(cls, _), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
-          case _ => k(p)
+      override def applyPath(p: Path)(k: Path => Block) = p match
+        // remove outdated definition symbols for private fields
+        case s @ Select(Value.Ref(cls, _), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
+        case _ => k(p)
 
+    // change private field initializations to public
     val publicInitTransformer = new PrivateFieldDefnRemover:
-      override def applyBlock(b: Block) =
-        b match
-          case AssignField(l @ Value.Ref(cls, _), Tree.Ident(n), r, rest) if cls == defn.isym =>
-            privateFields.get(n) match
-              case S((t, b)) =>
-                applyResult(r): r =>
-                  assign(r): p =>
-                    Define(ValDefn(t, b, p)(N, Nil), applyBlock(rest))
-              case N => super.applyBlock(b)
-          case _ => super.applyBlock(b)
+      override def applyBlock(b: Block) = b match
+        case AssignField(l @ Value.Ref(cls, _), Tree.Ident(n), r, rest) if cls == defn.isym =>
+          privateFields.get(n) match
+            case S((b, t)) =>
+              applyResult(r): r =>
+                assign(r): p =>
+                  Define(ValDefn(t, b, p)(N, Nil), applyBlock(rest))
+            case N => super.applyBlock(b)
+        case _ => super.applyBlock(b)
+    // only turn AssignField declarations for private fields to ValDefn for public fields
     val ctor = publicInitTransformer.applyBlock(defn.ctor)
     val methods = defn.methods.map((new PrivateFieldDefnRemover).applyFunDefn)
-    // replace private fields with the public one
+    
     val newDefn = defn.copy(
       paramsOpt = paramsOpt,
       auxParams = auxParams,
-      publicFields = addSyms.map(syms => syms._2 -> syms._1) ++ defn.publicFields,
+      publicFields = addSyms ++ defn.publicFields,
       privateFields = Nil,
       ctor = ctor,
       methods = methods,
