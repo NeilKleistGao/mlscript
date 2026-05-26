@@ -3,7 +3,7 @@ import { run, bench, boxplot, summary } from 'mitata';
 import NaiveTransform3D from "../../NaiveTransform3D.mjs"
 import Transform3D from "../out/Transform3D.mjs"
 
-const coordsLength = 100000;
+const coordsLength = 200000;
 const minCoordValue = -1000;
 const maxCoordValue = 1000;
 const coordValueRange = maxCoordValue - minCoordValue;
