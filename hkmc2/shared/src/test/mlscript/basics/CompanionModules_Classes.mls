@@ -90,43 +90,8 @@ Test.test.hi
 //│ = 42
 
 
-mut val state = 10
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: go (Elaborator.scala:1428)
-//│ ╔══[COMPILATION ERROR] Mutable value definitions must have an owner
-//│ ║  l.93: 	mut val state = 10
-//│ ╙──      	    ^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = member:state⁰
-//│     _2 = class hkmc2.semantics.BlockMemberSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(member:C -> C3, class:C -> C2, module:C -> C2, tmp:block$res -> block$res8, tmp:runtime -> runtime, tmp:block$res -> block$res9, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:option -> option, member:Test -> Test1, class:Test -> Test, module:Test -> Test, tmp:block$res -> block$res, member:C -> C1, class:C -> C, tmp:block$res -> block$res10, module:C -> C, tmp:selRes -> selRes1, tmp:block$res -> block$res11, tmp:block$res -> block$res1, tmp:block$res -> block$res12, tmp:block$res -> block$res2, f -> f, member:f -> f1, tmp:block$res -> block$res3, tmp:block$res -> block$res4, tmp:block$res -> block$res5, tmp:block$res -> block$res6, tmp:tmp -> tmp, tmp:selRes -> selRes, tmp:block$res -> block$res7)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'state'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.93: 	mut val state = 10
-//│ ╙──      	    ^^^^^^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:258)
-//│ ═══[RUNTIME ERROR] ReferenceError: state is not defined
-//│     at REPL46:1:42
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:598:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:927:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:415:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:609:22)
+let state = 10
+//│ state = 10
 
 // * The order of evaluation of modules matters;
 // * they should not be moved to their companion classes (the opposite should happen)
@@ -136,141 +101,47 @@ class Foo() with // the class definition is moved to the location of its compani
 set state += 1
 module Foo with
   val res = Foo().foo
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: assignSymbol (Lowering.scala:540)
-//│ ╔══[COMPILATION ERROR] Cannot assign to term definition 'state'
-//│ ║  l.93: 	mut val state = 10
-//│ ╙──      	    ^^^^^^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ throw "This code cannot be run as its compilation yielded an error."
+//│ let Foo1, tmp1;
+//│ tmp1 = state + 1;
+//│ state = tmp1;
+//│ Foo1 = function Foo() {
+//│   return globalThis.Object.freeze(new Foo.class());
+//│ };
+//│ (class Foo {
+//│   static {
+//│     Foo1.class = this
+//│   }
+//│   static {
+//│     let tmp2;
+//│     tmp2 = Foo1();
+//│     this.res = tmp2.foo;
+//│   }
+//│   get foo() {
+//│     return state;
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "Foo", []];
+//│ });
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:258)
-//│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
 :expect 11
 Foo.res
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:258)
-//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'class')
-//│     at REPL51:1:25
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:598:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:927:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:415:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:609:22)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:297)
-//│ ═══[RUNTIME ERROR] Expected: '11', got: 'undefined'
+//│ = 11
 
 
 fun bar =
   using Int = 42
   Foo.foo
-mut val x = 1
+let x = 1
 print(x)
 module Foo with
   set x += 1
   fun foo(using Int) = use[Int]
 print(x)
 bar
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: go (Elaborator.scala:1428)
-//│ ╔══[COMPILATION ERROR] Mutable value definitions must have an owner
-//│ ║  l.174: 	mut val x = 1
-//│ ╙──       	    ^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: assignSymbol (Lowering.scala:540)
-//│ ╔══[COMPILATION ERROR] Cannot assign to term definition 'x'
-//│ ║  l.174: 	mut val x = 1
-//│ ╙──       	    ^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = member:x⁰
-//│     _2 = class hkmc2.semantics.BlockMemberSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:block$res -> block$res13, member:C -> C3, class:C -> C2, tmp:block$res -> block$res14, module:C -> C2, member:bar -> bar, member:Foo -> Foo2, tmp:block$res -> block$res8, tmp:runtime -> runtime, tmp:block$res -> block$res9, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:option -> option, member:Test -> Test1, class:Test -> Test, module:Foo -> Foo1, module:Test -> Test, tmp:block$res -> block$res, member:C -> C1, class:Foo -> Foo1, class:C -> C, tmp:block$res -> block$res10, module:C -> C, tmp:block$res -> block$res15, tmp:selRes -> selRes1, tmp:block$res -> block$res11, tmp:block$res -> block$res1, tmp:block$res -> block$res12, tmp:block$res -> block$res2, f -> f, member:Foo -> Foo, member:f -> f1, tmp:block$res -> block$res3, tmp:block$res -> block$res4, tmp:block$res -> block$res5, tmp:block$res -> block$res6, tmp:tmp -> tmp, tmp:selRes -> selRes, tmp:block$res -> block$res7)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.175: 	print(x)
-//│ ║         	      ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.174: 	mut val x = 1
-//│ ╙──       	    ^^^^^^^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = member:x⁰
-//│     _2 = class hkmc2.semantics.BlockMemberSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:block$res -> block$res13, member:C -> C3, class:C -> C2, tmp:block$res -> block$res14, module:C -> C2, member:bar -> bar, member:Foo -> Foo2, tmp:block$res -> block$res8, tmp:runtime -> runtime, tmp:block$res -> block$res9, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:option -> option, member:Test -> Test1, class:Test -> Test, module:Foo -> Foo1, module:Test -> Test, tmp:block$res -> block$res, member:C -> C1, class:Foo -> Foo1, class:C -> C, tmp:block$res -> block$res10, module:C -> C, tmp:block$res -> block$res15, tmp:selRes -> selRes1, tmp:block$res -> block$res11, tmp:block$res -> block$res1, tmp:block$res -> block$res12, tmp:block$res -> block$res2, f -> f, member:Foo -> Foo, member:f -> f1, tmp:block$res -> block$res3, tmp:block$res -> block$res4, tmp:block$res -> block$res5, tmp:block$res -> block$res6, tmp:tmp -> tmp, tmp:selRes -> selRes, tmp:block$res -> block$res7)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.179: 	print(x)
-//│ ║         	      ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.174: 	mut val x = 1
-//│ ╙──       	    ^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:258)
-//│ ═══[RUNTIME ERROR] ReferenceError: x is not defined
-//│     at REPL54:1:252
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:598:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:927:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:415:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:609:22)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:131)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = member:x⁰
-//│     _2 = class hkmc2.semantics.BlockMemberSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:block$res -> block$res13, member:C -> C3, class:C -> C2, tmp:block$res -> block$res14, module:C -> C2, member:bar -> bar, member:Foo -> Foo2, tmp:block$res -> block$res8, tmp:runtime -> runtime, tmp:block$res -> block$res9, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:option -> option, member:Test -> Test1, class:Test -> Test, module:Foo -> Foo1, module:Test -> Test, tmp:block$res -> block$res, member:C -> C1, class:Foo -> Foo1, class:C -> C, tmp:block$res -> block$res10, module:C -> C, tmp:block$res -> block$res15, tmp:selRes -> selRes1, tmp:block$res -> block$res11, tmp:block$res -> block$res1, tmp:block$res -> block$res12, tmp:block$res -> block$res2, f -> f, member:Foo -> Foo, member:f -> f1, tmp:block$res -> block$res3, tmp:block$res -> block$res4, tmp:block$res -> block$res5, tmp:block$res -> block$res6, tmp:tmp -> tmp, tmp:selRes -> selRes, tmp:block$res -> block$res7)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.174: 	mut val x = 1
-//│ ╙──       	    ^^^^^^^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:258)
-//│ ═══[RUNTIME ERROR] ReferenceError: x is not defined
-//│     at REPL56:1:42
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:598:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│     at REPLServer.onLine (node:repl:927:10)
-//│     at REPLServer.emit (node:events:518:28)
-//│     at REPLServer.emit (node:domain:489:12)
-//│     at [_onLine] [as _onLine] (node:internal/readline/interface:415:12)
-//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:609:22)
-
+//│ > 1
+//│ > 2
+//│ = 42
+//│ x = 2
 
