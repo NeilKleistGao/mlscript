@@ -60,6 +60,7 @@ class MLsCompiler
   
   
   def compileModule(file: io.Path): Unit =
+    val compilerCtx = cctx.withPaths(paths)
     
     val wd = file.up
     
@@ -92,7 +93,7 @@ class MLsCompiler
     val (pblk, newCtx) = elab.importFrom(preludeParse.resultBlk)(using initState)
     
     newCtx.nestLocal("file:"+file.baseName).givenIn:
-      given CompilerCtx = cctx.derive(file)
+      given CompilerCtx = compilerCtx.derive(file)
       /* 
       val elab = Elaborator(etl, wd, newCtx)
       val parsed = mainParse.resultBlk
@@ -130,29 +131,34 @@ class MLsCompiler
       ltl.givenIn:
         optimized = codegen.DeadParamElim(optimized)
       */
-      val artifact = cctx.getElaboratedBlock(file, newCtx, config)(using etl)
-      val optimized = artifact.ir
+      val artifact = compilerCtx.getElaboratedBlock(file, newCtx, config)(using etl)
+      val optimized = artifact.ir.getOrElse:
+        lastWords(s"Compiler artifact for $file does not contain lowered IR")
       
       val nme = file.baseName
       val parsed = artifact.tree
       val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
-      val jsb = ltl.givenIn:
-        codegen.js.JSBuilder()
-      val baseScp: utils.Scope =
-        utils.Scope.empty(utils.Scope.Cfg.default)
-      // * This line serves for `import.meta.url`, which retrieves directory and file names of mjs files.
-      // * Having `module id"import" with ...` in `prelude.mls` will generate `globalThis.import` that is undefined.
-      baseScp.addToBindings(Elaborator.State.importSymbol, "import", shadow = false)
-      val nestedScp = baseScp.nest
-      val je = nestedScp.givenIn:
-        jsb.program(optimized, exportedSymbol, wd)
-      val jsStr = je.stripBreaks.mkString(100)
-      val out = file.up / io.RelPath(file.baseName + ".mjs")
-      cctx.fs.write(out, jsStr)
+      {
+        given Elaborator.State = artifact.state
+        given Config = artifact.config
+        given Elaborator.Ctx = artifact.ctx
+        val jsb = ltl.givenIn:
+          codegen.js.JSBuilder()
+        val baseScp: utils.Scope =
+          utils.Scope.empty(utils.Scope.Cfg.default)
+        // * This line serves for `import.meta.url`, which retrieves directory and file names of mjs files.
+        // * Having `module id"import" with ...` in `prelude.mls` will generate `globalThis.import` that is undefined.
+        baseScp.addToBindings(Elaborator.State.importSymbol, "import", shadow = false)
+        val nestedScp = baseScp.nest
+        val je = nestedScp.givenIn:
+          jsb.program(optimized, exportedSymbol, wd)
+        val jsStr = je.stripBreaks.mkString(100)
+        val out = file.up / io.RelPath(file.baseName + ".mjs")
+        cctx.fs.write(out, jsStr)
+      }
       
       // }
   
   
 end MLsCompiler
-
 

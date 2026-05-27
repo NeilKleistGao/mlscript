@@ -23,6 +23,7 @@ class CompilerCtx(
     val beingCompiled: Set[io.Path],
     val fs: io.FileSystem,
     cache: CompilerCache,
+    val paths: Opt[MLsCompiler.Paths],
 ):
   
   def allFilesBeingImported: Ls[io.Path] =
@@ -31,7 +32,10 @@ class CompilerCtx(
     case N => Nil
   
   def derive(newFile: io.Path): CompilerCtx =
-    CompilerCtx(S(newFile, this), beingCompiled + newFile, fs, cache)
+    CompilerCtx(S(newFile, this), beingCompiled + newFile, fs, cache, paths)
+
+  def withPaths(newPaths: MLsCompiler.Paths): CompilerCtx =
+    CompilerCtx(importing, beingCompiled, fs, cache, S(newPaths))
   
   def getElaboratedBlock
         (file: io.Path, prelude: Ctx, importerCfg: Config)
@@ -53,14 +57,15 @@ class CompilerCtx(
     // * this means subsequent importers will not have see same prelude symbols.
     // * The correct approach should be to only cache a *single* State and prelude Ctx at the start,
     // * and reuse it for every compilation unit (each compilation unit duplicating the root State).
-    given Elaborator.State = new Elaborator.State
+    val state = new Elaborator.State
+    given Elaborator.State = state
     
     val lastMod = fs.getLastChangedTimestamp(file)
     
     def mk =
       // * Later, we can draw this from a global root configuration,
       // * which is set for a whole application.
-      given Config = Config.default(importerCfg.baseDir)
+      given Config = importerCfg
       
       /* 
       val parse =
@@ -99,7 +104,8 @@ class CompilerCtx(
         given CompilerCtx = this
         ParserSetup(file, dbgParsing = false)
       // given Elaborator.Ctx = prelude.copy(mode = Mode.Light).nestLocal("prelude")
-      given Elaborator.Ctx = prelude
+      val artifactCtx = prelude
+      given Elaborator.Ctx = artifactCtx
       val elab =
         given CompilerCtx = derive(mainParse.origin.fileName)
         Elaborator(tl, file.up, prelude)
@@ -108,49 +114,52 @@ class CompilerCtx(
       val parsed = mainParse.resultBlk
       val (blk0, _) = elab.importFrom(parsed)
       
-      Config.extractConfigFromStats(blk0).givenIn:
-        val resolver = Resolver(rtl)
-        resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
-        def findQuote(t: semantics.Statement): Bool = t match
-          case Term.Quoted(_) | Term.Unquoted(_) => true
-          case Term.Ref(sym) => sym === State.termSymbol
-          case _ => t.subTerms.exists(findQuote)
-        val hasQuote = findQuote(blk0)
-        /* 
-        val blk = new Term.Blk(
-          Import(State.runtimeSymbol, runtimeFile.toString, runtimeFile) ::
-            // Only import `Term.mls` when necessary.
-            (if hasQuote then
-              Import(State.termSymbol, termFile.toString, termFile) :: blk0.stats
-            else
-              blk0.stats),
-          blk0.res
-        )
-        */
-        val blk = blk0
-        val low = ltl.givenIn:
-          new codegen.Lowering()
-            with codegen.LoweringSelSanityChecks
-        val jsb = ltl.givenIn:
-          codegen.js.JSBuilder()
-        val lowered = low.program(blk)
-        var optimized = lowered
-        val nme = file.baseName
-        val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
-        optimized =
-          val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
-          optimized = codegen.WorkerWrapper(exportedSymbol.toSet, dtl, printer)(optimized)
-          codegen.BlockSimplifier(exportedSymbol.toSet, dtl, printer)(optimized)
-        ltl.givenIn:
-          optimized = codegen.DeadParamElim(optimized)
-        
-        
-        Artifact(parsed, blk, optimized, lastMod)
+      val artifactConfig = Config.extractConfigFromStats(blk0)
+      val ir = paths.map: compilerPaths =>
+        artifactConfig.givenIn:
+          val resolver = Resolver(rtl)
+          resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
+          def findQuote(t: semantics.Statement): Bool = t match
+            case Term.Quoted(_) | Term.Unquoted(_) => true
+            case Term.Ref(sym) => sym === State.termSymbol
+            case _ => t.subTerms.exists(findQuote)
+          val hasQuote = findQuote(blk0)
+          val blk = new Term.Blk(
+            Import(State.runtimeSymbol, compilerPaths.runtimeFile.toString, compilerPaths.runtimeFile) ::
+              // Only import `Term.mls` when necessary.
+              (if hasQuote then
+                Import(State.termSymbol, compilerPaths.termFile.toString, compilerPaths.termFile) :: blk0.stats
+              else
+                blk0.stats),
+            blk0.res
+          )
+          val low = ltl.givenIn:
+            new codegen.Lowering()
+              with codegen.LoweringSelSanityChecks
+          val jsb = ltl.givenIn:
+            codegen.js.JSBuilder()
+          val lowered = low.program(blk)
+          var optimized = lowered
+          val nme = file.baseName
+          val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
+          optimized =
+            val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
+            optimized = codegen.WorkerWrapper(exportedSymbol.toSet, dtl, printer)(optimized)
+            codegen.BlockSimplifier(exportedSymbol.toSet, dtl, printer)(optimized)
+          ltl.givenIn:
+            optimized = codegen.DeadParamElim(optimized)
+          optimized
+
+      val loweredPaths = paths.map(p => p.runtimeFile -> p.termFile)
+      Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, loweredPaths, lastMod)
     
     cache.upsert(file):
       case N => mk
       case cur @ S(art) =>
-        if art.lastChangedTimestamp < lastMod then mk
+        val requestedLowering = paths.map(p => p.runtimeFile -> p.termFile)
+        if art.lastChangedTimestamp < lastMod
+          || requestedLowering.exists(rp => art.ir.isEmpty || art.loweredPaths =/= S(rp))
+        then mk
         else art
   
   
@@ -158,7 +167,7 @@ object CompilerCtx:
   
   inline def get(using cctx: CompilerCtx) = cctx
   
-  def fresh(fs: io.FileSystem): CompilerCtx = CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache)
+  def fresh(fs: io.FileSystem): CompilerCtx = CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N)
   
 end CompilerCtx
 
@@ -169,7 +178,11 @@ object CompilerCache:
   class Artifact(
     val tree: syntax.Tree.Block,
     val term: semantics.Term.Blk,
-    val ir: codegen.Program,
+    val ir: Opt[codegen.Program],
+    val config: Config,
+    val ctx: Elaborator.Ctx,
+    val state: Elaborator.State,
+    val loweredPaths: Opt[(io.Path, io.Path)],
     val lastChangedTimestamp: Long,
   )
   
