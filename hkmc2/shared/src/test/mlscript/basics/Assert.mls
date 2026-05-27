@@ -7,16 +7,15 @@ let xs = [1, 2, 3]
 :sjs
 assert true
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let scrut;
-//│ scrut = true;
-//│ if (scrut === true) {
-//│   runtime.Unit
-//│ } else { runtime.safeCall(runtime.assertFail("Assert.mls", "9")) }
+//│ if (true === true) {
+//│   return runtime.Unit
+//│ }
+//│ return runtime.safeCall(runtime.assertFail("Assert.mls", "9"));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 :re
 assert false
-//│ ═══[RUNTIME ERROR] Error: Assertion failed (Assert.mls:19)
+//│ ═══[RUNTIME ERROR] Error: Assertion failed (Assert.mls:18)
 
 assert xs is Array
 
@@ -26,13 +25,14 @@ assert xs is Array
 :fixme
 assert(true); 123
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let scrut2;
-//│ scrut2 = (true , 123);
-//│ if (scrut2 === true) {
-//│   runtime.Unit
-//│ } else { runtime.safeCall(runtime.assertFail("Assert.mls", "28")) }
+//│ let scrut;
+//│ scrut = 123;
+//│ if (scrut === true) {
+//│   return runtime.Unit
+//│ }
+//│ return runtime.safeCall(runtime.assertFail("Assert.mls", "27"));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ ═══[RUNTIME ERROR] Error: Assertion failed (Assert.mls:28)
+//│ ═══[RUNTIME ERROR] Error: Assertion failed (Assert.mls:27)
 
 // * FIXME: the `else` is parsed as part of the `assert`!
 :sjs
@@ -41,14 +41,13 @@ if 1 is
   2 then assert true
   else 3
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let scrut3, scrut4;
-//│ scrut3 = 1;
-//│ if (scrut3 === 2) {
-//│   scrut4 = true;
-//│   if (scrut4 === true) {
-//│     runtime.Unit
-//│   } else { 3 }
-//│ } else { throw globalThis.Object.freeze(new globalThis.Error("match error")) }
+//│ if (1 === 2) {
+//│   if (true === true) {
+//│     return runtime.Unit
+//│   }
+//│   return 3;
+//│ }
+//│ throw globalThis.Object.freeze(new globalThis.Error("match error"));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ═══[RUNTIME ERROR] Error: match error
 

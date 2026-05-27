@@ -132,8 +132,12 @@ class FunCache(
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)
     
     fun inlineAssigments(ctx: Map[Symbol, String])(b) = if b is 
-      Return(res, implct) then inlineResult(ctx)(res)
-      Scoped(_, rest) then inlineAssigments(ctx)(rest)
+      Return(res) then inlineResult(ctx)(res)
+      Scoped(syms, rest) then
+        let ctx = syms.reduce((ctx, sym) => ctx.set(sym, sym.nme), ctx)
+        inlineAssigments(ctx)(rest)
+      // print the last call to the parent
+      Assign(NoSymbol, rhs, End) then inlineResult(ctx)(rhs)
       Assign(lhs, rhs, rest) then inlineAssigments(ctx.set(lhs, inlineResult(ctx)(rhs)))(rest)
       End then ""
       else throw Error("unexpected Block type in constructor: " + b.toString())

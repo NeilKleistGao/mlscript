@@ -52,7 +52,7 @@ class BufferableTransform()(using Ctx, State, Raise):
                       applyResult(r): r2 =>
                         assignToOffset(off, r2, applyBlock(rst))
                   case af @ AssignField(l, n, r, rst) =>
-                    af.symbol.flatMap(pubFieldMap.get(_)).flatMap(fieldMap.get(_))
+                    af.symbol.flatMap(sym => fieldMap.get(sym).orElse(pubFieldMap.get(sym).flatMap(fieldMap.get)))
                       .fold(super.applyBlock(b)): off =>
                         applyResult(r): r2 =>
                           assignToOffset(off, r2, applyBlock(rst))
@@ -79,7 +79,7 @@ class BufferableTransform()(using Ctx, State, Raise):
               val blk = mkFieldReplacer(buf, idx, symMap).applyBlock(f.body)
               FunDefn(f.owner, f.sym, TermSymbol(f.dSym.k, f.dSym.owner, f.dSym.id), PlainParamList(
                 Param(FldFlags.empty, buf, N, Modulefulness.none) :: Param(FldFlags.empty, idx, N, Modulefulness.none) :: Nil) :: newParams,
-                if isCtor then Begin(blk, Return(idx.asPath, false)) else blk)(configOverride = f.configOverride, annotations = f.annotations)
+                if isCtor then Begin(blk, Return(idx.asPath)) else blk)(configOverride = f.configOverride, annotations = f.annotations)
             val fakeCtor = transformFunDefn(FunDefn.withFreshSymbol(
                 S(companionSym), 
                 BlockMemberSymbol("ctor", Nil, false), 

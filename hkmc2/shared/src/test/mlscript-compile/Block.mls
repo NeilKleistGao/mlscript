@@ -120,7 +120,7 @@ class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicField
 class Block with
   constructor
     Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
-    Return(val res: Result, val implct: Bool)
+    Return(val res: Result)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
     Scoped(val symbols: Array[Symbol], val rest: Block)
@@ -278,8 +278,7 @@ class Printer(val owner: Opt[Symbol]) with
           + showResult(rhs) + showRestBlock(rest)
       Define(d, rest) then
         showDefn(d) + showRestBlock(rest)
-      Return(res, implct) then
-        (if implct then "return " else "") + showResult(res)
+      Return(res) then showResult(res)
       Match(scrut, arms, dflt, rest) then
         "if " + showPath(scrut) + " is"
         + indent("\n" + arms.map(showArm(_)).join("\n"))
@@ -289,7 +288,7 @@ class Printer(val owner: Opt[Symbol]) with
         // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
       End() then "()"
-      _ then "<unknown block: " + b.toString() + " >"
+      _ then "<unknown block>"
 
   // removes trailing newline
   fun showRestBlock(b : Block): Str =

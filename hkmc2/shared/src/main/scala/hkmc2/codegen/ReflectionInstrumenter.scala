@@ -82,7 +82,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
   def ctor(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Instantiate(false, cls, args.map(asArg) :: Nil), symName)(k)
+    assign(Instantiate(false, cls, Ls(args.map(asArg))), symName)(k)
 
   def call(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
     assign(Call(fun, args.map(asArg) ne_:: Nil)(isMlsFun, false, false), symName)(k)
@@ -302,16 +302,30 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       End()
 
   def transformBlock(b: Block)(using ctx: Context)(k: (Path, Context) => Block): Block = b match
-    case Return(res, implct) =>
+    case Return(res) =>
       transformResult(res): (x, ctx) =>
-        blockCtor("Return", Ls(x, toValue(implct)), "return")(k(_, ctx))
+        blockCtor("Return", Ls(x), "return")(k(_, ctx))
     case Assign(x, r, b) =>
       transformSymbol(x): (xSym, ctx) =>
         blockCtor("ValueRef", Ls(xSym)): xStaged =>
-          (Assign(x, xStaged, _)):
             transformResult(r)(using ctx.addCache(x.asPath, xStaged)): (y, ctx) =>
               transformBlock(b)(using ctx): (z, ctx) =>
                 blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+    case assign @ AssignField(lhs, nme, r, rest) =>
+      // TODO: Improve. This is a kludge to allow private field initialization in modules;
+      //    Ideally, we should just properly reflect these as the private field assignments they are
+      assign.symbol match
+        case S(ts: TermSymbol) if ts.isPrivate =>
+          transformResult(r): (y, ctx) =>
+            transformSymbol(ts)(using ctx): (xSym, ctx) =>
+              blockCtor("ValueRef", Ls(xSym)): xStaged =>
+                  given Context = ctx.addCache(Select(lhs, nme)(S(ts)), xStaged)
+                  transformBlock(rest): (z, ctx) =>
+                    blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+        case _ =>
+          raise:
+            ErrorReport(msg"Field assignment is not supported in staged modules: ${nme.name}" -> N :: Nil)
+          End()
     case Define(cls: ClsLikeDefn, rest) =>
       assert(cls.companion.isEmpty, "nested module not supported")
       transformSymbol(cls.isym): (c, ctx) =>
@@ -373,7 +387,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(stageSymName))
     val argSyms = f.params.flatMap(_.params).map(_.sym)
     val newBody =
-      val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block, false))
+      val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block))
       (Scoped(Set(argSyms*), rest))
 
     FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(f.configOverride, f.annotations)
@@ -392,7 +406,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
       tuple(tups): args =>
         call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
-          Return(res, false)
+          Return(res)
     FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(f.configOverride, f.annotations)
   
   def stageCtor(ctorFun: FunDefn): FunDefn = 
@@ -499,7 +513,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val sym = BlockMemberSymbol("toCode", Nil)
       val params = PlainParamList(Nil)
       val body = tuple(codegenClasses): codegenClasses =>
-        call(blockMod("toCode"), Ls(toValue(modSym.nme), cachePath, codegenClasses), true, "tmp")(p => Return(p, false))
+        call(blockMod("toCode"), Ls(toValue(modSym.nme), cachePath, codegenClasses), true, "tmp")(Return(_))
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, body)(N, Nil)
 
     // grab all defn seen so far
@@ -538,9 +552,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     
     (entryFunDef, propFunDef :: toCodeDef :: stagedMethods ++ generatorMethods, b => cacheDecl(generatorMapDecl(previousStageDecl(b))))
 
-  override def applyObjBody(companion: ClsLikeBody) = companion.isym.defn match
-    // staged modules
-    case S(defn) if defn.hasStagedModifier.isDefined =>
+  override def applyObjBody(companion: ClsLikeBody) =
+    if companion.isStaged then
+      // staged modules
       val (sym, ctor, methods) = (companion.isym, companion.ctor, companion.methods)
       // avoid name clash of cache and generator map for derived staged classes
       val modSym = sym
@@ -558,6 +572,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       collector.applyCompanionModule(companion)
       val codegenClasses = collector.used
 
+      val defn = sym.defn match
+        case S(defn) => defn
+        case N => raise(ErrorReport(msg"No definition found for staged module." -> sym.toLoc :: Nil)); return companion
       val nestedPropagates = defn.body.blk.stats.collect:
         case cls: ClassDef if cls.hasStagedModifier.isDefined =>
           modSym.asPath.sel(Tree.Ident(cls.sym.nme), cls.sym)
@@ -569,11 +586,11 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         methods = entryFun :: newCtorFun :: newMethods,
         ctor = Begin(applyBlock(companion.ctor), cont(End())),
       )
-    case b => super.applyObjBody(companion)
+    else super.applyObjBody(companion)
 
   override def applyBlock(b: Block): Block = b match
     // staged classes
-    case Define(defn: ClsLikeDefn, rest) if defn.isym.defn.exists(_.hasStagedModifier.isDefined) => 
+    case Define(defn: ClsLikeDefn, rest) if defn.isStaged =>
       if !defn.privateFields.isEmpty then
         raise(ErrorReport(msg"Staged classes with private fields are not supported." -> defn.sym.toLoc :: Nil))
         return End()
@@ -625,8 +642,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         methods = combinedEntryFun :: newPreCtorFun :: newCtorFun :: newMethods ++ companionMethods,
         ctor = Begin(companion.ctor, cont(End())),
       )
-      val newClsLikeDefn = defn.copy(companion = S(newCompanion), ctor = applyBlock(ctor))(defn.configOverride, defn.annotations)
-      Define(newClsLikeDefn, applyBlock(rest))
+      val newModule = defn.copy(sym = sym, companion = S(newCompanion), ctor = applyBlock(ctor))(defn.configOverride, defn.annotations.filter:
+        case Annot.Modifier(Keyword.`staged`) => false
+        case _ => true)
+      Define(newModule, applyBlock(rest))
     case b => super.applyBlock(b)
 
   def mkDefnMap(b: Block): Unit =

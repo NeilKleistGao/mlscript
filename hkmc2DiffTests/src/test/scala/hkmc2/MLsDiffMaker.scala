@@ -45,6 +45,8 @@ abstract class MLsDiffMaker extends DiffMaker:
   val checkIR = NullaryCommand("checkIR")
   val showOptimizedIR = NullaryCommand("soir")
   val showOptimizedTree = NullaryCommand("olot")
+  val debugOptimizations = NullaryCommand("dopt")
+  val noOptimizations = NullaryCommand("noOpt")
   val showContext = NullaryCommand("ctx")
   val parseOnly = NullaryCommand("parseOnly")
   val funcToCls = NullaryCommand("ftc")
@@ -79,6 +81,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   val inlineThreshold = Command("inlineThreshold")(_.trim.toInt)
   val noTailRecOpt = NullaryCommand("noTailRec")
   val deforest = Command("deforest")(_.trim)
+  val etaExpansion = Command("etaExpansion")(_.trim)
   val patMatConsequentSharingThreshold = Command("patMatConsequentSharingThreshold")(_.trim.toInt)
   val deadParamElim = Command("deadParamElim")(_.trim)
 
@@ -93,6 +96,7 @@ abstract class MLsDiffMaker extends DiffMaker:
     "logAccumulator",
     "noLogAccumulator",
   )
+  private val EtaExpansionKnownFlags = Set("debug", "on", "off")
   private val DeadParamElimKnownFlags = Set("debug", "mono", "poly", "off")
   
   def mkConfig: Config =
@@ -122,7 +126,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       output(s"$errMarker Option ':noInline' conflicts with option ':inlineThreshold'")
     Config(
       baseDir = wd,
-      sanityChecks = Opt.when(noSanityCheck.isUnset)(SanityChecks(light = true)),
+      sanityChecks = Opt.when(noSanityCheck.isUnset)(SanityChecks(light = true, checkUnreachable = true)),
       effectHandlers = Opt.when(effectHandlers.isSet)(EffectHandlers(
         debug = effectHandlers.get.contains("debug"),
         stackSafety = stackSafe.get.flatMap:
@@ -166,7 +170,18 @@ abstract class MLsDiffMaker extends DiffMaker:
           logNonAffine = resolveFlag(flags, "logNonAffine", "noLogNonAffine", default = false),
           logAccumulator = resolveFlag(flags, "logAccumulator", "noLogAccumulator", default = false),
         )),
+      etaExpansion =
+        val etaExpansionFlags =
+          if etaExpansion.isUnset then Set.empty[Str]
+          else parseFlags(etaExpansion.get)
+        if etaExpansion.isUnset then S(EtaExpansion.default)
+          else
+            reportUnknownFlags(":etaExpansion", etaExpansionFlags, EtaExpansionKnownFlags)
+            reportExclusiveFlagConflict(":etaExpansion", etaExpansionFlags, "on", "off")
+            if etaExpansionFlags.contains("off") then N
+            else S(EtaExpansion.withDebug(etaExpansionFlags.contains("debug"))),
       inlining = Opt.when(!noInlineOpt.isSet)(Config.Inliner(inlineThreshold.get.getOrElse(1))),
+      deadBranchRemoval = Config.default.deadBranchRemoval,
       qqEnabled = importQQ.isSet,
       funcToCls = funcToCls.isSet,
       commentGeneratedCode = debug.isSet,

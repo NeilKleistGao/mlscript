@@ -8,7 +8,7 @@
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 staged fun direct() = 1
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let direct⁰; define direct⁰ as staged fun direct¹() { return 1 }; end
+//│ let direct⁰; @staged define direct⁰ as staged fun direct¹() { return 1 }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -18,10 +18,11 @@ staged module LiftedNested with
     g()
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let g⁰, LiftedNested⁰;
+//│ @staged
 //│ define g⁰ as staged fun g¹() {
 //│   return 1
 //│ };
-//│ define LiftedNested⁰ as staged class LiftedNested¹
+//│ define LiftedNested⁰ as class LiftedNested¹
 //│ staged module LiftedNested² {
 //│   constructor {
 //│     let tmp, tmp1, tmp2, sym, tmp3, tmp4, tmp5, tmp6, tmp7;
@@ -75,7 +76,7 @@ staged module LiftedNested with
 //│     set var1 = Block⁰.ValueRef﹖(sym1);
 //│     set tmp2 = [];
 //│     set app = Block⁰.Call﹖(var1, tmp2);
-//│     set return1 = Block⁰.Return﹖(app, false);
+//│     set return1 = Block⁰.Return﹖(app);
 //│     set tmp3 = Block⁰.FunDefn﹖(sym, tmp1, return1);
 //│     return tmp3
 //│   }
@@ -93,213 +94,25 @@ staged module LiftedNested with
 
 staged module LiftedLambda with
   fun foo(x) = y => x + y
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: applyBlock (ReflectionInstrumenter.scala:595)
+//│ ═══[COMPILATION ERROR] Staged classes with private fields are not supported.
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let LiftedLambda⁰, lambda⁰, Function$⁰;
-//│ define lambda⁰ as staged fun lambda¹(x, y) {
-//│   return +⁰(x, y)
-//│ };
-//│ define Function$⁰ as staged class Function$¹ {
-//│   private val x⁰;
-//│   constructor(x) {
-//│     super⁰();
-//│     set x⁰ = x;
-//│     end
-//│   }
-//│   method call⁰ = fun call¹(y) {
-//│     return lambda¹(x⁰, y)
-//│   }
-//│ };
-//│ define LiftedLambda⁰ as staged class LiftedLambda¹
-//│ staged module LiftedLambda² {
-//│   constructor {
-//│     let tmp, tmp1, tmp2, sym, tmp3, tmp4, tmp5, tmp6, tmp7;
-//│     set sym = Block⁰.ModuleSymbol﹖("LiftedLambda", LiftedLambda², false);
-//│     set tmp3 = runtime⁰.SymbolMap﹖.checkModuleMap﹖(LiftedLambda², sym);
-//│     set tmp4 = new globalThis⁰.this.Map﹖();
-//│     set tmp5 = ["foo"];
-//│     set tmp6 = new globalThis⁰.this.Set﹖(tmp5);
-//│     set tmp7 = new SpecializeHelpers⁰.FunCache﹖(tmp3, tmp4, tmp6);
-//│     define cache$LiftedLambda⁰ as val cache$LiftedLambda¹ = tmp7;
-//│     set tmp = ["foo", LiftedLambda².this.foo_gen﹖];
-//│     set tmp1 = [tmp];
-//│     set tmp2 = new globalThis⁰.this.Map﹖(tmp1);
-//│     define generatorMap$LiftedLambda⁰ as val generatorMap$LiftedLambda¹ = tmp2;
-//│     define Function$$LiftedLambda⁰ as val Function$$LiftedLambda¹ = Function$¹;
-//│     end
-//│   }
-//│   method generate² = fun generate³(source, path) {
-//│     let tmp, tmp1, tmp2;
-//│     set tmp = LiftedLambda².this.propagate﹖();
-//│     set tmp1 = [];
-//│     set tmp2 = Block⁰.codegen﹖("LiftedLambda", LiftedLambda².this.cache$LiftedLambda﹖, source, path, tmp1);
-//│     end
-//│   }
-//│   method ctor$_instr² = fun ctor$_instr³() {
-//│     let sym, tmp, tmp1, end, tmp2;
-//│     set sym = Block⁰.Symbol﹖("ctor$");
-//│     set tmp = [];
-//│     set tmp1 = [tmp];
-//│     set end = Block⁰.End﹖();
-//│     set tmp2 = Block⁰.FunDefn﹖(sym, tmp1, end);
-//│     return tmp2
-//│   }
-//│   method propagate² = fun propagate³() {
-//│     let tmp_dyn, gen_call;
-//│     set tmp_dyn = ShapeSet⁰.mkDyn﹖();
-//│     set gen_call = LiftedLambda².this.foo_gen﹖(tmp_dyn);
-//│     end
-//│   }
-//│   method toCode² = fun toCode³() {
-//│     let tmp, tmp1;
-//│     set tmp = [];
-//│     set tmp1 = Block⁰.toCode﹖("LiftedLambda", LiftedLambda².this.cache$LiftedLambda﹖, tmp);
-//│     return tmp1
-//│   }
-//│   method foo_instr⁰ = fun foo_instr¹() {
-//│     let x, tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, tmp6, var1, tmp7, tmp8, tmp9, sym3, tmp10, tmp11, tmp12, sym4, tmp13, var2, tmp14, inst, return1, assign, tmp15, tmp16;
-//│     set sym = Block⁰.Symbol﹖("foo");
-//│     set tmp1 = option⁰.None﹖;
-//│     set sym1 = Block⁰.Symbol﹖("x");
-//│     set tmp2 = Block⁰.Param﹖(tmp1, sym1);
-//│     set tmp3 = [tmp2];
-//│     set tmp4 = [tmp3];
-//│     set sym2 = Block⁰.Symbol﹖("tmp");
-//│     set tmp5 = [sym2];
-//│     set tmp6 = Block⁰.ValueRef﹖(sym2);
-//│     set tmp = tmp6;
-//│     set var1 = Block⁰.ValueRef﹖(sym1);
-//│     set tmp7 = Block⁰.Arg﹖(var1);
-//│     set tmp8 = option⁰.None﹖;
-//│     set tmp9 = option⁰.None﹖;
-//│     set sym3 = Block⁰.Symbol﹖("x");
-//│     set tmp10 = Block⁰.Param﹖(tmp9, sym3);
-//│     set tmp11 = [tmp10];
-//│     set tmp12 = [tmp11];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁰, tmp8, tmp12, true);
-//│     set tmp13 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁰, sym4);
-//│     set var2 = Block⁰.ValueRef﹖(tmp13);
-//│     set tmp14 = [tmp7];
-//│     set inst = Block⁰.Instantiate﹖(var2, tmp14);
-//│     set return1 = Block⁰.Return﹖(tmp6, false);
-//│     set assign = Block⁰.Assign﹖(sym2, inst, return1);
-//│     set tmp15 = Block⁰.Scoped﹖(tmp5, assign);
-//│     set tmp16 = Block⁰.FunDefn﹖(sym, tmp4, tmp15);
-//│     return tmp16
-//│   }
-//│   method foo_gen⁰ = fun foo_gen¹(x) {
-//│     let tmp, tmp1, tmp2;
-//│     set tmp = [x];
-//│     set tmp1 = [tmp];
-//│     set tmp2 = SpecializeHelpers⁰.specialize﹖(LiftedLambda².this.cache$LiftedLambda﹖, "foo", LiftedLambda².this.foo_instr﹖, tmp1);
-//│     return tmp2
-//│   }
-//│ };
+//│ @staged @private
+//│ define lambda⁰ as staged fun lambda¹(x, y) { return +⁰(x, y) };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
 staged module LiftedMultParams with
   fun foo(x)(y) = x + y
+//│ FAILURE: Unexpected compilation error
+//│ FAILURE LOCATION: applyBlock (ReflectionInstrumenter.scala:595)
+//│ ═══[COMPILATION ERROR] Staged classes with private fields are not supported.
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let LiftedMultParams⁰, lambda$⁰, Function$²;
-//│ define lambda$⁰ as staged fun lambda$¹(x, y) {
-//│   return +⁰(x, y)
-//│ };
-//│ define Function$² as staged class Function$³ {
-//│   private val x¹;
-//│   constructor(x) {
-//│     super⁰();
-//│     set x¹ = x;
-//│     end
-//│   }
-//│   method call² = fun call³(y) {
-//│     return lambda$¹(x¹, y)
-//│   }
-//│ };
-//│ define LiftedMultParams⁰ as staged class LiftedMultParams¹
-//│ staged module LiftedMultParams² {
-//│   constructor {
-//│     let tmp, tmp1, tmp2, sym, tmp3, tmp4, tmp5, tmp6, tmp7;
-//│     set sym = Block⁰.ModuleSymbol﹖("LiftedMultParams", LiftedMultParams², false);
-//│     set tmp3 = runtime⁰.SymbolMap﹖.checkModuleMap﹖(LiftedMultParams², sym);
-//│     set tmp4 = new globalThis⁰.this.Map﹖();
-//│     set tmp5 = ["foo"];
-//│     set tmp6 = new globalThis⁰.this.Set﹖(tmp5);
-//│     set tmp7 = new SpecializeHelpers⁰.FunCache﹖(tmp3, tmp4, tmp6);
-//│     define cache$LiftedMultParams⁰ as val cache$LiftedMultParams¹ = tmp7;
-//│     set tmp = ["foo", LiftedMultParams².this.foo_gen﹖];
-//│     set tmp1 = [tmp];
-//│     set tmp2 = new globalThis⁰.this.Map﹖(tmp1);
-//│     define generatorMap$LiftedMultParams⁰ as val generatorMap$LiftedMultParams¹ = tmp2;
-//│     define Function$$LiftedMultParams⁰ as val Function$$LiftedMultParams¹ = Function$³;
-//│     end
-//│   }
-//│   method generate⁴ = fun generate⁵(source, path) {
-//│     let tmp, tmp1, tmp2;
-//│     set tmp = LiftedMultParams².this.propagate﹖();
-//│     set tmp1 = [];
-//│     set tmp2 = Block⁰.codegen﹖("LiftedMultParams", LiftedMultParams².this.cache$LiftedMultParams﹖, source, path, tmp1);
-//│     end
-//│   }
-//│   method ctor$_instr⁴ = fun ctor$_instr⁵() {
-//│     let sym, tmp, tmp1, end, tmp2;
-//│     set sym = Block⁰.Symbol﹖("ctor$");
-//│     set tmp = [];
-//│     set tmp1 = [tmp];
-//│     set end = Block⁰.End﹖();
-//│     set tmp2 = Block⁰.FunDefn﹖(sym, tmp1, end);
-//│     return tmp2
-//│   }
-//│   method propagate⁴ = fun propagate⁵() {
-//│     let tmp_dyn, gen_call;
-//│     set tmp_dyn = ShapeSet⁰.mkDyn﹖();
-//│     set gen_call = LiftedMultParams².this.foo_gen﹖(tmp_dyn);
-//│     end
-//│   }
-//│   method toCode⁴ = fun toCode⁵() {
-//│     let tmp, tmp1;
-//│     set tmp = [];
-//│     set tmp1 = Block⁰.toCode﹖("LiftedMultParams", LiftedMultParams².this.cache$LiftedMultParams﹖, tmp);
-//│     return tmp1
-//│   }
-//│   method foo_instr² = fun foo_instr³() {
-//│     let x, tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, tmp6, var1, tmp7, tmp8, tmp9, sym3, tmp10, tmp11, tmp12, sym4, tmp13, var2, tmp14, inst, return1, assign, tmp15, tmp16;
-//│     set sym = Block⁰.Symbol﹖("foo");
-//│     set tmp1 = option⁰.None﹖;
-//│     set sym1 = Block⁰.Symbol﹖("x");
-//│     set tmp2 = Block⁰.Param﹖(tmp1, sym1);
-//│     set tmp3 = [tmp2];
-//│     set tmp4 = [tmp3];
-//│     set sym2 = Block⁰.Symbol﹖("tmp");
-//│     set tmp5 = [sym2];
-//│     set tmp6 = Block⁰.ValueRef﹖(sym2);
-//│     set tmp = tmp6;
-//│     set var1 = Block⁰.ValueRef﹖(sym1);
-//│     set tmp7 = Block⁰.Arg﹖(var1);
-//│     set tmp8 = option⁰.None﹖;
-//│     set tmp9 = option⁰.None﹖;
-//│     set sym3 = Block⁰.Symbol﹖("x");
-//│     set tmp10 = Block⁰.Param﹖(tmp9, sym3);
-//│     set tmp11 = [tmp10];
-//│     set tmp12 = [tmp11];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$², tmp8, tmp12, true);
-//│     set tmp13 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$², sym4);
-//│     set var2 = Block⁰.ValueRef﹖(tmp13);
-//│     set tmp14 = [tmp7];
-//│     set inst = Block⁰.Instantiate﹖(var2, tmp14);
-//│     set return1 = Block⁰.Return﹖(tmp6, false);
-//│     set assign = Block⁰.Assign﹖(sym2, inst, return1);
-//│     set tmp15 = Block⁰.Scoped﹖(tmp5, assign);
-//│     set tmp16 = Block⁰.FunDefn﹖(sym, tmp4, tmp15);
-//│     return tmp16
-//│   }
-//│   method foo_gen² = fun foo_gen³(x) {
-//│     let tmp, tmp1, tmp2;
-//│     set tmp = [x];
-//│     set tmp1 = [tmp];
-//│     set tmp2 = SpecializeHelpers⁰.specialize﹖(LiftedMultParams².this.cache$LiftedMultParams﹖, "foo", LiftedMultParams².this.foo_instr﹖, tmp1);
-//│     return tmp2
-//│   }
-//│ };
+//│ let LiftedMultParams⁰, lambda$⁰, Function$¹;
+//│ @staged
+//│ define lambda$⁰ as staged fun lambda$¹(x, y) { return +⁰(x, y) };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

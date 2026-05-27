@@ -310,12 +310,12 @@ let plus = ValueRef(Symbol("+"))
 // let x
 // x = 1 + 1
 // x + 1
-let c = Scoped([x], Assign(x, Call(plus, [Arg(ValueLit(1)), Arg(ValueLit(1))]), Return(Call(plus, [Arg(ValueRef(x)), Arg(ValueLit(1))]), false)))
+let c = Scoped([x], Assign(x, Call(plus, [Arg(ValueLit(1)), Arg(ValueLit(1))]), Return(Call(plus, [Arg(ValueRef(x)), Arg(ValueLit(1))]))))
 prop(Ctx.empty(), c)
 //│ = [
 //│   Scoped(
 //│     [Symbol("x")],
-//│     Assign(Symbol("x"), ValueLit(2), Return(ValueLit(3), false))
+//│     Assign(Symbol("x"), ValueLit(2), Return(ValueLit(3)))
 //│   ),
 //│   {Lit(3)},
 //│   false
@@ -329,18 +329,17 @@ prop(Ctx.empty(), c)
 //│       Call(
 //│         ValueRef(Symbol("+")),
 //│         [Arg(ValueRef(Symbol("x"))), Arg(ValueLit(1))]
-//│       ),
-//│       false
+//│       )
 //│     )
 //│   )
 //│ )
 
-let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(VirtualClassSymbol("Bool"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1), false)), Arm(Lit(8), Return(ValueLit(2), false)), Arm(Cls(VirtualClassSymbol("Int"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3), false))], Some(Return(ValueLit(0), false)), End())))
+let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueRef(x), [Arm(Cls(VirtualClassSymbol("Bool"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1))), Arm(Lit(8), Return(ValueLit(2))), Arm(Cls(VirtualClassSymbol("Int"), Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3)))], Some(Return(ValueLit(0))), End())))
 prop(Ctx.empty(), c)
 //│ = [
 //│   Scoped(
 //│     [Symbol("x")],
-//│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3), false))
+//│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3)))
 //│   ),
 //│   {Lit(3)},
 //│   true
@@ -358,18 +357,18 @@ prop(Ctx.empty(), c)
 //│             VirtualClassSymbol("Bool"),
 //│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
 //│           ),
-//│           Return(ValueLit(1), false)
+//│           Return(ValueLit(1))
 //│         ),
-//│         Arm(Lit(8), Return(ValueLit(2), false)),
+//│         Arm(Lit(8), Return(ValueLit(2))),
 //│         Arm(
 //│           Cls(
 //│             VirtualClassSymbol("Int"),
 //│             Select(ValueRef(Symbol("runtime")), Symbol("unreachable"))
 //│           ),
-//│           Return(ValueLit(3), false)
+//│           Return(ValueLit(3))
 //│         )
 //│       ],
-//│       Some(Return(ValueLit(0), false)),
+//│       Some(Return(ValueLit(0))),
 //│       End()
 //│     )
 //│   )
@@ -384,7 +383,7 @@ module M with
 :ignore
 val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.385: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
+//│ ║  l.384: 	val MSym = ValueRef(ModuleSymbol("M", M, false))
 //│ ║         	                                      ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueRef(ModuleSymbol("M", class M, false))
@@ -414,20 +413,19 @@ val ctxXY = Ctx.empty()
 //│ )
 
 // x + y
-val blockAdd = Return(Call(plus, [Arg(ValueRef(x)), Arg(ValueRef(y))]), false)
+val blockAdd = Return(Call(plus, [Arg(ValueRef(x)), Arg(ValueRef(y))]))
 printCode(blockAdd)
 prop(ctxXY, blockAdd)
 //│ > x + y
-//│ = [Return(ValueLit(42), false), {Lit(42)}, false]
+//│ = [Return(ValueLit(42)), {Lit(42)}, false]
 //│ blockAdd = Return(
 //│   Call(
 //│     ValueRef(Symbol("+")),
 //│     [Arg(ValueRef(Symbol("x"))), Arg(ValueRef(Symbol("y")))]
-//│   ),
-//│   false
+//│   )
 //│ )
 
-val blockBranch = Scoped([z], Match(ValueLit(1), [Arm(Lit(1), Assign(z, ValueLit(1), End())), Arm(Lit(2), Assign(z, ValueLit(2), End()))], Some(Assign(z, ValueLit(3), End())), Return(ValueRef(z), false)))
+val blockBranch = Scoped([z], Match(ValueLit(1), [Arm(Lit(1), Assign(z, ValueLit(1), End())), Arm(Lit(2), Assign(z, ValueLit(2), End()))], Some(Assign(z, ValueLit(3), End())), Return(ValueRef(z))))
 printCode(blockBranch)
 prop(Ctx.empty(), blockBranch)
 //│ > let {z}
@@ -442,7 +440,7 @@ prop(Ctx.empty(), blockBranch)
 //│ = [
 //│   Scoped(
 //│     [Symbol("z")],
-//│     Assign(Symbol("z"), ValueLit(1), Return(ValueLit(1), false))
+//│     Assign(Symbol("z"), ValueLit(1), Return(ValueLit(1)))
 //│   ),
 //│   {Lit(1)},
 //│   true
@@ -456,11 +454,11 @@ prop(Ctx.empty(), blockBranch)
 //│       Arm(Lit(2), Assign(Symbol("z"), ValueLit(2), End()))
 //│     ],
 //│     Some(Assign(Symbol("z"), ValueLit(3), End())),
-//│     Return(ValueRef(Symbol("z")), false)
+//│     Return(ValueRef(Symbol("z")))
 //│   )
 //│ )
 
-val earlyRetBlock = Scoped([x, y], Assign(x, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Return(ValueLit(10), false)), Arm(Lit(false), Assign(y, ValueLit(20), End()))], End(), Return(ValueRef(y), false))))
+val earlyRetBlock = Scoped([x, y], Assign(x, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Return(ValueLit(10))), Arm(Lit(false), Assign(y, ValueLit(20), End()))], End(), Return(ValueRef(y)))))
 printCode(earlyRetBlock)
 prop(Ctx.empty(), earlyRetBlock)
 //│ > let {x, y}
@@ -476,7 +474,7 @@ prop(Ctx.empty(), earlyRetBlock)
 //│     Assign(
 //│       Symbol("x"),
 //│       ValueLit(false),
-//│       Assign(Symbol("y"), ValueLit(20), Return(ValueLit(20), false))
+//│       Assign(Symbol("y"), ValueLit(20), Return(ValueLit(20)))
 //│     )
 //│   ),
 //│   {Lit(20)},
@@ -490,17 +488,17 @@ prop(Ctx.empty(), earlyRetBlock)
 //│     Match(
 //│       ValueRef(Symbol("x")),
 //│       [
-//│         Arm(Lit(true), Return(ValueLit(10), false)),
+//│         Arm(Lit(true), Return(ValueLit(10))),
 //│         Arm(Lit(false), Assign(Symbol("y"), ValueLit(20), End()))
 //│       ],
 //│       End(),
-//│       Return(ValueRef(Symbol("y")), false)
+//│       Return(ValueRef(Symbol("y")))
 //│     )
 //│   )
 //│ )
 
 :silent
-val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1), false))], Some(Return(ValueLit(2), false)), End()))], Some(Return(ValueLit(3), false)), Return(ValueLit(4), false)))))
+val nestedBlock = Scoped([x, y], Assign(x, ValueLit(true), Assign(y, ValueLit(false), Match(ValueRef(x), [Arm(Lit(true), Match(ValueRef(y), [Arm(Lit(true), Return(ValueLit(1)))], Some(Return(ValueLit(2))), End()))], Some(Return(ValueLit(3))), Return(ValueLit(4))))))
 val res = prop(Ctx.empty(), nestedBlock)
 printCode(nestedBlock)
 printCode(res.0)
@@ -526,7 +524,7 @@ val res = prop(Ctx.empty(), nestedBlock)
 //│     Assign(
 //│       Symbol("x"),
 //│       ValueLit(true),
-//│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2), false))
+//│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2)))
 //│     )
 //│   ),
 //│   {Lit(2)},

@@ -19,14 +19,11 @@ if
   x then 0
   y then 0
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp;
-//│ if (x !== true) {
-//│   if (y !== true) {
-//│     throw globalThis.Object.freeze(new globalThis.Error("match error"))
-//│   }
+//│ if (x === true) {
+//│   return 0
 //│ }
-//│ tmp = 0;
-//│ tmp
+//│ if (y === true) { return 0 }
+//│ throw globalThis.Object.freeze(new globalThis.Error("match error"));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
 
@@ -37,12 +34,10 @@ if
   y then 1
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ if (x === true) {
-//│   0
-//│ } else {
-//│   if (y === true) {
-//│     1
-//│   } else { throw globalThis.Object.freeze(new globalThis.Error("match error")) }
+//│   return 0
 //│ }
+//│ if (y === true) { return 1 }
+//│ throw globalThis.Object.freeze(new globalThis.Error("match error"));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
 
@@ -73,12 +68,12 @@ if
 //│ >        x = 1
 //│ >        builtin:+⁰(x⁰, b⁰)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ let b, x1, element0$, tmp1;
+//│ let b, element0$, tmp;
 //│ split_root$: {
 //│   split_default$: {
 //│     if (x === true) {
 //│       if (z === true) {
-//│         tmp1 = 1;
+//│         tmp = 1;
 //│         break split_root$
 //│       }
 //│       if (runtime.Tuple.isArrayLike(y) && y.length === 1) {
@@ -95,14 +90,12 @@ if
 //│         break split_default$
 //│       }
 //│     }
-//│     x1 = 1;
-//│     tmp1 = x1 + b;
+//│     tmp = 1 + b;
 //│     break split_root$;
 //│   }
 //│   throw globalThis.Object.freeze(new globalThis.Error("match error"));
 //│ }
-//│ block$res4 = tmp1;
-//│ undefined
+//│ block$res4 = tmp;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
@@ -128,7 +121,7 @@ if
 if false do ()
 123
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ 123
+//│ return 123
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let scrut;
 //│ block split_root$:
@@ -141,9 +134,9 @@ if false do ()
 //│         break split_1$
 //│     end
 //│   end
-//│ 123
+//│ return 123
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ 123
+//│ return 123
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 123
 
@@ -154,7 +147,7 @@ if false do ()
 if false do ()
 123
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let scrut; set scrut = false; 123
+//│ let scrut; set scrut = false; return 123
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 123
 
@@ -167,7 +160,7 @@ object Obj with
 :sjs
 if Obj.test do ()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ Obj1.test; runtime.Unit
+//│ Obj1.test; return runtime.Unit
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 

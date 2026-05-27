@@ -11,7 +11,9 @@ import hkmc2.Message.MessageContext
 import collection.mutable.HashMap
 
 
-class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Raise) extends BlockTransformer(new SymbolSubst):
+class FirstClassFunctionTransformer
+      (using Elaborator.State, Elaborator.Ctx, Raise, DebugPrinter)
+    extends BlockTransformer(new SymbolSubst):
   // Anonymous lambdas' parameter lists cannot be retrieved from the term symbol
   private val funDefns = HashMap.empty[BlockMemberSymbol, FunDefn] 
   class CollectFunDefns extends BlockTraverser:
@@ -26,18 +28,20 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
     )
     val defSym = new BlockMemberSymbol("Function$", Nil, false)
     val callDef = FunDefn.withFreshSymbol(Some(clsSym), new BlockMemberSymbol("call", Nil, true), params :: Nil,
-      Return(Call(p, params.params.map(_.sym.asPath.asArg) ne_:: Nil)(true, false, false), false))(N, annotations = Nil)
+      Return(Call(p, params.params.map(_.sym.asPath.asArg) ne_:: Nil)(true, false, false)))(N, annotations = Nil)
     ClsLikeDefn(None, clsSym, defSym, None, syntax.Cls, None, Nil,
       Some(Select(Value.Ref(State.globalThisSymbol, Some(State.globalThisSymbol)), Tree.Ident("Function"))(Some(ctx.builtins.Function))),
-      callDef :: Nil, Nil, Nil, Return(Call(Value.Ref(State.builtinOpsMap("super")), Nil ne_:: Nil)(false, false, false), true), End(), None, None)(N, annotations = Nil)
+      callDef :: Nil, Nil, Nil, Assign.discard(
+        Call(Value.Ref(State.builtinOpsMap("super")), Nil ne_:: Nil)(false, false, false),
+        End()), End(), None, None)(N, annotations = Nil)
 
   private def getParamList(l: BlockMemberSymbol): Option[ParamList] = funDefns.get(l) match
     case Some(fd) => fd.params.headOption.map(pl =>
       ParamList(pl.flags, pl.params.map(p => Param(p.flags, VarSymbol(p.sym.id), p.sign, p.modulefulness)), pl.restParam))
     case _ => l.tsym.flatMap(getParamList)
 
-  private def getParamList(ts: TermSymbol): Option[ParamList] = ts.defn.flatMap(_.params.headOption).map(pl =>
-    ParamList(pl.flags, pl.params.map(p => Param(p.flags, VarSymbol(p.sym.id), p.sign, p.modulefulness)), pl.restParam))
+  private def getParamList(ts: TermSymbol): Option[ParamList] =
+    ts.irFunDefn.flatMap(_.params.headOption)
 
   override def applyPath(p: Path)(k: Path => Block): Block = p match
     case ref @ Value.Ref(l: BlockMemberSymbol, disamb) => disamb match
@@ -51,7 +55,12 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
       case None => lastWords(s"${l.nme}'s disamb cannot be empty.")
     case sel: Select => sel.symbol match
       case Some(s: TermSymbol) if (s.k is syntax.Fun) =>
-        val params = getParamList(s).getOrElse(lastWords(s"Cannot get ${s.nme}'s parameter list."))
+        val params = getParamList(s).getOrElse:
+          raise:
+            ErrorReport(msg"Cannot get ${s.nme}'s parameter list."
+              -> sel.toLoc :: Nil,
+              source = Diagnostic.Source.Compilation)
+          PlainParamList(Nil)
         val clsDef = generateFCFunctionClass(sel, params)
         val tmp = new TempSymbol(None)
         val cls = Value.Ref(clsDef.sym, Some(clsDef.isym))
@@ -102,7 +111,7 @@ class FirstClassFunctionTransformer(using Elaborator.State, Elaborator.Ctx, Rais
             val newBody = rec(rest)
             val funSym = new BlockMemberSymbol("lambda$", Nil, false)
             val funDef = FunDefn.withFreshSymbol(None, funSym, head :: Nil, newBody)(N, annotations = Nil)
-            Scoped(Set(funSym), Define(funDef, Return(Value.Ref(funDef.sym, Some(funDef.dSym)), false)))
+            Scoped(Set(funSym), Define(funDef, Return(Value.Ref(funDef.sym, Some(funDef.dSym)))))
           case Nil => fd.body
         FunDefn.withFreshSymbol(fd.owner, fd.sym, head :: Nil, rec(tail))(fd.configOverride, fd.annotations)
   
@@ -122,6 +131,6 @@ class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSu
       contMap.addOne(label -> contSym)
       super.applyBlock(Scoped(Set(contSym), Define(contFun, body)))
     case Break(label) => contMap.get(label) match
-      case Some(sym: Symbol) => Return(Call(Value.Ref(sym, N), Nil ne_:: Nil)(true, false, false), true)
+      case Some(sym: Symbol) => Return(Call(Value.Ref(sym, N), Nil ne_:: Nil)(true, false, false))
       case _ => super.applyBlock(b)
     case _ => super.applyBlock(b)

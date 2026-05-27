@@ -20,6 +20,7 @@ fun aux(f) = f(1) + f(10)
 x => x
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let lambda⁰, Function$⁰, tmp;
+//│ @private
 //│ define lambda⁰ as fun lambda¹(x) {
 //│   return x
 //│ };
@@ -27,7 +28,7 @@ x => x
 //│   method call⁰ = fun call¹(x) { return lambda¹(x) }
 //│ };
 //│ set tmp = new Function$¹();
-//│ tmp
+//│ return tmp
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = class anonymous
 
@@ -35,6 +36,7 @@ x => x
 :noInline
 x => x
 //│ = class anonymous
+
 
 
 fun f(x, y, b) =
@@ -48,7 +50,7 @@ f(0, 0, true)
 :sir
 (x => x)(42)
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let lambda²; define lambda² as fun lambda³(x) { return x }; lambda³(42)
+//│ let lambda²; define lambda² as fun lambda³(x) { return x }; return lambda³(42)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 42
 
@@ -73,7 +75,7 @@ bar(foo)
 //│   method call² = fun call³(x) { return foo¹(x) }
 //│ };
 //│ set tmp = new Function$³();
-//│ bar¹(tmp)
+//│ return bar¹(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
@@ -92,12 +94,12 @@ let f = foo in bar(f)
 bar([foo].0)
 bar([foo, x => x].1)
 //│ ╔══[COMPILATION ERROR] Cannot determine if 0 is a function.
-//│ ║  l.92: 	bar([foo].0)
+//│ ║  l.94: 	bar([foo].0)
 //│ ╙──      	         ^^
 //│ ═══[COMPILATION ERROR] Cannot determine if 0$__checkNotMethod is a function.
 //│ ═══[COMPILATION ERROR] Cannot determine if Error is a function.
 //│ ╔══[COMPILATION ERROR] Cannot determine if 1 is a function.
-//│ ║  l.93: 	bar([foo, x => x].1)
+//│ ║  l.95: 	bar([foo, x => x].1)
 //│ ╙──      	                 ^^
 //│ ═══[COMPILATION ERROR] Cannot determine if 1$__checkNotMethod is a function.
 //│ ═══[COMPILATION ERROR] Cannot determine if Error is a function.
@@ -114,7 +116,7 @@ bar([foo, x => x].(i))
 :ge
 [foo, x => x].(i)(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.115: 	[foo, x => x].(i)(0)
+//│ ║  l.117: 	[foo, x => x].(i)(0)
 //│ ╙──       	               ^
 
 
@@ -128,10 +130,10 @@ let foo = Foo()
 foo.("f")(0)
 foo.("h")(1)
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.128: 	foo.("f")(0)
+//│ ║  l.130: 	foo.("f")(0)
 //│ ╙──       	^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Cannot determine if the dynamic selection is a function object.
-//│ ║  l.129: 	foo.("h")(1)
+//│ ║  l.131: 	foo.("h")(1)
 //│ ╙──       	^^^^^^^^
 //│ = 0
 //│ foo = Foo()
@@ -151,10 +153,12 @@ Foo(1).foo(x => x - 1)
 //│   return -⁰(x, 1)
 //│ };
 //│ define Function$⁴ as class Function$⁵ {
-//│   method call⁴ = fun call⁵(x) { return lambda⁵(x) }
+//│   method call⁴ = fun call⁵(x) {
+//│     return lambda⁵(x)
+//│   }
 //│ };
 //│ set tmp1 = new Function$⁵();
-//│ tmp.foo²(tmp1)
+//│ return tmp.foo²(tmp1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 0
 
@@ -165,6 +169,7 @@ fun foo() = x => x
 foo()(1)
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let foo³, baseCall, lambda⁶, Function$⁶;
+//│ @private
 //│ define lambda⁶ as fun lambda⁷(x) {
 //│   return x
 //│ };
@@ -179,7 +184,7 @@ foo()(1)
 //│   return tmp
 //│ };
 //│ set baseCall = foo⁴();
-//│ baseCall.call﹖(1)
+//│ return baseCall.call﹖(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
@@ -219,36 +224,38 @@ module Foo with
     fun bar(z) = x => x + y + z 
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let Foo¹, lambda⁸, Function$⁸;
-//│ define lambda⁸ as fun lambda⁹(y, z, x) {
+//│ @private
+//│ define lambda⁸ as fun lambda⁹(Bar, z, x) {
 //│   let tmp;
-//│   set tmp = +⁰(x, y);
+//│   set tmp = +⁰(x, Bar.y⁰);
 //│   return +⁰(tmp, z)
 //│ };
 //│ define Function$⁸ as class Function$⁹ {
-//│   private val y⁰;
+//│   private val Bar⁰;
 //│   private val z⁰;
-//│   constructor(y, z) {
-//│     super⁰();
-//│     set y⁰ = y;
-//│     set z⁰ = z;
+//│   constructor(Bar, z) {
+//│     do super⁰();
+//│     end;
+//│     set Function$⁹.this.Bar = Bar;
+//│     set Function$⁹.this.z = z;
 //│     end
 //│   }
 //│   method call⁸ = fun call⁹(x) {
-//│     return lambda⁹(y⁰, z⁰, x)
+//│     return lambda⁹(Function$⁹.this.Bar⁰, Function$⁹.this.z⁰, x)
 //│   }
 //│ };
 //│ define Foo¹ as class Foo²
 //│ module Foo³ {
 //│   constructor {
-//│     define Bar⁰ as class Bar²(y) {
-//│       private val y¹;
-//│       constructor Bar¹ {
-//│         set y¹ = y;
+//│     define Bar¹ as class Bar³(y) {
+//│       private val y⁰;
+//│       constructor Bar² {
+//│         set Bar³.this.y = y;
 //│         end
 //│       }
 //│       method bar² = fun bar³(z) {
 //│         let tmp;
-//│         set tmp = new Function$⁹(y¹, z);
+//│         set tmp = new Function$⁹(Bar³.this, z);
 //│         return tmp
 //│       }
 //│     };
@@ -272,6 +279,7 @@ let x = 1
 y => x + y
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let lambda¹⁰, Function$¹⁰, tmp;
+//│ @private
 //│ define lambda¹⁰ as fun lambda¹¹(y) {
 //│   return +⁰(x⁰, y)
 //│ };
@@ -279,7 +287,7 @@ y => x + y
 //│   method call¹⁰ = fun call¹¹(y) { return lambda¹¹(y) }
 //│ };
 //│ set tmp = new Function$¹¹();
-//│ tmp
+//│ return tmp
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = class anonymous
 
@@ -370,7 +378,7 @@ foo.Foo#x
 :ge
 foo.f(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if f is a function object.
-//│ ║  l.371: 	foo.f(0)
+//│ ║  l.379: 	foo.f(0)
 //│ ╙──       	^^^^^
 //│ = 1
 
@@ -388,7 +396,7 @@ foo.Foo#f(0)
 :ge
 foo.x(0)
 //│ ╔══[COMPILATION ERROR] Cannot determine if x is a function object.
-//│ ║  l.389: 	foo.x(0)
+//│ ║  l.397: 	foo.x(0)
 //│ ╙──       	^^^^^
 
 
@@ -463,12 +471,13 @@ fun foo(x)(y) = x + y
 //│ define Function$¹² as class Function$¹³ {
 //│   private val x¹;
 //│   constructor(x) {
-//│     super⁰();
-//│     set x¹ = x;
+//│     do super⁰();
+//│     end;
+//│     set Function$¹³.this.x = x;
 //│     end
 //│   }
 //│   method call¹² = fun call¹³(y) {
-//│     return lambda$¹(x¹, y)
+//│     return lambda$¹(Function$¹³.this.x¹, y)
 //│   }
 //│ };
 //│ define foo⁵ as fun foo⁶(x) { let tmp; set tmp = new Function$¹³(x); return tmp };
@@ -498,26 +507,39 @@ foo(1)
 
 fun foo(f) = f("abc")
 
-// FIXME: should output "abc"
+print("abc")
+//│ > abc
+
+// TODO: should be able to find this info
+:e
 foo(print)
-//│ > 
+//│ ╔══[COMPILATION ERROR] Cannot get print's parameter list.
+//│ ║  l.515: 	foo(print)
+//│ ╙──       	    ^^^^^
+//│ ═══[RUNTIME ERROR] Error: Function 'call' expected 0 arguments but got 1
+
+foo(print(_))
+//│ > abc
 
 :fixme
 :sir
 :expect ["abc"]
 foo(tuple)
+//│ ╔══[COMPILATION ERROR] Cannot get tuple's parameter list.
+//│ ║  l.527: 	foo(tuple)
+//│ ╙──       	    ^^^^^
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let Function$¹⁴, tmp;
 //│ define Function$¹⁴ as class Function$¹⁵ {
-//│   method call¹⁴ = fun call¹⁵(...xs) {
+//│   method call¹⁴ = fun call¹⁵() {
 //│     return Predef⁰.tuple⁰()
 //│   }
 //│ };
 //│ set tmp = new Function$¹⁵();
-//│ foo⁷(tmp)
+//│ return foo⁷(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ ═══[RUNTIME ERROR] Expected: '["abc"]', got: '[]'
-//│ = []
+//│ ═══[RUNTIME ERROR] Error: Function 'call' expected 0 arguments but got 1
+//│ ═══[RUNTIME ERROR] Expected: '["abc"]', got: 'undefined'
 
 
 if true is true then print("true")
