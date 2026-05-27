@@ -291,6 +291,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
                   ObjBody(Blk(Nil, UnitVal())),
                   S(mod.sym),
                   stagedAnnots,
+                  Nil,
+                  N,
                 )
             case _ => _defn
           reportAnnotations(defn, defn.extraAnnotations)
@@ -315,6 +317,13 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
                 source = Diagnostic.Source.Compilation
               ))
           val bufferable = bufferableAnnots.headOption
+          // Forbid @buffered classes from having a main parameter list
+          bufferable.foreach: isBufferable =>
+            if !isBufferable && defn.paramsOpt.isDefined then
+              raise(ErrorReport(
+                msg"Buffered classes must not have a main parameter list; use `constructor(...)` syntax instead." -> defn.toLoc :: Nil,
+                source = Diagnostic.Source.Compilation
+              ))
           val (mtds, publicFlds, privateFlds, ctor) = defn match
             case pd: PatternDef =>
               // Compile the pattern definition into `unapply` and `unapplyStringPrefix`
@@ -1307,7 +1316,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       if config.funcToCls then Lifter(FirstClassFunctionTransformer().transform(merged)).transform
       else merged
     
-    val staged = ReflectionInstrumenter(using summon).apply(funcToCls)
+    val flatClassParams = ClassParamFlattener(funcToCls)
+
+    val staged = ReflectionInstrumenter(using summon).apply(flatClassParams)
     
     val res =
       if config.tailRecOpt then TailRecOpt().transform(staged)
