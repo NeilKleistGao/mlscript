@@ -194,7 +194,7 @@ class BlockTransformer(subst: SymbolSubst):
     case Value.Lit(lit) => k(v)
   
   def applyLocal(sym: Local): Local = sym.subst
-  def applyAssignLhs(sym: LocalVarSymbol | NoSymbol): LocalVarSymbol | NoSymbol = sym match
+  def applyAssignLhs(sym: AssignableSymbol): AssignableSymbol = sym match
     case sym: NoSymbol => sym.subst
     case sym: TempSymbol => sym.subst
     case sym: VarSymbol => sym.subst

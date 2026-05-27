@@ -723,7 +723,7 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
     translateBlock(b, if isModCtor then HandlerCtx.ModCtor(h.innerDefIsTrulyNested) else HandlerCtx.Ctor, Set.empty)
 
   private def translateIllegalEffectCtx(b: Block, onEffect: Call)(using HandlerCtx): Block =
-    def effectCheck(l: LocalVarSymbol | NoSymbol, r: Result, rst: Block): Block =
+    def effectCheck(l: AssignableSymbol, r: Result, rst: Block): Block =
       blockBuilder
         .assign(l, r)
         .ifthen(

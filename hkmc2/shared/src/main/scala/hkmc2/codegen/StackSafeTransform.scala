@@ -24,7 +24,7 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, stackSafetyMap: S
 
   // Increases the stack depth, assigns the call to a value, then decreases the stack depth
   // then binds that value to a desired block
-  def extractRes(res: Result, isTailCall: Bool, f: Result => Block, sym: LocalVarSymbol | NoSymbol, curDepth: => LocalVarSymbol): Block =
+  def extractRes(res: Result, isTailCall: Bool, f: Result => Block, sym: AssignableSymbol, curDepth: => LocalVarSymbol): Block =
     if isTailCall then Return(res)
     else
       blockBuilder
@@ -54,7 +54,7 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, stackSafetyMap: S
       case _: Call | _: Instantiate => true
       case _ => false
 
-    def extract(res: Result, isTailCall: Bool, f: Result => Block, sym: LocalVarSymbol | NoSymbol, curDepth: => LocalVarSymbol) =
+    def extract(res: Result, isTailCall: Bool, f: Result => Block, sym: AssignableSymbol, curDepth: => LocalVarSymbol) =
       if isTopLevel then sym match
         case sym: LocalVarSymbol => extractResTopLevel(res, isTailCall, f, sym, curDepth)
         case _: NoSymbol =>

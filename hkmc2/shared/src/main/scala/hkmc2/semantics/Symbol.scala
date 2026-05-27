@@ -186,6 +186,7 @@ object FlowSymbol:
 end FlowSymbol
 
 type SimpleSymbol = LocalVarSymbol | BuiltinSymbol
+type AssignableSymbol = LocalVarSymbol | NoSymbol
 
 sealed trait LocalVarSymbol extends LocalSymbol
 sealed trait LocalSymbol extends Symbol:
