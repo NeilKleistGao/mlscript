@@ -60,11 +60,11 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     // process preCtor: inline temp variable when printing
     class InlinePrinter(ctx: Map[Symbol, String]) extends Printer(Some(owner)) with
       fun showPath(p) = if p is
-        ValueRef(s) and ctx.has(s) then ctx.get(s)
+        ValueSimpleRef(s) | ValueMemberRef(s) and ctx.has(s) then ctx.get(s)
         Select(qual, name) then showPath(qual) + "." + this.showSymbol(name)
         DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
         DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
-        ValueRef(s) then this.showSymbol(s)
+        ValueSimpleRef(s) | ValueMemberRef(s) then this.showSymbol(s)
         ValueLit(lit) then this.showLiteral(lit)
     
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)

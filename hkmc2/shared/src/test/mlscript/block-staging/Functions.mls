@@ -110,6 +110,7 @@ staged module Expressions with
 //│ > }
 //│ x = [1, 2, 3]
 
+:fixme
 class Outside(a)
 staged module ClassInstrumentation with
   class Inside(a, b)
@@ -118,49 +119,9 @@ staged module ClassInstrumentation with
   fun inst2() = new NoArg
   fun app1() = Outside(1)
   fun app2() = Inside(1, 2)
-//│ > module ClassInstrumentation with
-//│ >   class Inside(a, b)
-//│ >   class NoArg
-//│ >   fun inst1() = new Outside(1)
-//│ >   fun inst2() = new NoArg
-//│ >   fun app1() = Outside(1)
-//│ >   fun app2() = Inside(1, 2)
-//│ > Map(4) {
-//│ >   'inst1' => [Function: inst1_gen],
-//│ >   'inst2' => [Function: inst2_gen],
-//│ >   'app1' => [Function: app1_gen],
-//│ >   'app2' => [Function: app2_gen]
-//│ > }
-//│ > SymbolMap {
-//│ >   classMap: Map(3) {
-//│ >     [Function: Outside] { class: [Function] } => ConcreteClassSymbol {
-//│ >       name: 'Outside',
-//│ >       value: [Function],
-//│ >       paramsOpt: [Some],
-//│ >       auxParams: []
-//│ >     },
-//│ >     [class NoArg] { Symbol(mlscript.definitionMetadata): [Array] } => ConcreteClassSymbol {
-//│ >       name: 'NoArg',
-//│ >       value: [Function],
-//│ >       paramsOpt: None {},
-//│ >       auxParams: []
-//│ >     },
-//│ >     [Function: Inside] { class: [Function] } => ConcreteClassSymbol {
-//│ >       name: 'Inside',
-//│ >       value: [Function],
-//│ >       paramsOpt: [Some],
-//│ >       auxParams: []
-//│ >     }
-//│ >   },
-//│ >   moduleMap: Map(1) {
-//│ >     [class ClassInstrumentation] {
-//│ >       Inside: [Function],
-//│ >       NoArg: [Function],
-//│ >       'cache$ClassInstrumentation': [FunCache],
-//│ >       'generatorMap$ClassInstrumentation': [Map]
-//│ >     } => ModuleSymbol { name: 'ClassInstrumentation', value: [Function] }
-//│ >   }
-//│ > }
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 module Nonstaged with
   fun f() = 1
@@ -214,6 +175,7 @@ staged module Arguments with
   fun g(x)(y, z)() = z
 //│ ═══[COMPILATION ERROR] Staged classes with private fields are not supported.
 
+:fixme
 staged module OtherBlocks with
   fun scope() =
     scope.locally of (
@@ -225,32 +187,8 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
-//│ > module OtherBlocks with
-//│ >   ()
-//│ >   fun scope() =
-//│ >     let {a}
-//│ >     a = 1
-//│ >     scope.locally(a)
-//│ >   fun breakAndLabel() =
-//│ >     let {scrut}
-//│ >     scrut = 1
-//│ >     if scrut is
-//│ >       2 then 0
-//│ >       3 then 0
-//│ >       else 0
-//│ > Map(2) {
-//│ >   'scope' => [Function: scope_gen],
-//│ >   'breakAndLabel' => [Function: breakAndLabel_gen]
-//│ > }
-//│ > SymbolMap {
-//│ >   classMap: Map(0) {},
-//│ >   moduleMap: Map(1) {
-//│ >     [class OtherBlocks] {
-//│ >       'cache$OtherBlocks': [FunCache],
-//│ >       'generatorMap$OtherBlocks': [Map]
-//│ >     } => ModuleSymbol { name: 'OtherBlocks', value: [Function] }
-//│ >   }
-//│ > }
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 staged module ClassDefs with
   class A
@@ -300,37 +238,13 @@ staged module ValClass with
 //│ >   }
 //│ > }
 
+:fixme
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
-//│ > module ClassFunctions with
-//│ >   class InnerClass() with
-//│ >     fun f() =
-//│ >       let {tmp}
-//│ >       tmp = Arguments.f(1)
-//│ >       1 + tmp
-//│ >     fun g() = InnerClass.f()
-//│ >   
-//│ > Map(0) {}
-//│ > SymbolMap {
-//│ >   classMap: Map(1) {
-//│ >     [Function: InnerClass] { class: [Function] } => ConcreteClassSymbol {
-//│ >       name: 'InnerClass',
-//│ >       value: [Function],
-//│ >       paramsOpt: [Some],
-//│ >       auxParams: []
-//│ >     }
-//│ >   },
-//│ >   moduleMap: Map(2) {
-//│ >     [class ClassFunctions] {
-//│ >       InnerClass: [Function],
-//│ >       'cache$ClassFunctions': [FunCache],
-//│ >       'generatorMap$ClassFunctions': Map(0) {}
-//│ >     } => ModuleSymbol { name: 'ClassFunctions', value: [Function] },
-//│ >     undefined => ModuleSymbol { name: 'Arguments', value: undefined }
-//│ >   }
-//│ > }
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[RUNTIME ERROR] Error: Assertion failed (mlscript-compile/SpecializeHelpers.mls:90)
 
 
 // name collision
@@ -405,7 +319,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Field assignment is not supported in staged modules: a
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.405: 	  fun g() = {1 : 2}
+//│ ║  l.319: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 

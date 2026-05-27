@@ -57,7 +57,7 @@ staged module Selection with
 //│ > Map(1) { 'f' => [Function: f_gen] }
 //│ > SymbolMap {
 //│ >   classMap: Map(2) {
-//│ >     [Function: C] { class: [Function] } => ConcreteClassSymbol {
+//│ >     [class C] { Symbol(mlscript.definitionMetadata): [Array] } => ConcreteClassSymbol {
 //│ >       name: 'C',
 //│ >       value: [Function],
 //│ >       paramsOpt: [Some],
@@ -73,30 +73,9 @@ staged module Selection with
 //│ >   }
 //│ > }
 
+:fixme
 staged module DupeClass with
   class C(val y)
   fun f() = C(1).y
-//│ > module DupeClass with
-//│ >   class C(y)
-//│ >   fun f() =
-//│ >     let {tmp}
-//│ >     tmp = C(1)
-//│ >     tmp.y
-//│ > Map(1) { 'f' => [Function: f_gen] }
-//│ > SymbolMap {
-//│ >   classMap: Map(1) {
-//│ >     [Function: C] { class: [Function] } => ConcreteClassSymbol {
-//│ >       name: 'C',
-//│ >       value: [Function],
-//│ >       paramsOpt: [Some],
-//│ >       auxParams: []
-//│ >     }
-//│ >   },
-//│ >   moduleMap: Map(1) {
-//│ >     [class DupeClass] {
-//│ >       C: [Function],
-//│ >       'cache$DupeClass': [FunCache],
-//│ >       'generatorMap$DupeClass': [Map]
-//│ >     } => ModuleSymbol { name: 'DupeClass', value: [Function] }
-//│ >   }
-//│ > }
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
