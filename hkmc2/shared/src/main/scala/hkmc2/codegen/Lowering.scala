@@ -552,7 +552,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       Assign(sym, rhs, rest)
     case sym =>
       lastWords(s"tried to assign to non-variable symbol ${sym.showDbg}")
-
+  
   private def defineSymbol(sym: Local, rhs: Result, rest: Block)(using LoweringCtx): Block =
     sym match
     case sym: TermSymbol =>
@@ -568,13 +568,19 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       Assign(sym, rhs, rest)
     case sym =>
       lastWords(s"tried to define non-variable symbol ${sym.showDbg}")
-
+  
   def ref(ref: st.Ref, annots: List[Annot], disamb: Opt[DefinitionSymbol[?]], inStmtPos: Bool)(k: Result => Block)(using LoweringCtx): Block =
     def warnStmt = if inStmtPos then warnPureExprInStmtPos(ref.toLoc, S(ref))
     
     val sym = ref.sym
     sym match
-      case ctx.builtins.source.bms | ctx.builtins.js.bms | ctx.builtins.wasm.bms | ctx.builtins.debug.bms | ctx.builtins.annotations.bms =>
+      case
+          ctx.builtins.source.bms
+        | ctx.builtins.js.bms
+        | ctx.builtins.wasm.bms
+        | ctx.builtins.debug.bms
+        | ctx.builtins.annotations.bms
+      =>
         return fail:
           ErrorReport(
             msg"Module '${sym.nme}' is virtual (i.e., \"compiler fiction\"); cannot be used directly" -> ref.toLoc ::
