@@ -1075,14 +1075,14 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           source = Diagnostic.Source.Compilation
         )
   
-  def quoteSplit(split: Split)(k: Result => Block)(using LoweringCtx): Block = split match
+  def quoteSplit(split: Split, splitTmps: Map[SplitSymbol, TempSymbol])(k: Result => Block)(using LoweringCtx): Block = split match
     case Split.Cons(Branch(scrutinee, pattern, continuation), tail) => quote(scrutinee): r1 =>
       val l1, l2, l3, l4, l5 = loweringCtx.registerTempSymbol(N)
       blockBuilder.assign(l1, r1)
         .chain(b => quotePattern(pattern)(r2 => Assign(l2, r2, b)))
-        .chain(b => quoteSplit(continuation)(r3 => Assign(l3, r3, b)))
+        .chain(b => quoteSplit(continuation, splitTmps)(r3 => Assign(l3, r3, b)))
         .chain(b => setupTerm("Branch", (l1 :: l2 :: l3 :: Nil).map(s => s.asSimpleRef))(r4 => Assign(l4, r4, b)))
-        .chain(b => quoteSplit(tail)(r5 => Assign(l5, r5, b)))
+        .chain(b => quoteSplit(tail, splitTmps)(r5 => Assign(l5, r5, b)))
         .rest(setupTerm("Cons", (l4 :: l5 :: Nil).map(s => s.asSimpleRef))(k))
     case Split.Let(sym: LocalVarSymbol, term, tail) => setupSymbol(sym): r1 =>
       loweringCtx.collectScopedSym(sym)
@@ -1090,7 +1090,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       blockBuilder.assign(l1, r1)
         .chain(b => setupTerm("Ref", l1.asSimpleRef :: Nil)(r => Assign(sym, r, b)))
         .chain(b => quote(term)(r2 => Assign(l2, r2, b)))
-        .chain(b => quoteSplit(tail)(r3 => Assign(l3, r3, b)))
+        .chain(b => quoteSplit(tail, splitTmps)(r3 => Assign(l3, r3, b)))
         .rest(setupTerm("Let", (l1 :: l2 :: l3 :: Nil).map(s => s.asSimpleRef))(k))
     case Split.Let(sym, _, _) =>
       lastWords(s"tried to quote split let with non-variable symbol ${sym.nme}")
@@ -1098,6 +1098,17 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       val l = loweringCtx.registerTempSymbol(N)
       Assign(l, r, setupTerm("Else", l.asSimpleRef :: Nil)(k))
     case Split.End => setupTerm("End", Nil)(k)
+    case Split.LetSplit(sym, tail) =>
+      val tmp =  loweringCtx.registerTempSymbol(N, sym.nme + "_splitTmp")
+      val splitTmps2 = splitTmps + (sym -> tmp)
+      setupSymbol(tmp): r1 =>
+        val l1, l2, l3 = loweringCtx.registerTempSymbol(N)
+        blockBuilder.assign(l1, r1)
+          .chain(b => Assign(tmp, Value.Ref(l1), b))
+          .chain(b => quoteSplit(sym.body, splitTmps2)(r2 => Assign(l2, r2, b)))
+          .chain(b => quoteSplit(tail, splitTmps2)(r3 => Assign(l3, r3, b)))
+          .rest(setupTerm("LetSplit", (l1 :: l2 :: l3 :: Nil).map(s => Value.Ref(s)))(k))
+    case Split.UseSplit(sym) => setupTerm("UseSplit", Value.SimpleRef(splitTmps(sym)) :: Nil)(k)
 
   lazy val setupFilename: Path =
     val state = summon[State]
@@ -1197,7 +1208,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           .assign(arrSym, Tuple(mut = false, (l4 :: l5 :: Nil).map(s => s.asSimpleRef.asArg)))
           .rest(setupTerm("Blk", arrSym.asSimpleRef :: l3.asSimpleRef :: Nil)(k))
       }
-    case IfLike(_, IfLikeForm.ReturningIf, split) => quoteSplit(split.getExpandedSplit): r =>
+    case IfLike(_, IfLikeForm.ReturningIf, split) => quoteSplit(split.getExpandedSplit, Map.empty): r =>
       val l = loweringCtx.registerTempSymbol(N)
       Assign(l, r, setupTerm("IfLike", setupQuotedKeyword("If") :: l.asSimpleRef :: Nil)(k))
     case Unquoted(body) => term(body)(k)
