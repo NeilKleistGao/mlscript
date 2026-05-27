@@ -527,11 +527,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         ErrorReport(
           msg"Mutable value '${sym.nme}' is missing an owner" -> sym.toLoc :: Nil,
           source = Diagnostic.Source.Compilation)
-    case sym: TermSymbol =>
-      fail:
-        ErrorReport(
-          msg"Cannot assign to ${sym.k.desc} '${sym.nme}'" -> sym.toLoc :: Nil,
-          source = Diagnostic.Source.Compilation)
+    case sym: TermSymbol => fail:
+      ErrorReport(
+        msg"Cannot assign to ${sym.k.desc} '${sym.nme}'" -> sym.toLoc :: Nil,
+        source = Diagnostic.Source.Compilation)
     case sym: LocalVarSymbol =>
       Assign(sym, rhs, rest)
     case sym: BlockMemberSymbol =>
@@ -654,7 +653,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     case _ => ()
     warnStmt
     (sym, disamb) match
-      case (sym: (LocalVarSymbol | BuiltinSymbol), _) =>
+      case (sym: (SimpleSymbol), _) =>
         k(loweringCtx(sym.asSimpleRef.withLocOf(ref)))
       case (sym: BlockMemberSymbol, _) =>
         k(loweringCtx(sym.asMemberRef(disamb.orElse(sym.asPrincipal).get).withLocOf(ref)))
@@ -1107,7 +1106,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     case Resolved(Ref(sym), disamb) =>
       sym match
         case sym: BlockMemberSymbol => k(sym.asMemberRef(disamb))
-        case sym: (LocalVarSymbol | BuiltinSymbol) => k(sym.asSimpleRef)
+        case sym: (SimpleSymbol) => k(sym.asSimpleRef)
         case sym => lastWords(s"Unexpected symbol kind ${sym.getClass.getSimpleName}: $sym")
     case Ref(sym) => k(sym.asPath)
     case SynthSel(Ref(sym: ModuleOrObjectSymbol), name) => // Local cross-stage references

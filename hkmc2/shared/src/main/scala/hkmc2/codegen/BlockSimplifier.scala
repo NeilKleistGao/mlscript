@@ -113,15 +113,15 @@ class BlockSimplifier
     val usedPrivateFields = MutSet.empty[TermSymbol]
     lazy val privateFieldsToRemove: Set[TermSymbol] =
       assert(analysisDone)
-      privateVars.iterator.filterNot(usedPrivateFields).filterNot(symbolsToPreserve).toSet
+      privateVars.iterator.filterNot(usedPrivateFields).toSet
     var tailLabels = MutSet.empty[LabelSymbol]
     
     def apply(prog: Program): Program =
       
       new BlockTraverser:
-
+        
         applyProgram(prog)
-
+        
         override def applyPath(p: Path): Unit =
           p match
             case sel: Select =>
@@ -135,12 +135,12 @@ class BlockSimplifier
               usedVars += loc
             case _ =>
           super.applyPath(p)
-
+        
         override def applyClsLikeDefn(defn: ClsLikeDefn): Unit =
           privateVars ++= defn.privateFields
           defn.companion.foreach(body => privateVars ++= body.privateFields)
           super.applyClsLikeDefn(defn)
-
+        
         override def applyBlock(b: Block): Unit =
           b match
             case Define(defn, rst) =>
@@ -153,7 +153,7 @@ class BlockSimplifier
               definedVars += lhs
             case _ =>
           super.applyBlock(b)
-
+      
       analysisDone = true
       applyProgram(prog)
     
@@ -301,7 +301,8 @@ class BlockSimplifier
             else cls.copy(privateFields = privateFields2)(cls.configOverride, cls.annotations)
           k(cls2)
         case other => k(other)
-
+    
+    
     // FIXME: refactor transformers so this is not so error-prone (adding this case to `applyBlock` doesn't work)
     override def applyScopedBlock(b: Block): Block = b match
       // * Delete removed local variables from Scoped blocks

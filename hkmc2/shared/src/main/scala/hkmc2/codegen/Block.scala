@@ -1003,7 +1003,7 @@ case class Select(qual: Path, name: Tree.Ident)(val symbol: Opt[DefinitionSymbol
 case class DynSelect(qual: Path, fld: Path, arrayIdx: Bool) extends Path
 
 enum Value extends Path with ProductWithExtraInfo:
-  case SimpleRef(sym: LocalVarSymbol | BuiltinSymbol)
+  case SimpleRef(sym: SimpleSymbol)
   /**
     * @param disamb The symbol disambiguating the definition that the reference refers to.
     */
@@ -1032,14 +1032,14 @@ object Value:
   object Ref:
     def apply(l: Local, disamb: Opt[DefinitionSymbol[?]]): Value.RefLike =
       l match
-        case l: (LocalVarSymbol | BuiltinSymbol) => l.asSimpleRef
+        case l: (SimpleSymbol) => l.asSimpleRef
         case bms: BlockMemberSymbol => bms.asMemberRef:
           disamb.getOrElse:
             lastWords(s"Cannot disambiguate overloaded member symbol ${bms.nme}: no disambiguation provided")
         case sym: InnerSymbol => sym.asThis
         case _: NoSymbol => lastWords("NoSymbol should not be used as a Path/Value")
         case sym => lastWords(s"$sym (of type ${sym.getClass.getSimpleName}) cannot be converted to a Path/Value")
-
+    
     // * Some helper constructors that allow omitting the disambiguation symbol.
     // * If the ref itself is a DefinitionSymbol, then disambiguating it results in itself.
     def apply(l: DefinitionSymbol[?]): Value.RefLike = Ref(l, S(l))
@@ -1084,7 +1084,7 @@ extension (k: Block => Block)
 
 def blockBuilder: Block => Block = identity
 
-extension (s: (LocalVarSymbol | BuiltinSymbol))
+extension (s: (SimpleSymbol))
   inline def asSimpleRef: Value.SimpleRef = Value.SimpleRef(s)
 
 extension (bms: BlockMemberSymbol)

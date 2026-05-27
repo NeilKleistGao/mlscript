@@ -185,6 +185,8 @@ object FlowSymbol:
   
 end FlowSymbol
 
+type SimpleSymbol = LocalVarSymbol | BuiltinSymbol
+
 sealed trait LocalVarSymbol extends LocalSymbol
 sealed trait LocalSymbol extends Symbol:
   def subst(using s: SymbolSubst): LocalSymbol
