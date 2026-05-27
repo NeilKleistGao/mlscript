@@ -132,19 +132,20 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(checkMap("classMap", toValue(sym.nme), _, stagingCtx))
         case baseSym: BaseTypeSymbol =>
           val name = scope.allocateOrGetName(sym)
-          val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
-            case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
-            case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+          val (owner, bsym, paramsOpt, auxParams, ctorSym) = (baseSym.defn, defnMap.get(baseSym)) match
+            case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams, defn.ctorSym)
+            case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams, defn.ctorSym)
             // FIXME: hack to patch in staging for returning the object Unit.
-            case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
+            case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil, N)
             case _ =>
               raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
               return End()
           
-          val path = pOpt.getOrElse(owner match
-            case S(owner) => owner.asThis.selSN(baseSym.nme)
-            case N => bsym.asBlkMember.get.asMemberRef(sym.asClsOrMod.get))
-          
+          val path = pOpt.getOrElse((owner, ctorSym) match
+            case (S(owner), _) => owner.asThis.selSN(baseSym.nme)
+            case (N, S(ctorSym)) => bsym.asBlkMember.get.asMemberRef(ctorSym)
+            case _ => bsym.asBlkMember.get.asMemberRef(sym.asClsOrMod.get))
+
           baseSym match
             case _: ClassSymbol =>
               transformParamsOpt(paramsOpt): (paramsOpt, ctx) =>
@@ -411,13 +412,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       override def applyBlock(b: Block) = b match
         // process ctor: remove ValDefn of parameters already defined in the class parameters
         // remove `val C.x = x` statements from the constructor
-        case Define(ValDefn(_, _, Value.Ref(sym: VarSymbol, _)), rest)
+        case Define(ValDefn(_, _, Value.SimpleRef(sym: VarSymbol)), rest)
           if paramSymMap.contains(sym) => applyBlock(rest)
         case _ => super.applyBlock(b)
     stageMethod(transformer.applyFunDefn(ctorFun), Context(new HashMap(), true))
     
 
-  def stageMethods(ownerSym: DefinitionSymbol[?], modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str)(methods: Ls[FunDefn]): (Ls[FunDefn], Block => Block) =
+  def stageMethods(ownerSym: DefinitionSymbol[?] & InnerSymbol, modSym: InnerSymbol, forClass: Bool, cacheNme: Str, generatorMapNme: Str)(methods: Ls[FunDefn]): (Ls[FunDefn], Block => Block) =
     // for storing specialized functions in each staged module
     val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
     val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
@@ -446,7 +447,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
     // initialize cache for the module
     def cacheDecl(rest: Block) =
-      val pOpt = if !forClass then S(Value.Ref(ownerSym)) else N
+      val pOpt = if !forClass then S(ownerSym.asThis) else N
       
       cacheEntries.collectApply: cacheTups =>
         tuple(cacheTups): tup =>
@@ -502,7 +503,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       
       def replaceSuper(parentPath: Path) = new BlockTransformer(SymbolSubst.Id):
         override def applyResult(r: Result)(k: Result => Block) = super.applyResult(r):
-          case Call(Value.Ref(sym: BuiltinSymbol, _), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
+          case Call(Value.SimpleRef(sym: BuiltinSymbol), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
           case r => k(r)
       val preCtor = defn.parentPath match
         case S(parent) => replaceSuper(parent).applyBlock(defn.preCtor)
