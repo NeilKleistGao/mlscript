@@ -23,7 +23,7 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
     false
     // true
   
-  def print(l: Local)(using Scope): Document =
+  def print(l: Symbol)(using Scope): Document =
     // * Symbols that are not local symbols in scope should be printed using their dbgName
     // *  – these will appear like `x¹²` and will be globally unique.
     scope.lookup(l) match

@@ -14,6 +14,7 @@ import Scope.scope
 
 import syntax.Tree
 import semantics.*
+import semantics.{Symbol => Local}
 import codegen.llir.{ Program => LlirProgram, Node, Func }
 import codegen.Program
 import cpp.Expr.StrLit

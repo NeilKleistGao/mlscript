@@ -38,8 +38,6 @@ object HandlerLowering:
     def last = p.selN(lastIdent)
     def contTrace = p.selN(contTraceIdent)
   
-  private case class LinkState(res: Local, cls: Path, uid: Path)
-  
   type FnOrCls = Either[BlockMemberSymbol, DefinitionSymbol[? <: ClassLikeDef] & InnerSymbol]
 
   private enum HandlerCtx:

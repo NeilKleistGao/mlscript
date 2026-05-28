@@ -78,7 +78,7 @@ class BlockTraverser:
     case Value.This(sym) => sym.traverse
     case Value.Lit(lit) => ()
   
-  def applyLocal(sym: Local): Unit = sym.traverse
+  def applyLocal(sym: Symbol): Unit = sym.traverse
   
   def applyFunDefn(fun: FunDefn): Unit =
     fun.owner.foreach(_.traverse)

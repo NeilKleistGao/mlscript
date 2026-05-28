@@ -36,7 +36,7 @@ object Thrw extends TailOp:
 
 
 class LoweringCtx(
-  initMap: Map[Local, Value], // No longer in meaningful use and could be removed if we don't find a use for it
+  initMap: Map[ValueSymbol, Value], // No longer in meaningful use and could be removed if we don't find a use for it
   val mayRet: Bool, // For rewriting while loop into tail recursive function, represent whether an explicit return is legal in the current block
   private val definedSymsDuringLowering: collection.mutable.Set[ScopedSymbol] // used to create Scoped blocks
 ):
@@ -49,7 +49,7 @@ class LoweringCtx(
     tmp
   def getCollectedSym: collection.Set[ScopedSymbol] = definedSymsDuringLowering
   /*
-  def +(kv: (Local, Value)): Subst =
+  def +(kv: (Symbol, Value)): Subst =
     kv match
     case (ns: NamedSymbol, Value.SimpleRef(ts: TempSymbol)) =>
       ts.nameHints += ns.name
@@ -532,7 +532,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       case owner if sym.isPrivate =>
         Select(owner.asThis, sym.id)(S(sym))
 
-  private def assignSymbol(sym: Local, rhs: Result, rest: Block)(using LoweringCtx): Block =
+  private def assignSymbol(sym: Symbol, rhs: Result, rest: Block)(using LoweringCtx): Block =
     sym match
     case sym: TermSymbol if (sym.k is MutVal) || (sym.k is LetBind) =>
       sym.owner match
@@ -567,7 +567,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     case sym =>
       lastWords(s"tried to assign to non-variable symbol ${sym.showDbg}")
   
-  private def defineSymbol(sym: Local, rhs: Result, rest: Block)(using LoweringCtx): Block =
+  private def defineSymbol(sym: Symbol, rhs: Result, rest: Block)(using LoweringCtx): Block =
     sym match
     case sym: TermSymbol =>
       sym.owner match
@@ -650,7 +650,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         // * works but does not instrument the selection to check for `undefined`!
         // return k(Value.Ref(State.globalThisSymbol).sel(ref.tree, bs).withLocOf(ref))
       case S(td: TermDefinition) if td.k is syntax.Fun =>
-        // * Local functions with no parameter lists are getters
+        // * Functions defined in local scopes with no parameter lists are getters
         // * and are lowered to functions with an empty parameter list
         // * (non-local functions are compiled into getter methods selected on some prefix)
         if td.params.isEmpty then
@@ -1075,7 +1075,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   def setupQuotedKeyword(kw: Str): Path =
     State.termSymbol.asSimpleRef.selSN("Keyword").selSN(kw)
 
-  def setupSymbol(symbol: Local)(k: Result => Block)(using LoweringCtx): Block =
+  def setupSymbol(symbol: ValueSymbol)(k: Result => Block)(using LoweringCtx): Block =
     k(Instantiate(mut = false, State.termSymbol.asSimpleRef.selSN("Symbol"),
       (Value.Lit(Tree.StrLit(symbol.nme)).asArg :: Nil) :: Nil))
 
@@ -1139,8 +1139,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         case sym: BlockMemberSymbol => k(sym.asMemberRef(disamb))
         case sym: SimpleSymbol => k(sym.asSimpleRef)
         case sym => lastWords(s"Unexpected symbol kind ${sym.getClass.getSimpleName}: $sym")
-    case Ref(sym) => k(sym.asPath)
-    case SynthSel(Ref(sym: ModuleOrObjectSymbol), name) => // Local cross-stage references
+    case Ref(sym: ValueSymbol) => k(sym.asPath)
+    case Ref(sym) => lastWords(s"Unexpected symbol kind ${sym.getClass.getSimpleName}: $sym")
+    case SynthSel(Ref(sym: ModuleOrObjectSymbol), name) => // Module/object cross-stage references
       setupSymbol(sym): r1 =>
         val l1, l2 = loweringCtx.registerTempSymbol(N)
         Assign(l1, r1, setupTerm("CSRef", l1.asSimpleRef :: setupFilename :: Value.Lit(syntax.Tree.UnitLit(false)) :: Nil)(r2 =>

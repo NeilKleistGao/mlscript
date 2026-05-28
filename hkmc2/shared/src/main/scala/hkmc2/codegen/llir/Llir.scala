@@ -9,6 +9,7 @@ import syntax._
 import Message.MessageContext
 import document._
 import codegen._
+import semantics.{Symbol => Local}
 
 import util.Sorting
 import collection.immutable.SortedSet

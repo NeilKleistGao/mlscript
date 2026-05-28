@@ -11,13 +11,13 @@ import utils.{Scope, TraceLogger}
 import Scope.scope
 import semantics._
 
-class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
+class CppCodeGen(builtinClassSymbols: Set[Symbol], tl: TraceLogger):
   import tl.{trace, log, logs}
   def mapName(name: Str): Str = "_mls_" + Scope.replaceInvalidCharacters(name)
-  def mapClsLikeName(sym: Local)(using Raise, Scope): Str = 
+  def mapClsLikeName(sym: Symbol)(using Raise, Scope): Str = 
     if builtinClassSymbols.contains(sym) then sym.nme |> mapName
     else allocIfNew(sym)
-  def directName(sym: Local): Str = 
+  def directName(sym: Symbol): Str = 
     sym.nme |> mapName
   val mlsValType = Type.Prim("_mlsValue")
   val mlsUnitValue = Expr.Call(Expr.Var("_mlsValue::create<_mls_Unit>"), Ls());
@@ -36,7 +36,7 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
   val mlsPrelude = "#include \"mlsprelude.h\""
   val mlsPreludeImpl = "#include \"mlsprelude.cpp\""
   val builtinClassSymbolNames = Set("Callable", "Lazy")
-  def mlsIsInternalClass(sym: Local) = builtinClassSymbolNames.contains(sym.nme)
+  def mlsIsInternalClass(sym: Symbol) = builtinClassSymbolNames.contains(sym.nme)
   val mlsObject = "_mlsObject"
   val mlsBuiltin = "builtin"
   val mlsEntryPoint = s"int main() { return _mlsLargeStack(_mlsMainWrapper); }";
@@ -70,9 +70,9 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
     s"virtual void destroy() override { $fieldsDeletion operator delete (this, std::align_val_t(_mlsAlignment)); }"
   def mlsThrowNonExhaustiveMatch = Stmt.Raw("_mlsNonExhaustiveMatch();");
   def mlsCall(fn: Str, args: Ls[Expr]) = Expr.Call(Expr.Var("_mlsCall"), Expr.Var(fn) :: args)
-  def mlsMethodCall(cls: Local, method: Str, args: Ls[Expr])(using Raise, Scope) =
+  def mlsMethodCall(cls: Symbol, method: Str, args: Ls[Expr])(using Raise, Scope) =
     Expr.Call(Expr.Member(Expr.Call(Expr.Var(s"_mlsMethodCall<${cls |> mapClsLikeName}>"), Ls(args.head)), method), args.tail)
-  def mlsThisCall(cls: Local, method: Str, args: Ls[Expr])(using Raise, Scope) =
+  def mlsThisCall(cls: Symbol, method: Str, args: Ls[Expr])(using Raise, Scope) =
     Expr.Call(Expr.Member(Expr.Var("this"), method), args)
   def mlsFnWrapperName(fn: Str) = s"_mlsFn_$fn"
   def mlsFnCreateMethod(fn: Str) = s"static _mlsValue create() { static _mlsFn_$fn mlsFn alignas(_mlsAlignment); mlsFn.refCount = stickyRefCount; mlsFn.tag = typeTag; return _mlsValue(&mlsFn); }"
@@ -80,10 +80,10 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
   val mlsThis = Expr.Var("_mlsValue(this, _mlsValue::inc_ref_tag{})") // first construct a value, then incRef()
 
   case class Ctx(
-    fieldCtx: Set[Local],
+    fieldCtx: Set[Symbol],
   )
 
-  def getVar(l: Local)(using Raise, Scope): String = l match
+  def getVar(l: Symbol)(using Raise, Scope): String = l match
     case ts: hkmc2.semantics.TermSymbol =>
       ts.owner match
       case S(owner) => scope.lookup_!(ts, N)
@@ -92,7 +92,7 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
       scope.lookup_!(ts, N)
     case _ => scope.lookup_!(l, N)
 
-  def allocIfNew(l: Local)(using Raise, Scope): Str =
+  def allocIfNew(l: Symbol)(using Raise, Scope): Str =
     trace[Str](s"allocIfNew $l begin", r => s"allocIfNew $l end -> $r"):
       if scope.lookup(l).isDefined then
         getVar(l) |> mapName
@@ -183,7 +183,7 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
     }
     (decls, stmt.fold(stmts)(x => stmts :+ x))
 
-  def codegenJumpWithCall(func: Local, args: Ls[TrivialExpr], storeInto: Opt[Str])(using decls: Ls[Decl], stmts: Ls[Stmt])(using Ctx, Raise, Scope): (Ls[Decl], Ls[Stmt]) =
+  def codegenJumpWithCall(func: Symbol, args: Ls[TrivialExpr], storeInto: Opt[Str])(using decls: Ls[Decl], stmts: Ls[Stmt])(using Ctx, Raise, Scope): (Ls[Decl], Ls[Stmt]) =
     val call = Expr.Call(Expr.Var(func |> allocIfNew), args.map(toExpr))
     val stmts2 = stmts ++ Ls(storeInto.fold(Stmt.Return(call))(x => Stmt.Assign(x, call)))
     (decls, stmts2)
@@ -212,7 +212,7 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
     case IExpr.BasicOp(name, args) => codegenOps(name, args)
     case IExpr.AssignField(assignee, cls, field, value) => TODO("codegen assign field")
 
-  def codegenBuiltin(names: Ls[Local], builtin: Str, args: Ls[TrivialExpr])(using Ctx, Raise, Scope): Ls[Stmt] = builtin match
+  def codegenBuiltin(names: Ls[Symbol], builtin: Str, args: Ls[TrivialExpr])(using Ctx, Raise, Scope): Ls[Stmt] = builtin match
     case "error" => Ls(Stmt.Raw("throw std::runtime_error(\"Error\");"), Stmt.AutoBind(names.map(allocIfNew), mlsNeverValue(names.size)))
     case _ => Ls(Stmt.AutoBind(names.map(allocIfNew), Expr.Call(Expr.Var("_mls_builtin_" + builtin), args.map(toExpr))))
 
@@ -286,8 +286,8 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
       depgraph = depgraph.view.mapValues(_.filter(_ =/= node)).toMap
       degree = depgraph.view.mapValues(_.size).toMap
     val sorted = ListBuffer.empty[ClassInfo]
-    given Ordering[Local] with
-      def compare(x: Local, y: Local): Int = x.nme.compareTo(y.nme)
+    given Ordering[Symbol] with
+      def compare(x: Symbol, y: Symbol): Int = x.nme.compareTo(y.nme)
     var work = degree.filter(_._2 === 0).keys.toSortedSet
     while work.nonEmpty do
       val node = work.head
@@ -303,7 +303,7 @@ class CppCodeGen(builtinClassSymbols: Set[Local], tl: TraceLogger):
 
   def codegen(prog: Program)(using Raise, Scope): CompilationUnit =
     val sortedClasses = sortClasses(prog)
-    val fieldCtx = Set.empty[Local]
+    val fieldCtx = Set.empty[Symbol]
     given Ctx = Ctx(fieldCtx)
     val (defs, decls, methodsDef) = sortedClasses.map(codegenClassInfo).unzip3
     val (defs2, decls2) = prog.defs.map(codegenDefn).unzip

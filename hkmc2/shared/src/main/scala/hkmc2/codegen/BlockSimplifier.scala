@@ -20,7 +20,7 @@ import hkmc2.{codegen => argss}
   * typically, these will be top-level symbols that are being exported from a diff-test block;
   * we don't want to eliminate these. */
 class BlockSimplifier
-    (symbolsToPreserve: Set[Local], tl: TL, printer: Program => Str)
+    (symbolsToPreserve: Set[Symbol], tl: TL, printer: Program => Str)
     (using DebugPrinter, State, Config, Raise, Ctx):
   import tl.*
   
@@ -106,9 +106,9 @@ class BlockSimplifier
     var analysisDone = false
     
     val usedLabels = MutSet.empty[LabelSymbol]
-    val definedVars = MutSet.empty[Local]
-    val localVars = MutSet.empty[Local]
-    val usedVars = MutSet.empty[Local]
+    val definedVars = MutSet.empty[ValueSymbol]
+    val localVars = MutSet.empty[ValueSymbol] // TODO: use LocalVarSymbol?
+    val usedVars = MutSet.empty[ValueSymbol]
     val privateVars = MutSet.empty[TermSymbol]
     val usedPrivateFields = MutSet.empty[TermSymbol]
     lazy val privateFieldsToRemove: Set[TermSymbol] =
@@ -149,7 +149,7 @@ class BlockSimplifier
               localVars ++= syms
             case Break(lbl) => usedLabels += lbl
             case Continue(lbl) => usedLabels += lbl
-            case Assign(lhs, rhs, rst) =>
+            case Assign(lhs: LocalVarSymbol, rhs, rst) =>
               definedVars += lhs
             case _ =>
           super.applyBlock(b)
@@ -224,7 +224,7 @@ class BlockSimplifier
     
     override def applyBlock(b: Block): Block = b match
       // * Discard assignments to local variables that are never read (and are not preserved)
-      case Assign(lhs, rhs, rst) if localVars(lhs) && !usedVars(lhs) && !symbolsToPreserve(lhs) =>
+      case Assign(lhs: LocalVarSymbol, rhs, rst) if localVars(lhs) && !usedVars(lhs) && !symbolsToPreserve(lhs) =>
         registerChange(s"rm ${lhs.showDbg} = ${rhs.showDbg}")
         applyResult(rhs)(r => Assign.discard(r, applyBlock(rst)))
 
@@ -313,7 +313,7 @@ class BlockSimplifier
           // * Avoid building sets of symbols if we know that nothing needs to be removed
           val needsCleanup = syms.exists: sym =>
             !fvs.contains(sym) && !symbolsToPreserve(sym)
-          if needsCleanup then syms.filter(fvs | symbolsToPreserve)
+          if needsCleanup then syms.filter(sym => fvs.contains(sym) || symbolsToPreserve(sym))
           else syms
         if (syms2 is syms) && (body2 is body) then b
         else Scoped(syms2, body2)

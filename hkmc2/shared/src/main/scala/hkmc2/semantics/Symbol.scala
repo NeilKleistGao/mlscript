@@ -327,6 +327,41 @@ type ScopedSymbol = BlockLocalSymbol | BlockMemberSymbol
   */
 type ImportSymbol = TempSymbol | MemberSymbol
 
+/** Symbols that can be represented as a value-level IR path without a qualifier.
+  *
+  * `SimpleSymbol`s become `Value.SimpleRef`, overloaded block members become
+  * `Value.MemberRef`, and `InnerSymbol`s become `Value.This`. Field-backed
+  * terms are intentionally not singled out here: they are still symbols, but
+  * owner-sensitive lowering/lifting must choose `Select`/`AssignField` when a
+  * direct value reference would be wrong.
+  */
+type ValueSymbol = SimpleSymbol | BlockMemberSymbol | InnerSymbol
+
+/** Symbols that may be bound by MIR binding forms such as `Scoped` or direct
+  * local assignments. This excludes private/source fields and `NoSymbol`.
+  */
+type BoundSymbol = ScopedSymbol
+
+/** Symbols that may occur in MIR free-variable sets.
+  *
+  * This includes value-level references and label targets. It deliberately
+  * excludes `NoSymbol`, which is only a discard sink for assignments.
+  */
+type FreeSymbol = ValueSymbol | LabelSymbol
+
+/** Symbols that may be introduced by a scoped source object and later tracked
+  * by the lifter/used-variable analysis.
+  */
+type ScopeLocalSymbol = ScopedSymbol | InnerSymbol
+
+/** Symbols that can appear as a direct local-like `LocalPath.Sym` in the lifter.
+  *
+  * More structured references, such as block members, `this`, and fields, have
+  * their own `LocalPath` cases so lifting cannot accidentally treat them as
+  * assignable block-local variables.
+  */
+type LocalPathSymbol = BlockLocalSymbol | BuiltinSymbol | NoSymbol
+
 
 sealed abstract class MemberSymbol(using State) extends Symbol:
   def nme: Str

@@ -11,6 +11,7 @@ import scala.collection.mutable.{HashSet => MutHSet, Set => MutSet}
 import mlscript._
 import mlscript.utils._
 import mlscript.utils.shorthands._
+import semantics.{Symbol => Local}
 
 import syntax.Tree.UnitLit
 import semantics.{BuiltinSymbol, InnerSymbol}

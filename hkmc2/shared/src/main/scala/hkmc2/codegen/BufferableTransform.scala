@@ -45,7 +45,7 @@ class BufferableTransform()(using Ctx, State, Raise):
                 Scoped(Set.single(idxSymbol), Assign(idxSymbol, Call(State.builtinOpsMap("+").asSimpleRef, (baseIdx.asSimpleRef.asArg :: Value.Lit(Tree.IntLit(off)).asArg :: Nil) ne_:: Nil)(true, false, false),
                   AssignDynField(buf.asSimpleRef.selSN("buf"), idxSymbol.asSimpleRef, true, r, applyBlock(rst))))
               new BlockTransformer(SymbolSubst.Id):
-                override def applyLocal(sym: Local): Local = symMap.getOrElse(sym, sym)
+                override def applyLocal(sym: Symbol): Symbol = symMap.getOrElse(sym, sym)
                 override def applyBlock(b: Block): Block = b match
                   case Assign(l, r, rst) =>
                     fieldMap.get(l).fold(super.applyBlock(b)): off =>

@@ -8,6 +8,7 @@ import scala.collection.immutable.*
 import scala.collection.mutable.ListBuffer
 import shorthands.*
 import scala.util.boundary, boundary.break
+import semantics.{Symbol => Local}
 
 import syntax.Tree
 import hkmc2.utils.TraceLogger

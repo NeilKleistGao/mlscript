@@ -193,7 +193,7 @@ class BlockTransformer(subst: SymbolSubst):
       k(if (sym2 is sym) then v else sym2.asThis.withLocOf(v))
     case Value.Lit(lit) => k(v)
   
-  def applyLocal(sym: Local): Local = sym.subst
+  def applyLocal(sym: Symbol): Symbol = sym.subst
   def applyImportSymbol(sym: ImportSymbol): ImportSymbol = sym match
     case sym: TempSymbol => sym.subst
     case sym: MemberSymbol => sym.subst
