@@ -66,6 +66,9 @@ class Ctx(
     else
       ctx.set(ps, ss)
     this
+  fun refine(path: Path, ss: ShapeSet) =
+    ctx.set(showCtxPath(path), ss)
+    this
   // Later ValDefn (in derived class) shadows earlier ValDefn (in base class)
   fun addValDefn(ps: String, ss: ShapeSet) =
     valDefnCtx.set(ps, ss)
@@ -224,7 +227,7 @@ fun subLitPath(ctx, p) = if p is
   Select(qual, name) then Select(subLitPath(ctx, qual), name)
   ValueRef(_) and
     let s = sop(ctx, p)
-    staticSet(s) and shapeset2path(s, ctx.allocs) is [End(), res] then res
+    s.values() is [Lit(lit)] then ValueLit(lit)
   else p
 
 
@@ -304,17 +307,13 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
   ValueRef(symb) then sorBuiltinOp(ctx, r, f, symb.name, args)  // built-in or top-level
   Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
-    let cachePropName = getCacheName(name, false)
     let genMap = value.(mapPropName)
     not (genMap is undefined) and
-      let f_gen = genMap.get(fld) 
-      not (f_gen is Runtime.Unit) and  // staged function
+      let f_gen = genMap.get(fld)
+      not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
-        staticSet(res.1) then
-          let v2p = shapeset2path(res.1, ctx.allocs)
-          [v2p.0, v2p.1, res.1]
-        else
-          [End(), Call(Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
+        let callPath = if res.0 == fld then Select(ValueRef(ModuleSymbol(name, value, redir)), Symbol(res.0)) else ValueRef(Symbol(res.0))
+        [End(), Call(callPath, args), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) and // non staged function and params known
@@ -334,10 +333,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
 // shape of result: return [blk, res, s] 
 // where blk is the block needed to construct the result res (End() if not needed) and s is the shape
 fun sor(ctx, r) = if r is 
-  Path and
+  Path then
     let s = sop(ctx, r)
-    staticSet(s) and shapeset2path(s, ctx.allocs) is [blk, res] then [blk, res, s]
-    else [End(), subLitPath(ctx, r), s]
+    [End(), subLitPath(ctx, r), s]
   Instantiate(cls, args) then sorInstantiate(ctx, r, cls, args)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args) then sorCall(ctx, r, f, args, args.map((a, _, _) => sop(ctx, a.value)))
@@ -457,7 +455,7 @@ fun prop(ctx, b) = if b is
         )
       fun propBranch(body, branchShape) =
         let branchCtx = ctx.clone
-        if not p is ValueLit do branchCtx.add(p, branchShape)
+        if not p is ValueLit do branchCtx.refine(p, branchShape)
         let res = prop(branchCtx, body)
         [...res, branchCtx.sub(ctx)]
       let filteredArms = foldl((r, arm) =>

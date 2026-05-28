@@ -2,73 +2,42 @@
 
 module Mx with
   fun init(len, dft) = globalThis.Array(len).fill(dft)
-  fun set1D(a, i, v) =
+  fun setAt(a, i, v) =
     set a.(i) = v
     a
-  fun set2D(m, i, j, v) =
-    set m.(i).(j) = v
-    m
+  fun len(arr) = arr.length
 
 module NaiveTransform3D with
+  class Matrix(val arr, val r, val c)
+
   fun iter(sum, x, y, colX, i, j, k) =
-    if k > 0 then iter(sum + x.(i).(colX - k) * y.(colX - k).(j), x, y, colX, i, j, k - 1)
+    if k > 0 then iter(sum + x.arr.(i * x.c + colX - k) * y.arr.((colX - k) * y.c + j), x, y, colX, i, j, k - 1)
     else sum
 
   fun iterCol(m, x, y, colX, colY, i, j) =
     if j === 0 then m
-    else iterCol(Mx.set2D(m, i, colY - j, iter(0.0, x, y, colX, i, colY - j, colX)), x, y, colX, colY, i, j - 1)
+    else iterCol(update(m, i, colY - j, iter(0.0, x, y, colX, i, colY - j, colX)), x, y, colX, colY, i, j - 1)
 
   fun iterRow(m, x, y, rowX, colX, colY, i) =
     if i === 0 then m
     else iterRow(iterCol(m, x, y, colX, colY, rowX - i, colY), x, y, rowX, colX, colY, i - 1)
 
-  fun iterInit(m, r, c, i) =
-    if i === 0 then m
-    else
-      iterInit(Mx.set1D(m, r - i, Mx.init(c, 0)), r, c, i - 1)
-
   fun iterID(m, w, i) =
     if i === 0 then m
     else
-      iterID(Mx.set2D(m, w - i, w - i, 1), w, i - 1)
+      iterID(update(m, w - i, w - i, 1), w, i - 1)
 
-  // TODO: remove manual lifting above after we can stage them correctly
-
-  fun zeros(r, c) =
-    let m = Mx.init(r, [])
-    iterInit(m, r, c, r)
-    m
+  fun zeros(r, c) = new Matrix(Mx.init(r * c, 0), r, c)
 
   fun multiply(x, y) =
-    let rowX = x.length
-    let colX = x.0.length
-    let rowY = y.length
-    let colY = y.0.length
-    let res = zeros(rowX, colY)
-    iterRow(res, x, y, rowX, colX, colY, rowX)
-  // fun multiply(x, y) =
-  //   let rowX = x.length
-  //   let colX = x.0.length
-  //   let rowY = y.length
-  //   let colY = y.0.length
-  //   fun iterRow(m, i) =
-  //     if i === rowX then m
-  //     else
-  //       fun iterCol(vec, j) =
-  //         if j === colY then vec
-  //         else
-  //           fun iter(sum, k) =
-  //             if k < rowY then iter(sum + x.(i).(k) * y.(k).(j), k + 1)
-  //             else sum
-  //           iterCol(vec.concat(iter of 0.0, 0), j + 1)
-  //       iterRow(m.concat([iterCol of [], 0]), i + 1)
-  //   iterRow([], 0)
+    let res = zeros(x.r, y.c)
+    iterRow(res, x, y, x.r, x.c, y.c, x.r)
 
   fun ident(w) =
     let m = zeros(w, w)
     iterID(m, w, w)
 
-  fun update(m, i, j, v) = Mx.set2D(m, i, j, v)
+  fun update(m, i, j, v) = new Matrix(Mx.setAt(m.arr, i * m.c + j, v), m.r, m.c)
 
   fun transform(dx, dy, dz) =
     update of
@@ -119,8 +88,8 @@ module NaiveTransform3D with
             rotateX(rotation.0), ident(4)
     let res = multiply of
       transform(position.0, position.1, position.2), multiply of
-        rot, multiply(scale(scaling.0, scaling.1, scaling.2), [[local.0], [local.1], [local.2], [1]])
-    [res.0, res.1, res.2]
+        rot, multiply(scale(scaling.0, scaling.1, scaling.2), new Matrix([local.0, local.1, local.2, 1], 4, 1))
+    [res.arr.0, res.arr.1, res.arr.2]
 
   fun model0(local) =
     model(local, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0])

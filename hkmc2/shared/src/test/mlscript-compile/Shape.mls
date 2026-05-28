@@ -61,7 +61,10 @@ fun silh(p: Case): Shape = if p is
   Block.Tup(n) then Arr(Array(n).fill(Dyn()))
 
 fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
-fun isSubClassOf(d, b) = getActualClass(b).isPrototypeOf(getActualClass(d))
+fun isSubClassOf(d, b) =
+  let dClass = getActualClass(d)
+  let bClass = getActualClass(b)
+  dClass == bClass || bClass.isPrototypeOf(dClass)
 
 fun filter(s: Shape, p: Case): Array[Shape] =
   if [s, p] is
