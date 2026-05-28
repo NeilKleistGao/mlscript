@@ -81,6 +81,14 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
 
   import Lifter.*
   
+  /** Symbols that can appear as a direct local-like `LocalPath.Sym` in the lifter.
+    *
+    * More structured references, such as block members, `this`, and fields, have
+    * their own `LocalPath` cases so lifting cannot accidentally treat them as
+    * assignable block-local variables.
+    */
+  type LocalPathSymbol = BlockLocalSymbol | BuiltinSymbol
+  
   extension (l: LocalPathSymbol)
     def asLocalPath: LocalPath = LocalPath.Sym(l)
   extension (l: BlockLocalSymbol)
@@ -101,8 +109,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     case Field(lhs: Path, field: TermSymbol)
     
     def read(using ctx: LifterCtxNew): Path = this match
-      case Sym(l: NoSymbol) => lastWords("Tried to read from NoSymbol")
-      case Sym(l: SimpleSymbol) => l.asSimpleRef
+      case Sym(l) => l.asSimpleRef
       case ThisPath(sym) => sym.asThis
       case BmsRef(l, d) => l.asMemberRef(d)
       case Field(path, field) => Select(path, field.id)(S(field))
@@ -651,7 +658,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     lazy val liftedObjsMap: Map[InnerSymbol, LocalPath]
     
     lazy val capturePath: Path
-
+    
     protected def rewriteImpl: LifterResult[T]
     
     private final def instantiateCapture: Instantiate =
@@ -663,11 +670,11 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
             (sym, _) => sym.asPath.asArg) :: Nil
         )
       else lastWords("tried to instantiate an empty capture")
-
+    
     protected final def addExtraSyms(b: Block, captureSym: BlockLocalSymbol, objSyms: Iterable[ScopedSymbol]): Block =
       if hasCapture then
         Scoped(
-          Set[ScopedSymbol](captureSym) ++ objSyms,
+          objSyms.toSet + captureSym,
           Assign(captureSym, instantiateCapture, b)
         )
       else
@@ -701,13 +708,11 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       val fromThisObj: Map[ScopeLocalSymbol, LocalPath] = node.localsWithoutBms
         .map: s =>
           s -> (s match
-            case s: TermSymbol if s.owner.isDefined => LocalPath.privateSelfField(s)
             case s: BlockMemberSymbol => LocalPath.BmsRef(s, s.asPrincipal.getOrElse:
               lastWords(s"Cannot resolve overloaded member symbol ${s.nme}: no principal disambiguation found")
             )
             case s: LocalPathSymbol => s.asLocalPath
             case s: InnerSymbol => LocalPath.ThisPath(s)
-            case s => lastWords(s"tried to create a local path for non-local ${s.nme}")
           )
         .toMap
       // Locals introduced by this object that are inside this object's capture
