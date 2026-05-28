@@ -706,16 +706,11 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       
       // Locals introduced by this object
       val fromThisObj: Map[ScopeLocalSymbol, LocalPath] = node.localsWithoutBms
-        .flatMap: s =>
-          s match
-            case s: BlockMemberSymbol =>
-              // * This use of `s.asPrincipal` is incorrect – we can't just assume this is the correct disambiguation!
-              // LocalPath.BmsRef(s, s.asPrincipal.getOrElse:
-              //   lastWords(s"Cannot resolve overloaded member symbol ${s.nme}: no principal disambiguation found")
-              // )
-              N
-            case s: LocalPathSymbol => S(s -> s.asLocalPath)
-            case s: InnerSymbol => S(s -> LocalPath.ThisPath(s))
+        .map: s =>
+          s -> (s match
+            case s: LocalPathSymbol => s.asLocalPath
+            case s: InnerSymbol => LocalPath.ThisPath(s)
+          )
         .toMap
       // Locals introduced by this object that are inside this object's capture
       val fromCap: Map[ScopeLocalSymbol, LocalPath] = thisCapturedLocals
@@ -775,8 +770,13 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       * 
       * Includes symbols introduced by modules and objects, which could be introduced when
       * accessing their member functions.
+      * 
+      * BlockMemberSymbols are excluded: they are handled through the defn-reference mechanism
+      * (reqDefns/defnPaths), not as passed locals.
       */
-    final val reqSymbols = accessed
+    final val reqSymbols = accessed.filter:
+      case _: BlockMemberSymbol => false
+      case _ => true
     
     private val (reqPassedSymbols, captures) = reqSymbols
       .partitionMap: s =>

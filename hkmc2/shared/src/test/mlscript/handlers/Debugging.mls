@@ -147,164 +147,35 @@ module Test with
   fun main()(using Debugger) =
     test(12) + test(34)
 
+:fixme // BMS instance$Ident(Debugger) is not properly passed through the lifter
 let res =
   handle h = Debugger with
     fun break(payload)(resume) = resume
   using Debugger = h
   Runtime.try(() => Test.main())
-//│ FAILURE: Unexpected exception
-//│ /!!!\ Uncaught error: java.util.NoSuchElementException: key not found: member:instance$Ident(Debugger)
-//│ 	at: scala.collection.immutable.Map$EmptyMap$.apply(Map.scala:252)
-//│ 	at: scala.collection.immutable.Map$EmptyMap$.apply(Map.scala:252)
-//│ 	at: hkmc2.Lifter$LiftedScope.$anonfun$20(Lifter.scala:850)
-//│ 	at: scala.collection.immutable.List.map(List.scala:240)
-//│ 	at: hkmc2.Lifter$LiftedScope.formatArgs(Lifter.scala:850)
-//│ 	at: hkmc2.Lifter$LiftedFunc.rewriteRef(Lifter.scala:1081)
-//│ 	at: hkmc2.Lifter$BlockRewriter.$anonfun$4(Lifter.scala:463)
-//│ 	at: scala.collection.LinearSeqOps.foldLeft(LinearSeq.scala:186)
-//│ 	at: scala.collection.LinearSeqOps.foldLeft$(LinearSeq.scala:38)
-//│ 	at: scala.collection.immutable.List.foldLeft(List.scala:83)
+//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'instance$Ident(Debugger)'
+//│ ╟── which references the symbol introduced here
+//│ ║  l.154: 	  using Debugger = h
+//│ ╙──       	  ^^^^^^^^^^^^^^^^^^
+//│ ═══[RUNTIME ERROR] ReferenceError: instance$Ident is not defined
+//│ res = undefined
 
 :re
 res.raise()
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:135)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = res⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:Test.test$debugInfo -> Test$_test$debugInfo, tmp:selRes -> selRes4, tmp:tmp -> tmp3, tmp:f$debugInfo -> f$debugInfo, tmp:block$res -> block$res8, tmp:Test.main$debugInfo -> Test$_main$debugInfo, tmp:tmp -> tmp4, tmp:block$res -> block$res9, tmp:runtime -> runtime, tmp:block$res -> block$res11, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:block$res -> block$res2, member:Debugger -> Debugger1, tmp:prettyPrint -> prettyPrint, class:Debugger -> Debugger, tmp:Term -> Term, tmp:Block -> Block, tmp:tmp -> tmp1, tmp:option -> option, tmp:block$res -> block$res3, member:lambda_test -> lambda_test, tmp:block$res -> block$res10, member:Test -> Test1, module:Test -> Test, member:lambda -> lambda, tmp:lambda_test$debugInfo -> lambda_test$debugInfo, tmp:block$res -> block$res, tmp:tmp -> tmp, tmp:block$res -> block$res1, tmp:lambda$debugInfo -> lambda$debugInfo, member:f -> f, tmp:tmp -> tmp2, tmp:block$res -> block$res4, tmp:block$res -> block$res5, res -> res, tmp:block$res -> block$res6, class:Test -> Test, member:Runtime -> Runtime, tmp:selRes -> selRes, tmp:tmp -> tmp5, tmp:selRes -> selRes1, tmp:block$res -> block$res12, tmp:selRes -> selRes2, tmp:selRes -> selRes3, tmp:block$res -> block$res7)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'res'
-//│ ║  l.169: 	res.raise()
-//│ ║         	^^^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.150: 	let res =
-//│ ╙──       	    ^^^
-//│ ═══[RUNTIME ERROR] Error: Unhandled effect FatalEffect
-//│ 	at f (Debugging.mls:18:14)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'raise')
 
+:fixme
 set res = res.resumeWith(42)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:135)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = res⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:Test.test$debugInfo -> Test$_test$debugInfo, tmp:f$debugInfo -> f$debugInfo, tmp:Test.main$debugInfo -> Test$_main$debugInfo, tmp:runtime -> runtime, tmp:block$res -> block$res11, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:block$res -> block$res2, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:tmp -> tmp1, tmp:option -> option, tmp:block$res -> block$res3, member:lambda_test -> lambda_test, member:lambda -> lambda, tmp:lambda_test$debugInfo -> lambda_test$debugInfo, tmp:lambda$debugInfo -> lambda$debugInfo, tmp:tmp -> tmp2, tmp:block$res -> block$res4, tmp:block$res -> block$res5, res -> res, tmp:block$res -> block$res6, member:Runtime -> Runtime, tmp:selRes -> selRes, tmp:tmp -> tmp5, tmp:selRes -> selRes1, tmp:block$res -> block$res12, tmp:selRes -> selRes2, tmp:selRes -> selRes3, tmp:block$res -> block$res7, tmp:tmp -> tmp6, tmp:block$res -> block$res13, tmp:selRes -> selRes4, tmp:tmp -> tmp3, tmp:block$res -> block$res8, tmp:tmp -> tmp4, tmp:block$res -> block$res9, member:Debugger -> Debugger1, class:Debugger -> Debugger, tmp:block$res -> block$res10, member:Test -> Test1, module:Test -> Test, tmp:block$res -> block$res, tmp:tmp -> tmp, tmp:block$res -> block$res1, member:f -> f, class:Test -> Test)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'res'
-//│ ║  l.193: 	set res = res.resumeWith(42)
-//│ ║         	          ^^^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.150: 	let res =
-//│ ╙──       	    ^^^
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:135)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = res⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:Test.test$debugInfo -> Test$_test$debugInfo, tmp:f$debugInfo -> f$debugInfo, tmp:Test.main$debugInfo -> Test$_main$debugInfo, tmp:runtime -> runtime, tmp:block$res -> block$res11, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:block$res -> block$res2, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:tmp -> tmp1, tmp:option -> option, tmp:block$res -> block$res3, member:lambda_test -> lambda_test, member:lambda -> lambda, tmp:lambda_test$debugInfo -> lambda_test$debugInfo, tmp:lambda$debugInfo -> lambda$debugInfo, tmp:tmp -> tmp2, tmp:block$res -> block$res4, tmp:block$res -> block$res5, res -> res, tmp:block$res -> block$res6, member:Runtime -> Runtime, tmp:selRes -> selRes, tmp:tmp -> tmp5, tmp:selRes -> selRes1, tmp:block$res -> block$res12, tmp:selRes -> selRes2, tmp:selRes -> selRes3, tmp:block$res -> block$res7, tmp:tmp -> tmp6, tmp:block$res -> block$res13, tmp:selRes -> selRes4, tmp:tmp -> tmp3, tmp:block$res -> block$res8, tmp:tmp -> tmp4, tmp:block$res -> block$res9, member:Debugger -> Debugger1, class:Debugger -> Debugger, tmp:block$res -> block$res10, member:Test -> Test1, module:Test -> Test, tmp:block$res -> block$res, tmp:tmp -> tmp, tmp:block$res -> block$res1, member:f -> f, class:Test -> Test)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'res'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.150: 	let res =
-//│ ╙──       	    ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:263)
-//│ ═══[RUNTIME ERROR] Error: Multiple resumption
-//│     at Runtime.handleEffects_handleEffect_resume (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:628:49)
-//│     at file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:1039:22
-//│     at lambda (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:109:69)
-//│     at Runtime.try (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:717:28)
-//│     at EffectHandle.resumeWith (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:111:28)
-//│     at REPL45:1:87
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:598:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'resumeWith')
 
 :re
 res.raise()
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:135)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = res⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:Test.test$debugInfo -> Test$_test$debugInfo, tmp:f$debugInfo -> f$debugInfo, tmp:Test.main$debugInfo -> Test$_main$debugInfo, tmp:runtime -> runtime, tmp:block$res -> block$res11, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:block$res -> block$res2, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:tmp -> tmp1, tmp:option -> option, tmp:block$res -> block$res3, member:lambda_test -> lambda_test, member:lambda -> lambda, tmp:lambda_test$debugInfo -> lambda_test$debugInfo, tmp:lambda$debugInfo -> lambda$debugInfo, tmp:tmp -> tmp2, tmp:block$res -> block$res4, tmp:block$res -> block$res5, res -> res, tmp:block$res -> block$res6, member:Runtime -> Runtime, tmp:selRes -> selRes, tmp:tmp -> tmp5, tmp:selRes -> selRes1, tmp:block$res -> block$res12, tmp:selRes -> selRes2, tmp:selRes -> selRes3, tmp:block$res -> block$res7, tmp:tmp -> tmp6, tmp:block$res -> block$res13, tmp:selRes -> selRes4, tmp:tmp -> tmp3, tmp:tmp -> tmp7, tmp:block$res -> block$res8, tmp:block$res -> block$res14, tmp:tmp -> tmp4, tmp:block$res -> block$res9, member:Debugger -> Debugger1, class:Debugger -> Debugger, tmp:block$res -> block$res10, member:Test -> Test1, module:Test -> Test, tmp:block$res -> block$res, tmp:tmp -> tmp, tmp:block$res -> block$res1, member:f -> f, class:Test -> Test)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'res'
-//│ ║  l.247: 	res.raise()
-//│ ║         	^^^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.150: 	let res =
-//│ ╙──       	    ^^^
-//│ ═══[RUNTIME ERROR] Error: Unhandled effect FatalEffect
-//│ 	at f (Debugging.mls:18:14)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'raise')
 
+:fixme
 :expect 0.33676533676533676
 res.resumeWith(666)
-//│ FAILURE: Unexpected compilation error
-//│ FAILURE LOCATION: lookup_! (Scope.scala:135)
-//│ FAILURE INFO: Tuple2:
-//│   _1 = Tuple2:
-//│     _1 = res⁰
-//│     _2 = class hkmc2.semantics.VarSymbol
-//│   _2 = Scope:
-//│     parentOrCfg = Left of Cfg:
-//│       escapeChars = true
-//│       useSuperscripts = false
-//│       includeZero = false
-//│       defaultName = "tmp"
-//│     curThis = S of S of globalThis:globalThis⁰
-//│     bindings = HashMap(tmp:Test.test$debugInfo -> Test$_test$debugInfo, tmp:f$debugInfo -> f$debugInfo, tmp:Test.main$debugInfo -> Test$_main$debugInfo, tmp:runtime -> runtime, tmp:block$res -> block$res11, tmp:definitionMetadata -> definitionMetadata, member:Predef -> Predef, tmp:block$res -> block$res2, tmp:prettyPrint -> prettyPrint, tmp:Term -> Term, tmp:Block -> Block, tmp:tmp -> tmp1, tmp:option -> option, tmp:block$res -> block$res3, member:lambda_test -> lambda_test, member:lambda -> lambda, tmp:lambda_test$debugInfo -> lambda_test$debugInfo, tmp:lambda$debugInfo -> lambda$debugInfo, tmp:tmp -> tmp2, tmp:block$res -> block$res4, tmp:block$res -> block$res5, res -> res, tmp:block$res -> block$res6, member:Runtime -> Runtime, tmp:selRes -> selRes, tmp:tmp -> tmp5, tmp:selRes -> selRes1, tmp:block$res -> block$res12, tmp:selRes -> selRes2, tmp:selRes -> selRes3, tmp:block$res -> block$res7, tmp:tmp -> tmp6, tmp:block$res -> block$res13, tmp:selRes -> selRes4, tmp:tmp -> tmp3, tmp:tmp -> tmp7, tmp:block$res -> block$res8, tmp:block$res -> block$res14, tmp:tmp -> tmp4, tmp:tmp -> tmp8, tmp:block$res -> block$res9, tmp:block$res -> block$res15, member:Debugger -> Debugger1, class:Debugger -> Debugger, tmp:block$res -> block$res10, member:Test -> Test1, module:Test -> Test, tmp:block$res -> block$res, tmp:tmp -> tmp, tmp:block$res -> block$res1, member:f -> f, class:Test -> Test)
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'res'
-//│ ║  l.272: 	res.resumeWith(666)
-//│ ║         	^^^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.150: 	let res =
-//│ ╙──       	    ^^^
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:263)
-//│ ═══[RUNTIME ERROR] Error: Multiple resumption
-//│     at Runtime.handleEffects_handleEffect_resume (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:628:49)
-//│     at file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:1039:22
-//│     at lambda (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:109:69)
-//│     at Runtime.try (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:717:28)
-//│     at EffectHandle.resumeWith (file:///Users/parreaux/work/Research/code/mlscript/hkmc2/shared/src/test/mlscript-compile/Runtime.mjs:111:28)
-//│     at REPL51:1:87
-//│     at ContextifyScript.runInThisContext (node:vm:137:12)
-//│     at REPLServer.defaultEval (node:repl:598:22)
-//│     at bound (node:domain:433:15)
-//│     at REPLServer.runBound [as eval] (node:domain:444:12)
-//│ FAILURE: Unexpected runtime error
-//│ FAILURE LOCATION: processIRBlock (JSBackendDiffMaker.scala:303)
+//│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'resumeWith')
 //│ ═══[RUNTIME ERROR] Expected: '0.33676533676533676', got: 'undefined'
 
 let i = 100
@@ -321,8 +192,8 @@ fun f() =
 
 f()
 //│ > Stack Trace:
-//│ > 	at f (Debugging.mls:315:3) with locals: j=200
+//│ > 	at f (Debugging.mls:186:3) with locals: j=200
 //│ > Stack Trace:
-//│ > 	at f (Debugging.mls:317:3)
+//│ > 	at f (Debugging.mls:188:3)
 //│ > Stack Trace:
 //│ > 	at tail position
