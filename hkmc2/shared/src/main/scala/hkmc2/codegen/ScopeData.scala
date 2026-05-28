@@ -235,14 +235,12 @@ object ScopeData:
         case None => true
       
       // Scoped blocks include the BlockMemberSymbols of their nested definitions. This removes them.
-      lazy val localsWithoutBms: Set[BlockLocalSymbol | InnerSymbol] = obj match
-        case s: ScopedObject.ScopedBlock =>
-          obj.definedLocals.collect:
-            case s: BlockLocalSymbol => s
-            case s: InnerSymbol => s
-        case _ => obj.definedLocals.collect:
-            case s: BlockLocalSymbol => s
-            case s: InnerSymbol => s
+      // Non-ScopedBlock cases never contain BMS in definedLocals, but the collect ensures
+      // the narrower return type is enforced uniformly.
+      lazy val localsWithoutBms: Set[BlockLocalSymbol | InnerSymbol] =
+        obj.definedLocals.collect:
+          case s: BlockLocalSymbol => s
+          case s: InnerSymbol => s
       
       lazy val nestedModObjSyms: Set[InnerSymbol] = children.collect:
           case ScopeNode(obj = c: ScopedObject.Class) if c.isObj => c.cls.isym
