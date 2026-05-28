@@ -110,6 +110,19 @@ staged module Expressions with
 //│ > }
 //│ x = [1, 2, 3]
 
+// * LetSplit lowers to a Label/Break pair, which the staged-module
+// * compiler (`ReflectionInstrumenter`) doesn't yet understand. With
+// * the sharing threshold forced to 1, the shared `else` below would
+// * emit exactly that — tracked here as a fixme.
+:fixme
+:patMatConsequentSharingThreshold 1
+staged module Example with
+  fun f(x, y, z) = if
+    x is 0 and y is 0 and z is 0 then 1
+    else 2
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
+//│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
+
 class Outside(a)
 staged module ClassInstrumentation with
   class Inside(a, b)
@@ -394,7 +407,6 @@ staged module LabelBreak with
     1 then 1 + 1 + 1
     else 1 + 1 + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
 :e
@@ -405,7 +417,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Field assignment is not supported in staged modules: a
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.405: 	  fun g() = {1 : 2}
+//│ ║  l.417: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 //│ ═══[RUNTIME ERROR] Error: MLscript call unexpectedly returned `undefined`, the forbidden value.
 
