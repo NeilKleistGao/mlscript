@@ -50,8 +50,8 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     let runtimeClass = if owner is
       ConcreteClassSymbol(_, _, Some, _) then owner.value.class
       else owner.value
-
-    val paramList = if owner is
+    
+    val paramList = if owner is 
       ConcreteClassSymbol and owner.paramsOpt is
         Some(ps) then [ps, ...owner.auxParams]
         else owner.auxParams
@@ -69,10 +69,10 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
         ValueSimpleRef(s) | ValueMemberRef(s) then this.showSymbol(s)
         ValueThis(_) then Error("Unexpected reference to `this` within preCtor")
         ValueLit(lit) then this.showLiteral(lit)
-
+    
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)
-
-    fun inlineAssigments(ctx: Map[Symbol, String])(b) = if b is
+    
+    fun inlineAssigments(ctx: Map[Symbol, String])(b) = if b is 
       Return(res) then inlineResult(ctx)(res)
       Scoped(syms, rest) then
         let ctx = syms.reduce((ctx, sym) => ctx.set(sym, sym.nme), ctx)
@@ -82,13 +82,13 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
       Assign(lhs, rhs, rest) then inlineAssigments(ctx.set(lhs, inlineResult(ctx)(rhs)))(rest)
       End then ""
       else throw Error("unexpected Block type in constructor: " + b.toString())
-
+    
     let extendsClause = if owner is ConcreteClassSymbol then
       let preCtor = runtimeClass."preCtor$_instr"().body
       assert preCtor is Block.Block
       inlineAssigments(new Map())(preCtor)
     else ""
-
+    
     let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
     assert ctor is FunDefn
 
