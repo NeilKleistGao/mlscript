@@ -405,9 +405,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   def stageCtor(ctorFun: FunDefn): FunDefn = 
     // refresh VarSymbols for ctor
     val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id))).flatten.toMap
-    val transformer = new BlockTransformer(new SymbolSubst():
+    val varSymSubst = new SymbolSubst():
       // refresh symbols after copying parameter list
-      override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)):
+      override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)
+    val transformer = new BlockTransformer(varSymSubst):
       override def applyBlock(b: Block) = b match
         // process ctor: remove ValDefn of parameters already defined in the class parameters
         // remove `val C.x = x` statements from the constructor
