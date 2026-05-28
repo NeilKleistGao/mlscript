@@ -99,17 +99,21 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
   enum LocalPath:
     case Sym(l: LocalPathSymbol)
     case ThisPath(sym: InnerSymbol)
-    case UnsupportedLocal(sym: LocalSymbol)
-    case UnsupportedSymbol(sym: Symbol)
     case BmsRef(l: BlockMemberSymbol, d: DefinitionSymbol[?])
+    /** A source local whose storage has been moved to a field while lifting.
+      *
+      * This is not used for arbitrary source field selections: those should
+      * already have been lowered to `Select`/`AssignField`. It is specifically
+      * for locals that the lifter itself makes field-backed, such as captured
+      * locals inside capture classes, values passed into lifted classes, and
+      * neighboring lifted object references stored as private fields.
+      */
     case Field(lhs: Path, field: TermSymbol)
     
     def read(using ctx: LifterCtxNew): Path = this match
       case Sym(l: NoSymbol) => lastWords("Tried to read from NoSymbol")
       case Sym(l: SimpleSymbol) => l.asSimpleRef
       case ThisPath(sym) => sym.asThis
-      case UnsupportedLocal(sym) => lastWords(s"Tried to read from unsupported local ${sym.nme}")
-      case UnsupportedSymbol(sym) => lastWords(s"Tried to read from unsupported symbol ${sym.nme}")
       case BmsRef(l, d) => l.asMemberRef(d)
       case Field(path, field) => Select(path, field.id)(S(field))
       
@@ -120,13 +124,11 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       case Sym(l: NoSymbol) => Assign(l, value, rest)
       case Sym(l) => lastWords(s"Tried to assign to non-variable local ${l.nme}")
       case ThisPath(sym) => lastWords(s"Tried to assign to this-path ${sym.nme}")
-      case UnsupportedLocal(sym) => lastWords(s"Tried to assign to unsupported local ${sym.nme}")
-      case UnsupportedSymbol(sym) => lastWords(s"Tried to assign to unsupported symbol ${sym.nme}")
       case BmsRef(l, d) => lastWords("Tried to assign to a BlockMemberSymbol")
       case Field(path, field) => AssignField(path, field.id, value, rest)(S(field))
   object LocalPath:
     /** Use when the lifter deliberately stores a captured value, passed local,
-      * or neighbouring lifted object in a private field of the class it is
+      * or neighboring lifted object in a private field of the class it is
       * currently rewriting. The map still has to be keyed by the original
       * local symbol because the lifted body mentions that original symbol;
       * the value says that reads and writes are now field selections on self.
@@ -714,8 +716,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
             )
             case s: LocalPathSymbol => s.asLocalPath
             case s: InnerSymbol => LocalPath.ThisPath(s)
-            case s: LocalSymbol => LocalPath.UnsupportedLocal(s)
-            case s => LocalPath.UnsupportedSymbol(s)
+            case s => lastWords(s"tried to create a local path for non-local ${s.nme}")
           )
         .toMap
       // Locals introduced by this object that are inside this object's capture
