@@ -21,9 +21,9 @@ class BlockTransformer(subst: SymbolSubst):
   def applyMainBlock(main: Block): Block =
     applyBlock(main)
   
-  def applyImport(imp: Local -> Str): Local -> Str =
+  def applyImport(imp: ImportSymbol -> Str): ImportSymbol -> Str =
     val (l, s) = imp
-    val l2 = applyLocal(l)
+    val l2 = applyImportSymbol(l)
     if l2 is l then imp else l2 -> s
   
   def applySubBlock(b: Block): Block = applyBlock(b)
@@ -194,6 +194,9 @@ class BlockTransformer(subst: SymbolSubst):
     case Value.Lit(lit) => k(v)
   
   def applyLocal(sym: Local): Local = sym.subst
+  def applyImportSymbol(sym: ImportSymbol): ImportSymbol = sym match
+    case sym: TempSymbol => sym.subst
+    case sym: MemberSymbol => sym.subst
   def applyAssignLhs(sym: AssignableSymbol): AssignableSymbol = sym match
     case sym: NoSymbol => sym.subst
     case sym: TempSymbol => sym.subst

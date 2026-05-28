@@ -91,30 +91,37 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
 
   import Lifter.*
   
-  extension (l: Local)
+  extension (l: LocalPathSymbol)
     def asLocalPath: LocalPath = LocalPath.Sym(l)
+  extension (l: BlockLocalSymbol)
     def asDefnRef: DefnRef = DefnRef.Sym(l)
   
   enum LocalPath:
-    case Sym(l: Local)
+    case Sym(l: LocalPathSymbol)
+    case ThisPath(sym: InnerSymbol)
+    case UnsupportedLocal(sym: LocalSymbol)
+    case UnsupportedSymbol(sym: Symbol)
     case BmsRef(l: BlockMemberSymbol, d: DefinitionSymbol[?])
     case Field(lhs: Path, field: TermSymbol)
     
     def read(using ctx: LifterCtxNew): Path = this match
-      case Sym(l) => l.asPath
+      case Sym(l: NoSymbol) => lastWords("Tried to read from NoSymbol")
+      case Sym(l: SimpleSymbol) => l.asSimpleRef
+      case ThisPath(sym) => sym.asThis
+      case UnsupportedLocal(sym) => lastWords(s"Tried to read from unsupported local ${sym.nme}")
+      case UnsupportedSymbol(sym) => lastWords(s"Tried to read from unsupported symbol ${sym.nme}")
       case BmsRef(l, d) => l.asMemberRef(d)
       case Field(path, field) => Select(path, field.id)(S(field))
       
     def asArg(using ctx: LifterCtxNew) = read.asArg
     
     def assign(value: Result, rest: Block)(using ctx: LifterCtxNew): Block = this match
-      case Sym(l: TermSymbol) =>
-        l.owner match
-        case S(owner) => AssignField(owner.asThis, l.id, value, rest)(S(l))
-        case N => lastWords(s"Tried to assign to ownerless term symbol ${l.nme}")
-      case Sym(l: LocalVarSymbol) => Assign(l, value, rest)
+      case Sym(l: BlockLocalSymbol) => Assign(l, value, rest)
       case Sym(l: NoSymbol) => Assign(l, value, rest)
       case Sym(l) => lastWords(s"Tried to assign to non-variable local ${l.nme}")
+      case ThisPath(sym) => lastWords(s"Tried to assign to this-path ${sym.nme}")
+      case UnsupportedLocal(sym) => lastWords(s"Tried to assign to unsupported local ${sym.nme}")
+      case UnsupportedSymbol(sym) => lastWords(s"Tried to assign to unsupported symbol ${sym.nme}")
       case BmsRef(l, d) => lastWords("Tried to assign to a BlockMemberSymbol")
       case Field(path, field) => AssignField(path, field.id, value, rest)(S(field))
   object LocalPath:
@@ -132,13 +139,13 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       case N => lastWords(s"tried to build a private field path for ownerless symbol ${field.nme}")
 
   enum DefnRef:
-    case Sym(l: Local)
+    case Sym(l: BlockLocalSymbol)
     case PathRef(path: Path)
     case InScope(l: BlockMemberSymbol, d: DefinitionSymbol[?])
     case Field(isym: InnerSymbol, l: BlockMemberSymbol, d: DefinitionSymbol[?])
   
     def read(using ctx: LifterCtxNew): Path = this match
-      case Sym(l) => l.asPath
+      case Sym(l) => l.asSimpleRef
       case PathRef(path) => path
       case InScope(l, d) => l.asMemberRef(d)
       case Field(isym, l, d) => Select(ctx.symbolsMap(isym).read, Tree.Ident(l.nme))(S(d))
@@ -303,7 +310,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     var activeClosures: Set[Local] = Set.empty
     // Map from block member symbols to initialized closures
     val closureMap: MutMap[BlockMemberSymbol, TempSymbol] = MutMap.empty
-    val extraLocals: MutSet[Local] = MutSet.empty
+    val extraLocals: MutSet[ScopedSymbol] = MutSet.empty
     
     def rewrite(b: Block) =
       val ret = applyBlock(b)
@@ -322,7 +329,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     def rewriteBms(b: Block) =
       // BMS's that need to be created
       val syms: LinkedHashMap[FunSyms[?], LocalVarSymbol] = LinkedHashMap.empty
-      val extraLocals: MutSet[Local] = MutSet.empty
+      val extraLocals: MutSet[ScopedSymbol] = MutSet.empty
 
       val walker = new BlockDataTransformer(SymbolSubst.Id):
         // only scan within the block. don't traverse
@@ -653,6 +660,9 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     protected def rewriteImpl: LifterResult[T]
     
     protected final def addExtraSyms(b: Block, captureSym: Local, objSyms: Iterable[Local], define: Bool): Block =
+      def requireScopedSymbol(sym: Local): ScopedSymbol = sym match
+        case sym: ScopedSymbol => sym
+        case sym => lastWords(s"tried to add non-scoped symbol ${sym.nme} to Scoped")
       if hasCapture then
         val undef = Value.Lit(Tree.UnitLit(false)).asArg
         val inst = Instantiate(
@@ -670,12 +680,12 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
           case sym => lastWords(s"tried to assign lifted capture to non-variable ${sym.nme}")
         if define then
           Scoped(
-            Set(captureSym) ++ objSyms,
+            Set(requireScopedSymbol(captureSym)) ++ objSyms.map(requireScopedSymbol),
             assign
           )
         else assign
       else
-        if define then Scoped(objSyms.toSet, b) else b
+        if define then Scoped(objSyms.map(requireScopedSymbol).toSet, b) else b
     
     /**
       * Rewrites the contents of this scoped object to reference the lifted versions of variables.
@@ -697,7 +707,16 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       // Locals introduced by this object
       val fromThisObj = node.localsWithoutBms
         .map: s =>
-          s -> s.asLocalPath
+          s -> (s match
+            case s: TermSymbol if s.owner.isDefined => LocalPath.privateSelfField(s)
+            case s: BlockMemberSymbol => LocalPath.BmsRef(s, s.asPrincipal.getOrElse:
+              lastWords(s"Cannot resolve overloaded member symbol ${s.nme}: no principal disambiguation found")
+            )
+            case s: LocalPathSymbol => s.asLocalPath
+            case s: InnerSymbol => LocalPath.ThisPath(s)
+            case s: LocalSymbol => LocalPath.UnsupportedLocal(s)
+            case s => LocalPath.UnsupportedSymbol(s)
+          )
         .toMap
       // Locals introduced by this object that are inside this object's capture
       val fromCap = thisCapturedLocals

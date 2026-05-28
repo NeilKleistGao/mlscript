@@ -38,16 +38,16 @@ object Thrw extends TailOp:
 class LoweringCtx(
   initMap: Map[Local, Value], // No longer in meaningful use and could be removed if we don't find a use for it
   val mayRet: Bool, // For rewriting while loop into tail recursive function, represent whether an explicit return is legal in the current block
-  private val definedSymsDuringLowering: collection.mutable.Set[Symbol] // used to create Scoped blocks
+  private val definedSymsDuringLowering: collection.mutable.Set[ScopedSymbol] // used to create Scoped blocks
 ):
   val map = initMap
-  def collectScopedSym(s: Symbol) = definedSymsDuringLowering.add(s)
-  def collectScopedSyms(s: Symbol*) = definedSymsDuringLowering.addAll(s)
+  def collectScopedSym(s: ScopedSymbol) = definedSymsDuringLowering.add(s)
+  def collectScopedSyms(s: ScopedSymbol*) = definedSymsDuringLowering.addAll(s)
   def registerTempSymbol(trm: Option[Term], dbgNme: Str = "tmp")(using State) =
     val tmp = new TempSymbol(trm, dbgNme)
     definedSymsDuringLowering.add(tmp)
     tmp
-  def getCollectedSym: collection.Set[Symbol] = definedSymsDuringLowering
+  def getCollectedSym: collection.Set[ScopedSymbol] = definedSymsDuringLowering
   /*
   def +(kv: (Local, Value)): Subst =
     kv match
@@ -141,6 +141,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   def unit: Path =
     Select(State.runtimeSymbol.asSimpleRef, Tree.Ident("Unit"))(S(State.unitSymbol))
   
+  private def collectScopedLocal(sym: LocalSymbol)(using LoweringCtx): Unit = sym match
+    case sym: ScopedSymbol => loweringCtx.collectScopedSym(sym)
+    case sym: TermSymbol if sym.owner.isDefined => ()
+    case sym => lastWords(s"tried to collect non-scoped local symbol ${sym.showDbg}")
+
   
   // type Rcd = (mut: Bool, args: List[RcdArg]) // * Better, but Scala's patmat exhaustiveness chokes on it
   type Rcd = (Bool, List[RcdArg])
@@ -211,7 +216,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
               blockImpl(stats, L((mut, RcdArg(S(l), r) :: flds)))
       case (decl @ LetDecl(sym, annotations)) :: stats =>
         reportAnnotations(decl, annotations)
-        if sym.asTrm.forall(_.owner.isEmpty) then loweringCtx.collectScopedSym(sym)
+        if sym.asTrm.forall(_.owner.isEmpty) then collectScopedLocal(sym)
         blockImpl(stats, res)
       case DefineVar(sym, rhs) :: stats =>
         term(rhs): r =>
@@ -914,7 +919,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
             val (paramLists, bodyBlock) = setupFunctionDef(td.params, bod, S(td.sym.nme))      
             S(Handler(td.sym, resumeSym, paramLists, bodyBlock))
       }.collect{ case Some(v) => v }
-      loweringCtx.collectScopedSym(lhs)
+      collectScopedLocal(lhs)
       val resSym = loweringCtx.registerTempSymbol(S(t))
       subTerm(rhs): par =>
         subTerms(as): asr =>
@@ -1204,7 +1209,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       rec(rhs, Nil)(k)
     case Blk(LetDecl(sym: LocalVarSymbol, _) :: DefineVar(sym2, rhs) :: Nil, res) => // Let bindings
       require(sym2 is sym)
-      loweringCtx.collectScopedSyms(sym)
+      collectScopedLocal(sym)
       setupSymbol(sym){r1 =>
         val l1, l2, l3, l4, l5 = loweringCtx.registerTempSymbol(N)
         val arrSym = loweringCtx.registerTempSymbol(N, "arr")

@@ -22,7 +22,7 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
     toRemoveSymbols = MutSet.empty[Symbol] :: toRemoveSymbols
     val res = b match
     case Scoped(syms, body) =>
-      val newSyms = MutSet.empty[Symbol]
+      val newSyms = MutSet.empty[ScopedSymbol]
       val oldSyms = MutSet.empty[Symbol]
       for s <- syms.toList.sortBy(_.uid) do
         assert(!mapping.isDefinedAt(s), s"already defined: $s")
@@ -42,9 +42,12 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
             newBms
           case varSym: VarSymbol => new VarSymbol(varSym.id)
           case _ => lastWords(s"unexpected symbol kind: $s")
-        mapping(s) = newS
+        val newScopedSym: ScopedSymbol = newS match
+          case s: ScopedSymbol => s
+          case s => lastWords(s"refreshed scoped symbol has unexpected kind: ${s.nme}")
+        mapping(s) = newScopedSym
         oldSyms.add(s)
-        newSyms.add(newS)
+        newSyms.add(newScopedSym)
       val r = Scoped(newSyms, applyBlock(body))
       for s <- oldSyms do mapping.remove(s)
       r

@@ -311,6 +311,10 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
   
 end BlockMemberSymbol
 
+type ScopedSymbol = BlockLocalSymbol | BlockMemberSymbol
+type ImportSymbol = TempSymbol | MemberSymbol
+type LocalPathSymbol = BlockLocalSymbol | BuiltinSymbol | NoSymbol
+
 
 sealed abstract class MemberSymbol(using State) extends Symbol:
   def nme: Str

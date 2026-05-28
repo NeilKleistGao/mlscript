@@ -36,7 +36,7 @@ must refresh the corresponding symbols – see SymbolRefresher for this purpose.
 
 
 case class Program(
-  imports: Ls[Local -> Str],
+  imports: Ls[ImportSymbol -> Str],
   main: Block,
 )
 
@@ -367,7 +367,7 @@ case class Break(label: LabelSymbol) extends BlockTail
 case class Continue(label: LabelSymbol) extends BlockTail
 
 
-case class Scoped(syms: collection.Set[Local], body: Block)
+case class Scoped(syms: collection.Set[ScopedSymbol], body: Block)
 extends Block with NonBlockTail:
   val rest = body
 
@@ -400,7 +400,7 @@ object Label:
       case Scoped(syms, rest) => Scoped(syms, Label(label, loop, body, rest))
       case _ => new Label(label, loop, body, rest)
 object Scoped:
-  def apply(syms: collection.Set[Local], body: Block): Block = body match
+  def apply(syms: collection.Set[ScopedSymbol], body: Block): Block = body match
     case _: Unreachable => body
     case _ if syms.isEmpty => body
     case Scoped(syms2, body) =>
@@ -1068,7 +1068,7 @@ extension (k: Block => Block)
   def transform(f: (Block => Block) => (Block => Block)) = f(k)
   
   def assign(l: AssignableSymbol, r: Result) = k.chain(Assign(l, r, _))
-  def assignScoped(l: LocalVarSymbol, r: Result) = k.scopedVars(Set.single(l)).assign(l, r)
+  def assignScoped(l: BlockLocalSymbol, r: Result) = k.scopedVars(Set.single(l)).assign(l, r)
   def assignFieldN(lhs: Path, nme: Tree.Ident, rhs: Result) = k.chain(AssignField(lhs, nme, rhs, _)(N))
   def break(l: LabelSymbol): Block = k.rest(Break(l))
   def continue(l: LabelSymbol): Block = k.rest(Continue(l))
@@ -1078,7 +1078,7 @@ extension (k: Block => Block)
     k.chain(Match(scrut, cse -> trm :: Nil, els, _))
   def label(label: LabelSymbol, loop: Bool, body: Block) = k.chain(Label(label, loop, body, _))
   def ret(r: Result) = k.rest(Return(r))
-  def scopedVars(s: collection.Set[Local]) = k.chain(Scoped(s, _))
+  def scopedVars(s: collection.Set[ScopedSymbol]) = k.chain(Scoped(s, _))
   def staticif(b: Boolean, f: (Block => Block) => (Block => Block)) = if b then k.transform(f) else k
   def foldLeft[A](xs: Iterable[A])(f: (Block => Block, A) => Block => Block) = xs.foldLeft(k)(f)
 
