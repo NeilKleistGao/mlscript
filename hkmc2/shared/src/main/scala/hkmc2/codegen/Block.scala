@@ -1015,6 +1015,8 @@ enum Value extends Path with ProductWithExtraInfo:
 object Value:
   /** A value-level reference. */
   type RefLike = SimpleRef | MemberRef | This
+  object RefLike:
+    def unapply(v: Value.RefLike): S[ValueSymbol] = S(v.symbol)
 
   /** Value-level references that are not [[`Value.This`]]. */
   type Ref = SimpleRef | MemberRef
