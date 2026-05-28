@@ -208,7 +208,7 @@ object ScopeData:
   type ScopeNode = ScopeNode.ScopeNode[?]
   type TScopeNode[T] = ScopeNode.ScopeNode[T]
   object ScopeNode:
-    case class ScopeNode[T](obj: TScopedObject[T], var ancestor: Opt[ScopeNode[?]], children: List[ScopeNode[?]])(using ignoredScopes: IgnoredScopes):
+    case class ScopeNode[T](obj: TScopedObject[T], var ancestor: Opt[ScopeNode[?]], children: List[ScopeNode[?]])(using ignoredScopes: IgnoredScopes, raise: Raise):
       
       lazy val allAncestors: List[ScopeNode[?]] = ancestor match
         case Some(value) => this :: value.allAncestors
@@ -238,6 +238,12 @@ object ScopeData:
       // Non-ScopedBlock cases never contain BMS in definedLocals, but the collect ensures
       // the narrower return type is enforced uniformly.
       lazy val localsWithoutBms: Set[BlockLocalSymbol | InnerSymbol] =
+        obj match
+          case _: ScopedObject.ScopedBlock => ()
+          case _ => softAssert(
+            !obj.definedLocals.exists(_.isInstanceOf[BlockMemberSymbol]),
+            s"Non-ScopedBlock ${obj.nme} unexpectedly contains BlockMemberSymbols in definedLocals"
+          )
         obj.definedLocals.collect:
           case s: BlockLocalSymbol => s
           case s: InnerSymbol => s
@@ -351,7 +357,7 @@ object ScopeData:
     case d: DefinitionSymbol[?] if data.contains(d) => S(d)
     case _ => None
     
-class ScopeData(b: Block)(using State, IgnoredScopes):
+class ScopeData(b: Block)(using State, IgnoredScopes, Raise):
   import ScopeData.*
   
   def contains(s: ScopedInfo) = scopeTree.nodesMap.contains(s)

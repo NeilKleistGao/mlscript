@@ -712,6 +712,16 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
             case s: InnerSymbol => LocalPath.ThisPath(s)
           )
         .toMap
+      // BMS from using clauses (BMS in definedLocals that are not child Referencable BMS)
+      val childBms = node.children.collect:
+        case ScopeNode(obj = r: ScopedObject.Referencable[?]) => r.bsym
+      .toSet
+      val fromUsingBms: Map[ScopeLocalSymbol, LocalPath] = node.obj.definedLocals.collect:
+        case bms: BlockMemberSymbol if !childBms.contains(bms) =>
+          bms -> LocalPath.BmsRef(bms, bms.asPrincipal.getOrElse:
+            lastWords(s"Cannot resolve using-clause member symbol ${bms.nme}: no principal disambiguation found")
+          )
+      .toMap
       // Locals introduced by this object that are inside this object's capture
       val fromCap: Map[ScopeLocalSymbol, LocalPath] = thisCapturedLocals
         .map: s =>
@@ -732,7 +742,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         .toMap
       // Note: the order here is important, as fromCap must override keys from
       // fromThisObj.
-      isyms ++ fromThisObj ++ fromCap
+      isyms ++ fromThisObj ++ fromUsingBms ++ fromCap
     
     lazy val capturePaths =
       if thisCapturedLocals.isEmpty then Map.empty
@@ -770,13 +780,8 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       * 
       * Includes symbols introduced by modules and objects, which could be introduced when
       * accessing their member functions.
-      * 
-      * BlockMemberSymbols are excluded: they are handled through the defn-reference mechanism
-      * (reqDefns/defnPaths), not as passed locals.
       */
-    final val reqSymbols = accessed.filter:
-      case _: BlockMemberSymbol => false
-      case _ => true
+    final val reqSymbols = accessed
     
     private val (reqPassedSymbols, captures) = reqSymbols
       .partitionMap: s =>
