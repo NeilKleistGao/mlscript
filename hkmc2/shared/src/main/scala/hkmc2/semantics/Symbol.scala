@@ -189,8 +189,8 @@ type SimpleSymbol = LocalVarSymbol | BuiltinSymbol
 type AssignableSymbol = LocalVarSymbol | NoSymbol
 
 sealed trait LocalVarSymbol extends LocalSymbol
-sealed trait LocalSymbol extends Symbol:
-  def subst(using s: SymbolSubst): LocalSymbol
+sealed trait LocalSymbol extends Symbol/* :
+  def subst(using s: SymbolSubst): LocalSymbol */
 sealed trait NamedSymbol extends Symbol:
   def name: Str
   def id: Ident
@@ -212,11 +212,11 @@ class SplitSymbol(val body: Split, name: Str = "split")(using State) extends Loc
   def toLoc = body.toLoc
   override def prefix: Str = "split:"
 
-abstract class BlockLocalSymbol(name: Str)(using State) extends FlowSymbol(name):
+sealed abstract class BlockLocalSymbol(name: Str)(using State) extends FlowSymbol(name) with LocalVarSymbol:
   self: LocalSymbol => // * using `with LocalSymbol` in the `extends` clause makes Scala think there's a bad override
   var decl: Opt[Declaration] = N
 
-class TempSymbol(val trm: Opt[Term], dbgNme: Str = "tmp")(using State) extends BlockLocalSymbol(dbgNme) with LocalVarSymbol:
+class TempSymbol(val trm: Opt[Term], dbgNme: Str = "tmp")(using State) extends BlockLocalSymbol(dbgNme):
   // val nameHints: MutSet[Str] = MutSet.empty // * May be useful later?
   override def toLoc: Option[Loc] = trm.flatMap(_.toLoc)
   override def prefix: Str = "tmp:"
@@ -232,7 +232,7 @@ class InstSymbol(val origin: Symbol)(using State) extends LocalSymbol:
   def subst(using sub: SymbolSubst): InstSymbol = sub.mapInstSym(this)
 
 
-class VarSymbol(val id: Ident)(using State) extends BlockLocalSymbol(id.name) with NamedSymbol with LocalVarSymbol:
+class VarSymbol(val id: Ident)(using State) extends BlockLocalSymbol(id.name) with NamedSymbol:
   val name: Str = id.name
   override def toLoc: Opt[Loc] = id.toLoc
   // override def toString: Str = s"$name@$uid"

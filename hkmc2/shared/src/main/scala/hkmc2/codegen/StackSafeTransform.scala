@@ -54,13 +54,7 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, stackSafetyMap: S
       case _: Call | _: Instantiate => true
       case _ => false
 
-    def extract(res: Result, isTailCall: Bool, f: Result => Block, sym: AssignableSymbol, curDepth: => LocalVarSymbol) =
-      if isTopLevel then sym match
-        case sym: LocalVarSymbol => extractResTopLevel(res, isTailCall, f, sym, curDepth)
-        case _: NoSymbol =>
-          val tmp = TempSymbol(N, "stackDelayRes")
-          Scoped(Set.single(tmp), extractResTopLevel(res, isTailCall, _ => f(Value.Lit(Tree.UnitLit(false))), tmp, curDepth))
-      else extractRes(res, isTailCall, f, sym, curDepth)
+    val extract = if isTopLevel then extractResTopLevel else extractRes
     
     val transform = new BlockTransformer(SymbolSubst.Id):
 
@@ -80,8 +74,8 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, stackSafetyMap: S
           if usesStack(r) then
             super.applyResult(r): r =>
               lhs match
-                case _: NoSymbol => blockBuilder.assign(lhs, r).rest(applyBlock(rest))
-                case _ => extract(r, false, _ => applyBlock(rest), lhs, curDepth)
+              case _: NoSymbol => blockBuilder.assign(lhs, r).rest(applyBlock(rest))
+              case lhs: LocalVarSymbol => extract(r, false, _ => applyBlock(rest), lhs, curDepth)
           else
             super.applyBlock(b)
         

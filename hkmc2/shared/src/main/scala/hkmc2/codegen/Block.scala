@@ -1032,7 +1032,7 @@ object Value:
   object Ref:
     def apply(l: Local, disamb: Opt[DefinitionSymbol[?]]): Value.RefLike =
       l match
-        case l: (SimpleSymbol) => l.asSimpleRef
+        case l: SimpleSymbol => l.asSimpleRef
         case bms: BlockMemberSymbol => bms.asMemberRef:
           disamb.getOrElse:
             lastWords(s"Cannot disambiguate overloaded member symbol ${bms.nme}: no disambiguation provided")
@@ -1084,7 +1084,7 @@ extension (k: Block => Block)
 
 def blockBuilder: Block => Block = identity
 
-extension (s: (SimpleSymbol))
+extension (s: SimpleSymbol)
   inline def asSimpleRef: Value.SimpleRef = Value.SimpleRef(s)
 
 extension (bms: BlockMemberSymbol)
