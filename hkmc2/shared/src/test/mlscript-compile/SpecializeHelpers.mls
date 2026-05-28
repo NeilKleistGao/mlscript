@@ -61,10 +61,13 @@ class FunCache(val owner: ConcreteClassSymbol | ModuleSymbol, val cache: Map[Any
     class InlinePrinter(ctx: Map[Symbol, String]) extends Printer(Some(owner)) with
       fun showPath(p) = if p is
         ValueSimpleRef(s) | ValueMemberRef(s) and ctx.has(s) then ctx.get(s)
-        Select(qual, name) then showPath(qual) + "." + this.showSymbol(name)
+        Select(qual, name) and
+          qual is ValueThis(Symbol("globalThis")) then this.showSymbol(name)
+          else showPath(qual) + "." + this.showSymbol(name)
         DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
         DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
         ValueSimpleRef(s) | ValueMemberRef(s) then this.showSymbol(s)
+        ValueThis(_) then Error("Unexpected reference to `this` within preCtor")
         ValueLit(lit) then this.showLiteral(lit)
     
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)

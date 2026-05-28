@@ -203,6 +203,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             blockCtor("ValueMemberRef", Ls(sym), "var")(k(_, ctx))
         case l: Value.Lit =>
           blockCtor("ValueLit", Ls(l), "lit")(k(_, ctx))
+        case Value.This(sym) =>
+          transformSymbol(sym): (sym, ctx) =>
+            blockCtor("ValueThis", Ls(sym))(k(_, ctx))
         case s @ Select(p, Tree.Ident(name)) =>
           transformPath(p): (x, ctx) =>
             s.symbol match
@@ -212,9 +215,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformPath(qual): (x, ctx) =>
             transformPath(fld)(using ctx): (y, ctx) =>
               blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k(_, ctx))
-        case _: Value.This =>
-          raise(ErrorReport(msg"Value.This not supported in staged module." -> p.toLoc :: Nil))
-          End()
 
   def transformResult(r: Result)(using ctx: Context)(k: (Path, Context) => Block): Block = r match
     case p: Path => transformPath(p)(k)

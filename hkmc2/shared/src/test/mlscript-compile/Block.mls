@@ -70,9 +70,11 @@ class Path extends Result with
   constructor
     Select(val qual: Path, val name: Symbol)
     DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool) // is arrayIdx used?
+    // we use Value as a prefix here to diambiguate from Case.Lit
     ValueSimpleRef(val l: Symbol)
     ValueMemberRef(val l: Symbol)
     ValueLit(val lit: Literal)
+    ValueThis(val sym: Symbol)
 
 class Defn with 
   constructor 
@@ -114,11 +116,15 @@ class Printer(val owner: Opt[Class]) with
 
   fun showPath(p: Path): Str =
     if p is
-      // avoids needing to import the runtime module
-      Select(ValueSimpleRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit)) then "()"
       Select(qual, name) and
-        // remove selection to owner for values defined within the owner
-        qual is ValueSimpleRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
+        qual is
+          // avoids needing to import the runtime module
+          ValueSimpleRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit) then "()"
+          // remove selection to owner for values defined within the owner
+          // TODO: does this pattern exist, or is it replaced by the case below?
+          ValueSimpleRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
+          // NOTE: ValueThis carries information about the class, but the elaborator can infer it for us
+          ValueThis then "this." + showSymbol(name)
         else showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
