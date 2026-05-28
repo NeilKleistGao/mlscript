@@ -911,6 +911,42 @@ class BlockSimplifier
             case _ => N
           case _ => N
       
+      /** Extract the qualifier path from a method call, if it's a Select.
+        * For `Select(qual, name)(Some(ts))`, returns `Some((qual, ts))`.
+        * For direct refs (MemberRef), returns `None` (no qualifier path needed). */
+      object MethodCallQualifier:
+        def unapply(p: Path): Opt[(Path, TermSymbol)] = p match
+          case s: Select => s.symbol match
+            case S(ts: TermSymbol) if ts.owner.nonEmpty => S((s.qual, ts))
+            case _ => N
+          case _ => N
+      
+      /** Build a mapping from `InnerSymbol` (module `this` symbols) to their
+        * corresponding qualifier paths, by walking up the qualifier chain.
+        * For example, for `Outer.Mid.Inner.f(x)`, this returns:
+        *   `Inner_isym -> Select(Select(Outer_ref, "Mid"), "Inner"),
+        *    Mid_isym   -> Select(Outer_ref, "Mid"),
+        *    Outer_isym -> Outer_ref` */
+      def buildThisMapping(qual: Path, ownerSym: InnerSymbol): Map[InnerSymbol, Path] =
+        var mapping = Map[InnerSymbol, Path](ownerSym -> qual)
+        var currentQual = qual
+        var continue = true
+        while continue do
+          currentQual match
+          case s: Select =>
+            s.symbol match
+            case S(ds: InnerSymbol) =>
+              // * The qualifier's symbol is an InnerSymbol (e.g., a ModuleOrObjectSymbol).
+              // * Map it to the outer qualifier.
+              mapping = mapping + (ds -> s.qual)
+              currentQual = s.qual
+            case _ => continue = false
+          case Value.MemberRef(_, ds: InnerSymbol) =>
+            // * Already at the root; nothing more to map.
+            continue = false
+          case _ => continue = false
+        mapping
+      
       def matchArgs(args: List[Arg], params: ParamList): Option[List[(VarSymbol, Result)]] =
         if args.exists(_.spread.isDefined) then
           // we require a precise match when any arg is a spread arg
@@ -967,8 +1003,6 @@ class BlockSimplifier
           // false
         
         def shouldBeInlined(newBlk: Block, threshold: Int): Bool =
-          // method requires the capturing of `this`, which is not supported currently.
-          if isMethod then return false
           // If the definition is marked with inline, we should inline it regardless of the size of the body.
           // If both callee and caller are marked with inline, inlining will ignore the stricter @inline limits.
           // Remark: the case of a recursive function marked with inline will be blocked by loop breaker logic.
@@ -1086,7 +1120,7 @@ class BlockSimplifier
     
     object InlinerReplacer:
       
-      class Copier(resSym: LocalVarSymbol, existingMapping: Map[Symbol, Symbol])(using State):
+      class Copier(resSym: LocalVarSymbol, existingMapping: Map[Symbol, Symbol], thisMapping: Map[InnerSymbol, Path])(using State):
         val lblSym = LabelSymbol(N, "inlinedLbl")
         
         object Copier extends SymbolRefresher(existingMapping):
@@ -1104,6 +1138,24 @@ class BlockSimplifier
               applyResult(res): r2 =>
                 Assign(resSym, r2, Break(lblSym))
             case _ => super.applyBlock(b)
+          
+          override def applyValue(v: Value)(k: Value => Block): Block = v match
+            case Value.This(sym) if thisMapping.contains(sym) =>
+              // * Replace module `this` references with the corresponding qualifier path.
+              // * If the replacement is a Value, use it directly; otherwise, handle in applyPath.
+              thisMapping(sym) match
+              case v2: Value => k(v2)
+              case _ =>
+                // * Should not happen here; non-Value replacements are handled in applyPath.
+                super.applyValue(v)(k)
+            case _ => super.applyValue(v)(k)
+          
+          override def applyPath(p: Path)(k: Path => Block): Block = p match
+            case Value.This(sym) if thisMapping.contains(sym) =>
+              // * Replace module `this` references with the corresponding qualifier path
+              // * from the call site, when inlining module methods.
+              k(thisMapping(sym))
+            case _ => super.applyPath(p)(k)
         
         def applyBlock(blk: Block) =
           Label(lblSym, false, Copier.applyBlock(blk), _)
@@ -1153,7 +1205,51 @@ class BlockSimplifier
               FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, blk)(fun.configOverride, fun.annotations)
         
         override def applyResult(r: Result)(k: Result => Block): Block = r match
+          case c @ Call(callPath @ MethodCallQualifier(qual, ts), argss) if m.contains(ts) && argss.nonEmpty =>
+            // * Method call: extract the qualifier for `this` substitution.
+            if m(ts).isLoopBreaker then return super.applyResult(r)(k)
+            newFunctionBody.get(ts)
+            .getOrElse:
+              newFunctionBody(ts) = N
+              val newBdy = enterFunBlock(m(ts).defn.inline, applyBlock(m(ts).defn.body))
+              newFunctionBody(ts) = S(newBdy)
+              S(newBdy)
+            .fold(super.applyResult(r)(k)): blk =>
+              val info = m(ts)
+              val cfg = summon[Config.Inliner]
+              val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
+              if !info.shouldBeInlined(blk, threshold) then
+                super.applyResult(r)(k)
+              else
+                val matchedArgs = matchAllArgs(argss, info.defn.params)
+                matchedArgs match
+                case N =>
+                  super.applyResult(r)(k)
+                case S(matchedArgs) =>
+                  registerChange(s"inline call ${ts.showDbg}")
+                  log(s"Inline call for ${ts}, with args ${argss}")
+                  val extraArgss = argss.drop(info.defn.params.length)
+                  // * Build a mapping from module `this` symbols to their qualifier paths.
+                  val thisMap = ts.owner match
+                    case S(ownerSym: InnerSymbol) => buildThisMapping(qual, ownerSym)
+                    case _ => Map.empty[InnerSymbol, Path]
+                  def go(acc: Block => Block, args: List[(VarSymbol, Result)], mapping: Map[Symbol, Symbol]): Block =
+                    args match
+                    case Nil =>
+                      val resSym = TempSymbol(N, "inlinedVal")
+                      val copier = Copier(resSym, mapping, thisMap)
+                      val newBlk = copier.applyBlock(blk)
+                      if extraArgss.isEmpty then
+                        acc(Scoped(Set.single(resSym), newBlk(k(resSym.asSimpleRef))))
+                      else
+                        acc(Scoped(Set(resSym), newBlk(
+                          k(Call(resSym.asSimpleRef, extraArgss.ne_!)(c.isMlsFun, c.mayRaiseEffects, false)))))
+                    case (sym, value) :: argRest =>
+                      val newSym = VarSymbol(sym.id)
+                      go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
+                  go(blockBuilder, matchedArgs, Map.empty)
           case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
+            // * Non-method call (top-level function or direct reference).
             if m(ts).isLoopBreaker then return super.applyResult(r)(k)
             newFunctionBody.get(ts)
             .getOrElse:
@@ -1180,7 +1276,7 @@ class BlockSimplifier
                     args match
                     case Nil =>
                       val resSym = TempSymbol(N, "inlinedVal")
-                      val copier = Copier(resSym, mapping)
+                      val copier = Copier(resSym, mapping, Map.empty)
                       val newBlk = copier.applyBlock(blk)
                       if extraArgss.isEmpty then
                         acc(Scoped(Set.single(resSym), newBlk(k(resSym.asSimpleRef))))

@@ -103,12 +103,15 @@ let Runtime1;
       }
       #_reified;
       resumeWith(value) {
-        let lambda;
-        const this$EffectHandle = this;
-        lambda = (undefined, function () {
-          return Runtime.resume(this$EffectHandle.reified.contTrace)(value)
-        });
-        return Runtime1.try(lambda)
+        let scrut, tmp, inlinedVal;
+        inlinedVal = Runtime.resume(this.reified.contTrace)(value);
+        scrut = Runtime1.curEffect !== null;
+        if (scrut === true) {
+          tmp = Runtime1.curEffect;
+          Runtime1.curEffect = null;
+          return Runtime1.EffectHandle(tmp)
+        }
+        return inlinedVal;
       }
       raise() {
         Runtime.curEffect = this.reified;
@@ -511,12 +514,17 @@ let Runtime1;
         globalThis.Object.freeze(this);
       }
       delay() {
-        let lambda;
+        let lambda, res, tmp;
         lambda = (undefined, function (k) {
           Runtime.stackResume = k;
           return runtime.Unit
         });
-        return Runtime.mkEffect(this, lambda)
+        tmp = new Runtime.ContTrace.class(null, null, null, null, false);
+        res = new Runtime.EffectSig.class(tmp, this, lambda);
+        res.contTrace.last = res.contTrace;
+        res.contTrace.lastHandler = res.contTrace;
+        Runtime.curEffect = res;
+        return runtime.Unit
       }
       toString() { return runtime.render(this); }
       static [definitionMetadata] = ["object", "StackDelayHandler"];
@@ -738,7 +746,14 @@ let Runtime1;
     return runtime.Unit
   }
   static raisePrintStackEffect(showLocals) {
-    return Runtime.mkEffect(Runtime.PrintStackEffect, showLocals)
+    let handler, res, tmp;
+    handler = Runtime.PrintStackEffect;
+    tmp = new Runtime.ContTrace.class(null, null, null, null, false);
+    res = new Runtime.EffectSig.class(tmp, handler, showLocals);
+    res.contTrace.last = res.contTrace;
+    res.contTrace.lastHandler = res.contTrace;
+    Runtime.curEffect = res;
+    return runtime.Unit
   }
   static topLevelEffect(debug) {
     let tr, v, tmp, tmp1;
@@ -1017,7 +1032,7 @@ let Runtime1;
     cur.contTrace.lastHandler.nextHandler = handlerFrame;
     cur.contTrace.lastHandler = handlerFrame;
     cur.contTrace.last = handlerFrame;
-    return Runtime.handleEffects(cur)
+    return Runtime.handleEffects_handleEffect_resume(0, cur, undefined)
   }
   static enterHandleBlock(handler, body) {
     let tmp, scrut;
@@ -1026,7 +1041,15 @@ let Runtime1;
     if (scrut === true) {
       return tmp
     }
-    return Runtime.handleBlockImpl(Runtime.curEffect, handler);
+    {
+      let cur, handlerFrame;
+      cur = Runtime.curEffect;
+      handlerFrame = new Runtime.HandlerContFrame.class(null, null, handler);
+      cur.contTrace.lastHandler.nextHandler = handlerFrame;
+      cur.contTrace.lastHandler = handlerFrame;
+      cur.contTrace.last = handlerFrame;
+      return Runtime.handleEffects_handleEffect_resume(0, cur, undefined);
+    }
   }
   static handleEffects(cur) {
     return Runtime.handleEffects_handleEffect_resume(0, cur, undefined)
@@ -1151,9 +1174,9 @@ let Runtime1;
       if (rhs instanceof Runtime.Int31.class) {
         return lhs + rhs
       }
-      return runtime.safeCall(Runtime.unreachable());
+      throw runtime.safeCall(globalThis.Error("unreachable"));
     }
-    return runtime.safeCall(Runtime.unreachable());
+    throw runtime.safeCall(globalThis.Error("unreachable"));
   }
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "Runtime"];
