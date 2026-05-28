@@ -31,8 +31,6 @@ fun showCtxPath(p) = if p is
 class Ctx(
   // ctx tracks shapes of variables
   val ctx: Map[String, ShapeSet], 
-  // valueNameCtx tracks the assigned name of the pointer in the previous module for the current runtime value 
-  val valueNameCtx: Map[Class, ConcreteClassSymbol | ModuleSymbol],
   // valDefnCtx tracks fields defined by ValDefn during shape prop of constructor
   val valDefnCtx: Map[String, ShapeSet]
   // allocs tracks the new variables allocated
@@ -45,11 +43,11 @@ class Ctx(
     if ctx.has(ps) then Some(ctx.get(ps)) else None
   fun getValDefn(name) =
     if valDefnCtx.has(name) then Some(valDefnCtx.get(name)) else None
-  fun clone = Ctx(new Map(ctx), valueNameCtx, new Map(valDefnCtx), allocs, thisShape)
+  fun clone = Ctx(new Map(ctx), new Map(valDefnCtx), allocs, thisShape)
   // For propagation of instantiation of derived class, 
   // we need to keep track of fields defined in parent class,
   // which is stored in valDefnCtx
-  fun clearCtx = Ctx(new Map(), valueNameCtx, valDefnCtx, allocs, thisShape)
+  fun clearCtx = Ctx(new Map(), valDefnCtx, allocs, thisShape)
   fun sub(other: Ctx) =
     let res = new Map()
     fun otherIsBot(ps) =
@@ -71,7 +69,7 @@ class Ctx(
     valDefnCtx.set(ps, ss)
     this
 module Ctx with
-  fun empty() = Ctx(new Map(), new Map(), new Map(), mut [], None)
+  fun empty() = Ctx(new Map(), new Map(), mut [], None)
 
 class FunEntry(
   val defn: FunDefn,
@@ -429,7 +427,7 @@ fun prop(ctx, b) = if b is
     Scoped(symbols, rest) then
       symbols.forEach(x => ctx.add(ValueRef(x), mkBot()))
       let newAllocs = mut []
-      let newCtx = Ctx(new Map(ctx.ctx), ctx.valueNameCtx, ctx.valDefnCtx, newAllocs, ctx.thisShape)
+      let newCtx = Ctx(new Map(ctx.ctx), ctx.valDefnCtx, newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
     Assign(x, Call(Select(p, Symbol(f)), args), restBlock) and p is // TODO Can we deduplicate this?
@@ -539,15 +537,6 @@ fun specializeName(cache, funName, isMethod, ps, shapes) =
   if mappedShapes.every(_.every(_.isDyn())) then funName
   else cache.freshName(funName)
 
-// abuse Printer for structural induction
-// to do this properly you would need only add the definitions as you go through the tree
-class ValueCollection(defn: Map[Class, Str]) extends Printer(None) with
-  fun showSymbol(s) =
-    if s is
-      ConcreteClassSymbol | ModuleSymbol then defn.set(getActualClass(s.value), s)
-      else ()
-    ""
-
 fun specialize(cache: FunCache, funName, dflt, shapes) =
   // FIXME
   // right now the function name depends on the parameter constraints
@@ -567,10 +556,8 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 
         let ctx = if isMethod then
           let clsSymb = cache.owner
-          Ctx(new Map(), new Map(), new Map(), mut [], Some(shapes.(0).(0)))
+          Ctx(new Map(), new Map(), mut [], Some(shapes.(0).(0)))
         else Ctx.empty()
-
-        // console.log("checking", ctx.valueNameCtx, Printer.default.showBlock(body))
 
         ps.forEach((p, i, _) => p.forEach((p2, j, _) =>
           let shape = if p2.constraint is
@@ -579,18 +566,6 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
             else paramShapes.(i).(j)
           ctx.add(ValueRef(p2.sym), shape)
         ))
-
-        // build map from all class/module symbols that are used within the body and the shape of the context
-        new ValueCollection(ctx.valueNameCtx).showBlock(body)
-        fun collectClasses(s) = if s is
-          Class(sym, params) then
-            ctx.valueNameCtx.set(getActualClass(sym.value), sym)
-            params.forEach(collectClasses)
-          Arr(shapes) then
-            shapes.forEach(collectClasses)
-          else ()
-        if ctx.thisShape is Some(ts) then ts.values().forEach(collectClasses) else ()
-        ctx.ctx.values().forEach(_.values().forEach(collectClasses))
         
         cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, body), mkDyn(), isPrivate))
 
@@ -598,7 +573,6 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         
         let actualRetShape = res.1
-        actualRetShape.values().forEach(collectClasses)
 
         let finalBody = if staticSet(actualRetShape) then
           let allocs = mut []
