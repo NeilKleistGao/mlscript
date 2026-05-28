@@ -678,7 +678,7 @@ extends Importer with ucs.SplitElaborator:
         ), Term.Assgn(lt, sym.ref())))
     case (hd @ Hndl(id: Ident, c, Block(sts_), S(bod))) => ctx.nest(OuterCtx.LambdaOrHandlerBlock).givenIn:
       
-      val sym = fieldOrVarSym(HandlerBind, id)
+      val sym = VarSymbol(id)
       log(s"Processing `handle` statement $id (${sym}) ${ctx.outer}")
       
       val derivedClsSym = ClassSymbol(Tree.DummyTypeDef(syntax.Cls), Tree.Ident(s"Handler$$${id.name}$$"))
@@ -1457,6 +1457,12 @@ extends Importer with ucs.SplitElaborator:
           case R(id) =>
             val sym = members.getOrElse(id.name, die)
             val owner = ctx.outer.inner
+            if (k is MutVal) && owner.isEmpty then
+              raise:
+                ErrorReport:
+                  msg"Mutable value definitions must have an owner" -> td.toLoc
+                  :: Nil
+              return go(sts, Nil, acc)
             if owner.isDefined && !identifierPattern.matches(id.name) then
               raise:
                 ErrorReport:

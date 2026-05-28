@@ -22,7 +22,7 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
     toRemoveSymbols = MutSet.empty[Symbol] :: toRemoveSymbols
     val res = b match
     case Scoped(syms, body) =>
-      val newSyms = MutSet.empty[Symbol]
+      val newSyms = MutSet.empty[ScopedSymbol]
       val oldSyms = MutSet.empty[Symbol]
       for s <- syms.toList.sortBy(_.uid) do
         assert(!mapping.isDefinedAt(s), s"already defined: $s")
@@ -42,9 +42,12 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
             newBms
           case varSym: VarSymbol => new VarSymbol(varSym.id)
           case _ => lastWords(s"unexpected symbol kind: $s")
-        mapping(s) = newS
+        val newScopedSym: ScopedSymbol = newS match
+          case s: ScopedSymbol => s
+          case s => lastWords(s"refreshed scoped symbol has unexpected kind: ${s.nme}")
+        mapping(s) = newScopedSym
         oldSyms.add(s)
-        newSyms.add(newS)
+        newSyms.add(newScopedSym)
       val r = Scoped(newSyms, applyBlock(body))
       for s <- oldSyms do mapping.remove(s)
       r
@@ -57,7 +60,13 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
     b match
     case Assign(lhs, rhs, rest) =>
       applyResult(rhs): newRhs =>
-        val newLhs = mapping.getOrElse(lhs, lhs)
+        val newLhs: AssignableSymbol = lhs match
+          case lhs: NoSymbol => lhs
+          case lhs: LocalVarSymbol =>
+            mapping.get(lhs) match
+            case Some(sym: LocalVarSymbol) => sym
+            case Some(sym) => lastWords(s"assignment local ${lhs.nme} mapped to non-variable ${sym.nme}")
+            case None => lhs
         val newRest = applyBlock(rest)
         if (newLhs is lhs) && (newRhs is rhs) && (newRest is rest) then b else Assign(newLhs, newRhs, newRest)
     case Label(label, loop, body, rest) =>
@@ -208,7 +217,7 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
   override def applyValue(v: Value)(k: Value => Block): Block = v match
     case Value.SimpleRef(l) =>
       mapping.get(l) match
-        case Some(newSym: (LocalVarSymbol | BuiltinSymbol)) =>
+        case Some(newSym: SimpleSymbol) =>
           k(newSym.asSimpleRef)
         case _ => super.applyValue(v)(k)
     case Value.MemberRef(bms, disamb) =>

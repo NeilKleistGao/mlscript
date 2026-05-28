@@ -348,7 +348,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       doc" # ${
           l match
           case sym: InnerSymbol => lastWords(s"Inner symbol should not be used as the target of an assignment: $sym")
-          case l => result(l.asPath.withLoc(N)) // TODO: improve location
+          case l: ValueSymbol => result(l.asPath.withLoc(N)) // TODO: improve location
         } = ${result(r)};${returningTerm(rst, endSemi)}"
     case assign @ AssignField(p, n, r, rst) =>
       val field = assign.symbol match
@@ -407,7 +407,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
               scope.reverseLookup(sym.nme) match
               // * Maybe the function's internal name was already bound in scope;
               // * in that case, we need to forward it to a different variable to avoid unintended capture.
-              case S(otherSym) if (otherSym isnt sym) && bod.freeVars.contains(otherSym) => scope.nest.givenIn:
+              case S(otherSym: FreeSymbol) if (otherSym isnt sym) && bod.freeVars.contains(otherSym) => scope.nest.givenIn:
                 val externalName = scope.allocateName(otherSym, prefix = "proxy$", shadow = true)
                 val (params, bodyDoc) = setupFunction(displayName, ps, result, isLambda = false)
                 doc"const $externalName = $symName; ${
@@ -471,7 +471,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
                     scope.lookup_!(owner, ts.toLoc)
                   else
                     scope.findThis_!(owner)
-                case N => lastWords(s"Expected TermSymbol $ts to have an owner") 
+                case N => lastWords(s"Expected TermSymbol $ts to have an owner")
               val accessors = mutPubFields.flatMap: (valSym, letSym) =>
                 doc" # ${mtdPrefix}get ${escapeField(valSym.name, "")
                   }() { return ${termSymOwnerQual(letSym) }${selectPrivateField(letSym, letSym.toLoc).get}; }"

@@ -4,7 +4,6 @@ import mlscript.utils.*, shorthands.*
 
 import codegen.*
 import codegen.js.JSBuilder
-import codegen.Local
 import codegen.wasm.*
 import document.*
 import semantics.*
@@ -32,7 +31,7 @@ abstract class WasmDiffMaker extends InvalMLDiffMaker:
     utils.Scope.empty(utils.Scope.Cfg.default)
   private val wasmReplImportsNme = s"${wasmSuppNme}ReplImports"
   private val wasmReplImportsRef = s"globalThis.$wasmReplImportsNme"
-  private val sessionImportsBySymbol = mutable.Map.empty[Local, mutable.LinkedHashMap[Str, SessionBinding]]
+  private val sessionImportsBySymbol = mutable.Map.empty[FreeSymbol, mutable.LinkedHashMap[Str, SessionBinding]]
   private var wasmSessionInitialized = false
   private var wasmSessionMemPages = 0
 
@@ -60,7 +59,7 @@ abstract class WasmDiffMaker extends InvalMLDiffMaker:
     super.processIRBlock(pgrm, definedValues)
 
     val outerRaise: Raise = summon
-    def computeDefinedValues(includeNonTerms: Bool) =
+    def computeDefinedValues(includeNonTerms: Bool): List[(String, TermSymbol | BlockMemberSymbol | VarSymbol, None.type)] =
       import Elaborator.Ctx.*
       curCtx.env.iterator.flatMap:
         case (nme, e @ (_: RefElem | SelElem(base = RefElem(_: InnerSymbol)))) =>
@@ -72,7 +71,8 @@ abstract class WasmDiffMaker extends InvalMLDiffMaker:
             case _ => N
         case _ => N
       .toList
-    val symbolsToPreserve = computeDefinedValues(includeNonTerms = true).iterator.map(_._2).toSet
+    val symbolsToPreserve: Set[ValueSymbol] =
+      computeDefinedValues(includeNonTerms = true).iterator.map(_._2).toSet
 
     if wasm.isSet then
 

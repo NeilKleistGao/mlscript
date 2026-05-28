@@ -318,7 +318,8 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State, C
       (split: Split, cont: Result => Block)
       (using form: IfLikeForm)
       (using LoweringCtx)
-      : Block = split match
+      : Block =
+    split match
     case Split.Let(sym, trm, tl) =>
       LoweringCtx.loweringCtx.collectScopedSym(sym)
       term_nonTail(trm): r =>
@@ -404,7 +405,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State, C
         val exitCont: Result => Block = r => Assign(tmp, r, Break(exitLabel))
         val bodyBlock = lowerSplit(sym.body, exitCont)
         val tailBlock = lowerSplit(tail, exitCont)
-        Label(exitLabel, false, Label(joinLabel, false, tailBlock, bodyBlock), cont(Value.Ref(tmp)))
+        Label(exitLabel, false, Label(joinLabel, false, tailBlock, bodyBlock), cont(Value.SimpleRef(tmp)))
     case Split.UseSplit(sym) =>
       sym.label match
         case S(label) => Break(label)

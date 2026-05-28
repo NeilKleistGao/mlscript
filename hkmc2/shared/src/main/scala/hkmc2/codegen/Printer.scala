@@ -23,7 +23,7 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
     false
     // true
   
-  def print(l: Local)(using Scope): Document =
+  def print(l: Symbol)(using Scope): Document =
     // * Symbols that are not local symbols in scope should be printed using their dbgName
     // *  – these will appear like `x¹²` and will be globally unique.
     scope.lookup(l) match
@@ -204,7 +204,7 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
       } }"
     case x: Path => print(x)
   
-  def print(imports: Ls[Local -> Str])(using Scope): Document =
+  def print(imports: Ls[ImportSymbol -> Str])(using Scope): Document =
     imports.map: (local, path) =>
         val docLocal = scope.allocateName(local)
         doc"import ${docLocal}; # "

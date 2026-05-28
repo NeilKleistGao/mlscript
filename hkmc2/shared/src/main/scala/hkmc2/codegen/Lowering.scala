@@ -20,7 +20,7 @@ import semantics.Term.{Throw => _, Label => _, Break => _, Continue => _, *}
 import semantics.Elaborator.{State, Ctx, ctx}
 
 import syntax.{Literal, Tree, SpreadKind}
-import hkmc2.syntax.{Fun, Keyword}
+import hkmc2.syntax.{Fun, Keyword, LetBind, MutVal}
 
 
 abstract class TailOp extends (Result => Block)
@@ -36,20 +36,20 @@ object Thrw extends TailOp:
 
 
 class LoweringCtx(
-  initMap: Map[Local, Value], // No longer in meaningful use and could be removed if we don't find a use for it
+  initMap: Map[ValueSymbol, Value], // No longer in meaningful use and could be removed if we don't find a use for it
   val mayRet: Bool, // For rewriting while loop into tail recursive function, represent whether an explicit return is legal in the current block
-  private val definedSymsDuringLowering: collection.mutable.Set[Symbol] // used to create Scoped blocks
+  private val definedSymsDuringLowering: collection.mutable.Set[ScopedSymbol] // used to create Scoped blocks
 ):
   val map = initMap
-  def collectScopedSym(s: Symbol) = definedSymsDuringLowering.add(s)
-  def collectScopedSyms(s: Symbol*) = definedSymsDuringLowering.addAll(s)
+  def collectScopedSym(s: ScopedSymbol) = definedSymsDuringLowering.add(s)
+  def collectScopedSyms(s: ScopedSymbol*) = definedSymsDuringLowering.addAll(s)
   def registerTempSymbol(trm: Option[Term], dbgNme: Str = "tmp")(using State) =
     val tmp = new TempSymbol(trm, dbgNme)
     definedSymsDuringLowering.add(tmp)
     tmp
-  def getCollectedSym: collection.Set[Symbol] = definedSymsDuringLowering
+  def getCollectedSym: collection.Set[ScopedSymbol] = definedSymsDuringLowering
   /*
-  def +(kv: (Local, Value)): Subst =
+  def +(kv: (Symbol, Value)): Subst =
     kv match
     case (ns: NamedSymbol, Value.SimpleRef(ts: TempSymbol)) =>
       ts.nameHints += ns.name
@@ -141,6 +141,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   def unit: Path =
     Select(State.runtimeSymbol.asSimpleRef, Tree.Ident("Unit"))(S(State.unitSymbol))
   
+  private def collectScopedLocal(sym: LocalSymbol)(using LoweringCtx): Unit = sym match
+    case sym: ScopedSymbol => loweringCtx.collectScopedSym(sym)
+    case sym: TermSymbol if sym.owner.isDefined => ()
+    case sym => lastWords(s"tried to collect non-scoped local symbol ${sym.showDbg}")
+
   
   // type Rcd = (mut: Bool, args: List[RcdArg]) // * Better, but Scala's patmat exhaustiveness chokes on it
   type Rcd = (Bool, List[RcdArg])
@@ -211,11 +216,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
               blockImpl(stats, L((mut, RcdArg(S(l), r) :: flds)))
       case (decl @ LetDecl(sym, annotations)) :: stats =>
         reportAnnotations(decl, annotations)
-        if sym.asTrm.forall(_.owner.isEmpty) then loweringCtx.collectScopedSym(sym)
+        if sym.asTrm.forall(_.owner.isEmpty) then collectScopedLocal(sym)
         blockImpl(stats, res)
       case DefineVar(sym, rhs) :: stats =>
         term(rhs): r =>
-          assignSymbol(sym, r, blockImpl(stats, res))
+          defineSymbol(sym, r, blockImpl(stats, res))
       case (_: SetConfig) :: stats =>
         // Config changes are handled at the program level; skip during block lowering
         blockImpl(stats, res)
@@ -527,21 +532,69 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       case owner if sym.isPrivate =>
         Select(owner.asThis, sym.id)(S(sym))
 
-  private def assignSymbol(sym: Local, rhs: Result, rest: Block)(using LoweringCtx): Block =
+  private def assignSymbol(sym: Symbol, rhs: Result, rest: Block)(using LoweringCtx): Block =
+    sym match
+    case sym: TermSymbol if (sym.k is MutVal) || (sym.k is LetBind) =>
+      sym.owner match
+      case S(owner) => AssignField(owner.asThis, sym.id, rhs, rest)(S(sym))
+      case N => fail:
+        ErrorReport(
+          msg"Mutable value '${sym.nme}' is missing an owner" -> sym.toLoc :: Nil,
+          source = Diagnostic.Source.Compilation)
+    case sym: TermSymbol => fail:
+      ErrorReport(
+        msg"Cannot assign to ${sym.k.desc} '${sym.nme}'" -> sym.toLoc :: Nil,
+        source = Diagnostic.Source.Compilation)
+    case sym: LocalVarSymbol =>
+      Assign(sym, rhs, rest)
+    case sym: BlockMemberSymbol =>
+      sym.tsym match
+      case S(tsym) if (tsym.k is MutVal) || (tsym.k is LetBind) =>
+        tsym.owner match
+        case S(owner) => AssignField(owner.asThis, tsym.id, rhs, rest)(S(tsym))
+        case N => fail:
+          ErrorReport(
+            msg"Mutable value '${sym.nme}' is missing an owner" -> sym.toLoc :: Nil,
+            source = Diagnostic.Source.Compilation)
+      case _ =>
+        val desc = sym.tsym.fold(sym.describe)(_.k.desc)
+        fail:
+          ErrorReport(
+            msg"Cannot assign to $desc '${sym.nme}'" -> sym.toLoc :: Nil,
+            source = Diagnostic.Source.Compilation)
+    case sym: NoSymbol =>
+      Assign(sym, rhs, rest)
+    case sym =>
+      lastWords(s"tried to assign to non-variable symbol ${sym.showDbg}")
+  
+  private def defineSymbol(sym: Symbol, rhs: Result, rest: Block)(using LoweringCtx): Block =
     sym match
     case sym: TermSymbol =>
-      privateFieldSelfSelection(sym) match
-      case S(sel) => AssignField(sel.qual, sel.name, rhs, rest)(S(sym))
-      case N => Assign(sym, rhs, rest)
-    case _ =>
+      sym.owner match
+      case S(owner) => AssignField(owner.asThis, sym.id, rhs, rest)(S(sym))
+      case N => fail:
+        ErrorReport(
+          msg"Term definition '${sym.nme}' is missing an owner" -> sym.toLoc :: Nil,
+          source = Diagnostic.Source.Compilation)
+    case sym: LocalVarSymbol =>
       Assign(sym, rhs, rest)
-
+    case sym: NoSymbol =>
+      Assign(sym, rhs, rest)
+    case sym =>
+      lastWords(s"tried to define non-variable symbol ${sym.showDbg}")
+  
   def ref(ref: st.Ref, annots: List[Annot], disamb: Opt[DefinitionSymbol[?]], inStmtPos: Bool)(k: Result => Block)(using LoweringCtx): Block =
     def warnStmt = if inStmtPos then warnPureExprInStmtPos(ref.toLoc, S(ref))
     
     val sym = ref.sym
     sym match
-      case ctx.builtins.source.bms | ctx.builtins.js.bms | ctx.builtins.wasm.bms | ctx.builtins.debug.bms | ctx.builtins.annotations.bms =>
+      case
+          ctx.builtins.source.bms
+        | ctx.builtins.js.bms
+        | ctx.builtins.wasm.bms
+        | ctx.builtins.debug.bms
+        | ctx.builtins.annotations.bms
+      =>
         return fail:
           ErrorReport(
             msg"Module '${sym.nme}' is virtual (i.e., \"compiler fiction\"); cannot be used directly" -> ref.toLoc ::
@@ -597,13 +650,18 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         // * works but does not instrument the selection to check for `undefined`!
         // return k(Value.Ref(State.globalThisSymbol).sel(ref.tree, bs).withLocOf(ref))
       case S(td: TermDefinition) if td.k is syntax.Fun =>
-        // * Local functions with no parameter lists are getters
+        // * Functions defined in local scopes with no parameter lists are getters
         // * and are lowered to functions with an empty parameter list
         // * (non-local functions are compiled into getter methods selected on some prefix)
         if td.params.isEmpty then
           return k(Call(
               bs.asMemberRef(disamb.get).withLocOf(ref), Nil ne_:: Nil
             )(isMlsFun = true, true, annots.contains(Annot.TailCall)))
+      case S(td: TermDefinition) if (td.k is syntax.MutVal) || (td.k is syntax.LetBind) =>
+        td.tsym.owner match
+        case S(owner) =>
+          return k(Select(owner.asThis, td.tsym.id)(S(td.tsym)).withLocOf(ref))
+        case N => ()
       case S(_) => ()
       case N => () // TODO panic here; can only lower refs to elab'd symbols
     case sym: TermSymbol =>
@@ -615,7 +673,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     case _ => ()
     warnStmt
     (sym, disamb) match
-      case (sym: (LocalVarSymbol | BuiltinSymbol), _) =>
+      case (sym: SimpleSymbol, _) =>
         k(loweringCtx(sym.asSimpleRef.withLocOf(ref)))
       case (sym: BlockMemberSymbol, _) =>
         k(loweringCtx(sym.asMemberRef(disamb.orElse(sym.asPrincipal).get).withLocOf(ref)))
@@ -861,7 +919,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
             val (paramLists, bodyBlock) = setupFunctionDef(td.params, bod, S(td.sym.nme))      
             S(Handler(td.sym, resumeSym, paramLists, bodyBlock))
       }.collect{ case Some(v) => v }
-      loweringCtx.collectScopedSym(lhs)
+      collectScopedLocal(lhs)
       val resSym = loweringCtx.registerTempSymbol(S(t))
       subTerm(rhs): par =>
         subTerms(as): asr =>
@@ -1017,7 +1075,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   def setupQuotedKeyword(kw: Str): Path =
     State.termSymbol.asSimpleRef.selSN("Keyword").selSN(kw)
 
-  def setupSymbol(symbol: Local)(k: Result => Block)(using LoweringCtx): Block =
+  def setupSymbol(symbol: ValueSymbol)(k: Result => Block)(using LoweringCtx): Block =
     k(Instantiate(mut = false, State.termSymbol.asSimpleRef.selSN("Symbol"),
       (Value.Lit(Tree.StrLit(symbol.nme)).asArg :: Nil) :: Nil))
 
@@ -1031,36 +1089,40 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           source = Diagnostic.Source.Compilation
         )
   
-  def quoteSplit(split: Split)(k: Result => Block)(using LoweringCtx): Block = split match
+  def quoteSplit(split: Split, splitTmps: Map[SplitSymbol, TempSymbol])(k: Result => Block)(using LoweringCtx): Block = split match
     case Split.Cons(Branch(scrutinee, pattern, continuation), tail) => quote(scrutinee): r1 =>
       val l1, l2, l3, l4, l5 = loweringCtx.registerTempSymbol(N)
       blockBuilder.assign(l1, r1)
         .chain(b => quotePattern(pattern)(r2 => Assign(l2, r2, b)))
-        .chain(b => quoteSplit(continuation)(r3 => Assign(l3, r3, b)))
+        .chain(b => quoteSplit(continuation, splitTmps)(r3 => Assign(l3, r3, b)))
         .chain(b => setupTerm("Branch", (l1 :: l2 :: l3 :: Nil).map(s => s.asSimpleRef))(r4 => Assign(l4, r4, b)))
-        .chain(b => quoteSplit(tail)(r5 => Assign(l5, r5, b)))
+        .chain(b => quoteSplit(tail, splitTmps)(r5 => Assign(l5, r5, b)))
         .rest(setupTerm("Cons", (l4 :: l5 :: Nil).map(s => s.asSimpleRef))(k))
-    case Split.Let(sym, term, tail) => setupSymbol(sym): r1 =>
+    case Split.Let(sym: LocalVarSymbol, term, tail) => setupSymbol(sym): r1 =>
       loweringCtx.collectScopedSym(sym)
       val l1, l2, l3 = loweringCtx.registerTempSymbol(N)
       blockBuilder.assign(l1, r1)
         .chain(b => setupTerm("Ref", l1.asSimpleRef :: Nil)(r => Assign(sym, r, b)))
         .chain(b => quote(term)(r2 => Assign(l2, r2, b)))
-        .chain(b => quoteSplit(tail)(r3 => Assign(l3, r3, b)))
+        .chain(b => quoteSplit(tail, splitTmps)(r3 => Assign(l3, r3, b)))
         .rest(setupTerm("Let", (l1 :: l2 :: l3 :: Nil).map(s => s.asSimpleRef))(k))
+    case Split.Let(sym, _, _) =>
+      lastWords(s"tried to quote split let with non-variable symbol ${sym.nme}")
     case Split.Else(default) => quote(default): r =>
       val l = loweringCtx.registerTempSymbol(N)
       Assign(l, r, setupTerm("Else", l.asSimpleRef :: Nil)(k))
     case Split.End => setupTerm("End", Nil)(k)
-    case Split.LetSplit(sym, tail) => setupSymbol(sym): r1 =>
-      loweringCtx.collectScopedSym(sym)
-      val l1, l2, l3 = loweringCtx.registerTempSymbol(N)
-      blockBuilder.assign(l1, r1)
-        .chain(b => Assign(sym, Value.Ref(l1), b))
-        .chain(b => quoteSplit(sym.body)(r2 => Assign(l2, r2, b)))
-        .chain(b => quoteSplit(tail)(r3 => Assign(l3, r3, b)))
-        .rest(setupTerm("LetSplit", (l1 :: l2 :: l3 :: Nil).map(s => Value.Ref(s)))(k))
-    case Split.UseSplit(sym) => setupTerm("UseSplit", Value.Ref(sym, N) :: Nil)(k)
+    case Split.LetSplit(sym, tail) =>
+      val tmp =  loweringCtx.registerTempSymbol(N, sym.nme + "_splitTmp")
+      val splitTmps2 = splitTmps + (sym -> tmp)
+      setupSymbol(tmp): r1 =>
+        val l1, l2, l3 = loweringCtx.registerTempSymbol(N)
+        blockBuilder.assign(l1, r1)
+          .chain(b => Assign(tmp, Value.Ref(l1), b))
+          .chain(b => quoteSplit(sym.body, splitTmps2)(r2 => Assign(l2, r2, b)))
+          .chain(b => quoteSplit(tail, splitTmps2)(r3 => Assign(l3, r3, b)))
+          .rest(setupTerm("LetSplit", (l1 :: l2 :: l3 :: Nil).map(s => Value.Ref(s)))(k))
+    case Split.UseSplit(sym) => setupTerm("UseSplit", Value.SimpleRef(splitTmps(sym)) :: Nil)(k)
 
   lazy val setupFilename: Path =
     val state = summon[State]
@@ -1075,10 +1137,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     case Resolved(Ref(sym), disamb) =>
       sym match
         case sym: BlockMemberSymbol => k(sym.asMemberRef(disamb))
-        case sym: (LocalVarSymbol | BuiltinSymbol) => k(sym.asSimpleRef)
+        case sym: SimpleSymbol => k(sym.asSimpleRef)
         case sym => lastWords(s"Unexpected symbol kind ${sym.getClass.getSimpleName}: $sym")
-    case Ref(sym) => k(sym.asPath)
-    case SynthSel(Ref(sym: ModuleOrObjectSymbol), name) => // Local cross-stage references
+    case Ref(sym: ValueSymbol) => k(sym.asPath)
+    case Ref(sym) => lastWords(s"Unexpected symbol kind ${sym.getClass.getSimpleName}: $sym")
+    case SynthSel(Ref(sym: ModuleOrObjectSymbol), name) => // Module/object cross-stage references
       setupSymbol(sym): r1 =>
         val l1, l2 = loweringCtx.registerTempSymbol(N)
         Assign(l1, r1, setupTerm("CSRef", l1.asSimpleRef :: setupFilename :: Value.Lit(syntax.Tree.UnitLit(false)) :: Nil)(r2 =>
@@ -1107,7 +1170,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
             source = Diagnostic.Source.Compilation
           )
     case Lam(params, body) =>
-      def rec(ps: Ls[LocalSymbol & NamedSymbol], ds: Ls[Path])(k: Result => Block)(using LoweringCtx): Block = ps match
+      def rec(ps: Ls[VarSymbol], ds: Ls[Path])(k: Result => Block)(using LoweringCtx): Block = ps match
         case Nil => quote(body): r =>
           val l = loweringCtx.registerTempSymbol(N)
           val arr = loweringCtx.registerTempSymbol(N, "arr")
@@ -1145,9 +1208,9 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
               source = Diagnostic.Source.Compilation
             )
       rec(rhs, Nil)(k)
-    case Blk(LetDecl(sym, _) :: DefineVar(sym2, rhs) :: Nil, res) => // Let bindings
+    case Blk(LetDecl(sym: LocalVarSymbol, _) :: DefineVar(sym2, rhs) :: Nil, res) => // Let bindings
       require(sym2 is sym)
-      loweringCtx.collectScopedSyms(sym)
+      collectScopedLocal(sym)
       setupSymbol(sym){r1 =>
         val l1, l2, l3, l4, l5 = loweringCtx.registerTempSymbol(N)
         val arrSym = loweringCtx.registerTempSymbol(N, "arr")
@@ -1160,7 +1223,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           .assign(arrSym, Tuple(mut = false, (l4 :: l5 :: Nil).map(s => s.asSimpleRef.asArg)))
           .rest(setupTerm("Blk", arrSym.asSimpleRef :: l3.asSimpleRef :: Nil)(k))
       }
-    case IfLike(_, IfLikeForm.ReturningIf, split) => quoteSplit(split.getExpandedSplit): r =>
+    case IfLike(_, IfLikeForm.ReturningIf, split) => quoteSplit(split.getExpandedSplit, Map.empty): r =>
       val l = loweringCtx.registerTempSymbol(N)
       Assign(l, r, setupTerm("IfLike", setupQuotedKeyword("If") :: l.asSimpleRef :: Nil)(k))
     case Unquoted(body) => term(body)(k)
@@ -1432,7 +1495,7 @@ trait LoweringTraceLog(instrument: Bool)(using TL, Raise, State)
       path.foldLeft[Path](State.globalThisSymbol.asThis):
         (qual, name) => Select(qual, Tree.Ident(name))(N)
     
-  private def assignStmts(stmts: (Local, Result)*)(rest: Block) =
+  private def assignStmts(stmts: (AssignableSymbol, Result)*)(rest: Block) =
     stmts.foldRight(rest):
       case ((sym, res), acc) => Assign(sym, res, acc)
   
@@ -1549,4 +1612,3 @@ object MergeMatchArmTransformer extends BlockTransformer(SymbolSubst.Id):
               dfltRewritten.fold(restRewritten)(Begin(_, restRewritten)) |> some, rest)
       case _ => m
     case b => b
-

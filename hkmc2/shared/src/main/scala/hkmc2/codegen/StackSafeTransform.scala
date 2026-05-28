@@ -24,26 +24,27 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, stackSafetyMap: S
 
   // Increases the stack depth, assigns the call to a value, then decreases the stack depth
   // then binds that value to a desired block
-  // TODO: sym should be LocalVarSymbol once we tighten Assign
-  def extractRes(res: Result, isTailCall: Bool, f: Result => Block, sym: Symbol, curDepth: => LocalVarSymbol): Block =
+  def extractRes(res: Result, isTailCall: Bool, f: Result => Block, sym: AssignableSymbol, curDepth: => LocalVarSymbol): Block =
     if isTailCall then Return(res)
     else
       blockBuilder
         .assign(sym, res)
         .assignFieldN(runtimePath, STACK_DEPTH_IDENT, curDepth.asSimpleRef)
-        .rest(f(sym.asPath))
+        .rest:
+          sym match
+          case sym: LocalVarSymbol => f(sym.asSimpleRef)
+          case _: NoSymbol => f(Value.Lit(Tree.UnitLit(false)))
   
-  def wrapStackSafe(body: Block, resSym: Local, rest: Block) =
+  def wrapStackSafe(body: Block, resSym: LocalVarSymbol, rest: Block) =
     val bodSym = BlockMemberSymbol("‹stack safe body›", Nil, false)
     val bodFun = FunDefn.withFreshSymbol(N, bodSym, ParamList(ParamListFlags.empty, Nil, N) :: Nil, body)(configOverride = N, annotations = Nil)
     Scoped(Set.single(bodSym),
       Define(bodFun, Assign(resSym, Call(runStackSafePath, (intLit(depthLimit).asArg :: bodSym.asMemberRef(bodSym.asPrincipal.get).asArg :: Nil) ne_:: Nil)(true, true, false), rest))
     )
 
-  // TODO: sym should be LocalVarSymbol once we tighten Assign
-  def extractResTopLevel(res: Result, isTailCall: Bool, f: Result => Block, sym: Symbol, curDepth: => LocalVarSymbol) =
+  def extractResTopLevel(res: Result, isTailCall: Bool, f: Result => Block, sym: LocalVarSymbol, curDepth: => LocalVarSymbol) =
     val resSym = sym
-    wrapStackSafe(Ret(res), resSym, f(resSym.asPath))
+    wrapStackSafe(Ret(res), resSym, f(resSym.asSimpleRef))
 
   // Rewrites anything that can contain a Call to increase the stack depth
   def transform(b: Block, curDepth: => LocalVarSymbol, isTopLevel: Bool = false): Block =
@@ -73,8 +74,8 @@ class StackSafeTransform(depthLimit: Int, paths: HandlerPaths, stackSafetyMap: S
           if usesStack(r) then
             super.applyResult(r): r =>
               lhs match
-                case _: NoSymbol => blockBuilder.assign(lhs, r).rest(applyBlock(rest))
-                case _ => extract(r, false, _ => applyBlock(rest), lhs, curDepth)
+              case _: NoSymbol => blockBuilder.assign(lhs, r).rest(applyBlock(rest))
+              case lhs: LocalVarSymbol => extract(r, false, _ => applyBlock(rest), lhs, curDepth)
           else
             super.applyBlock(b)
         
