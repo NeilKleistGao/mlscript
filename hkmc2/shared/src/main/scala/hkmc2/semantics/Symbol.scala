@@ -311,6 +311,7 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
   
 end BlockMemberSymbol
 
+
 /** Symbols that `Scoped` introduces as block-local bindings.
   *
   * This deliberately excludes source/private fields (`TermSymbol`s with owners):
@@ -325,14 +326,6 @@ type ScopedSymbol = BlockLocalSymbol | BlockMemberSymbol
   * such as prelude/runtime imports may bind temporary term values directly.
   */
 type ImportSymbol = TempSymbol | MemberSymbol
-
-/** Symbols that can appear as a direct local-like `LocalPath.Sym` in the lifter.
-  *
-  * More structured references, such as block members, `this`, and fields, have
-  * their own `LocalPath` cases so lifting cannot accidentally treat them as
-  * assignable block-local variables.
-  */
-type LocalPathSymbol = BlockLocalSymbol | BuiltinSymbol | NoSymbol
 
 
 sealed abstract class MemberSymbol(using State) extends Symbol:

@@ -19,6 +19,14 @@ import scala.collection.mutable.ListBuffer
 
 object Lifter:
   
+  /** Symbols that can appear as a direct local-like `LocalPath.Sym` in the lifter.
+    *
+    * More structured references, such as block members, `this`, and fields, have
+    * their own `LocalPath` cases so lifting cannot accidentally treat them as
+    * assignable block-local variables.
+    */
+  type LocalPathSymbol = BlockLocalSymbol | BuiltinSymbol | NoSymbol
+  
   /**
     * Describes the free variables of a function that have been accessed by its nested definitions.
     * @param vars The free variables that are accessed by nested classes/functions.
@@ -120,12 +128,13 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     def asArg(using ctx: LifterCtxNew) = read.asArg
     
     def assign(value: Result, rest: Block)(using ctx: LifterCtxNew): Block = this match
-      case Sym(l: BlockLocalSymbol) => Assign(l, value, rest)
-      case Sym(l: NoSymbol) => Assign(l, value, rest)
+      case Sym(l: AssignableSymbol) => Assign(l, value, rest)
       case Sym(l) => lastWords(s"Tried to assign to non-variable local ${l.nme}")
       case ThisPath(sym) => lastWords(s"Tried to assign to this-path ${sym.nme}")
       case BmsRef(l, d) => lastWords("Tried to assign to a BlockMemberSymbol")
       case Field(path, field) => AssignField(path, field.id, value, rest)(S(field))
+      
+  end LocalPath
   object LocalPath:
     /** Use when the lifter deliberately stores a captured value, passed local,
       * or neighboring lifted object in a private field of the class it is
@@ -139,7 +148,8 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       field.owner match
       case S(owner) => Field(owner.asThis, field)
       case N => lastWords(s"tried to build a private field path for ownerless symbol ${field.nme}")
-
+  end LocalPath
+  
   enum DefnRef:
     case Sym(l: BlockLocalSymbol)
     case PathRef(path: Path)
@@ -705,7 +715,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       */
     protected final def pathsFromThisObj: Map[Local, LocalPath] =
       // Remove child BlockMemberSymbols; we will use their definition symbols instead
-        
+      
       // Locals introduced by this object
       val fromThisObj = node.localsWithoutBms
         .map: s =>
