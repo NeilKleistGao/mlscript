@@ -31,7 +31,7 @@ union(mkLit(1), mkLit(2), mkLit(3))
 //│ = {Lit(1),Lit(2),Lit(3)}
 
 mkArr([x, y])
-//│ = {Arr([Lit(1), Arr([Lit(1)])]),Arr([Lit(1), Arr([Lit(2)])]),Arr([Lit(2), Arr([Lit(1)])]),Arr([Lit(2), Arr([Lit(2)])])}
+//│ = {Arr([{Lit(1),Lit(2)}, {Arr([Lit(1)]),Arr([Lit(2)])}])}
 
 class C(val a)
 val clsSym = ConcreteClassSymbol("C", C, Some([Param(None, Symbol("a"))]), [], false)
@@ -47,12 +47,12 @@ val clsSym = ConcreteClassSymbol("C", C, Some([Param(None, Symbol("a"))]), [], f
 let x = liftMany([Class(clsSym, [Lit(42)]), Arr([Lit(1), Lit("a")])])
 let y = liftMany([Lit(1), Lit("a")])
 selSet(x, y)
-//│ ═══[RUNTIME ERROR] Error: Array out of bound
+//│ ═══[RUNTIME ERROR] TypeError: params[n1].values is not a function
 //│ x = {Arr([Lit(1), Lit("a")]),Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [Lit(42)])}
 //│ y = {Lit("a"),Lit(1)}
 
 mkClass(clsSym, [mkLit(1)])
-//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [Lit(1)])}
+//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [{Lit(1)}])}
 
 filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)])]), Tup(3))
 //│ = {Arr([Lit(1), Lit(2), Lit(3)])}

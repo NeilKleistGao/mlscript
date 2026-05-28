@@ -34,21 +34,27 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 module ShapeSet with
   fun empty = ShapeSet(new Map)
 
-fun lift(s: Shape) = ShapeSet(new Map([[s.hash(), s]]))
+fun makeShapeSet(entries) =
+  let shapeMap = new Map(entries)
+  let dyn = Dyn()
+  if shapeMap.has(dyn.hash()) then ShapeSet(new Map([[dyn.hash(), dyn]]))
+  else ShapeSet(shapeMap)
+
+fun lift(s: Shape) = makeShapeSet([[s.hash(), s]])
 
 fun liftMany(arr: Array[Shape]) = 
-  ShapeSet(new Map(arr.map(s => [s.hash(), s])))
+  makeShapeSet(arr.map(s => [s.hash(), s]))
 
 fun union2(s1: ShapeSet, s2: ShapeSet) = 
   if s1.isDyn() then s1
   else if s2.isDyn() then s2
-  else ShapeSet(new Map([...s1.shapeset, ...s2.shapeset]))
+  else makeShapeSet([...s1.shapeset, ...s2.shapeset])
 
 fun union(...s) =
   if s.length is 0 then ShapeSet.empty
   else s.reduce((acc, next) => union2(acc, next))
 
-fun flat(arr: Array[ShapeSet]) = ShapeSet(new Map(arr.map(_.shapeset.entries().toArray()).flat()))
+fun flat(arr: Array[ShapeSet]) = makeShapeSet(arr.map(_.shapeset.entries().toArray()).flat())
 
 fun prod(xs) = xs.reduce((a, b) => a.flatMap(d => b.map(e => [...d, e])), [[]])
 
@@ -61,18 +67,10 @@ fun mkDyn() = lift(Dyn())
 fun mkLit(l) = lift(Lit(l))
 
 fun mkArr(shapes: Array[ShapeSet]) = 
-  shapes
-    .map(_.shapeset.values().toArray())
-    |> prod
-    .map(x => Arr(x))
-    |> liftMany
+  lift(Arr(shapes))
 
 fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) = 
-  params
-    .map(_.shapeset.values().toArray())
-    |> prod
-    .map(Class(sym, _))
-    |> liftMany
+  lift(Class(sym, params))
 
 fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], psOpt: Option[Array[Array[Param]]]) =
   if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams, redir) then
@@ -87,11 +85,7 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
     )
     let params = entries.map(_.1)
     let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams, redir)
-    params 
-      .map(_.shapeset.values().toArray())
-      |> prod
-      .map(Class(newSym, _))
-      |> liftMany
+    lift(Class(newSym, params))
 
 fun filterSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
 
@@ -170,8 +164,8 @@ fun valOf(s : Shape) =
   if s is
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
-    Arr(shapes) then shapes.map((x, _, _) => valOf(x))
-    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOf))
+    Arr(shapes) then shapes.map((x, _, _) => valOfSet(x))
+    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOfSet))
     else throw Error("Unknown shape: " + s)
 
 fun valOfSet(s : ShapeSet) = 
@@ -189,7 +183,7 @@ private fun shape2path(s: Shape, allocs) =
   if s is
     Lit(l) then [Block.End(), Block.ValueLit(l)]
     Arr(v) then
-      let mapped = v.map(shape2path(_, allocs))
+      let mapped = v.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)
       blocks.reverse()
       let paths = mapped.map(_.1) 
@@ -199,7 +193,7 @@ private fun shape2path(s: Shape, allocs) =
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
       [fullBlock, Block.ValueRef(tupSym)]
     Class(sym, fields) then
-      let mapped = fields.map(shape2path(_, allocs))
+      let mapped = fields.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)
       blocks.reverse()
       let paths = mapped.map(_.1) 

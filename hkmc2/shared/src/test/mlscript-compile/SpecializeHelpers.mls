@@ -500,10 +500,10 @@ fun buildShapeName(s: Shape): Str = if s is
   Dyn then "Dyn"
   Lit(lit) and lit is Str then "Str" + lit
   Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
-  Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
+  Arr(shapes) then "Arr_" + shapes.map(buildShapeSetName).join("_") + "_end"
   Class(sym, params) and params.length is
     0 then sym.name
-    else sym.name + "_" + params.map(buildShapeName).join("_")
+    else sym.name + "_" + params.map(buildShapeSetName).join("_")
   else throw Error("unknown shape when building shape name" + s.toString())
 
 fun buildShapeSetName(ss: ShapeSet): Str =
@@ -579,9 +579,9 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         fun collectClasses(s) = if s is
           Class(sym, params) then
             ctx.valueNameCtx.set(getActualClass(sym.value), sym)
-            params.forEach(collectClasses)
+            params.forEach(_.values().forEach(collectClasses))
           Arr(shapes) then
-            shapes.forEach(collectClasses)
+            shapes.forEach(_.values().forEach(collectClasses))
           else ()
         if ctx.thisShape is Some(ts) then ts.values().forEach(collectClasses) else ()
         ctx.ctx.values().forEach(_.values().forEach(collectClasses))
