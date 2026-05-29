@@ -90,18 +90,14 @@ module StagedQuery with
           else
             tmp4 = res
             filterImpl(tmp3, pred, tmp4)
-fun test_GreaterThan_sp_0(self, obj) = obj.(self.field) > 95
-fun test_GreaterThan_sp_1(self, obj) = obj.(self.field) > 95
 fun test_GreaterEqThan_sp_0(self, obj) = obj.(self.field) >= self.v
 fun test_GreaterEqThan_sp_1(self, obj) = obj.(self.field) >= self.v
-fun test_GreaterEqThan_sp_2(self, obj) = obj.(self.field) >= 90
-fun test_GreaterEqThan_sp_3(self, obj) = obj.(self.field) >= 90
 fun test_And_sp_0(self, obj) =
   let {scrut, scrut1}
   scrut = test_And_sp_1(self.lhs, obj)
   if scrut is
     true then
-      scrut1 = test_And_sp_2(self.rhs, obj)
+      scrut1 = self.rhs.test(obj)
       if scrut1 is
         true then true
         else false
@@ -112,24 +108,6 @@ fun test_And_sp_1(self, obj) =
   if scrut is
     true then
       scrut1 = test_GreaterEqThan_sp_1(self.rhs, obj)
-      if scrut1 is
-        true then true
-        else false
-    else false
-fun test_And_sp_2(self, obj) =
-  let {scrut, scrut1}
-  if self.lhs is
-    StagedQuery.GreaterThan then
-      scrut = test_GreaterThan_sp_0(self.lhs, obj)
-    StagedQuery.GreaterEqThan then
-      scrut = test_GreaterEqThan_sp_2(self.lhs, obj)
-  if scrut is
-    true then
-      if self.rhs is
-        StagedQuery.GreaterThan then
-          scrut1 = test_GreaterThan_sp_1(self.rhs, obj)
-        StagedQuery.GreaterEqThan then
-          scrut1 = test_GreaterEqThan_sp_3(self.rhs, obj)
       if scrut1 is
         true then true
         else false
@@ -147,7 +125,7 @@ fun filterImpl_StagedQuery_sp_0(arr, pred, res) =
           StagedQuery.filterImpl(tmp3, pred, tmp4)
         else
           tmp4 = res
-          filterImpl_StagedQuery_sp_0(tmp3, pred, tmp4)
+          StagedQuery.filterImpl(tmp3, pred, tmp4)
 fun filterImpl_StagedQuery_sp_1(arr, pred, res) =
   let {scrut2, tmp3, tmp4}
   if arr is
@@ -158,24 +136,10 @@ fun filterImpl_StagedQuery_sp_1(arr, pred, res) =
       if scrut2 is
         true then
           tmp4 = StagedQuery__Legacy."SeqHelper$StagedQuery".pushDyn(res, arr.0)
-          filterImpl_StagedQuery_sp_2(tmp3, pred, tmp4)
+          StagedQuery.filterImpl(tmp3, pred, tmp4)
         else
           tmp4 = res
-          filterImpl_StagedQuery_sp_1(tmp3, pred, tmp4)
-fun filterImpl_StagedQuery_sp_2(arr, pred, res) =
-  let {scrut2, tmp3, tmp4}
-  if arr is
-    [] then res
-    else
-      tmp3 = StagedQuery__Legacy."SeqHelper$StagedQuery".tail(arr)
-      scrut2 = test_And_sp_0(pred, arr.0)
-      if scrut2 is
-        true then
-          tmp4 = StagedQuery__Legacy."SeqHelper$StagedQuery".pushDyn(res, arr.0)
-          filterImpl_StagedQuery_sp_2(tmp3, pred, tmp4)
-        else
-          tmp4 = res
-          filterImpl_StagedQuery_sp_2(tmp3, pred, tmp4)
+          StagedQuery.filterImpl(tmp3, pred, tmp4)
 fun filter_StagedQuery_sp_0(arr, pred) =
   let {tmp5}
   tmp5 = []

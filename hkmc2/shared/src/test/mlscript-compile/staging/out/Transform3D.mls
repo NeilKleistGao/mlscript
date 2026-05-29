@@ -33,7 +33,7 @@ module Transform3D with
         tmp11 = iter_Transform3D_sp_0(0, x, y, colX, i, tmp10, colX)
         tmp12 = update(m, i, tmp9, tmp11)
         tmp13 = j - 1
-        iterCol_Transform3D_sp_0(tmp12, x, y, colX, colY, i, tmp13)
+        iterCol(tmp12, x, y, colX, colY, i, tmp13)
   fun iterID(m, w, i) =
     let {scrut3, tmp17, tmp18, tmp19, tmp20}
     scrut3 = ===(i, 0)
@@ -42,9 +42,9 @@ module Transform3D with
       else
         tmp17 = w - i
         tmp18 = w - i
-        tmp19 = update_Transform3D_sp_1(m, tmp17, tmp18, 1)
+        tmp19 = update_Transform3D_sp_0(m, tmp17, tmp18, 1)
         tmp20 = i - 1
-        iterID_Transform3D_sp_0(tmp19, w, tmp20)
+        iterID(tmp19, w, tmp20)
   fun iterRow(m, x, y, rowX, colX, colY, i) =
     let {scrut2, tmp14, tmp15, tmp16}
     scrut2 = ===(i, 0)
@@ -156,9 +156,9 @@ fun iterCol_Transform3D_sp_0(m, x, y, colX, colY, i, j) =
       tmp9 = colY - j
       tmp10 = colY - j
       tmp11 = iter_Transform3D_sp_0(0, x, y, colX, i, tmp10, colX)
-      tmp12 = update_Transform3D_sp_0(m, i, tmp9, tmp11)
+      tmp12 = update_Transform3D_sp_1(m, i, tmp9, tmp11)
       tmp13 = j - 1
-      iterCol_Transform3D_sp_0(tmp12, x, y, colX, colY, i, tmp13)
+      Transform3D.iterCol(tmp12, x, y, colX, colY, i, tmp13)
 fun iterCol_Transform3D_sp_1(m, x, y, colX, colY, i, j) =
   let {tup_45, obj_46}
   tup_45 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -894,7 +894,7 @@ fun iterID_Transform3D_sp_0(m, w, i) =
       tmp18 = w - i
       tmp19 = update_Transform3D_sp_2(m, tmp17, tmp18, 1)
       tmp20 = i - 1
-      iterID_Transform3D_sp_0(tmp19, w, tmp20)
+      Transform3D.iterID(tmp19, w, tmp20)
 fun iterID_Transform3D_sp_1(m, w, i) =
   let {tup_24, obj_25}
   tup_24 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
@@ -3471,13 +3471,13 @@ fun update_Transform3D_sp_0(m, i, j, v) =
   let {tmp23, tmp24, tmp25}
   tmp23 = i * m.c
   tmp24 = tmp23 + j
-  tmp25 = Transform3D__Legacy."Mx$Transform3D".setAt(m.arr, tmp24, v)
+  tmp25 = Transform3D__Legacy."Mx$Transform3D".setAt(m.arr, tmp24, 1)
   new Transform3D.Matrix(tmp25, m.r, m.c)
 fun update_Transform3D_sp_1(m, i, j, v) =
   let {tmp23, tmp24, tmp25}
   tmp23 = i * m.c
   tmp24 = tmp23 + j
-  tmp25 = Transform3D__Legacy."Mx$Transform3D".setAt(m.arr, tmp24, 1)
+  tmp25 = Transform3D__Legacy."Mx$Transform3D".setAt(m.arr, tmp24, v)
   new Transform3D.Matrix(tmp25, m.r, m.c)
 fun update_Transform3D_sp_10(m, i, j, v) =
   let {tmp23, tmp24, tmp25}

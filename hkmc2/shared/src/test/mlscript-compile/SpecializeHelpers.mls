@@ -36,6 +36,15 @@ fun staticCallKey(f, argShapes) =
 fun defaultThisShape(clsSymb: ConcreteClassSymbol) =
   lift(silh(Cls(clsSymb, ValueRef(clsSymb))))
 
+let dynamicMatchSpecializations = new Map()
+let currentDynamicMatchSpecialization = None
+
+fun specializationCtxKey(cache, funName) =
+  cache.owner.name + "." + funName
+
+fun isActiveDynamicMatchSpecialization(key) =
+  dynamicMatchSpecializations.has(key) and dynamicMatchSpecializations.get(key) > 0
+
 class StaticCallEntry(
   val block: Block.Block,
   val path: Path,
@@ -68,6 +77,16 @@ class Ctx(
     this
   fun clone = Ctx(new Map(ctx), valueNameCtx, new Map(valDefnCtx), new Map(staticCallCtx), allocs, thisShape)
   fun clearCtx = Ctx(new Map(), valueNameCtx, new Map(), new Map(staticCallCtx), allocs, thisShape)
+  fun enterDynamicMatchSpecialization() =
+    if currentDynamicMatchSpecialization is Some(key) then
+      let depth = if dynamicMatchSpecializations.has(key) then dynamicMatchSpecializations.get(key) else 0
+      dynamicMatchSpecializations.set(key, depth + 1)
+    this
+  fun leaveDynamicMatchSpecialization() =
+    if currentDynamicMatchSpecialization is Some(key) and dynamicMatchSpecializations.has(key) then
+      let depth = dynamicMatchSpecializations.get(key)
+      if depth > 0 do dynamicMatchSpecializations.set(key, depth - 1)
+    this
   fun sub(other: Ctx) =
     let res = new Map()
     fun otherIsBot(ps) =
@@ -634,50 +653,56 @@ fun prop(ctx, b) = if b is
           [concat(blk, Assign(x, r1, b2)), s2, canReachEnd]
     Match(p, arms, dflt, restBlock) then
       let s = sop(ctx, p)
-      fun mergeAssigned(acc, assigned) =
-        assigned.forEach((ss, ps, _) =>
-          if acc.has(ps) then
-            acc.set(ps, union2(acc.get(ps), ss))
+      let shouldTrack = s.isDyn() || s.values().length > 1
+      fun propMatch() =
+        fun mergeAssigned(acc, assigned) =
+          assigned.forEach((ss, ps, _) =>
+            if acc.has(ps) then
+              acc.set(ps, union2(acc.get(ps), ss))
+            else
+              acc.set(ps, ss)
+          )
+        fun propBranch(body, branchShape) =
+          let branchCtx = ctx.clone
+          if not p is ValueLit do branchCtx.refine(p, branchShape)
+          let res = prop(branchCtx, body)
+          [...res, branchCtx.sub(ctx)]
+        let filteredArms = foldl((r, arm) =>
+          let fs = filterSet(r.0, arm.cse)
+          if fs.isEmpty() then r
           else
-            acc.set(ps, ss)
+            let res = propBranch(arm.body, fs)
+            mergeAssigned(r.3, res.3)
+            [restSet(r.0, arm.cse), union2(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3, r.4 || res.2]
+        )([s, mkBot(), [], new Map(), false], ...arms)
+        let dfltRes = if filteredArms.0.isEmpty() then [None, mkBot(), new Map(), None] else if dflt is
+          Some(d) then
+            let res = propBranch(d, filteredArms.0)
+            [Some(res.0), res.1, res.3, Some(res.2)]
+          else [None, mkBot(), new Map(), None]
+        mergeAssigned(filteredArms.3, dfltRes.2)
+        filteredArms.3.forEach((ss, ps, _) =>
+          if ctx.ctx.has(ps) then
+            ctx.ctx.set(ps, union2(ctx.ctx.get(ps), ss))
+          else
+            ctx.ctx.set(ps, ss)
         )
-      fun propBranch(body, branchShape) =
-        let branchCtx = ctx.clone
-        if not p is ValueLit do branchCtx.refine(p, branchShape)
-        let res = prop(branchCtx, body)
-        [...res, branchCtx.sub(ctx)]
-      let filteredArms = foldl((r, arm) =>
-        let fs = filterSet(r.0, arm.cse)
-        if fs.isEmpty() then r
-        else
-          let res = propBranch(arm.body, fs)
-          mergeAssigned(r.3, res.3)
-          [restSet(r.0, arm.cse), union2(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3, r.4 || res.2]
-      )([s, mkBot(), [], new Map(), false], ...arms)
-      let dfltRes = if filteredArms.0.isEmpty() then [None, mkBot(), new Map(), None] else if dflt is
-        Some(d) then
-          let res = propBranch(d, filteredArms.0)
-          [Some(res.0), res.1, res.3, Some(res.2)]
-        else [None, mkBot(), new Map(), None]
-      mergeAssigned(filteredArms.3, dfltRes.2)
-      filteredArms.3.forEach((ss, ps, _) =>
-        if ctx.ctx.has(ps) then
-          ctx.ctx.set(ps, union2(ctx.ctx.get(ps), ss))
-        else
-          ctx.ctx.set(ps, ss)
-      )
-      let canReachEnd = filteredArms.4 || (dfltRes.3 is Some(true))
-      let restRes = prop(ctx, restBlock)
-      let retShape = if canReachEnd then union(filteredArms.1, dfltRes.1, restRes.1) 
-        else union(filteredArms.1, dfltRes.1) // every possible branch has a return, so the restBlock cannot be reached
-      if filteredArms.2.length is
-        0 and 
-          canReachEnd and dfltRes.0 is Some(d) then [concat(d, restRes.0), retShape, true]
-          not canReachEnd and dfltRes.0 is Some(d) and dfltRes.3 is Some(dcanReachEnd) then [d, retShape, dcanReachEnd] // the rest block is unreachable
-          else restRes // the else block is unreachable
-        1 and dfltRes.0 is None then // the else block is unreachable
-          [concat(filteredArms.2.0.body, restRes.0), retShape, canReachEnd || restRes.2]
-        else [Match(p, filteredArms.2, dfltRes.0, restRes.0), retShape, canReachEnd || restRes.2]
+        let canReachEnd = filteredArms.4 || (dfltRes.3 is Some(true))
+        let restRes = prop(ctx, restBlock)
+        let retShape = if canReachEnd then union(filteredArms.1, dfltRes.1, restRes.1)
+          else union(filteredArms.1, dfltRes.1) // every possible branch has a return, so the restBlock cannot be reached
+        if filteredArms.2.length is
+          0 and
+            canReachEnd and dfltRes.0 is Some(d) then [concat(d, restRes.0), retShape, true]
+            not canReachEnd and dfltRes.0 is Some(d) and dfltRes.3 is Some(dcanReachEnd) then [d, retShape, dcanReachEnd] // the rest block is unreachable
+            else restRes // the else block is unreachable
+          1 and dfltRes.0 is None then // the else block is unreachable
+            [concat(filteredArms.2.0.body, restRes.0), retShape, canReachEnd || restRes.2]
+          else [Match(p, filteredArms.2, dfltRes.0, restRes.0), retShape, canReachEnd || restRes.2]
+      if shouldTrack do ctx.enterDynamicMatchSpecialization()
+      let res = propMatch()
+      if shouldTrack do ctx.leaveDynamicMatchSpecialization()
+      res
     else [b, mkDyn(), true]
 
 // TODO: debug only; remove this
@@ -707,6 +732,13 @@ fun specializationParamShapes(isMethod, ps, shapes) =
       if ps.(psIdx).(j).constraint is Some(Dynamic) then mkDyn() else s
     )
   )
+
+fun dynamicParamShapes(ps) =
+  ps.map(p => p.map(_ => mkDyn()))
+
+fun dynamicSpecializationShapes(cache, isMethod, ps) =
+  if isMethod and cache.owner is ConcreteClassSymbol then [[defaultThisShape(cache.owner)], ...dynamicParamShapes(ps)]
+  else dynamicParamShapes(ps)
 
 fun hasAllDynamicParams(isMethod, ps, shapes) =
   specializationParamShapes(isMethod, ps, shapes).every(_.every(_.isDyn()))
@@ -903,22 +935,25 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   // print(defn)
   if defn is FunDefn(Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
-    let keyShapes = defaultMethodKeyShapes(cache, isMethod, shapes)
+    let funCtxKey = specializationCtxKey(cache, funName)
+    let effectiveShapes =
+      if isActiveDynamicMatchSpecialization(funCtxKey) then dynamicSpecializationShapes(cache, isMethod, ps)
+      else shapes
+    let keyShapes = defaultMethodKeyShapes(cache, isMethod, effectiveShapes)
     let specializationKey = specializeKey(funName, isMethod, ps, keyShapes)
     let isPrivate =
-      if isMethod then not isDefaultMethodSpecialization(cache, ps, shapes)
+      if isMethod then not isDefaultMethodSpecialization(cache, ps, effectiveShapes)
       else not hasAllDynamicParams(isMethod, ps, keyShapes)
     if cache.getFun(specializationKey) is
       Some(x) then [x.defn.sym.name, x.retShape]
       None then
         let newName = specializeName(cache, funName, isMethod, ps, keyShapes)
-        let paramShapes = if isMethod then shapes.slice(1) else shapes
+        let paramShapes = if isMethod then effectiveShapes.slice(1) else effectiveShapes
 
         let ctx = if isMethod then
           let clsSymb = cache.owner
-          Ctx(new Map(), new Map(), new Map(), new Map(), mut [], Some(shapes.(0).(0)))
+          Ctx(new Map(), new Map(), new Map(), new Map(), mut [], Some(effectiveShapes.(0).(0)))
         else Ctx.empty()
-
         // console.log("checking", ctx.valueNameCtx, Printer.default.showBlock(body))
 
         ps.forEach((p, i, _) => p.forEach((p2, j, _) =>
@@ -943,7 +978,10 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         
         cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, body), mkDyn(), isPrivate))
 
+        let oldDynamicMatchSpecialization = currentDynamicMatchSpecialization
+        set currentDynamicMatchSpecialization = Some(funCtxKey)
         let res = prop(ctx, body)
+        set currentDynamicMatchSpecialization = oldDynamicMatchSpecialization
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         
         let actualRetShape = res.1
