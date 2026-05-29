@@ -36,6 +36,31 @@ staged module Expressions with
       else 0
 //│ x = [1, 2, 3]
 
+// * LetSplit lowers to a Label/Break pair, which the staged-module
+// * compiler (`ReflectionInstrumenter`) doesn't yet understand. With
+// * the sharing threshold forced to 1, the shared `else` below would
+// * emit exactly that — tracked here as a fixme.
+:fixme
+:patMatConsequentSharingThreshold 1
+staged module Example with
+  fun f(x, y, z) = if
+    x is 0 and y is 0 and z is 0 then 1
+    else 2
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
+
+// * LetSplit lowers to a Label/Break pair, which the staged-module
+// * compiler (`ReflectionInstrumenter`) doesn't yet understand. With
+// * the sharing threshold forced to 1, the shared `else` below would
+// * emit exactly that — tracked here as a fixme.
+:fixme
+:patMatConsequentSharingThreshold 1
+staged module Example with
+  fun f(x, y, z) = if
+    x is 0 and y is 0 and z is 0 then 1
+    else 2
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
+
+:fixme
 class Outside(a)
 staged module ClassInstrumentation with
   class Inside(a, b)
@@ -43,7 +68,9 @@ staged module ClassInstrumentation with
   fun inst1() = Outside(1)
   fun inst2() = new NoArg
   fun app1() = Outside(1)
-  fun app2() = Inside(1, 2) 
+  fun app2() = Inside(1, 2)
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
 
 module Nonstaged with
   fun f() = 1
@@ -53,17 +80,29 @@ staged module CallSubst with
   fun call() = Nonstaged.f() + Staged.f()
 
 :ftc
+:fixme
 staged module Arguments with
   fun f(x) =
     x = 1
     x
   fun g(x)(y, z)() = z
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[COMPILATION ERROR] No definition found in scope for member 'z'
+//│ ═══[COMPILATION ERROR] No definition found in scope for member 'z'
+//│ > let Arguments1, Function$2, Function$3;try { globalThis.Object.freeze(class Function$ extends globalThis.Function {   static {     Function$2 = this   }   constructor(z) {     super();     this.#z = z;   }   static {     let tmp1, tmp2, tmp3, tmp4, tmp5, sym, tmp6, tmp7, tmp8, sym1, tmp9, tmp10, tmp11, tmp12, tmp13;     tmp4 = option.None;     tmp5 = option.None;     sym = runtime.checkCall(Block.Symbol("z"));     tmp6 = runtime.checkCall(Block.Param(tmp5, sym));     tmp7 = globalThis.Object.freeze([       tmp6     ]);     tmp8 = globalThis.Object.freeze([       tmp7     ]);     sym1 = runtime.checkCall(Block.ConcreteClassSymbol("Function$", Function$2, tmp4, tmp8, true));     tmp9 = runtime.checkCall(runtime.SymbolMap.checkClassMap(Function$2, sym1));     tmp10 = globalThis.Object.freeze(new globalThis.Map());     tmp11 = globalThis.Object.freeze([       "call",       "z"     ]);     tmp12 = globalThis.Object.freeze(new globalThis.Set(tmp11));     tmp13 = globalThis.Object.freeze(new SpecializeHelpers.FunCache(tmp9, tmp10, tmp12));     Function$.class$cache$Function$ = tmp13;     tmp1 = globalThis.Object.freeze([       "call",       Function$.call_gen     ]);     tmp2 = globalThis.Object.freeze([       tmp1     ]);     tmp3 = globalThis.Object.freeze(new globalThis.Map(tmp2));     Function$.class$generatorMap$Function$ = tmp3;   }   static generate(source, path) {     runtime.checkArgs("generate", 2, true, arguments.length);     let tmp1;     runtime.checkCall(Function$.propagate());     tmp1 = globalThis.Object.freeze([]);     runtime.checkCall(Block.codegen("Function$", Function$.class$cache$Function$, source, path, tmp1));   }   static preCtor$_instr() {     runtime.checkArgs("preCtor$_instr", 0, true, arguments.length);     let tmp1, sym, sym1;     runtime.checkCall(Block.Symbol("preCtor$"));     tmp1 = option.None;     sym = runtime.checkCall(Block.Symbol("z"));     runtime.checkCall(Block.Param(tmp1, sym));     sym1 = runtime.checkCall(Block.NoSymbol());     runtime.checkCall(Block.ValueSimpleRef(sym1));   }   static class$ctor$_instr() {     runtime.checkArgs("class$ctor$_instr", 0, true, arguments.length);     let sym, tmp1, sym1, tmp2, tmp3, tmp4, var1, sym2, end, assign;     sym = runtime.checkCall(Block.Symbol("class$ctor$"));     tmp1 = option.None;     sym1 = runtime.checkCall(Block.Symbol("z"));     tmp2 = runtime.checkCall(Block.Param(tmp1, sym1));     tmp3 = globalThis.Object.freeze([       tmp2     ]);     tmp4 = globalThis.Object.freeze([       tmp3     ]);     var1 = runtime.checkCall(Block.ValueSimpleRef(sym1));     sym2 = runtime.checkCall(Block.Symbol("z"));     runtime.checkCall(Block.ValueSimpleRef(sym2));     end = runtime.checkCall(Block.End());     assign = runtime.checkCall(Block.Assign(sym2, var1, end));     return runtime.checkCall(Block.FunDefn(sym, tmp4, assign))   }   static propagate() {     runtime.checkArgs("propagate", 0, true, arguments.length);     let tmp_dyn, gen_call;     tmp_dyn = runtime.checkCall(ShapeSet.mkDyn());     gen_call = runtime.checkCall(Function$.call_gen(tmp_dyn));     runtime.checkCall(gen_call());   }   static toCode() {     runtime.checkArgs("toCode", 0, true, arguments.length);     let tmp1;     tmp1 = globalThis.Object.freeze([]);     return runtime.checkCall(Block.toCode("Function$", Function$.class$cache$Function$, tmp1))   }   static call_instr() {     runtime.checkArgs("call_instr", 0, true, arguments.length);     let sym;     runtime.checkCall(Block.Symbol("call"));     sym = runtime.checkCall(Block.Symbol("lambda$"));     runtime.checkCall(Block.ValueMemberRef(sym));   }   static call_gen(cls) {     runtime.checkArgs("call_gen", 1, true, arguments.length);     return () => {       let tmp1, tmp2, tmp3;       tmp1 = globalThis.Object.freeze([         cls       ]);       tmp2 = globalThis.Object.freeze([]);       tmp3 = globalThis.Object.freeze([         tmp1,         tmp2       ]);       return runtime.checkCall(SpecializeHelpers.specialize(Function$.class$cache$Function$, "call", Function$.call_instr, tmp3))     }   }   get call$__checkNotMethod() { runtime.deboundMethod("call", "Function$"); }   call() {     runtime.checkArgs("call", 0, true, arguments.length);     return this.#z   }   toString() { return runtime.render(this); }   static [definitionMetadata] = ["class", "Function$"]; }); globalThis.Object.freeze(class Function$1 extends globalThis.Function {   static {     Function$3 = this   }   constructor() {     super();   }   static {     let tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, sym, tmp7, tmp8, tmp9, tmp10, tmp11;     tmp4 = option.None;     tmp5 = globalThis.Object.freeze([]);     tmp6 = globalThis.Object.freeze([       tmp5     ]);     sym = runtime.checkCall(Block.ConcreteClassSymbol("Function$1", Function$3, tmp4, tmp6, true));     tmp7 = runtime.checkCall(runtime.SymbolMap.checkClassMap(Function$3, sym));     tmp8 = globalThis.Object.freeze(new globalThis.Map());     tmp9 = globalThis.Object.freeze([       "call"     ]);     tmp10 = globalThis.Object.freeze(new globalThis.Set(tmp9));     tmp11 = globalThis.Object.freeze(new SpecializeHelpers.FunCache(tmp7, tmp8, tmp10));     Function$1.class$cache$Function$1 = tmp11;     tmp1 = globalThis.Object.freeze([       "call",       Function$1.call_gen     ]);     tmp2 = globalThis.Object.freeze([       tmp1     ]);     tmp3 = globalThis.Object.freeze(new globalThis.Map(tmp2));     Function$1.class$generatorMap$Function$1 = tmp3;   }   static generate(source, path) {     runtime.checkArgs("generate", 2, true, arguments.length);     let tmp1;     runtime.checkCall(Function$1.propagate());     tmp1 = globalThis.Object.freeze([]);     runtime.checkCall(Block.codegen("Function$", Function$1.class$cache$Function$1, source, path, tmp1));   }   static preCtor$_instr() {     runtime.checkArgs("preCtor$_instr", 0, true, arguments.length);     let sym;     runtime.checkCall(Block.Symbol("preCtor$"));     sym = runtime.checkCall(Block.NoSymbol());     runtime.checkCall(Block.ValueSimpleRef(sym));   }   static class$ctor$_instr() {     runtime.checkArgs("class$ctor$_instr", 0, true, arguments.length);     let sym, tmp1, tmp2, end;     sym = runtime.checkCall(Block.Symbol("class$ctor$"));     tmp1 = globalThis.Object.freeze([]);     tmp2 = globalThis.Object.freeze([       tmp1     ]);     end = runtime.checkCall(Block.End());     return runtime.checkCall(Block.FunDefn(sym, tmp2, end))   }   static propagate() {     runtime.checkArgs("propagate", 0, true, arguments.length);     let tmp_dyn, gen_call;     tmp_dyn = runtime.checkCall(ShapeSet.mkDyn());     gen_call = runtime.checkCall(Function$1.call_gen(tmp_dyn));     runtime.checkCall(gen_call(tmp_dyn, tmp_dyn));   }   static toCode() {     runtime.checkArgs("toCode", 0, true, arguments.length);     let tmp1;     tmp1 = globalThis.Object.freeze([]);     return runtime.checkCall(Block.toCode("Function$", Function$1.class$cache$Function$1, tmp1))   }   static call_instr() {     runtime.checkArgs("call_instr", 0, true, arguments.length);     let sym, tmp1, sym1, tmp2, tmp3, sym2, tmp4, tmp5, tmp6, sym3, var1, var2, tmp7, var3, tmp8, tmp9, app, return1;     sym = runtime.checkCall(Block.Symbol("call"));     tmp1 = option.None;     sym1 = runtime.checkCall(Block.Symbol("y"));     tmp2 = runtime.checkCall(Block.Param(tmp1, sym1));     tmp3 = option.None;     sym2 = runtime.checkCall(Block.Symbol("z"));     tmp4 = runtime.checkCall(Block.Param(tmp3, sym2));     tmp5 = globalThis.Object.freeze([       tmp2,       tmp4     ]);     tmp6 = globalThis.Object.freeze([       tmp5     ]);     sym3 = runtime.checkCall(Block.Symbol("lambda$"));     var1 = runtime.checkCall(Block.ValueMemberRef(sym3));     var2 = runtime.checkCall(Block.ValueSimpleRef(sym1));     tmp7 = runtime.checkCall(Block.Arg(var2));     var3 = runtime.checkCall(Block.ValueSimpleRef(sym2));     tmp8 = runtime.checkCall(Block.Arg(var3));     tmp9 = globalThis.Object.freeze([       tmp7,       tmp8     ]);     app = runtime.checkCall(Block.Call(var1, tmp9));     return1 = runtime.checkCall(Block.Return(app));     return runtime.checkCall(Block.FunDefn(sym, tmp6, return1))   }   static call_gen(cls) {     runtime.checkArgs("call_gen", 1, true, arguments.length);     return (y, z) => {       let tmp1, tmp2, tmp3;       tmp1 = globalThis.Object.freeze([         cls       ]);       tmp2 = globalThis.Object.freeze([         y,         z       ]);       tmp3 = globalThis.Object.freeze([         tmp1,         tmp2       ]);       return runtime.checkCall(SpecializeHelpers.specialize(Function$1.class$cache$Function$1, "call", Function$1.call_instr, tmp3))     }   }   get call$__checkNotMethod() { runtime.deboundMethod("call", "Function$"); }   call(y, z) {     runtime.checkArgs("call", 2, true, arguments.length);     return globalThis.Object.freeze(new Function$2(z))   }   toString() { return runtime.render(this); }   static [definitionMetadata] = ["class", "Function$"]; }); globalThis.Object.freeze(class Arguments {   static {     Arguments1 = this   }   static {     let tmp1, tmp2, tmp3, tmp4, sym, tmp5, tmp6, tmp7, tmp8, tmp9;     sym = runtime.checkCall(Block.ModuleSymbol("Arguments", Arguments, false));     tmp5 = runtime.checkCall(runtime.SymbolMap.checkModuleMap(Arguments, sym));     tmp6 = globalThis.Object.freeze(new globalThis.Map());     tmp7 = globalThis.Object.freeze([       "f",       "g"     ]);     tmp8 = globalThis.Object.freeze(new globalThis.Set(tmp7));     tmp9 = globalThis.Object.freeze(new SpecializeHelpers.FunCache(tmp5, tmp6, tmp8));     Arguments.cache$Arguments = tmp9;     tmp1 = globalThis.Object.freeze([       "f",       Arguments.f_gen     ]);     tmp2 = globalThis.Object.freeze([       "g",       Arguments.g_gen     ]);     tmp3 = globalThis.Object.freeze([       tmp1,       tmp2     ]);     tmp4 = globalThis.Object.freeze(new globalThis.Map(tmp3));     Arguments.generatorMap$Arguments = tmp4;     Arguments.Function$1$Arguments = Function$3;     Arguments.Function$$Arguments = Function$2;   }   static generate(source, path) {     runtime.checkArgs("generate", 2, true, arguments.length);     let tmp1;     runtime.checkCall(Arguments.propagate());     tmp1 = globalThis.Object.freeze([]);     runtime.checkCall(Block.codegen("Arguments", Arguments.cache$Arguments, source, path, tmp1));   }   static ctor$_instr() {     runtime.checkArgs("ctor$_instr", 0, true, arguments.length);     let sym, tmp1, tmp2, end;     sym = runtime.checkCall(Block.Symbol("ctor$"));     tmp1 = globalThis.Object.freeze([]);     tmp2 = globalThis.Object.freeze([       tmp1     ]);     end = runtime.checkCall(Block.End());     return runtime.checkCall(Block.FunDefn(sym, tmp2, end))   }   static propagate() {     runtime.checkArgs("propagate", 0, true, arguments.length);     let tmp_dyn;     tmp_dyn = runtime.checkCall(ShapeSet.mkDyn());     runtime.checkCall(Arguments.f_gen(tmp_dyn));     runtime.checkCall(Arguments.g_gen(tmp_dyn));   }   static toCode() {     runtime.checkArgs("toCode", 0, true, arguments.length);     let tmp1;     tmp1 = globalThis.Object.freeze([]);     return runtime.checkCall(Block.toCode("Arguments", Arguments.cache$Arguments, tmp1))   }   static f_instr() {     runtime.checkArgs("f_instr", 0, true, arguments.length);     let sym, tmp1, sym1, tmp2, tmp3, tmp4, tmp5, lit, return1, assign;     sym = runtime.checkCall(Block.Symbol("f"));     tmp1 = option.None;     sym1 = runtime.checkCall(Block.Symbol("x"));     tmp2 = runtime.checkCall(Block.Param(tmp1, sym1));     tmp3 = globalThis.Object.freeze([       tmp2     ]);     tmp4 = globalThis.Object.freeze([       tmp3     ]);     tmp5 = runtime.checkCall(Block.ValueSimpleRef(sym1));     lit = runtime.checkCall(Block.ValueLit(1));     return1 = runtime.checkCall(Block.Return(tmp5));     assign = runtime.checkCall(Block.Assign(sym1, lit, return1));     return runtime.checkCall(Block.FunDefn(sym, tmp4, assign))   }   static g_instr() {     runtime.checkArgs("g_instr", 0, true, arguments.length);     let sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, tmp6, tmp7, tmp8, tmp9, sym3, tmp10, var1, tmp11, inst, return1, assign, tmp12;     sym = runtime.checkCall(Block.Symbol("g"));     tmp1 = option.None;     sym1 = runtime.checkCall(Block.Symbol("x"));     tmp2 = runtime.checkCall(Block.Param(tmp1, sym1));     tmp3 = globalThis.Object.freeze([       tmp2     ]);     tmp4 = globalThis.Object.freeze([       tmp3     ]);     sym2 = runtime.checkCall(Block.Symbol("tmp"));     tmp5 = globalThis.Object.freeze([       sym2     ]);     tmp6 = runtime.checkCall(Block.ValueSimpleRef(sym2));     tmp7 = option.None;     tmp8 = globalThis.Object.freeze([]);     tmp9 = globalThis.Object.freeze([       tmp8     ]);     sym3 = runtime.checkCall(Block.ConcreteClassSymbol("Function$1", Function$3, tmp7, tmp9, true));     tmp10 = runtime.checkCall(runtime.SymbolMap.checkClassMap(Function$3, sym3));     var1 = runtime.checkCall(Block.ValueMemberRef(tmp10));     tmp11 = globalThis.Object.freeze([]);     inst = runtime.checkCall(Block.Instantiate(var1, tmp11));     return1 = runtime.checkCall(Block.Return(tmp6));     assign = runtime.checkCall(Block.Assign(sym2, inst, return1));     tmp12 = runtime.checkCall(Block.Scoped(tmp5, assign));     return runtime.checkCall(Block.FunDefn(sym, tmp4, tmp12))   }   static f_gen(x1) {     runtime.checkArgs("f_gen", 1, true, arguments.length);     let tmp1, tmp2;     tmp1 = globalThis.Object.freeze([       x1     ]);     tmp2 = globalThis.Object.freeze([       tmp1     ]);     return runtime.checkCall(SpecializeHelpers.specialize(Arguments.cache$Arguments, "f", Arguments.f_instr, tmp2))   }   static g_gen(x1) {     runtime.checkArgs("g_gen", 1, true, arguments.length);     let tmp1, tmp2;     tmp1 = globalThis.Object.freeze([       x1     ]);     tmp2 = globalThis.Object.freeze([       tmp1     ]);     return runtime.checkCall(SpecializeHelpers.specialize(Arguments.cache$Arguments, "g", Arguments.g_instr, tmp2))   }   toString() { return runtime.render(this); }   static [definitionMetadata] = ["class", "Arguments"]; });; undefined } catch (e) { console.log('\u200B' + e + '\u200B'); }
+//│ >                                                                                                                                                                                                  ^
+//│ ═══[COMPILATION ERROR] [Uncaught SyntaxError] Private field '#z' must be declared in an enclosing class
 
 // :e
+:fixme
 staged module BadArguments with
   fun f() = Arguments.g(1)(2, 3)
+//│ ═══[RUNTIME ERROR] ReferenceError: Arguments1 is not defined
 
 
+:fixme
 staged module OtherBlocks with
   fun scope() =
     scope.locally of (
@@ -75,6 +114,7 @@ staged module OtherBlocks with
       2 then 0
       3 then 0
       else 0
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
 
 staged module ClassDefs with
   class A
@@ -83,10 +123,13 @@ staged module ClassDefs with
 staged module ValClass with
   class A(val a)
 
+:fixme
 staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[RUNTIME ERROR] ReferenceError: Arguments1 is not defined
 
 
 // name collision
@@ -117,7 +160,6 @@ staged module LabelBreak with
     1 then 1 + 1 + 1
     else 1 + 1 + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
 
 :e
 class C(val a)
@@ -127,7 +169,7 @@ staged module A with
   fun g() = {1 : 2}
 //│ ═══[COMPILATION ERROR] Field assignment is not supported in staged modules: a
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.127: 	  fun g() = {1 : 2}
+//│ ║  l.169: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 
 :todo

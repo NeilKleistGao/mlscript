@@ -106,7 +106,8 @@ class Path extends Result with
   constructor
     Select(val qual: Path, val name: Symbol)
     DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool) // is arrayIdx used?
-    ValueRef(val l: Symbol)
+    ValueSimpleRef(val l: Symbol)
+    ValueMemberRef(val l: Symbol)
     ValueLit(val lit: Literal)
 
 class Defn with 
@@ -170,16 +171,15 @@ class Printer(val owner: Opt[Symbol]) with
   fun showPath(p: Path): Str =
     if p is
       // avoids needing to import the runtime module
-      Select(ValueRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit, _)) then "()"
+      Select(ValueSimpleRef(Symbol("runtime")), ModuleSymbol("Unit", Runtime.Unit, _)) then "()"
       Select(qual, name) and
         // remove selection to owner for values defined within the owner
-        qual is ValueRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
-        qual is ValueRef(sym) and sym is ClassSymbol then "this." + showSymbol(name)
-        else
-          showPath(qual) + "." + showSymbol(name)
+        qual is ValueMemberRef(sym) and owner is Some(owner) and sym == owner then showSymbol(name) // TODO: check if we should use `==` here
+        qual is ValueMemberRef(sym) and sym is ClassSymbol then "this." + showSymbol(name)
+        else showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
-      ValueRef(l) then showSymbol(l)
+      ValueSimpleRef(l) | ValueMemberRef(l) then showSymbol(l)
       ValueLit(lit) then showLiteral(lit)
 
   fun showArg(arg: Arg) =
@@ -190,9 +190,9 @@ class Printer(val owner: Opt[Symbol]) with
   
   fun hasClassValue(cls: Path) =
     if cls is
-      Select(ValueRef(sym), name) and
+      Select(ValueMemberRef(sym), name) and
         owner is Some(owner) and sym == owner and isGeneratedStagedClass(name) then false
-      ValueRef(ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
+      ValueMemberRef(ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
       Select(_, ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
       else false
 
@@ -204,11 +204,11 @@ class Printer(val owner: Opt[Symbol]) with
       Path then showPath(r)
       Call(fun_, args) and
         args is [arg] and fun_ is
-          ValueRef(Symbol("!")) then "not " + showArg(arg)
+          ValueSimpleRef(Symbol("!")) then "not " + showArg(arg)
         // use infix to avoid parsing + and - as taking a unary argument
         args is [lhs, rhs] and fun_ is
-          ValueRef(Symbol("+")) then showArg(lhs) + " + " + showArg(rhs)
-          ValueRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
+          ValueSimpleRef(Symbol("+")) then showArg(lhs) + " + " + showArg(rhs)
+          ValueSimpleRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
         else showPath(fun_) + "(" + showArgs(args) + ")"
       Instantiate(cls, args) then 
         let classPath = showInstantiatePath(cls)
@@ -216,7 +216,7 @@ class Printer(val owner: Opt[Symbol]) with
         // NOTE: noModuleCheck is enabled, so we don't need to switch to new! for dynamic selections from a module
         "new " + classPath + "(" + showArgs(args) + ")"
       Tuple(elems) then "[" + showArgs(elems) + "]"
-      _ then "<unknown result:" ~ r ~ ">"
+      _ then "<unknown result>"
 
   // Case (match arm patterns)
   fun showCase(c) =

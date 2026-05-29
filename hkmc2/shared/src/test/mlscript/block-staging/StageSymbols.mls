@@ -2,10 +2,12 @@
 :staging
 :noModuleCheck
 
+:fixme
 staged module M with
   class C with
     fun f() = 1
     fun g() = f()
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
 
 staged module A with
   fun f() = 1
@@ -21,6 +23,7 @@ staged module D with
     1 is Int
     1 is C
 
+:fixme
 module A with
   module B with
     class C(a)
@@ -31,18 +34,22 @@ staged module M with
     x = A.B.C
     A.B.C(2)
     E
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
 
 :e
 staged module M with
   fun g()() = 1
 //│ ╔══[COMPILATION ERROR] :ftc must be enabled to desugar functions with multiple parameter lists.
-//│ ║  l.37: 	  fun g()() = 1
+//│ ║  l.41: 	  fun g()() = 1
 //│ ╙──      	  ^^^^^^^^^^^^^
 
 :ftc
+:fixme
 staged module M with
   fun f() = x => x
   fun g()() = 1
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.
 
 :silent
 let x = M."f_instr"().body.rest.rhs.cls.l
@@ -74,15 +81,4 @@ assert x === y
 :fixme Array should be skipped for redirection
 staged module M with
   val a = Math.cos(1) is Array // doesn't handle Array
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'Array'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.105: 	declare class Array[T]
-//│ ╙──       	              ^^^^^^^^
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'Array'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.105: 	declare class Array[T]
-//│ ╙──       	              ^^^^^^^^
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'Array'
-//│ ╟── which references the symbol introduced here
-//│ ║  l.105: 	declare class Array[T]
-//│ ╙──       	              ^^^^^^^^
+//│ ═══[COMPILATION ERROR] Value.This not supported in staged module.

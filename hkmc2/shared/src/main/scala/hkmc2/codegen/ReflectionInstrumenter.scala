@@ -66,7 +66,7 @@ object Helpers:
   def assign(using State)(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
     // TODO: skip assignment if res: Path?
     val sym = new TempSymbol(N, symName)
-    Scoped(Set(sym), Assign(sym, res, k(sym.asPath)))
+    Scoped(Set(sym), Assign(sym, res, k(sym.asSimpleRef)))
 
   def tuple(using State)(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     assign(Tuple(false, elems.map(asArg)), symName)(k)
@@ -95,13 +95,13 @@ class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id)
     class PrivateFieldDefnRemover extends BlockTransformer(SymbolSubst.Id):
       override def applyPath(p: Path)(k: Path => Block) = p match
         // remove outdated definition symbols for private fields
-        case s @ Select(Value.Ref(cls, _), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
+        case s @ Select(Value.MemberRef(cls, _), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
         case _ => k(p)
 
     // change private field initializations to public
     val publicInitTransformer = new PrivateFieldDefnRemover:
       override def applyBlock(b: Block) = b match
-        case AssignField(l @ Value.Ref(cls, _), Tree.Ident(n), r, rest) if cls == defn.isym =>
+        case AssignField(l @ Value.MemberRef(cls, _), Tree.Ident(n), r, rest) if cls == defn.isym =>
           privateFields.get(n) match
             case S((b, t)) =>
               applyResult(r): r =>
@@ -137,9 +137,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   
   // helpers for constructing Block IR
 
-  def blockMod(name: Str) = summon[State].blockSymbol.asPath.selSN(name)
-  def optionMod(name: Str) = summon[State].optionSymbol.asPath.selSN(name)
-  def helperMod(name: Str) = summon[State].specializeHelpersSymbol.asPath.selSN(name)
+  def blockMod(name: Str) = summon[State].blockSymbol.asSimpleRef.selSN(name)
+  def optionMod(name: Str) = summon[State].optionSymbol.asSimpleRef.selSN(name)
+  def helperMod(name: Str) = summon[State].specializeHelpersSymbol.asSimpleRef.selSN(name)
 
   def blockCtor(name: Str, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
     call(blockMod(name), args, true, symName)(k)
@@ -208,8 +208,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               return End()
           
           val path = pOpt.getOrElse(owner match
-            case S(owner) => owner.asPath.selSN(baseSym.nme)
-            case N => bsym.asPath)
+            case S(owner) => owner.asThis.selSN(baseSym.nme)
+            case N => bsym.asBlkMember.get.asMemberRef(sym.asClsOrMod.get))
           
           baseSym match
             case _: ClassSymbol =>
@@ -256,9 +256,12 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // rulePath
     ctx.getCache(p).map(k(_, ctx)).getOrElse:
       p match
-        case Value.Ref(l, disamb) =>
-          transformSymbol(disamb.getOrElse(l)): (sym, ctx) =>
-            blockCtor("ValueRef", Ls(sym), "var")(k(_, ctx))
+        case Value.SimpleRef(l) =>
+          transformSymbol(l): (sym, ctx) =>
+            blockCtor("ValueSimpleRef", Ls(sym), "var")(k(_, ctx))
+        case Value.MemberRef(bms, disamb) =>
+          transformSymbol(disamb): (sym, ctx) =>
+            blockCtor("ValueMemberRef", Ls(sym), "var")(k(_, ctx))
         case l: Value.Lit =>
           blockCtor("ValueLit", Ls(l), "lit")(k(_, ctx))
         case s @ Select(p, Tree.Ident(name)) =>
@@ -296,7 +299,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           raise(ErrorReport(msg"Instantiate with multiple argument lists not supported in staged module." -> r.toLoc :: Nil))
           End()
     // desugar Runtime.Tuple.get into Select
-    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _) if fun == State.runtimeSymbol.asPath.selSN("Tuple").selSN("get") =>
+    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _) if fun == Value.SimpleRef(State.runtimeSymbol).selSN("Tuple").selSN("get") =>
       transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
     case Call(fun, argss) =>
       argss match
@@ -358,10 +361,13 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         blockCtor("Return", Ls(x), "return")(k(_, ctx))
     case Assign(x, r, b) =>
       transformSymbol(x): (xSym, ctx) =>
-        blockCtor("ValueRef", Ls(xSym)): xStaged =>
-            transformResult(r)(using ctx.addCache(x.asPath, xStaged)): (y, ctx) =>
-              transformBlock(b)(using ctx): (z, ctx) =>
-                blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+        blockCtor("ValueSimpleRef", Ls(xSym)): xStaged =>
+          given Context = x match
+            case _: NoSymbol => ctx
+            case _ => ctx.addCache(x.asPath, xStaged)
+          transformResult(r): (y, ctx) =>
+            transformBlock(b)(using ctx): (z, ctx) =>
+              blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
     case assign @ AssignField(lhs, nme, r, rest) =>
       // TODO: Improve. This is a kludge to allow private field initialization in modules;
       //    Ideally, we should just properly reflect these as the private field assignments they are
@@ -369,7 +375,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case S(ts: TermSymbol) if ts.isPrivate =>
           transformResult(r): (y, ctx) =>
             transformSymbol(ts)(using ctx): (xSym, ctx) =>
-              blockCtor("ValueRef", Ls(xSym)): xStaged =>
+              blockCtor("ValueSimpleRef", Ls(xSym)): xStaged =>
                   given Context = ctx.addCache(Select(lhs, nme)(S(ts)), xStaged)
                   transformBlock(rest): (z, ctx) =>
                     blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
@@ -587,8 +593,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               case S(owner: DefinitionSymbol[ModuleOrObjectDef | ClassDef]) =>
                 Select(reconstruct(owner), Tree.Ident(s.nme))(N)
               case N => defn match
-                case l: (ModuleOrObjectDef | ClassDef) => Value.Ref(l.bsym, N)
-                case l: ClsLikeDefn => Value.Ref(l.sym, S(s))
+                case l: (ModuleOrObjectDef | ClassDef) => Value.Ref(l.bsym, S(s))
+                case l: ClsLikeDefn => Value.MemberRef(l.sym, s)
             case N => s.asPath 
 
         (tsym, sym, reconstruct(key))
@@ -638,7 +644,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     else super.applyObjBody(companion)
 
   // lazy is needed for ctx.builtins.Function
-  lazy val firstClassFunc = Value.Ref(State.globalThisSymbol, Some(State.globalThisSymbol)).sel(Tree.Ident("Function"), ctx.builtins.Function)
+  lazy val firstClassFunc = State.globalThisSymbol.asThis.sel(Tree.Ident("Function"), ctx.builtins.Function)
 
   override def applyBlock(b: Block): Block = b match
     // Lifter adds private variables after lifting function classes after FirstClassFunctionTransformer, but we need the variables to be public for staging
@@ -656,7 +662,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       
       def replaceSuper(parentPath: Path) = new BlockTransformer(SymbolSubst.Id):
         override def applyResult(r: Result)(k: Result => Block) = super.applyResult(r):
-          case Call(Value.Ref(sym: BuiltinSymbol, _), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
+          case Call(Value.SimpleRef(sym: BuiltinSymbol), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
           case r => k(r)
       val preCtor = defn.parentPath match
         case S(parent) => replaceSuper(parent).applyBlock(defn.preCtor)
