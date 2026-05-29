@@ -386,9 +386,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // turn into fundefn
     val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(stageSymName))
     val argSyms = f.params.flatMap(_.params).map(_.sym)
-    val newBody =
-      val rest = transformFunDefn(f)(using ctx)((block, _) => Return(block))
-      (Scoped(Set(argSyms*), rest))
+    val newBody = transformFunDefn(f)(using ctx)((block, _) => Return(block))
 
     FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(f.configOverride, f.annotations)
 
@@ -561,7 +559,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("ctor$", Nil, false), Ls(PlainParamList(Nil)), ctor)(N, Nil)
       val newCtorFun = stageCtor(ctorFun)
 
-      // print top-level staged classes to be printed in the next stage
+      // collect top-level staged classes to be printed in the next stage
       class UsedStagedClassesCollector extends BlockTraverser:
         val used: HashSet[BlockMemberSymbol] = new HashSet()
         override def applySymbol(sym: Symbol) = sym match
