@@ -716,6 +716,16 @@ fun isDefaultThisShape(owner, ss) = if owner is
     getActualClass(owner.value) == getActualClass(sym.value) and fields.every(_.isDyn())
   else false
 
+fun hasDynamicMethodArgs(ps, shapes) =
+  specializationParamShapes(true, ps, shapes).slice(1).every(_.every(_.isDyn()))
+
+fun isDefaultMethodSpecialization(cache, ps, shapes) =
+  if cache.owner is ConcreteClassSymbol and
+    shapes.length > 0 and
+      shapes.(0).length is 1 then
+        isDefaultThisShape(cache.owner, shapes.(0).(0)) and hasDynamicMethodArgs(ps, shapes)
+  else false
+
 fun defaultMethodKeyShapes(cache, isMethod, shapes) =
   if isMethod and cache.owner is ConcreteClassSymbol and isDefaultThisShape(cache.owner, shapes.(0).(0)) then
     [[mkDyn()], ...shapes.slice(1)]
@@ -895,7 +905,9 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
     let isMethod = cache.owner is ConcreteClassSymbol
     let keyShapes = defaultMethodKeyShapes(cache, isMethod, shapes)
     let specializationKey = specializeKey(funName, isMethod, ps, keyShapes)
-    let isPrivate = not hasAllDynamicParams(isMethod, ps, keyShapes)
+    let isPrivate =
+      if isMethod then not isDefaultMethodSpecialization(cache, ps, shapes)
+      else not hasAllDynamicParams(isMethod, ps, keyShapes)
     if cache.getFun(specializationKey) is
       Some(x) then [x.defn.sym.name, x.retShape]
       None then
