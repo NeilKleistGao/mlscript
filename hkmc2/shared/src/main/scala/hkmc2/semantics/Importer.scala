@@ -64,15 +64,7 @@ class Importer:
           res
         
         val jsFile = file.up / io.RelPath(file.baseName + ".mjs")
-        
-        // * Record the import source path on all top-level symbols from this file,
-        // * so that JSBuilder can generate imports for cross-file symbol references
-        // * resulting from inlining.
-        val jsPath = jsFile.toString
-        cctx.getElaboratedBlock(file, prelude, config).tree.definedSymbols.foreach: (_, bms) =>
-          bms.importSourcePath = S(jsPath)
-        
-        Import(sym, jsPath, jsFile)
+        Import(sym, jsFile.toString, jsFile)
         
       case _ =>
         if file.ext =/= "mls" then raise:

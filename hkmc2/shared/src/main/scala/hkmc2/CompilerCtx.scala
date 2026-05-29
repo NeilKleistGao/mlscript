@@ -115,23 +115,10 @@ class CompilerCtx(
       val (blk0, _) = elab.importFrom(parsed)
       
       val artifactConfig = Config.extractConfigFromStats(blk0)
-      
-      // * Always resolve the imported file so that symbol references are set up.
-      artifactConfig.givenIn:
-        val resolver = Resolver(rtl)
-        resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
-      
-      // * When full compilation paths are not available, still lower the imported file
-      // * so that `irDefn` is populated on symbols (needed for cross-file inlining).
-      if paths.isEmpty then
-        artifactConfig.givenIn:
-          val low = ltl.givenIn:
-            new codegen.Lowering()
-              with codegen.LoweringSelSanityChecks
-          low.program(new Term.Blk(blk0.stats, blk0.res))
-      
       val ir = paths.map: compilerPaths =>
         artifactConfig.givenIn:
+          val resolver = Resolver(rtl)
+          resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
           def findQuote(t: semantics.Statement): Bool = t match
             case Term.Quoted(_) | Term.Unquoted(_) => true
             case Term.Ref(sym) => sym === State.termSymbol

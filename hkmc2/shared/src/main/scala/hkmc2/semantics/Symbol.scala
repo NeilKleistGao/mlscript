@@ -277,11 +277,6 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
   // * This is a hack for that `TermDef` currently doesn't have a symbol. 
   var tsym: Opt[TermSymbol] = N
   
-  /** When this symbol is a top-level definition from an imported file,
-    * stores the JS import path (e.g., "../FilePrivateFunctions.mjs") so that
-    * JSBuilder can generate an import for it when it is referenced via inlining. */
-  var importSourcePath: Opt[Str] = N
-  
   def toLoc: Option[Loc] = Loc(trees)
   
   def describe: Str =
