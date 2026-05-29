@@ -157,14 +157,29 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
         case _ => die
 
       val newCtorSym: Opt[ClassCtorSymbol] = defn.ctorSym.map: cs =>
-        assert(!mapping.isDefinedAt(cs))
-        val newOwner = newIsym match
-          case cls: ClassSymbol => cls
-          case _ => lastWords(s"ClassCtorSymbol for non-class: $newIsym")
-        val ncs = new ClassCtorSymbol(cs.k, S(newOwner), cs.id)
-        mapping(cs) = ncs
-        hd += cs
-        ncs
+        mapping.get(cs) match
+          case Some(existing: ClassCtorSymbol) => existing
+          case Some(existing: TermSymbol) =>
+            val newOwner = newIsym match
+              case cls: ClassSymbol => cls
+              case _ => lastWords(s"ClassCtorSymbol for non-class: $newIsym")
+            val ncs = new ClassCtorSymbol(cs.k, S(newOwner), cs.id)
+            mapping(cs) = ncs
+            mapping.get(defn.sym) match
+              case Some(bms: BlockMemberSymbol) if bms.tsym.contains(existing) =>
+                bms.tsym = S(ncs)
+              case _ =>
+            ncs
+          case None =>
+            val newOwner = newIsym match
+              case cls: ClassSymbol => cls
+              case _ => lastWords(s"ClassCtorSymbol for non-class: $newIsym")
+            val ncs = new ClassCtorSymbol(cs.k, S(newOwner), cs.id)
+            mapping(cs) = ncs
+            hd += cs
+            ncs
+          case Some(other) =>
+            lastWords(s"Class ctor ${cs.nme} mapped to unexpected symbol kind ${other.getClass.getSimpleName}")
 
       val newOwn: Opt[InnerSymbol] = defn.owner.map: o =>
         mapping.get(o) match

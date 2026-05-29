@@ -31,18 +31,19 @@ fun test(x) =
   Foo(x)
 
 test(3)
-//│ FAILURE: Unexpected exception
-//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
-//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
-//│ 	at: hkmc2.codegen.SymbolRefresher.$anonfun$10(SymbolRefresher.scala:160)
-//│ 	at: scala.Option.map(Option.scala:244)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyDefn(SymbolRefresher.scala:159)
-//│ 	at: hkmc2.codegen.BlockTransformer.applyBlock(BlockTransformer.scala:95)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyBlock(SymbolRefresher.scala:82)
-//│ 	at: hkmc2.codegen.BlockSimplifier$Inliner$InlinerReplacer$Copier$Copier$.applyBlock(BlockSimplifier.scala:1140)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyScopedBlock(SymbolRefresher.scala:51)
-//│ 	at: hkmc2.codegen.BlockTransformer.applyBlock(BlockTransformer.scala:106)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyBlock(SymbolRefresher.scala:82)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:263)
+//│ ═══[RUNTIME ERROR] TypeError: Class constructor Foo1 cannot be invoked without 'new'
+//│     at REPL19:1:255
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:565:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:900:10)
+//│     at REPLServer.emit (node:events:509:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:465:12)
+//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:647:22)
 
 :sjs
 fun test(x) =
@@ -51,13 +52,13 @@ fun test(x) =
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let test2;
 //│ test2 = function test(x) {
-//│   let Foo2, tmp;
-//│   Foo2 = function Foo(a1, b) {
+//│   let Foo4, tmp;
+//│   Foo4 = function Foo(a1, b) {
 //│     return globalThis.Object.freeze(new Foo.class(a1, b));
 //│   };
-//│   (class Foo1 {
+//│   (class Foo3 {
 //│     static {
-//│       Foo2.class = this
+//│       Foo4.class = this
 //│     }
 //│     constructor(a1, b) {
 //│       this.a = a1;
@@ -67,24 +68,25 @@ fun test(x) =
 //│     static [definitionMetadata] = ["class", "Foo", ["a", "b"]];
 //│   });
 //│   tmp = x + 1;
-//│   return Foo2(x, tmp)
+//│   return Foo4(x, tmp)
 //│ };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
 test(123)
-//│ FAILURE: Unexpected exception
-//│ /!!!\ Uncaught error: java.lang.AssertionError: assertion failed
-//│ 	at: scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
-//│ 	at: hkmc2.codegen.SymbolRefresher.$anonfun$10(SymbolRefresher.scala:160)
-//│ 	at: scala.Option.map(Option.scala:244)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyDefn(SymbolRefresher.scala:159)
-//│ 	at: hkmc2.codegen.BlockTransformer.applyBlock(BlockTransformer.scala:95)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyBlock(SymbolRefresher.scala:82)
-//│ 	at: hkmc2.codegen.BlockSimplifier$Inliner$InlinerReplacer$Copier$Copier$.applyBlock(BlockSimplifier.scala:1140)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyScopedBlock(SymbolRefresher.scala:51)
-//│ 	at: hkmc2.codegen.BlockTransformer.applyBlock(BlockTransformer.scala:106)
-//│ 	at: hkmc2.codegen.SymbolRefresher.applyBlock(SymbolRefresher.scala:82)
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:263)
+//│ ═══[RUNTIME ERROR] TypeError: Class constructor Foo4 cannot be invoked without 'new'
+//│     at REPL25:1:276
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:565:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:900:10)
+//│     at REPLServer.emit (node:events:509:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:465:12)
+//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:647:22)
 
 
 // * Forgot to pass the arg:
@@ -92,7 +94,7 @@ test(123)
 :re
 test()
 //│ ╔══[COMPILATION ERROR] Expected 1 arguments, got 0
-//│ ║  l.93: 	test()
+//│ ║  l.95: 	test()
 //│ ╙──      	    ^^
 //│ ═══[RUNTIME ERROR] Error: Function 'test' expected 1 argument but got 0
 
