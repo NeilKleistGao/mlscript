@@ -212,32 +212,32 @@ let Runtime1;
         Runtime.SymbolMap = this
       }
       static {
-        let tmp1, tmp2;
+        let tmp, tmp1;
+        tmp = globalThis.Object.freeze(new globalThis.Map());
+        this.classMap = tmp;
         tmp1 = globalThis.Object.freeze(new globalThis.Map());
-        this.classMap = tmp1;
-        tmp2 = globalThis.Object.freeze(new globalThis.Map());
-        this.moduleMap = tmp2;
+        this.moduleMap = tmp1;
       }
       static checkClassMap(key, value) {
-        let v, tmp1;
+        let v;
         v = runtime.safeCall(SymbolMap.classMap.get(key));
         if (v instanceof Runtime.Unit.class) {
-          tmp1 = runtime.safeCall(SymbolMap.classMap.set(key, value));
-          return (tmp1 , value)
+          runtime.safeCall(SymbolMap.classMap.set(key, value));
+          return value
         }
         return v;
-      } 
+      }
       static checkModuleMap(key, value) {
-        let v, tmp1;
+        let v;
         v = runtime.safeCall(SymbolMap.moduleMap.get(key));
         if (v instanceof Runtime.Unit.class) {
-          tmp1 = runtime.safeCall(SymbolMap.moduleMap.set(key, value));
-          return (tmp1 , value)
+          runtime.safeCall(SymbolMap.moduleMap.set(key, value));
+          return value
         }
         return v;
       }
       toString() { return runtime.render(this); }
-      static [definitionMetadata] = ["class", "SymbolMap"]; 
+      static [definitionMetadata] = ["class", "SymbolMap"];
     });
     this.render = Rendering.render;
     (class TraceLogger {

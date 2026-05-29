@@ -350,7 +350,7 @@ fun sor(ctx, r) = if r is
 // p is the path p in p.f()
 // f is the symbol f in p.f()
 // args are the arguments in p.f(args)
-fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
+fun dispatchMethodCall(ctx, xOpt, p, f, args) =
   let pss = sop(ctx, p)
   let argShapes = args.map(a => sop(ctx, a.value))
   let splitRes = fsplit(pss)
@@ -363,7 +363,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
     0 and
       let dfltMatch = Call(Select(p, Symbol(f)), args)
       isRet then
-        [Return(dfltMatch, if implctOpt is Some(i) then i else false), mkDyn()]
+        [Return(dfltMatch), mkDyn()]
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
         [Assign(x, dfltMatch, End()), mkDyn()]
@@ -378,7 +378,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
       let retShape = ret.1
       let callRes = Call(Select(p, Symbol(retSym)), args)
       isRet then
-        [Return(callRes, if implctOpt is Some(i) then i else false), retShape]
+        [Return(callRes), retShape]
       else
         let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
         [Assign(x, callRes, End()), retShape]
@@ -393,7 +393,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
         let retShape = retData.1
         let callRes = Call(Select(p, Symbol(retSym)), args)
         if isRet then
-          [Arm(Cls(C_i, p), Return(callRes, if implctOpt is Some(i) then i else false)), retShape]
+          [Arm(Cls(C_i, p), Return(callRes)), retShape]
         else
           let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
           [Arm(Cls(C_i, p), Assign(x, callRes, End())), retShape]
@@ -403,7 +403,7 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
       let dfltRet = if unkShape.isEmpty() then [None, mkBot()] else
         let dfltMatch = Call(Select(p, Symbol(f)), args)
         if isRet then
-          [Some(Return(dfltMatch, if implctOpt is Some(i) then i else false)), mkDyn()]
+          [Some(Return(dfltMatch)), mkDyn()]
         else
           let x = if xOpt is Some(x_) then x_ else throw Error("unreachable")
           [Some(Assign(x, dfltMatch, End())), mkDyn()]
@@ -417,13 +417,13 @@ fun dispatchMethodCall(ctx, xOpt, implctOpt, p, f, args) =
 // [retBlock, retShape, canReachEnd]
 fun prop(ctx, b) = if b is
     End() then [b, mkBot(), true]
-    Return(Call(Select(p, Symbol(f)), args), implct) and not (f is "concat") and p is // TODO[later]: Ref -> Path, remove special checks
+    Return(Call(Select(p, Symbol(f)), args)) and not (f is "concat") and p is // TODO[later]: Ref -> Path, remove special checks
       ValueRef(symb) and not symb is ModuleSymbol then
-        [...dispatchMethodCall(ctx, None, Some(implct), p, f, args), false]
+        [...dispatchMethodCall(ctx, None, p, f, args), false]
       Select(ValueRef(ConcreteClassSymbol), _) then
-        [...dispatchMethodCall(ctx, None, Some(implct), p, f, args), false]
-    Return(res, implct) and sor(ctx, res) is [blk, r1, s1] then
-      [concat(blk, Return(r1, implct)), s1, false]
+        [...dispatchMethodCall(ctx, None, p, f, args), false]
+    Return(res) and sor(ctx, res) is [blk, r1, s1] then
+      [concat(blk, Return(r1)), s1, false]
     Scoped(symbols, rest) then
       symbols.forEach(x => ctx.add(ValueRef(x), mkBot()))
       let newAllocs = mut []
@@ -432,11 +432,11 @@ fun prop(ctx, b) = if b is
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
     Assign(x, Call(Select(p, Symbol(f)), args), restBlock) and p is // TODO Can we deduplicate this?
       ValueRef(symb) and not (symb is ModuleSymbol) then
-        let res = dispatchMethodCall(ctx, Some(x), None, p, f, args)
+        let res = dispatchMethodCall(ctx, Some(x), p, f, args)
         let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
         [concat(res.0, b2.0), b2.1, b2.2]
       Select(ValueRef(ConcreteClassSymbol), _) then
-        let res = dispatchMethodCall(ctx, Some(x), None, p, f, args)
+        let res = dispatchMethodCall(ctx, Some(x), p, f, args)
         let b2 = prop(ctx.add(ValueRef(x), res.1), restBlock)
         [concat(res.0, b2.0), b2.1, b2.2]
     Define(ValDefn(opt, sym, rhs), restBlock) and
@@ -577,7 +577,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         let finalBody = if staticSet(actualRetShape) then
           let allocs = mut []
           let v2p = shapeset2path(actualRetShape, allocs)
-          wrapScoped(allocs, concat(v2p.0, Return(v2p.1, false)))
+          wrapScoped(allocs, concat(v2p.0, Return(v2p.1)))
         else bodyWithScoped
 
         // Update cache with finalized body and actual return shape
