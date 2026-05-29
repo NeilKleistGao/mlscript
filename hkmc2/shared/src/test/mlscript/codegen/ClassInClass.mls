@@ -35,12 +35,17 @@ data class Outer(a, b) with
 //│         this$Outer.Inner.class = this
 //│       }
 //│       constructor(c) {
-//│         let tmp2;
+//│         let d, inlinedVal;
 //│         this.c = c;
 //│         Predef.print(this$Outer.a);
 //│         Predef.print(this.c);
-//│         tmp2 = this.i1(this$Outer.a);
-//│         Predef.print(tmp2);
+//│         d = this$Outer.a;
+//│         inlinedVal = globalThis.Object.freeze([
+//│           this$Outer.b,
+//│           this.c,
+//│           d
+//│         ]);
+//│         Predef.print(inlinedVal);
 //│       }
 //│       i1(d) {
 //│         return globalThis.Object.freeze([
@@ -64,7 +69,11 @@ data class Outer(a, b) with
 //│   o2(c, d) {
 //│     let tmp;
 //│     tmp = this.Inner(c);
-//│     return tmp.i1(d)
+//│     return globalThis.Object.freeze([
+//│       this.b,
+//│       tmp.c,
+//│       d
+//│     ])
 //│   }
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Outer", ["a", "b"]];
