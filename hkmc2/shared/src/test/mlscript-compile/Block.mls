@@ -160,13 +160,11 @@ class Printer(val owner: Opt[Symbol]) with
       else false
 
   fun showSymbol(s: Symbol) =
-    if s.redirect and not isGeneratedStagedClass(s) then
-      if owner is
-        Some(owner) and owner is ModuleSymbol then // TODO: this must be a top-level module symbol
+    if s.redirect and owner is
+      Some(owner) and owner is
+        ModuleSymbol then // TODO: this must be a top-level module symbol
           legacyName(owner.name) + ".\"" + s.name + "$" + owner.name + "\""
-        Some(owner) then
-          owner.name + ".\"" + s.name + "$" + owner.name + "\""
-        else s.name.replaceAll("$", "_")
+        else owner.name + ".\"" + s.name + "$" + owner.name + "\""
     else s.name.replaceAll("$", "_")
 
   fun showPath(p: Path): Str =
@@ -254,11 +252,11 @@ class Printer(val owner: Opt[Symbol]) with
     if d is
       FunDefn(sym, ps, body) then
         showFunDefn("", sym, ps, body)
-      ClsLikeDefn(sym, methods, _) and sym is ConcreteClassSymbol(_, v, _, _, _) and 
-        not isStagedClass(v) then
+      ClsLikeDefn(sym, methods, _) and sym is ConcreteClassSymbol(_, v, _, _, _) and
+        isGeneratedStagedClass(sym) then getClassCache(v)
+        else 
           "class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
             + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
-        isStagedClass(v) then getClassCache(v)
       // TODO: used to represent assignments in constructors, which still need some adjustments
       ValDefn(owner, sym, rhs) then
         "val " + showSymbol(sym) + " = " + showPath(rhs)
