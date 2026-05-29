@@ -215,10 +215,8 @@ class Printer(val owner: Opt[Symbol]) with
       Instantiate(cls, args) then 
         let classPath = showInstantiatePath(cls)
         // redirections must be dynamic selections, hence the use of new! is required
-        let prefix = if cls is ValueRef(cSym) and cSym.redirect and owner is Some(owner) and not isGeneratedStagedClass(cSym)
-          then "new! " + classPath
-          else "new " + classPath
-        prefix + "(" + showArgs(args) + ")"
+        // NOTE: noModuleCheck is enabled, so we don't need to switch to new! for dynamic selections from a module
+        "new " + classPath + "(" + showArgs(args) + ")"
       Tuple(elems) then "[" + showArgs(elems) + "]"
       _ then "<unknown result:" ~ r ~ ">"
 
