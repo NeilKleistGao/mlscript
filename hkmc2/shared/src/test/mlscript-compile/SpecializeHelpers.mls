@@ -120,14 +120,14 @@ class FunCache(
       fun showPath(p) = if p is
         ValueSimpleRef(s) | ValueMemberRef(s) and ctx.has(s) then ctx.get(s)
         Select(qual, name) and qual is
-          ValueThis(Symbol("globalThis")) then this.showSymbol(name)
+          // let elaborator disambiguate ValueThis
+          ValueThis(_) then this.showSymbol(name)
           ValueMemberRef(sym) and sym == owner then this.showSymbol(name)
           ValueMemberRef(ModuleSymbol) and this.isGeneratedStagedClass(name) then this.showSymbol(name)
           else showPath(qual) + "." + this.showSymbol(name)
         DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
         DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
         ValueSimpleRef(s) | ValueMemberRef(s) then this.showSymbol(s)
-        ValueThis(_) then "this"
         ValueLit(lit) then this.showLiteral(lit)
     
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)
@@ -205,7 +205,7 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   None and p is 
     Select(ValueMemberRef(clsSymb), Symbol(name)) and clsSymb is ConcreteClassSymbol and // variables defined in valdefn (this is for constructor propagation only)
       ctx.getValDefn(name) is Some(s) then s
-    Select(Select(ValueMemberRef(clsSymb), Symbol(name)), Symbol(name2)) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then // this.name.name2
+    Select(Select(ValueThis(clsSymb), Symbol(name)), Symbol(name2)) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then // this.name.name2
       selSet(selSet(thisShape, mkLit(name)), mkLit(name2))
     Select(qual, Symbol(name)) and // object property 
       ctx.thisShape is Some(thisShape) then // this.name
@@ -547,7 +547,6 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   // so we need to read the constraints by running dflt() anyway
   // which prevent the possibilily of not running dflt when specialized function already exists in cache
   let defn = dflt()
-  // print(defn)
   if defn is FunDefn(Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
     let specializationKey = specializeKey(funName, isMethod, ps, shapes)

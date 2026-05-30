@@ -180,7 +180,7 @@ class Printer(val owner: Opt[Symbol]) with
           // TODO: does this pattern exist, or is it replaced by the case below?
           ValueMemberRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
           // NOTE: ValueThis carries information about the class, but the elaborator can infer it for us
-          ValueThis then "this." + showSymbol(name)
+          ValueThis then showSymbol(name)
         else showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
