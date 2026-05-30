@@ -198,19 +198,21 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case clsSym: ClassSymbol if Elaborator.ctx.builtins.virtualClasses(clsSym) =>
           blockCtor("VirtualClassSymbol", Ls(toValue(name)), symName)(checkMap("checkClassMap", toValue(name), _, ctx))
         case baseSym: BaseTypeSymbol =>
-          val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
-            case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
-            case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
+          val (owner, bsym, paramsOpt, auxParams, ctorSym) = (baseSym.defn, defnMap.get(baseSym)) match
+            case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams, defn.ctorSym)
+            case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams, defn.ctorSym)
             // FIXME: hack to patch in staging for returning the object Unit.
-            case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
+            case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil, N)
             case _ =>
               raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
               return End()
           
-          val path = pOpt.getOrElse(owner match
-            case S(owner) => owner.asThis.selSN(baseSym.nme)
-            case N => bsym.asBlkMember.get.asMemberRef(sym.asClsOrMod.get))
-          
+          val path = (pOpt, owner, ctorSym) match
+            case (S(p), _, _) => p
+            case (N, S(owner), _) => owner.asThis.selSN(baseSym.nme)
+            case (N, N, S(ctorSym)) => bsym.asBlkMember.get.asMemberRef(ctorSym)
+            case _ => bsym.asBlkMember.get.asMemberRef(sym.asClsOrMod.get)
+
           baseSym match
             case _: ClassSymbol =>
               transformParamsOpt(paramsOpt): (paramsOpt, ctx) =>
@@ -264,6 +266,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
             blockCtor("ValueMemberRef", Ls(sym), "var")(k(_, ctx))
         case l: Value.Lit =>
           blockCtor("ValueLit", Ls(l), "lit")(k(_, ctx))
+        case Value.This(sym) =>
+          transformSymbol(sym): (sym, ctx) =>
+            blockCtor("ValueThis", Ls(sym))(k(_, ctx))
         case s @ Select(p, Tree.Ident(name)) =>
           transformPath(p): (x, ctx) =>
             s.symbol match
@@ -273,9 +278,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformPath(qual): (x, ctx) =>
             transformPath(fld)(using ctx): (y, ctx) =>
               blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k(_, ctx))
-        case _: Value.This =>
-          raise(ErrorReport(msg"Value.This not supported in staged module." -> p.toLoc :: Nil))
-          End()
 
   def transformResult(r: Result)(using ctx: Context)(k: (Path, Context) => Block): Block = r match
     case p: Path => transformPath(p)(k)
@@ -467,10 +469,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   def stageCtor(ctorFun: FunDefn): FunDefn = 
     // refresh VarSymbols for ctor
     val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id))).flatten.toMap
-    val paramRewrite = new BlockTransformer(new SymbolSubst():
+    val varSymSubst = new SymbolSubst():
       // refresh symbols after copying parameter list
       override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)
-    ):
+    val paramRewrite = new BlockTransformer(varSymSubst):
+      override def applyBlock(b: Block) = b match
+        // process ctor: remove ValDefn of parameters already defined in the class parameters
+        // remove `val C.x = x` statements from the constructor
+        case Define(ValDefn(_, _, Value.SimpleRef(sym: VarSymbol)), rest)
+          if paramSymMap.contains(sym) => applyBlock(rest)
+        case _ => super.applyBlock(b)
       override def applyScopedBlock(b: Block) = b match
         case Scoped(s, bd) =>
           val nb = applySubBlock(bd)
@@ -479,7 +487,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case _ => applySubBlock(b)
     stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(true))
 
-  case class StagingCfg(ownerSym: DefinitionSymbol[? <: ClassLikeDef], modSym: InnerSymbol, nestedPropagates: Ls[Path], codegenClasses: Ls[BlockMemberSymbol]):
+  case class StagingCfg(ownerSym: DefinitionSymbol[? <: ClassLikeDef] & InnerSymbol, modSym: InnerSymbol, nestedPropagates: Ls[Path], codegenClasses: Ls[BlockMemberSymbol]):
     val forClass = ownerSym != modSym
     val suffix = "$" + scope.allocateOrGetName(ownerSym)
     val cacheNme = (if forClass then "class$" else "") + "cache" + suffix
@@ -520,7 +528,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
     // initialize cache for the module
     def cacheDecl(rest: Block) =
-      val pOpt = if !forClass then S(Value.Ref(ownerSym)) else N
+      val pOpt = if !forClass then S(ownerSym.asThis) else N
       
       transformSymbol(ownerSym, pOpt = pOpt)(using Context(false)): (stagedSym, _) =>
         ctor(State.globalThisSymbol.asPath.selSN("Map"), Nil): cacheMap =>
@@ -574,7 +582,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // grab all defn seen so far
     // TODO: this could be reduced to only contain all the symbols used within the module
     val previousStageValues = if forClass then Nil else
-      scope.getBindings.toList.collect[(DefinitionSymbol[? <: ModuleOrObjectDef | ClassDef], String)]({ // FIXME: this `toList` should be removed, but now we get something lost without it.
+      scope.getBindings.toList.collect[(DefinitionSymbol[? <: ModuleOrObjectDef | ClassDef], String)]({ // FIXME: this `toList` should be removed, but now we lose some of the values without it.
         case (m: ModuleOrObjectSymbol, s) if m != State.unitSymbol && m != ownerSym => (m, s)
         case (c: ClassSymbol, s) if !Elaborator.ctx.builtins.virtualClasses(c) && c != ownerSym => (c, s)
       }).map((key, nme) =>
