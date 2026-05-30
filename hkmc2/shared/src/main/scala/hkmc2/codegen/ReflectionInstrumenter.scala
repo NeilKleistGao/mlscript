@@ -95,13 +95,13 @@ class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id)
     class PrivateFieldDefnRemover extends BlockTransformer(SymbolSubst.Id):
       override def applyPath(p: Path)(k: Path => Block) = p match
         // remove outdated definition symbols for private fields
-        case s @ Select(Value.MemberRef(cls, _), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
+        case s @ Select(Value.This(cls), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
         case _ => k(p)
 
     // change private field initializations to public
     val publicInitTransformer = new PrivateFieldDefnRemover:
       override def applyBlock(b: Block) = b match
-        case AssignField(l @ Value.MemberRef(cls, _), Tree.Ident(n), r, rest) if cls == defn.isym =>
+        case AssignField(l @ Value.This(cls), Tree.Ident(n), r, rest) if cls == defn.isym =>
           privateFields.get(n) match
             case S((b, t)) =>
               applyResult(r): r =>
@@ -180,7 +180,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         // top-level user-defined staged classes
         case c: ClassSymbol if c.defn.exists(defn => defn.owner.isEmpty && defn.hasStagedModifier.isDefined) => false
         // avoid name collision
-        case _: TempSymbol | _: VarSymbol | _: BaseTypeSymbol => true
+          case _: TempSymbol | _: VarSymbol | _: BaseTypeSymbol => true
         // FIXME: there may be more types of symbols that need to be renamed during staging
         case b: BlockMemberSymbol =>
           if !b.nameIsMeaningful then scope.allocateOrGetName(sym)
@@ -601,7 +601,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               case S(owner: DefinitionSymbol[ModuleOrObjectDef | ClassDef]) =>
                 Select(reconstruct(owner), Tree.Ident(s.nme))(N)
               case N => defn match
-                case l: (ModuleOrObjectDef | ClassDef) => Value.Ref(l.bsym, S(s))
+                case l: (ModuleOrObjectDef | ClassDef) => Value.MemberRef(l.bsym, s)
                 case l: ClsLikeDefn => Value.MemberRef(l.sym, s)
             case N => s.asPath 
 
