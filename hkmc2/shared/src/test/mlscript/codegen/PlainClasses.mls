@@ -14,12 +14,11 @@ class Foo
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Foo is Foo
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ if (Foo1 instanceof Foo1) { return true } return false; 
+//│ if (Foo1 instanceof Foo1) { return true } return false;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = false
 
@@ -29,32 +28,31 @@ Foo is Foo
 //│ scrut = globalThis.Object.freeze(new Foo1());
 //│ if (scrut instanceof Foo1) { return true }
 //│ return false;
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = true
 
 new Foo
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return globalThis.Object.freeze(new Foo1()) 
+//│ return globalThis.Object.freeze(new Foo1())
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo
 
 new Foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return globalThis.Object.freeze(new Foo1()) 
+//│ return globalThis.Object.freeze(new Foo1())
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo
 
 Foo
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo1 
+//│ return Foo1
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = class Foo
 
 :re
 Foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return runtime.safeCall(Foo1()) 
+//│ return runtime.safeCall(Foo1())
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ═══[RUNTIME ERROR] TypeError: Class constructor Foo cannot be invoked without 'new'
 
@@ -85,7 +83,6 @@ print("ok")
 //│ callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
 //│ tmp = runtime.safeCall(callPrefix(...xs));
 //│ return runtime.safeCall(globalThis.console.log(...tmp))
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > ok
 
@@ -121,12 +118,11 @@ fun test() =
 //│   runtime.safeCall(globalThis.console.log(...tmp1));
 //│   return Foo5
 //│ };
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let t = test()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let t; t = test(); 
+//│ let t; t = test();
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > ok
 //│ t = class Foo
@@ -134,18 +130,18 @@ let t = test()
 :e
 new t
 //│ ╔══[COMPILATION ERROR] Expected a statically known class; found reference.
-//│ ║  l.135: 	new t
+//│ ║  l.131: 	new t
 //│ ║         	    ^
 //│ ╙── The 'new' keyword requires a statically known class; use the 'new!' operator for dynamic instantiation.
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return globalThis.Object.freeze(new t()) 
+//│ return globalThis.Object.freeze(new t())
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 //│ = Foo
 
 new! t
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return globalThis.Object.freeze(new t()) 
+//│ return globalThis.Object.freeze(new t())
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 //│ = Foo
@@ -153,18 +149,18 @@ new! t
 :e
 new t()
 //│ ╔══[COMPILATION ERROR] Expected a statically known class; found reference.
-//│ ║  l.154: 	new t()
+//│ ║  l.150: 	new t()
 //│ ║         	    ^
 //│ ╙── The 'new' keyword requires a statically known class; use the 'new!' operator for dynamic instantiation.
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return globalThis.Object.freeze(new t()) 
+//│ return globalThis.Object.freeze(new t())
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 //│ = Foo
 
 new! t()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return globalThis.Object.freeze(new t()) 
+//│ return globalThis.Object.freeze(new t())
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 //│ = Foo
@@ -191,7 +187,6 @@ class Foo with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -229,7 +224,6 @@ class Foo with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -257,7 +251,6 @@ class Foo with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let a = new Foo
@@ -287,7 +280,6 @@ print(a.bar(1))
 //│ callPrefix1 = runtime.safeCall(Predef.map(Predef.renderAsStr));
 //│ tmp3 = runtime.safeCall(callPrefix1(...xs3));
 //│ return runtime.safeCall(globalThis.console.log(...tmp3))
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ > 2
@@ -302,10 +294,10 @@ class Foo with
   val x = 2
 //│ ╔══[COMPILATION ERROR] Multiple definitions of symbol 'x'
 //│ ╟── defined here
-//│ ║  l.301: 	  val x = 1
+//│ ║  l.293: 	  val x = 1
 //│ ║         	  ^^^^^^^^^
 //│ ╟── defined here
-//│ ║  l.302: 	  val x = 2
+//│ ║  l.294: 	  val x = 2
 //│ ╙──       	  ^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo12;
@@ -320,7 +312,6 @@ class Foo with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 :e
@@ -328,10 +319,10 @@ class Foo with
   val x = 1
   let x = 2
 //│ ╔══[COMPILATION ERROR] Name 'x' is already used
-//│ ║  l.329: 	  let x = 2
+//│ ║  l.320: 	  let x = 2
 //│ ║         	      ^^^^^
 //│ ╟── by a member declared in the same block
-//│ ║  l.328: 	  val x = 1
+//│ ║  l.319: 	  val x = 1
 //│ ╙──       	  ^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo14;
@@ -345,7 +336,6 @@ class Foo with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -358,7 +348,7 @@ class Foo with
 :e
 class Foo with val x = 1
 //│ ╔══[COMPILATION ERROR] Illegal body of class definition (should be a block; found term definition).
-//│ ║  l.359: 	class Foo with val x = 1
+//│ ║  l.349: 	class Foo with val x = 1
 //│ ╙──       	               ^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo16;
@@ -369,7 +359,6 @@ class Foo with val x = 1
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 

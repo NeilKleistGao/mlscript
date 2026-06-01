@@ -22,7 +22,6 @@ class A(val x)(val y)
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "A", ["x"]];
 //│ });
-//│ 
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let A⁰;
 //│ define A⁰ as class A² {
@@ -46,7 +45,7 @@ h.y
 :expect 2
 A(1)(2).y
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp; tmp = globalThis.Object.freeze(new A1.class(1, 2)); return tmp.y 
+//│ let tmp; tmp = globalThis.Object.freeze(new A1.class(1, 2)); return tmp.y
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 2
 
@@ -74,7 +73,6 @@ new A(...[4])(...[5]).y
 //│ ]);
 //│ tmp3 = globalThis.Object.freeze(new A1.class(...tmp1, ...tmp2));
 //│ return tmp3.y
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 5
 
@@ -109,22 +107,22 @@ h.y
 class A(x1, x2, ...xs)(y1, ...ys) with
   fun fields = [x1, x2, xs, y1, ys]
 //│ ╔══[COMPILATION ERROR] Spread parameters are not supported in class parameters.
-//│ ║  l.109: 	class A(x1, x2, ...xs)(y1, ...ys) with
+//│ ║  l.107: 	class A(x1, x2, ...xs)(y1, ...ys) with
 //│ ╙──       	                   ^^
 //│ ╔══[COMPILATION ERROR] Spread parameters are not supported in class parameters.
-//│ ║  l.109: 	class A(x1, x2, ...xs)(y1, ...ys) with
+//│ ║  l.107: 	class A(x1, x2, ...xs)(y1, ...ys) with
 //│ ╙──       	                              ^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'xs'
-//│ ║  l.110: 	  fun fields = [x1, x2, xs, y1, ys]
+//│ ║  l.108: 	  fun fields = [x1, x2, xs, y1, ys]
 //│ ║         	                        ^^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.109: 	class A(x1, x2, ...xs)(y1, ...ys) with
+//│ ║  l.107: 	class A(x1, x2, ...xs)(y1, ...ys) with
 //│ ╙──       	                   ^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'ys'
-//│ ║  l.110: 	  fun fields = [x1, x2, xs, y1, ys]
+//│ ║  l.108: 	  fun fields = [x1, x2, xs, y1, ys]
 //│ ║         	                                ^^
 //│ ╟── which references the symbol introduced here
-//│ ║  l.109: 	class A(x1, x2, ...xs)(y1, ...ys) with
+//│ ║  l.107: 	class A(x1, x2, ...xs)(y1, ...ys) with
 //│ ╙──       	                              ^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let A3;
@@ -157,7 +155,6 @@ class A(x1, x2, ...xs)(y1, ...ys) with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "A", [null, null]];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 :todo

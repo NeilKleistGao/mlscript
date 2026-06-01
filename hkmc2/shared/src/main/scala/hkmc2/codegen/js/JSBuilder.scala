@@ -905,7 +905,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       doc"""export { ${scope.lookup_!(sym, sym.toLoc)} as ${modulePrivateExportName(sym)} };"""
     withPrivateAccessorDecls((imps ::: externalDefaultImps ::: externalPrivateImps).mkDocument(doc" # "))
     :/: bodyDoc
-    :/: privateExports.mkDocument(doc" # ")
+    :: (if privateExports.isEmpty then doc"" else doc" # " :: privateExports.mkDocument(doc" # "))
     :: locally:
       exprt match
       case S(sym) => doc"\nlet ${sym.nme} = ${scope.lookup_!(sym, sym.toLoc)}; export default ${sym.nme};\n"

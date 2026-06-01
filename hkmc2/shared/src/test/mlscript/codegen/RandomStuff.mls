@@ -7,7 +7,6 @@ fun foo() = if false do foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let foo;
 //│ foo = function foo() { if (false === true) { foo(); return runtime.Unit } return runtime.Unit; };
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 // * ...but this is (so it's tailrec-optimized)
 :sjs
@@ -17,13 +16,12 @@ fun foo() = if false do return foo()
 //│ foo1 = function foo() {
 //│   loopLabel: while (true) { if (false === true) { continue loopLabel } return runtime.Unit; }
 //│ };
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 :sjs
 fun foo() = foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let foo2; foo2 = function foo() { loopLabel: while (true) { continue loopLabel; } }; 
+//│ let foo2; foo2 = function foo() { loopLabel: while (true) { continue loopLabel; } };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -57,7 +55,6 @@ data class Foo(x) with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", ["x"]];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -66,7 +63,7 @@ fun foo() =
   fun bar() = bar()
   bar()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let foo3; foo3 = function foo() { let bar; bar = function bar() { return bar() }; return bar() }; 
+//│ let foo3; foo3 = function foo() { let bar; bar = function bar() { return bar() }; return bar() };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -91,7 +88,6 @@ do
 //│ tmp = runtime.safeCall(callPrefix(...xs));
 //│ runtime.safeCall(globalThis.console.log(...tmp));
 //│ return runtime.Unit
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > fun
 //│ f = 1
@@ -101,13 +97,13 @@ do
 let foo = 1
 fun foo(x) = foo
 //│ ╔══[COMPILATION ERROR] Name 'foo' is already used
-//│ ║  l.101: 	let foo = 1
-//│ ║         	    ^^^^^^^
+//│ ║  l.97: 	let foo = 1
+//│ ║        	    ^^^^^^^
 //│ ╟── by a member declared in the same block
-//│ ║  l.102: 	fun foo(x) = foo
-//│ ╙──       	^^^^^^^^^^^^^^^^
+//│ ║  l.98: 	fun foo(x) = foo
+//│ ╙──      	^^^^^^^^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let foo4; foo4 = 1; 
+//│ let foo4; foo4 = 1;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ foo = 1
 
@@ -115,7 +111,7 @@ fun foo(x) = foo
 :re
 foo(1)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return runtime.safeCall(foo4(1)) 
+//│ return runtime.safeCall(foo4(1))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ═══[RUNTIME ERROR] TypeError: foo4 is not a function
 

@@ -36,7 +36,6 @@ object Test with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["object", "Test"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Test
@@ -48,7 +47,7 @@ print(Test)
 :sjs
 Test.foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Test1.foo() 
+//│ return Test1.foo()
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > Test { x: 12, class: object Test }
 //│ = 12
@@ -56,7 +55,7 @@ Test.foo()
 :sjs
 val Test = "oops"
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let Test2; Test2 = "oops"; 
+//│ let Test2; Test2 = "oops";
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ Test = "oops"
 
@@ -71,7 +70,7 @@ let f = () => x
 let x = 2
 f()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let x, f, x1, f1; x = 1; f1 = function f() { return x }; f = f1; x1 = 2; return x 
+//│ let x, f, x1, f1; x = 1; f1 = function f() { return x }; f = f1; x1 = 2; return x
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 //│ f = fun f
@@ -84,10 +83,10 @@ module Test with
   val x = 1
   let x = 2
 //│ ╔══[COMPILATION ERROR] Name 'x' is already used
-//│ ║  l.85: 	  let x = 2
+//│ ║  l.84: 	  let x = 2
 //│ ║        	      ^^^^^
 //│ ╟── by a member declared in the same block
-//│ ║  l.84: 	  val x = 1
+//│ ║  l.83: 	  val x = 1
 //│ ╙──      	  ^^^^^^^^^
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
 //│ let Test4;
@@ -155,7 +154,6 @@ data class Cls(x) with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Cls", ["x"]];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let cls = Cls(10)
@@ -223,7 +221,6 @@ module Whoops with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Whoops"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Whoops.f()
@@ -239,7 +236,7 @@ Whoops.Whoops.g()
 :e
 Runtime
 //│ ╔══[COMPILATION ERROR] Name not found: Runtime
-//│ ║  l.240: 	Runtime
+//│ ║  l.237: 	Runtime
 //│ ╙──       	^^^^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
@@ -275,7 +272,6 @@ module AA with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "AA"];
 //│ });
-//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
