@@ -1,5 +1,7 @@
 :js
 
+open annotations { noInline }
+
 
 // The worker-wrapper transformation initially turns this into
 //    fun foo(x)(y) = foo$worker(x, y)
@@ -26,6 +28,25 @@ foo(1)(2)
 //│   return +⁰(tmp1, y)
 //│ };
 //│ return 6
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 6
+
+
+// @noInline should prevent worker-wrapper from synthesizing an @inline wrapper.
+:soir
+@noInline fun annotatedNoInlineFoo(x)(y) =
+  x + y + x + y
+annotatedNoInlineFoo(1)(2)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let annotatedNoInlineFoo⁰;
+//│ @noInline
+//│ define annotatedNoInlineFoo⁰ as fun annotatedNoInlineFoo¹(x)(y) {
+//│   let tmp, tmp1;
+//│   set tmp = +⁰(x, y);
+//│   set tmp1 = +⁰(tmp, x);
+//│   return +⁰(tmp1, y)
+//│ };
+//│ return annotatedNoInlineFoo¹(1)(2)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 6
 

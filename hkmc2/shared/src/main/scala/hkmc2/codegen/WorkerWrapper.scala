@@ -15,6 +15,7 @@ import semantics.Elaborator.State
   * the worker. For tiny bodies, creating a worker would only add noise: the
   * wrapper body would inline the worker immediately under the stricter
   * `altSmallThreshold`, so we mark the original function inline directly.
+  * Functions marked `@noInline` are left untouched.
   */
 class WorkerWrapper
     (_symbolsToPreserve: Set[Symbol], tl: TL, printer: Program => Str)
@@ -23,7 +24,8 @@ class WorkerWrapper
   import tl.*
   
   private def withInline(annotations: Ls[Annot]): Ls[Annot] =
-    if annotations.contains(Annot.Inline) then annotations else Annot.Inline :: annotations
+    if annotations.contains(Annot.NoInline) || annotations.contains(Annot.Inline) then annotations
+    else Annot.Inline :: annotations
   
   private def withoutInline(annotations: Ls[Annot]): Ls[Annot] =
     annotations.filterNot(_ == Annot.Inline)
@@ -32,7 +34,7 @@ class WorkerWrapper
     params.flags == ParamListFlags.empty && params.restParam.isEmpty
   
   private def canUncurry(fun: FunDefn): Bool =
-    fun.owner.isEmpty && fun.params.lengthCompare(1) > 0 && fun.params.forall(isPlainParamList)
+    !fun.noInline && fun.owner.isEmpty && fun.params.lengthCompare(1) > 0 && fun.params.forall(isPlainParamList)
   
   private def isBelowAltInlineThreshold(body: Block): Bool =
     config.inlining.exists: cfg =>

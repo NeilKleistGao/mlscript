@@ -2,6 +2,8 @@
 
 #config(deadBranchRemoval: true)
 
+open annotations { noInline }
+
 
 :soir
 fun f() = 0
@@ -16,6 +18,18 @@ fun f(x) = x
 f(100)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let f²; define f² as fun f³(x) { return x }; return 100
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 100
+
+
+:soir
+@noInline private fun keepCall(x) = x
+keepCall(100)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let keepCall⁰;
+//│ @noInline @private
+//│ define keepCall⁰ as fun keepCall¹(x) { return x };
+//│ return keepCall¹(100)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 100
 

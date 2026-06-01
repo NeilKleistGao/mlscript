@@ -1014,10 +1014,11 @@ class BlockSimplifier
         // Whether this function can be inlined without causing any code duplication,
         // i.e. the original definition can be removed and there is only one usage.
         def canBeInlineEliminated: Bool =
-          isPrivate && !isMethod && useCount <= 1 && !disallowElimination && !isLoopBreaker
+          !defn.noInline && isPrivate && !isMethod && useCount <= 1 && !disallowElimination && !isLoopBreaker
           // false
         
         def shouldBeInlined(newBlk: Block, threshold: Int): Bool =
+          if defn.noInline then return false
           // Instance methods access instance state via `this`, so they must not be
           // inlined as if they were static calls. True modules are safe because
           // their `this` references can be replaced by call-site qualifier paths.

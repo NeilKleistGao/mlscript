@@ -1059,7 +1059,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         auxDsym,
         newPlists,
         bod
-      )(N, Annot.Inline :: fun.annotations)
+      )(N, if fun.noInline then fun.annotations else Annot.Inline :: fun.annotations)
     
     private val aux = Lazy[Defn](mkAuxDefn)
     
