@@ -924,7 +924,7 @@ class BlockSimplifier
             case S(ts: TermSymbol) => S(ts)
             case _ => N
           case _ => N
-      
+
       /** Extract the qualifier path from a method call, if it's a Select.
         * For `Select(qual, name)(Some(ts))`, returns `Some((qual, ts))`.
         * For direct refs (MemberRef), returns `None` (no qualifier path needed). */
@@ -957,7 +957,7 @@ class BlockSimplifier
             case _ => continue = false
           case _ => continue = false
         mapping
-      
+
       def buildAmbientSymbolMapping(callee: TermSymbol)(using State): Map[Symbol, Symbol] =
         callee.getState.ambientSymbolMappingTo(State, ctx)
 
@@ -1024,7 +1024,7 @@ class BlockSimplifier
         def isModuleMethod: Bool = defn.dSym.owner match
           case S(owner: ModuleOrObjectSymbol) => owner.tree.k is syntax.Mod
           case _ => false
-        
+
         // Whether this function can be inlined without causing any code duplication,
         // i.e. the original definition can be removed and there is only one usage.
         def canBeInlineEliminated: Bool =
@@ -1190,7 +1190,7 @@ class BlockSimplifier
               applyResult(res): r2 =>
                 Assign(resSym, r2, Break(lblSym))
             case _ => super.applyBlock(b)
-          
+
           override def applyValue(v: Value)(k: Value => Block): Block = v match
             case Value.This(sym) if thisMapping.contains(sym) =>
               // * Replace module `this` references with the corresponding qualifier path.
@@ -1201,7 +1201,7 @@ class BlockSimplifier
                 // * Should not happen here; non-Value replacements are handled in applyPath.
                 super.applyValue(v)(k)
             case _ => super.applyValue(v)(k)
-          
+
           override def applyPath(p: Path)(k: Path => Block): Block = p match
             case Value.This(sym) if thisMapping.contains(sym) =>
               // * Replace module `this` references with the corresponding qualifier path

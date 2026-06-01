@@ -975,7 +975,7 @@ object Value:
 
   @deprecated("Use Value.SimpleRef, Value.MemberRef, or Value.This instead.")
   object Ref:
-    def apply(l: ValueSymbol | NoSymbol, disamb: Opt[DefinitionSymbol[?]]): Value.RefLike = 
+    def apply(l: ValueSymbol | NoSymbol, disamb: Opt[DefinitionSymbol[?]]): Value.RefLike =
       l match
         case l: SimpleSymbol => l.asSimpleRef
         case bms: BlockMemberSymbol => bms.asMemberRef:

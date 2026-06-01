@@ -362,6 +362,35 @@ object Elaborator:
   class State:
     val suid = new Uid.Symbol.State
     given State = this
+    private var _compilationUnitOrigin: Opt[Origin] = N
+    private var _compilationUnitExport: Opt[BlockMemberSymbol] = N
+    private val importedModulePaths = mutable.Map.empty[ImportSymbol, Str]
+    /** Records the source file represented by this state and its default module export.
+      *
+      * Symbols retain their elaboration state, so this immutable-after-initialization metadata
+      * lets code generation recover their origin after cross-compilation-unit inlining without
+      * mutating shared cached symbols. Worksheet states intentionally remain uninitialized. */
+    def initializeCompilationUnit(origin: Origin, defaultExport: Opt[BlockMemberSymbol]): Unit =
+      assert(_compilationUnitOrigin.isEmpty && _compilationUnitExport.isEmpty)
+      _compilationUnitOrigin = S(origin)
+      _compilationUnitExport = defaultExport
+    def compilationUnitModulePath: Opt[Str] =
+      _compilationUnitOrigin.map: origin =>
+        val file = origin.fileName
+        (file.up / io.RelPath(file.baseName + ".mjs")).toString
+    def isCompilationUnitExport(sym: Symbol): Bool =
+      _compilationUnitExport.contains(sym)
+    /** Records imports whose symbols are owned by this state.
+      *
+      * Imports of `.mls` files normally reuse the exported symbol owned by the imported state;
+      * their paths are recovered from that state's compilation-unit origin instead. */
+    def noteImportedModule(sym: ImportSymbol, path: Str): Unit =
+      if sym.getState is this then
+        importedModulePaths.get(sym) match
+          case S(previous) => assert(previous === path, (sym, previous, path))
+          case N => importedModulePaths(sym) = path
+    def importedModulePath(sym: ImportSymbol): Opt[Str] =
+      importedModulePaths.get(sym)
     /** Effective configuration of the imported compilation unit represented by this state.
       *
       * Root worksheet states intentionally leave this empty because their configuration can

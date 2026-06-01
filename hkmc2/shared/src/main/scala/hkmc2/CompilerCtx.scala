@@ -61,13 +61,13 @@ class CompilerCtx(
     // * this means subsequent importers will not have see same prelude symbols.
     // * The correct approach should be to only cache a *single* State and prelude Ctx at the start,
     // * and reuse it for every compilation unit (each compilation unit duplicating the root State).
-    val state = new Elaborator.State
-    given Elaborator.State = state
-    
     val lastMod = fs.getLastChangedTimestamp(file)
     val compilationUnitConfig = rootConfig.getOrElse(Config.default(importerCfg.baseDir))
     
     def mk =
+      val state = new Elaborator.State
+      given Elaborator.State = state
+
       // * Later, we can draw this from a global root configuration,
       // * which is set for a whole application.
       given Config = compilationUnitConfig
@@ -118,16 +118,14 @@ class CompilerCtx(
       
       // val elab = Elaborator(etl, wd, newCtx)
       val parsed = mainParse.resultBlk
-      val jsModulePath = (file.up / io.RelPath(file.baseName + ".mjs")).toString
-      parsed.definedSymbols.foreach: (_, sym) =>
-        sym.compilationUnitPath = S(jsModulePath)
-      def markCompilationUnitSymbols(program: codegen.Program): Set[BlockMemberSymbol] =
+      val nme = file.baseName
+      val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
+      state.initializeCompilationUnit(mainParse.origin, exportedSymbol)
+      def collectCompilationUnitSymbols(program: codegen.Program): Set[BlockMemberSymbol] =
         program.main match
         case codegen.Scoped(syms, _) =>
           syms.iterator.collect:
-            case sym: BlockMemberSymbol =>
-              sym.compilationUnitPath = S(jsModulePath)
-              sym
+            case sym: BlockMemberSymbol => sym
           .toSet
         case _ => Set.empty
       val (blk0, _) = elab.importFrom(parsed)
@@ -145,7 +143,7 @@ class CompilerCtx(
           val low = ltl.givenIn:
             new codegen.Lowering()
               with codegen.LoweringSelSanityChecks
-          markCompilationUnitSymbols(low.program(blk0))
+          low.program(blk0)
       val ir = paths.map: compilerPaths =>
         artifactConfig.givenIn:
           def findQuote(t: semantics.Statement): Bool = t match
@@ -162,16 +160,16 @@ class CompilerCtx(
                 blk0.stats),
             blk0.res
           )
+          state.noteImportedModule(State.runtimeSymbol, compilerPaths.runtimeFile.toString)
+          if hasQuote then state.noteImportedModule(State.termSymbol, compilerPaths.termFile.toString)
           val low = ltl.givenIn:
             new codegen.Lowering()
               with codegen.LoweringSelSanityChecks
           val jsb = ltl.givenIn:
             codegen.js.JSBuilder()
           val lowered = low.program(blk)
-          val compilationUnitSymbols = markCompilationUnitSymbols(lowered)
+          val compilationUnitSymbols = collectCompilationUnitSymbols(lowered)
           var optimized = lowered
-          val nme = file.baseName
-          val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
           val symbolsToPreserve: Set[Symbol] = compilationUnitSymbols ++ exportedSymbol
           optimized =
             val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
@@ -179,7 +177,6 @@ class CompilerCtx(
             codegen.BlockSimplifier(symbolsToPreserve, dtl, printer)(optimized)
           ltl.givenIn:
             optimized = codegen.DeadParamElim(optimized)
-          markCompilationUnitSymbols(optimized)
           optimized
 
       val loweredPaths = paths.map(p => p.runtimeFile -> p.termFile)

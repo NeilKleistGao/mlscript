@@ -2,7 +2,6 @@ const definitionMetadata = globalThis.Symbol.for("mlscript.definitionMetadata");
 const prettyPrint = globalThis.Symbol.for("mlscript.prettyPrint");
 import runtime from "./Runtime.mjs";
 import RuntimeJS from "./RuntimeJS.mjs";
-import Runtime from "./Runtime.mjs";
 import Rendering from "./Rendering.mjs";
 import Term from "./Term.mjs";
 let Predef1;
@@ -325,10 +324,10 @@ let Predef1;
     return instance
   }
   static enterHandleBlock(handler, body) {
-    return runtime.safeCall(Runtime.enterHandleBlock(handler, body))
+    return runtime.safeCall(runtime.enterHandleBlock(handler, body))
   }
   static raiseUnhandledEffect() {
-    return runtime.safeCall(Runtime.mkEffect(Runtime.FatalEffect, null))
+    return runtime.safeCall(runtime.mkEffect(runtime.FatalEffect, null))
   }
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "Predef"];

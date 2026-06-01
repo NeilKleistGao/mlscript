@@ -1331,11 +1331,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   def program(main: st.Blk): Program =
     
     val (imps, funs, rest) = splitBlock(main.stats, Nil, Nil, Nil)
-    imps.foreach: imp =>
-      // Inlining may move references outside the program that contained the
-      // original import statement. Preserve enough provenance for JSBuilder to
-      // recreate the import in the receiving program.
-      imp.sym.importPath = S(imp.str)
     
     val blk =
       inScopedBlock(using LoweringCtx.empty):

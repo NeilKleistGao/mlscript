@@ -18,6 +18,10 @@ class Importer:
   self: Elaborator =>
   import tl.*
   
+  private def noteImport(sym: ImportSymbol, path: Str, file: io.Path): Import =
+    State.noteImportedModule(sym, path)
+    Import(sym, path, file)
+
   def importPath(path: Str, alias: Opt[syntax.Tree.Ident])(using cfg: Config): Import =
     // log(s"pwd: ${os.pwd}")
     // log(s"wd: ${wd}")
@@ -41,8 +45,7 @@ class Importer:
       file.ext match
       
       case "mjs" | "js" =>
-        sym.importPath = S(file.toString)
-        Import(sym, file.toString, file)
+        noteImport(sym, file.toString, file)
         
       case "mls" if {
         !cctx.beingCompiled.contains(file) `||`:
@@ -65,15 +68,14 @@ class Importer:
           res
         
         val jsFile = file.up / io.RelPath(file.baseName + ".mjs")
-        Import(sym, jsFile.toString, jsFile)
+        noteImport(sym, jsFile.toString, jsFile)
         
       case _ =>
         if file.ext =/= "mls" then raise:
           ErrorReport(msg"Unsupported file extension: ${file.ext}" -> N :: Nil)
-        Import(sym, path, file)
+        noteImport(sym, path, file)
       
     else
-      sym.importPath = S(path)
-      Import(sym, path, file)
+      noteImport(sym, path, file)
     
 
