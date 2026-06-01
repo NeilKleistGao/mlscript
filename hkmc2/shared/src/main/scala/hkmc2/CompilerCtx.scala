@@ -61,6 +61,10 @@ class CompilerCtx(
     // * this means subsequent importers will not have see same prelude symbols.
     // * The correct approach should be to only cache a *single* State and prelude Ctx at the start,
     // * and reuse it for every compilation unit (each compilation unit duplicating the root State).
+    // val state = new Elaborator.State
+    // given Elaborator.State = state
+    // * ^ TODO: check & update comment
+    
     val lastMod = fs.getLastChangedTimestamp(file)
     val compilationUnitConfig = rootConfig.getOrElse(Config.default(importerCfg.baseDir))
     
