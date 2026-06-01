@@ -17,11 +17,12 @@ if C(123) is
   C(x) then print(x)
   D(y) then print(y)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let scrut, arg$C$0$, xs⁰, callPrefix, tmp;
+//│ let scrut, arg$C$0$, xs⁰, callPrefix, tmp, inlinedVal;
 //│ set scrut = C⁰(123);
 //│ set arg$C$0$ = scrut.a⁰;
 //│ set xs⁰ = mut [arg$C$0$];
-//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set inlinedVal = Rendering⁰.map﹖;
+//│ set callPrefix = inlinedVal(Predef⁰.renderAsStr⁰);
 //│ set tmp = callPrefix(...xs⁰);
 //│ return globalThis⁰.console⁰.log⁰(...tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -33,11 +34,12 @@ if C(123) is
   C(x) then print(x)
   else print("?")
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let scrut, arg$C$0$, xs¹, callPrefix, tmp;
+//│ let scrut, arg$C$0$, xs¹, callPrefix, tmp, inlinedVal;
 //│ set scrut = C⁰(123);
 //│ set arg$C$0$ = scrut.a⁰;
 //│ set xs¹ = mut [arg$C$0$];
-//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set inlinedVal = Rendering⁰.map﹖;
+//│ set callPrefix = inlinedVal(Predef⁰.renderAsStr⁰);
 //│ set tmp = callPrefix(...xs¹);
 //│ return globalThis⁰.console⁰.log⁰(...tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -58,11 +60,12 @@ in if c is
   D(y) then print(y)
   E(z) then print(z)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let tmp, arg$C$0$, xs², callPrefix, tmp1;
+//│ let tmp, arg$C$0$, xs², callPrefix, tmp1, inlinedVal;
 //│ set tmp = C⁰(123);
 //│ set arg$C$0$ = tmp.a⁰;
 //│ set xs² = mut [arg$C$0$];
-//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set inlinedVal = Rendering⁰.map﹖;
+//│ set callPrefix = inlinedVal(Predef⁰.renderAsStr⁰);
 //│ set tmp1 = callPrefix(...xs²);
 //│ return globalThis⁰.console⁰.log⁰(...tmp1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

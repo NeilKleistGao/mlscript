@@ -74,7 +74,8 @@ do
   print(() => f)
   ()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f, lambda, xs, callPrefix, tmp;
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
+//│ let f, lambda, xs, callPrefix, tmp, inlinedVal;
 //│ f = 1;
 //│ lambda = (undefined, function () {
 //│   loopLabel: while (true) {
@@ -84,7 +85,8 @@ do
 //│ xs = [
 //│   lambda
 //│ ];
-//│ callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│ inlinedVal = Rendering.map;
+//│ callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│ tmp = runtime.safeCall(callPrefix(...xs));
 //│ runtime.safeCall(globalThis.console.log(...tmp));
 //│ return runtime.Unit
@@ -97,11 +99,11 @@ do
 let foo = 1
 fun foo(x) = foo
 //│ ╔══[COMPILATION ERROR] Name 'foo' is already used
-//│ ║  l.97: 	let foo = 1
+//│ ║  l.99: 	let foo = 1
 //│ ║        	    ^^^^^^^
 //│ ╟── by a member declared in the same block
-//│ ║  l.98: 	fun foo(x) = foo
-//│ ╙──      	^^^^^^^^^^^^^^^^
+//│ ║  l.100: 	fun foo(x) = foo
+//│ ╙──       	^^^^^^^^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let foo4; foo4 = 1;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

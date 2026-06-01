@@ -7,17 +7,19 @@ let x = 1
 set x += 1 in print(x)
 x
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let x, old;
 //│ x = 1;
 //│ old = 1;
 //│ try {
 //│   {
-//│     let xs, callPrefix, tmp;
+//│     let xs, callPrefix, tmp, inlinedVal;
 //│     x = 2;
 //│     xs = [
 //│       2
 //│     ];
-//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     inlinedVal = Rendering.map;
+//│     callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│     tmp = runtime.safeCall(callPrefix(...xs));
 //│     runtime.safeCall(globalThis.console.log(...tmp));
 //│   }
@@ -48,15 +50,15 @@ set x += 1 in
   print("end")
 x
 //│ ╔══[COMPILATION ERROR] Backtracking assignment is not supported with effect handlers enabled
-//│ ║  l.44: 	set x += 1 in
+//│ ║  l.46: 	set x += 1 in
 //│ ║        	    ^^^^^^^^^
-//│ ║  l.45: 	  print("init")
+//│ ║  l.47: 	  print("init")
 //│ ║        	^^^^^^^^^^^^^^^
-//│ ║  l.46: 	  print(h.test())
+//│ ║  l.48: 	  print(h.test())
 //│ ║        	^^^^^^^^^^^^^^^^^
-//│ ║  l.47: 	  print(x)
+//│ ║  l.49: 	  print(x)
 //│ ║        	^^^^^^^^^^
-//│ ║  l.48: 	... (more lines omitted) ...
+//│ ║  l.50: 	... (more lines omitted) ...
 //│ ╙──      	^^^^^^^^^^^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 //│ x = 1

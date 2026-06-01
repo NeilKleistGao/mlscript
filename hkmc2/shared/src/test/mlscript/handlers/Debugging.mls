@@ -18,6 +18,7 @@ fun f() =
     print of raiseUnhandledEffect()
   j / i
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let f, f$debugInfo;
 //│ runtime.resetEffects();
 //│ f$debugInfo = globalThis.Object.freeze([
@@ -79,11 +80,12 @@ fun f() =
 //│         pc = 3;
 //│       case 3:
 //│         {
-//│           let xs, inlinedVal1, callPrefix, tmp1;
+//│           let xs, inlinedVal1, callPrefix, tmp1, inlinedVal2;
 //│           xs = [
 //│             tmp
 //│           ];
-//│           callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│           inlinedVal2 = Rendering.map;
+//│           callPrefix = runtime.safeCall(inlinedVal2(Predef.renderAsStr));
 //│           tmp1 = runtime.safeCall(callPrefix(...xs));
 //│           inlinedVal1 = runtime.safeCall(globalThis.console.log(...tmp1));
 //│           runtime.resumeValue = inlinedVal1;
@@ -117,8 +119,8 @@ lambda_test(() =>
   raiseUnhandledEffect()
   100)
 //│ ═══[RUNTIME ERROR] Error: Unhandled effect FatalEffect
-//│ 	at lambda (Debugging.mls:117:3)
-//│ 	at lambda_test (Debugging.mls:114:3)
+//│ 	at lambda (Debugging.mls:119:3)
+//│ 	at lambda_test (Debugging.mls:116:3)
 
 
 import "../../mlscript-compile/Runtime.mls"
@@ -168,16 +170,16 @@ let res =
 :re
 res.raise()
 //│ ═══[RUNTIME ERROR] Error: Unhandled effect Handler$h$
-//│ 	at Test.test (Debugging.mls:156:15)
-//│ 	at Test.main (Debugging.mls:159:5)
+//│ 	at Test.test (Debugging.mls:158:15)
+//│ 	at Test.main (Debugging.mls:161:5)
 
 set res = res.resumeWith(42)
 
 :re
 res.raise()
 //│ ═══[RUNTIME ERROR] Error: Unhandled effect Handler$h$
-//│ 	at Test.test (Debugging.mls:156:15)
-//│ 	at Test.main (Debugging.mls:159:16)
+//│ 	at Test.test (Debugging.mls:158:15)
+//│ 	at Test.main (Debugging.mls:161:16)
 
 :expect 0.33676533676533676
 res.resumeWith(666)
@@ -197,8 +199,8 @@ fun f() =
 
 f()
 //│ > Stack Trace:
-//│ > 	at f (Debugging.mls:191:3) with locals: j=200
+//│ > 	at f (Debugging.mls:193:3) with locals: j=200
 //│ > Stack Trace:
-//│ > 	at f (Debugging.mls:193:3)
+//│ > 	at f (Debugging.mls:195:3)
 //│ > Stack Trace:
 //│ > 	at tail position

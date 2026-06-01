@@ -48,15 +48,17 @@ fun f = while x
   else return 42 // TODO: support `break` here
 f
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let f;
 //│ f = function f() {
 //│   lbl4: while (true) {
 //│     if (x2 === true) {
-//│       let xs, callPrefix, tmp;
+//│       let xs, callPrefix, tmp, inlinedVal;
 //│       xs = [
 //│         "Hello World"
 //│       ];
-//│       callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       inlinedVal = Rendering.map;
+//│       callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│       tmp = runtime.safeCall(callPrefix(...xs));
 //│       runtime.safeCall(globalThis.console.log(...tmp));
 //│       x2 = false;
@@ -196,18 +198,19 @@ fun f(ls) =
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let f6;
 //│ f6 = function f(ls) {
-//│   let xs, callPrefix, tmp;
+//│   let xs, callPrefix, tmp, inlinedVal2;
 //│   lbl7: while (true) {
 //│     let arg$Cons$0$, arg$Cons$1$;
 //│     if (ls instanceof Cons1.class) {
-//│       let xs1, callPrefix1, tmp1;
+//│       let xs1, callPrefix1, tmp1, inlinedVal3;
 //│       arg$Cons$0$ = ls.hd;
 //│       arg$Cons$1$ = ls.tl;
 //│       ls = arg$Cons$1$;
 //│       xs1 = [
 //│         arg$Cons$0$
 //│       ];
-//│       callPrefix1 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       inlinedVal3 = Rendering.map;
+//│       callPrefix1 = runtime.safeCall(inlinedVal3(Predef.renderAsStr));
 //│       tmp1 = runtime.safeCall(callPrefix1(...xs1));
 //│       runtime.safeCall(globalThis.console.log(...tmp1));
 //│       continue lbl7
@@ -217,7 +220,8 @@ fun f(ls) =
 //│   xs = [
 //│     "Done!"
 //│   ];
-//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   inlinedVal2 = Rendering.map;
+//│   callPrefix = runtime.safeCall(inlinedVal2(Predef.renderAsStr));
 //│   tmp = runtime.safeCall(callPrefix(...xs));
 //│   return runtime.safeCall(globalThis.console.log(...tmp))
 //│ };
@@ -330,10 +334,10 @@ while print("Hello World"); false
   then 0(0)
   else 1
 //│ ╔══[PARSE ERROR] Unexpected 'then' keyword here
-//│ ║  l.330: 	  then 0(0)
+//│ ║  l.334: 	  then 0(0)
 //│ ╙──       	  ^^^^
 //│ ╔══[COMPILATION ERROR] Unrecognized term split (false literal)
-//│ ║  l.329: 	while print("Hello World"); false
+//│ ║  l.333: 	while print("Hello World"); false
 //│ ╙──       	                            ^^^^^
 //│ > Hello World
 
@@ -342,12 +346,12 @@ while { print("Hello World"), false }
   then 0(0)
   else 1
 //│ ╔══[COMPILATION ERROR] Unexpected infix use of keyword 'then' here
-//│ ║  l.341: 	while { print("Hello World"), false }
+//│ ║  l.345: 	while { print("Hello World"), false }
 //│ ║         	        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//│ ║  l.342: 	  then 0(0)
+//│ ║  l.346: 	  then 0(0)
 //│ ╙──       	^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Illegal position for prefix keyword 'else'.
-//│ ║  l.343: 	  else 1
+//│ ║  l.347: 	  else 1
 //│ ╙──       	  ^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
@@ -358,14 +362,14 @@ while
   then 0(0)
   else 1
 //│ ╔══[COMPILATION ERROR] Unexpected infix use of keyword 'then' here
-//│ ║  l.356: 	    print("Hello World")
+//│ ║  l.360: 	    print("Hello World")
 //│ ║         	    ^^^^^^^^^^^^^^^^^^^^
-//│ ║  l.357: 	    false
+//│ ║  l.361: 	    false
 //│ ║         	^^^^^^^^^
-//│ ║  l.358: 	  then 0(0)
+//│ ║  l.362: 	  then 0(0)
 //│ ╙──       	^^^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Illegal position for prefix keyword 'else'.
-//│ ║  l.359: 	  else 1
+//│ ║  l.363: 	  else 1
 //│ ╙──       	  ^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 

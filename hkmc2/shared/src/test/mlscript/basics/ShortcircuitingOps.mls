@@ -30,26 +30,29 @@ false && loudTrue
 print(1 && loudTrue)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ if (1 === true) {
-//│   let xs, callPrefix, tmp, xs1, callPrefix1, tmp1;
+//│   let xs, callPrefix, tmp, inlinedVal, xs1, callPrefix1, tmp1, inlinedVal1;
 //│   xs = [
 //│     true
 //│   ];
-//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   inlinedVal = Rendering.map;
+//│   callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│   tmp = runtime.safeCall(callPrefix(...xs));
 //│   runtime.safeCall(globalThis.console.log(...tmp));
 //│   xs1 = [
 //│     true
 //│   ];
-//│   callPrefix1 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   inlinedVal1 = Rendering.map;
+//│   callPrefix1 = runtime.safeCall(inlinedVal1(Predef.renderAsStr));
 //│   tmp1 = runtime.safeCall(callPrefix1(...xs1));
 //│   return runtime.safeCall(globalThis.console.log(...tmp1))
 //│ }
 //│ {
-//│   let xs, callPrefix, tmp;
+//│   let xs, callPrefix, tmp, inlinedVal;
 //│   xs = [
 //│     false
 //│   ];
-//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   inlinedVal = Rendering.map;
+//│   callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│   tmp = runtime.safeCall(callPrefix(...xs));
 //│   return runtime.safeCall(globalThis.console.log(...tmp));
 //│ }
@@ -88,14 +91,15 @@ true || loudTrue
 :sjs
 fold(||)(0, false, 42, 123)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let lambda, callPrefix;
+//│ let lambda, callPrefix, inlinedVal;
 //│ lambda = (undefined, function (arg1, arg2) {
 //│   if (arg1 === false) {
 //│     return arg2
 //│   }
 //│   return true;
 //│ });
-//│ callPrefix = runtime.safeCall(Predef.fold(lambda));
+//│ inlinedVal = Rendering.fold;
+//│ callPrefix = runtime.safeCall(inlinedVal(lambda));
 //│ return runtime.safeCall(callPrefix(0, false, 42, 123))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = true

@@ -62,14 +62,6 @@ let Predef1;
       toString() { return runtime.render(this); }
       static [definitionMetadata] = ["object", "Refl"];
     });
-    Predef.pass1 = Rendering.pass1;
-    Predef.pass2 = Rendering.pass2;
-    Predef.pass3 = Rendering.pass3;
-    Predef.passing = Rendering.passing;
-    Predef.map = Rendering.map;
-    Predef.fold = Rendering.fold;
-    Predef.interleave = Rendering.interleave;
-    Predef.render = Rendering.render;
     Predef.js_assert = globalThis.console["assert"];
     Predef.foldl = Predef.fold;
     (class meta {
@@ -234,6 +226,30 @@ let Predef1;
     let tmp;
     tmp = Predef.equals(a, b);
     return ! tmp
+  }
+  static get pass1() {
+    return Rendering.pass1;
+  }
+  static get pass2() {
+    return Rendering.pass2;
+  }
+  static get pass3() {
+    return Rendering.pass3;
+  }
+  static get passing() {
+    return Rendering.passing;
+  }
+  static get map() {
+    return Rendering.map;
+  }
+  static get fold() {
+    return Rendering.fold;
+  }
+  static get interleave() {
+    return Rendering.interleave;
+  }
+  static get render() {
+    return Rendering.render;
   }
   static print(...xs) {
     let callPrefix, tmp;

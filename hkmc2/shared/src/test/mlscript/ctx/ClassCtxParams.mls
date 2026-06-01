@@ -101,6 +101,7 @@ class T
 class Foo(using T) with
   print(T)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let Foo9;
 //│ Foo9 = function Foo(tmp4) {
 //│   return globalThis.Object.freeze(new Foo.class(tmp4));
@@ -110,11 +111,12 @@ class Foo(using T) with
 //│     Foo9.class = this
 //│   }
 //│   constructor(tmp4) {
-//│     let xs, callPrefix, tmp5;
+//│     let xs, callPrefix, tmp5, inlinedVal;
 //│     xs = [
 //│       T1
 //│     ];
-//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     inlinedVal = Rendering.map;
+//│     callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│     tmp5 = runtime.safeCall(callPrefix(...xs));
 //│     runtime.safeCall(globalThis.console.log(...tmp5));
 //│   }
@@ -127,10 +129,10 @@ class Foo(using T) with
 :sjs
 x => x.Foo#S
 //│ ╔══[COMPILATION ERROR] Class 'Foo' does not contain member 'S'.
-//│ ║  l.128: 	x => x.Foo#S
+//│ ║  l.130: 	x => x.Foo#S
 //│ ╙──       	           ^
 //│ ╔══[COMPILATION ERROR] Cannot query instance of type T for call: 
-//│ ║  l.128: 	x => x.Foo#S
+//│ ║  l.130: 	x => x.Foo#S
 //│ ║         	      ^^^^
 //│ ╟── Required by contextual parameter declaration: 
 //│ ║  l.101: 	class Foo(using T) with

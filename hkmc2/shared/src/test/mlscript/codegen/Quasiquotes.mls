@@ -35,13 +35,15 @@ x `=>
   print(x)
   x
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let x1, tmp5, arr2, xs, callPrefix, tmp6;
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
+//│ let x1, tmp5, arr2, xs, callPrefix, tmp6, inlinedVal;
 //│ tmp5 = globalThis.Object.freeze(new Term.Symbol("x"));
 //│ x1 = globalThis.Object.freeze(new Term.Ref(tmp5));
 //│ xs = [
 //│   x1
 //│ ];
-//│ callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│ inlinedVal = Rendering.map;
+//│ callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│ tmp6 = runtime.safeCall(callPrefix(...xs));
 //│ runtime.safeCall(globalThis.console.log(...tmp6));
 //│ arr2 = globalThis.Object.freeze([ tmp5 ]);
@@ -126,7 +128,7 @@ x `=> `if x `=== `0.0 then `1.0 else x
 :fixme // TODO: error doesn't make much sense (see https://github.com/hkust-taco/mlscript/pull/368#discussion_r2635074722)
 x `=> `if x `== `0.0 then `1.0 else x
 //│ ╔══[COMPILATION ERROR] Cross-stage reference to Predef.equals is only allowed in compiled files due to the lack of `import.meta` in REPL mode.
-//│ ║  l.127: 	x `=> `if x `== `0.0 then `1.0 else x
+//│ ║  l.129: 	x `=> `if x `== `0.0 then `1.0 else x
 //│ ╙──       	             ^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
@@ -134,7 +136,7 @@ x `=> `if x `== `0.0 then `1.0 else x
 :ge
 `id`(`42)
 //│ ╔══[COMPILATION ERROR] Cross-stage reference to Predef.id is only allowed in compiled files due to the lack of `import.meta` in REPL mode.
-//│ ║  l.135: 	`id`(`42)
+//│ ║  l.137: 	`id`(`42)
 //│ ╙──       	 ^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 

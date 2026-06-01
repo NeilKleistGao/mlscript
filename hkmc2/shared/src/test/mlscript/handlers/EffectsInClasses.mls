@@ -11,6 +11,7 @@ abstract class Effect with
 data class Lol(h) with
   print(h.perform("k"))
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let Lol1;
 //│ runtime.resetEffects();
 //│ Lol1 = function Lol(h) {
@@ -21,7 +22,7 @@ data class Lol(h) with
 //│     Lol1.class = this
 //│   }
 //│   constructor(h) {
-//│     let tmp, xs, callPrefix, tmp1;
+//│     let tmp, xs, callPrefix, tmp1, inlinedVal;
 //│     this.h = h;
 //│     tmp = runtime.safeCall(this.h.perform("k"));
 //│     if (runtime.curEffect !== null) {
@@ -30,7 +31,8 @@ data class Lol(h) with
 //│     xs = [
 //│       tmp
 //│     ];
-//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     inlinedVal = Rendering.map;
+//│     callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│     tmp1 = runtime.safeCall(callPrefix(...xs));
 //│     runtime.safeCall(globalThis.console.log(...tmp1));
 //│     if (runtime.curEffect !== null) {

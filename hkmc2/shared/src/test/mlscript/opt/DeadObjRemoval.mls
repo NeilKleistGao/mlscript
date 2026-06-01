@@ -24,20 +24,22 @@ fun f() =
   42
 f()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f1, A2;
+//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
+//│ let f1;
 //│ f1 = function f() {
-//│   let A3;
+//│   let A1;
 //│   (class A {
 //│     static {
 //│       new this
 //│     }
 //│     constructor() {
-//│       A3 = this;
-//│       let xs, callPrefix, tmp;
+//│       A1 = this;
+//│       let xs, callPrefix, tmp, inlinedVal;
 //│       xs = [
 //│         "Hello"
 //│       ];
-//│       callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       inlinedVal = Rendering.map;
+//│       callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
 //│       tmp = runtime.safeCall(callPrefix(...xs));
 //│       runtime.safeCall(globalThis.console.log(...tmp));
 //│       Object.defineProperty(this, "class", {
@@ -50,37 +52,17 @@ f()
 //│   });
 //│   return 42
 //│ };
-//│ (class A1 {
-//│   static {
-//│     new this
-//│   }
-//│   constructor() {
-//│     A2 = this;
-//│     let xs, callPrefix, tmp;
-//│     xs = [
-//│       "Hello"
-//│     ];
-//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
-//│     tmp = runtime.safeCall(callPrefix(...xs));
-//│     runtime.safeCall(globalThis.console.log(...tmp));
-//│     Object.defineProperty(this, "class", {
-//│       value: A1
-//│     });
-//│     globalThis.Object.freeze(this);
-//│   }
-//│   toString() { return runtime.render(this); }
-//│   static [definitionMetadata] = ["object", "A"];
-//│ });
-//│ return 42
+//│ return f1()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f², A⁰;
+//│ let f²;
 //│ define f² as fun f³() {
 //│   let A;
-//│   define A as object A¹ {
+//│   define A as object A⁰ {
 //│     constructor() {
-//│       let xs, callPrefix, tmp;
+//│       let xs, callPrefix, tmp, inlinedVal;
 //│       set xs = mut ["Hello"];
-//│       set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│       set inlinedVal = Rendering⁰.map﹖;
+//│       set callPrefix = inlinedVal(Predef⁰.renderAsStr⁰);
 //│       set tmp = callPrefix(...xs);
 //│       do globalThis⁰.console⁰.log⁰(...tmp);
 //│       end
@@ -88,17 +70,7 @@ f()
 //│   };
 //│   return 42
 //│ };
-//│ define A⁰ as object A² {
-//│   constructor() {
-//│     let xs, callPrefix, tmp;
-//│     set xs = mut ["Hello"];
-//│     set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
-//│     set tmp = callPrefix(...xs);
-//│     do globalThis⁰.console⁰.log⁰(...tmp);
-//│     end
-//│   }
-//│ };
-//│ return 42
+//│ return f³()
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > Hello
 //│ = 42
