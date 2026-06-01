@@ -60,7 +60,7 @@ class MLsCompiler
   
   
   def compileModule(file: io.Path): Unit =
-    val compilerCtx = cctx.withPaths(paths)
+    val compilerCtx = cctx.withPaths(paths).withRootConfig(config)
     
     val wd = file.up
     
@@ -150,10 +150,10 @@ class MLsCompiler
         // * Having `module id"import" with ...` in `prelude.mls` will generate `globalThis.import` that is undefined.
         baseScp.addToBindings(Elaborator.State.importSymbol, "import", shadow = false)
         val nestedScp = baseScp.nest
-        val je = nestedScp.givenIn:
-          jsb.program(optimized, exportedSymbol, wd)
-        val jsStr = je.stripBreaks.mkString(100)
         val out = file.up / io.RelPath(file.baseName + ".mjs")
+        val je = nestedScp.givenIn:
+          jsb.program(optimized, exportedSymbol, out)
+        val jsStr = je.stripBreaks.mkString(100)
         cctx.fs.write(out, jsStr)
       }
       

@@ -30,6 +30,7 @@ class Foo with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo"];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let f = new Foo(1, 2)
@@ -64,11 +65,9 @@ class Baz(a, b) with
   constructor(x, y)(u, v)
   fun total() = a + b + x + y + u + v
 
-:fixme
 :expect 21
 Baz(1, 2)(3, 4)(5, 6).total()
-//│ ═══[RUNTIME ERROR] Expected: '21', got: 'NaN'
-//│ = NaN
+//│ = 21
 
 let mk = Baz(1, 2)(3, 4)
 //│ mk = fun
@@ -84,7 +83,7 @@ data class Point(label) with
   fun coords() = [x, y]
 
 Point("A")(1, 2).coords()
-//│ = [undefined, undefined]
+//│ = [1, 2]
 
 
 // === Single aux param list on class with main params ===
@@ -93,10 +92,7 @@ class Qux(a) with
   constructor(extra)
   fun both() = a + extra
 
-:fixme
 :expect 133
 Qux(10)(123).both()
-//│ ═══[RUNTIME ERROR] Expected: '133', got: 'NaN'
-//│ = NaN
-
+//│ = 133
 

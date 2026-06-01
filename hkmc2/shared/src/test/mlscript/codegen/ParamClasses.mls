@@ -17,23 +17,24 @@ data class Foo()
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", []];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Foo
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo1
+//│ return Foo1 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun Foo { class: class Foo }
 
 Foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo1()
+//│ return Foo1() 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo()
 
 Foo.class
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo1.class
+//│ return Foo1.class 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = class Foo
 
@@ -54,30 +55,31 @@ data class Foo(a)
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", ["a"]];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Foo
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo3
+//│ return Foo3 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun Foo { class: class Foo }
 
 Foo(1)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo3(1)
+//│ return Foo3(1) 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo(1)
 
 Foo(1).a
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp; tmp = Foo3(1); return tmp.a
+//│ let tmp; tmp = Foo3(1); return tmp.a 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
 fun foo(y) = Foo(y)
 foo(27)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let foo; foo = function foo(y) { return Foo3(y) }; return Foo3(27)
+//│ let foo; foo = function foo(y) { return Foo3(y) }; return Foo3(27) 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo(27)
 
@@ -99,59 +101,74 @@ data class Foo(a, b)
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", ["a", "b"]];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let foo = Foo
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let foo1; foo1 = Foo5;
+//│ let foo1; foo1 = Foo5; 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ foo = fun Foo { class: class Foo }
 
 let f = foo(1, 2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f; f = runtime.safeCall(foo1(1, 2));
+//│ let f; f = runtime.safeCall(foo1(1, 2)); 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = Foo(1, 2)
 
 let f = new! foo(1, 2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f1; f1 = globalThis.Object.freeze(new foo1(1, 2));
+//│ let f1; f1 = globalThis.Object.freeze(new foo1(1, 2)); 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = Foo(1, 2)
 
 f.a
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return f1.a
+//│ return f1.a 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
 f.b
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return f1.b
+//│ return f1.b 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 2
 
 let f = Foo(1, 2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f2; f2 = Foo5(1, 2);
+//│ let f2; f2 = Foo5(1, 2); 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = Foo(1, 2)
 
 f.a
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return f2.a
+//│ return f2.a 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
 f.b
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return f2.b
+//│ return f2.b 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 2
 
 Foo(print(1), print(2))
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp1, tmp2; tmp1 = Predef.print(1); tmp2 = Predef.print(2); return Foo5(tmp1, tmp2)
+//│ let xs, inlinedVal, xs1, inlinedVal1, callPrefix, tmp1, callPrefix1, tmp2;
+//│ xs = [
+//│   1
+//│ ];
+//│ callPrefix1 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│ tmp2 = runtime.safeCall(callPrefix1(...xs));
+//│ inlinedVal = runtime.safeCall(globalThis.console.log(...tmp2));
+//│ xs1 = [
+//│   2
+//│ ];
+//│ callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│ tmp1 = runtime.safeCall(callPrefix(...xs1));
+//│ inlinedVal1 = runtime.safeCall(globalThis.console.log(...tmp1));
+//│ return Foo5(inlinedVal, inlinedVal1)
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ > 2
@@ -171,8 +188,14 @@ data class Inner(c) with
 //│     Inner1.class = this
 //│   }
 //│   constructor(c) {
+//│     let xs2, callPrefix2, tmp3;
 //│     this.c = c;
-//│     Predef.print(this.c);
+//│     xs2 = [
+//│       this.c
+//│     ];
+//│     callPrefix2 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp3 = runtime.safeCall(callPrefix2(...xs2));
+//│     runtime.safeCall(globalThis.console.log(...tmp3));
 //│   }
 //│   i1(d) {
 //│     return this.c + d
@@ -180,18 +203,19 @@ data class Inner(c) with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Inner", ["c"]];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let i = new Inner(100)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let i; i = globalThis.Object.freeze(new Inner1.class(100));
+//│ let i; i = globalThis.Object.freeze(new Inner1.class(100)); 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 100
 //│ i = Inner(100)
 
 i.i1(20)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return runtime.safeCall(i.i1(20))
+//│ return runtime.safeCall(i.i1(20)) 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 120
 
@@ -215,22 +239,47 @@ class Foo(x, val y, z, val z, z) with
 //│     Foo7.class = this
 //│   }
 //│   constructor(x, y, z, z1, z2) {
-//│     let tmp3, tmp4, tmp5, tmp6, tmp7;
+//│     let tmp3, tmp4, tmp5, tmp6, tmp7, xs2, xs3, xs4, xs5, xs6, callPrefix2, tmp8, callPrefix3, tmp9, callPrefix4, tmp10, callPrefix5, tmp11, callPrefix6, tmp12;
 //│     this.y = y;
 //│     this.z = z1;
 //│     this.#z = z2;
 //│     this.#x = 1;
 //│     this.#y = this.y + 1;
 //│     tmp3 = "x = " + this.#x;
-//│     Predef.print(tmp3);
+//│     xs2 = [
+//│       tmp3
+//│     ];
+//│     callPrefix6 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp12 = runtime.safeCall(callPrefix6(...xs2));
+//│     runtime.safeCall(globalThis.console.log(...tmp12));
 //│     tmp4 = "y = " + this.#y;
-//│     Predef.print(tmp4);
+//│     xs3 = [
+//│       tmp4
+//│     ];
+//│     callPrefix5 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp11 = runtime.safeCall(callPrefix5(...xs3));
+//│     runtime.safeCall(globalThis.console.log(...tmp11));
 //│     tmp5 = "this.y = " + this.y;
-//│     Predef.print(tmp5);
+//│     xs4 = [
+//│       tmp5
+//│     ];
+//│     callPrefix4 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp10 = runtime.safeCall(callPrefix4(...xs4));
+//│     runtime.safeCall(globalThis.console.log(...tmp10));
 //│     tmp6 = "z = " + this.#z;
-//│     Predef.print(tmp6);
+//│     xs5 = [
+//│       tmp6
+//│     ];
+//│     callPrefix3 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp9 = runtime.safeCall(callPrefix3(...xs5));
+//│     runtime.safeCall(globalThis.console.log(...tmp9));
 //│     tmp7 = "this.z = " + this.z;
-//│     Predef.print(tmp7);
+//│     xs6 = [
+//│       tmp7
+//│     ];
+//│     callPrefix2 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp8 = runtime.safeCall(callPrefix2(...xs6));
+//│     runtime.safeCall(globalThis.console.log(...tmp8));
 //│   }
 //│   #z;
 //│   #x;
@@ -238,11 +287,12 @@ class Foo(x, val y, z, val z, z) with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", [null, "y", null, "z", null]];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Foo(10, 20, 30, 40, 50)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo7(10, 20, 30, 40, 50)
+//│ return Foo7(10, 20, 30, 40, 50) 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > x = 1
 //│ > y = 21
@@ -256,10 +306,10 @@ Foo(10, 20, 30, 40, 50)
 class Foo(val z, val z)
 //│ ╔══[COMPILATION ERROR] Duplicate definition of member named 'z'.
 //│ ╟── Defined at: 
-//│ ║  l.256: 	class Foo(val z, val z)
+//│ ║  l.306: 	class Foo(val z, val z)
 //│ ║         	              ^
 //│ ╟── Defined at: 
-//│ ║  l.256: 	class Foo(val z, val z)
+//│ ║  l.306: 	class Foo(val z, val z)
 //│ ╙──       	                     ^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo9;
@@ -273,11 +323,12 @@ class Foo(val z, val z)
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", ["z", "z"]];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Foo(1, 2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Foo9(1, 2)
+//│ return Foo9(1, 2) 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo(undefined, undefined)
 

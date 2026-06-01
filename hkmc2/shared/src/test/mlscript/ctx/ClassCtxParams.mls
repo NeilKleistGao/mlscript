@@ -110,28 +110,35 @@ class Foo(using T) with
 //│     Foo9.class = this
 //│   }
 //│   constructor(tmp4) {
-//│     Predef.print(T1);
+//│     let xs, callPrefix, tmp5;
+//│     xs = [
+//│       T1
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp5 = runtime.safeCall(callPrefix(...xs));
+//│     runtime.safeCall(globalThis.console.log(...tmp5));
 //│   }
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", [null]];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 :todo
 :sjs
 x => x.Foo#S
 //│ ╔══[COMPILATION ERROR] Class 'Foo' does not contain member 'S'.
-//│ ║  l.122: 	x => x.Foo#S
+//│ ║  l.129: 	x => x.Foo#S
 //│ ╙──       	           ^
 //│ ╔══[COMPILATION ERROR] Cannot query instance of type T for call: 
-//│ ║  l.122: 	x => x.Foo#S
+//│ ║  l.129: 	x => x.Foo#S
 //│ ║         	      ^^^^
 //│ ╟── Required by contextual parameter declaration: 
 //│ ║  l.101: 	class Foo(using T) with
 //│ ║         	                ^
 //│ ╙── Missing instance: Expected: T; Available: Int
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let lambda; lambda = (undefined, function (x) { return x.S }); return lambda
+//│ let lambda; lambda = (undefined, function (x) { return x.S }); return lambda 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun
 

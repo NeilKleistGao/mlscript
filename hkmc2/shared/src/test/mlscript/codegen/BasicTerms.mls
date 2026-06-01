@@ -6,7 +6,7 @@
 
 1
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return 1
+//│ return 1 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
@@ -18,7 +18,7 @@
 //│ ║  l.15: 	1
 //│ ╙──      	^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return 2
+//│ return 2 
 //│ ╔══[WARNING] Pure expression in statement position
 //│ ║  l.15: 	1
 //│ ╙──      	^
@@ -31,7 +31,14 @@
 
 print("Hi")
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return Predef.print("Hi")
+//│ let xs, callPrefix, tmp;
+//│ xs = [
+//│   "Hi"
+//│ ];
+//│ callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│ tmp = runtime.safeCall(callPrefix(...xs));
+//│ return runtime.safeCall(globalThis.console.log(...tmp))
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > Hi
 
@@ -39,7 +46,15 @@ print("Hi")
 print("Hi")
 2
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ Predef.print("Hi"); return 2
+//│ let xs1, callPrefix1, tmp1;
+//│ xs1 = [
+//│   "Hi"
+//│ ];
+//│ callPrefix1 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│ tmp1 = runtime.safeCall(callPrefix1(...xs1));
+//│ runtime.safeCall(globalThis.console.log(...tmp1));
+//│ return 2
+//│ 
 //│ —————————————| Lowered IR Tree |————————————————————————————————————————————————————————————————————
 //│ Program:
 //│   main = Assign:
@@ -63,7 +78,7 @@ print("Hi")
 :re
 2(2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return runtime.safeCall(2(2))
+//│ return runtime.safeCall(2(2)) 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ ═══[RUNTIME ERROR] TypeError: 2 is not a function
 

@@ -7,7 +7,7 @@ let cached = 1
 :sjs
 set cached = 2
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ cached = 2; return runtime.Unit
+//│ cached = 2; return runtime.Unit 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 cached
@@ -53,10 +53,14 @@ class Foo(x, val y, mut val z) with
 //│   val y²;
 //│   val z²;
 //│   constructor Foo⁴(x, y, z) {
+//│     let xs, callPrefix, tmp;
 //│     set Foo⁵.this.x = x;
 //│     define y² as val y³ = y;
 //│     define z² as val z³ = z;
-//│     do Predef⁰.print⁰(Foo⁵.this.x⁰);
+//│     set xs = mut [Foo⁵.this.x⁰];
+//│     set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│     set tmp = callPrefix(...xs);
+//│     do globalThis⁰.console⁰.log⁰(...tmp);
 //│     end
 //│   }
 //│ };

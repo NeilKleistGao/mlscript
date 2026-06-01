@@ -66,16 +66,16 @@ fun wrapper(val1, dead) =
   (new A).makeB().getVal()
 wrapper(42, 0)
 //│ dead-param-elim > >>> dead-param-elim results >>>
-//│ dead-param-elim > prodfun wrapper#0 @ wrapper@2 -> eliminable: {1}
+//│ dead-param-elim > prodfun wrapper#0 @ wrapper@3 -> eliminable: {1}
 //│ dead-param-elim > <<< dead-param-elim results <<<
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let wrapper⁰, wrapper_2$wrapper⁰;
-//│ define wrapper_2$wrapper⁰ as fun wrapper_2$wrapper¹(val1) {
-//│   let A, inlinedVal, B;
+//│ let wrapper⁰, wrapper_3$wrapper⁰;
+//│ define wrapper_3$wrapper⁰ as fun wrapper_3$wrapper¹(val1) {
+//│   let A, tmp, tmp1;
 //│   define A as class A⁰ {
 //│     method makeB⁰ = fun makeB¹() {
-//│       let B1;
-//│       define B1 as class B⁰ {
+//│       let B;
+//│       define B as class B⁰ {
 //│         method getVal⁰ = fun getVal¹() {
 //│           return val1
 //│         }
@@ -83,38 +83,28 @@ wrapper(42, 0)
 //│       return new B⁰()
 //│     }
 //│   };
-//│   do new A⁰();
-//│   define B as class B¹ {
-//│     method getVal² = fun getVal³() {
-//│       return val1
-//│     }
-//│   };
-//│   set inlinedVal = new B¹();
-//│   return inlinedVal.getVal﹖()
+//│   set tmp = new A⁰();
+//│   set tmp1 = tmp.makeB¹();
+//│   return tmp1.getVal﹖()
 //│ };
 //│ define wrapper⁰ as fun wrapper¹(val1, dead) {
-//│   let A, inlinedVal, B;
+//│   let A, tmp, tmp1;
 //│   define A as class A¹ {
 //│     method makeB² = fun makeB³() {
-//│       let B1;
-//│       define B1 as class B² {
-//│         method getVal⁴ = fun getVal⁵() {
+//│       let B;
+//│       define B as class B¹ {
+//│         method getVal² = fun getVal³() {
 //│           return val1
 //│         }
 //│       };
-//│       return new B²()
+//│       return new B¹()
 //│     }
 //│   };
-//│   do new A¹();
-//│   define B as class B³ {
-//│     method getVal⁶ = fun getVal⁷() {
-//│       return val1
-//│     }
-//│   };
-//│   set inlinedVal = new B³();
-//│   return inlinedVal.getVal﹖()
+//│   set tmp = new A¹();
+//│   set tmp1 = tmp.makeB³();
+//│   return tmp1.getVal﹖()
 //│ };
-//│ return wrapper_2$wrapper¹(42)
+//│ return wrapper_3$wrapper¹(42)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 42
 

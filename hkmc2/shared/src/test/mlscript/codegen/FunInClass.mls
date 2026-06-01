@@ -30,8 +30,14 @@ fun test(a) =
 //│       Inner1.class = this
 //│     }
 //│     constructor(b) {
+//│       let xs, callPrefix, tmp1;
 //│       this.b = b;
-//│       Predef.print(a);
+//│       xs = [
+//│         a
+//│       ];
+//│       callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       tmp1 = runtime.safeCall(callPrefix(...xs));
+//│       runtime.safeCall(globalThis.console.log(...tmp1));
 //│     }
 //│     f(c) {
 //│       return globalThis.Object.freeze([
@@ -53,6 +59,7 @@ fun test(a) =
 //│   });
 //│   return Inner1(42)
 //│ };
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let i = test(100)
@@ -85,13 +92,18 @@ fun test(a) =
 //│       C12.class = this
 //│     }
 //│     constructor(b) {
-//│       let tmp3;
+//│       let tmp3, xs, callPrefix, tmp4;
 //│       this.b = b;
 //│       tmp3 = globalThis.Object.freeze([
 //│         a,
 //│         this.b
 //│       ]);
-//│       Predef.print(tmp3);
+//│       xs = [
+//│         tmp3
+//│       ];
+//│       callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       tmp4 = runtime.safeCall(callPrefix(...xs));
+//│       runtime.safeCall(globalThis.console.log(...tmp4));
 //│     }
 //│     toString() { return runtime.render(this); }
 //│     static [definitionMetadata] = ["class", "C1", ["b"]];
@@ -104,13 +116,18 @@ fun test(a) =
 //│       C22.class = this
 //│     }
 //│     constructor(b) {
-//│       let tmp3;
+//│       let tmp3, xs, callPrefix, tmp4;
 //│       this.b = b;
 //│       tmp3 = globalThis.Object.freeze([
 //│         a,
 //│         this.b
 //│       ]);
-//│       Predef.print(tmp3);
+//│       xs = [
+//│         tmp3
+//│       ];
+//│       callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       tmp4 = runtime.safeCall(callPrefix(...xs));
+//│       runtime.safeCall(globalThis.console.log(...tmp4));
 //│     }
 //│     toString() { return runtime.render(this); }
 //│     static [definitionMetadata] = ["class", "C2", ["b"]];
@@ -119,6 +136,7 @@ fun test(a) =
 //│   tmp2 = C22(2);
 //│   return globalThis.Object.freeze([ tmp1, tmp2 ])
 //│ };
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 test(123)
@@ -167,6 +185,7 @@ Foo(123)
 //│   static [definitionMetadata] = ["class", "Foo", ["a"]];
 //│ });
 //│ return Foo1(123)
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo(123)
 
@@ -189,6 +208,7 @@ Bar(1)
 //│   }
 //│   constructor(x) {
 //│     this.x = x;
+//│     this.foo()();
 //│   }
 //│   foo() {
 //│     return () => {
@@ -199,5 +219,6 @@ Bar(1)
 //│   static [definitionMetadata] = ["class", "Bar", ["x"]];
 //│ });
 //│ return Bar1(1)
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Bar(1)

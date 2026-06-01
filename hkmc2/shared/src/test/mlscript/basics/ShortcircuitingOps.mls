@@ -4,7 +4,7 @@
 :sjs
 1 && 2
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ if (1 === true) { return 2 } return false;
+//│ if (1 === true) { return 2 } return false; 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = false
 
@@ -29,14 +29,38 @@ false && loudTrue
 :sjs
 print(1 && loudTrue)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ if (1 === true) { Predef.print(true); return Predef.print(true) } return Predef.print(false);
+//│ if (1 === true) {
+//│   let xs, callPrefix, tmp, xs1, callPrefix1, tmp1;
+//│   xs = [
+//│     true
+//│   ];
+//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp = runtime.safeCall(callPrefix(...xs));
+//│   runtime.safeCall(globalThis.console.log(...tmp));
+//│   xs1 = [
+//│     true
+//│   ];
+//│   callPrefix1 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp1 = runtime.safeCall(callPrefix1(...xs1));
+//│   return runtime.safeCall(globalThis.console.log(...tmp1))
+//│ }
+//│ {
+//│   let xs, callPrefix, tmp;
+//│   xs = [
+//│     false
+//│   ];
+//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp = runtime.safeCall(callPrefix(...xs));
+//│   return runtime.safeCall(globalThis.console.log(...tmp));
+//│ }
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > false
 
 :sjs
 1 || 2
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ if (1 === false) { return 2 } return true;
+//│ if (1 === false) { return 2 } return true; 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = true
 
@@ -74,6 +98,7 @@ fold(||)(0, false, 42, 123)
 //│ });
 //│ callPrefix = runtime.safeCall(Predef.fold(lambda));
 //│ return runtime.safeCall(callPrefix(0, false, 42, 123))
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = true
 

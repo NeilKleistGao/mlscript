@@ -928,24 +928,33 @@ class BlockSimplifier
         *    Mid_isym   -> Select(Outer_ref, "Mid"),
         *    Outer_isym -> Outer_ref` */
       def buildThisMapping(qual: Path, ownerSym: InnerSymbol): Map[InnerSymbol, Path] =
-        var mapping = Map[InnerSymbol, Path](ownerSym -> qual)
+        var mapping = Map.empty[InnerSymbol, Path]
         var currentQual = qual
+        var currentOwner = ownerSym
         var continue = true
         while continue do
+          mapping = mapping + (currentOwner -> currentQual)
           currentQual match
           case s: Select =>
-            s.symbol match
+            s.qual.targetSymbol match
             case S(ds: InnerSymbol) =>
-              // * The qualifier's symbol is an InnerSymbol (e.g., a ModuleOrObjectSymbol).
-              // * Map it to the outer qualifier.
-              mapping = mapping + (ds -> s.qual)
+              currentOwner = ds
               currentQual = s.qual
             case _ => continue = false
-          case Value.MemberRef(_, ds: InnerSymbol) =>
-            // * Already at the root; nothing more to map.
-            continue = false
           case _ => continue = false
         mapping
+      
+      def buildAmbientSymbolMapping(callee: TermSymbol)(using State): Map[Symbol, Symbol] =
+        callee.getState.ambientSymbolMappingTo(State, ctx)
+      
+      def accessesPrivateMembers(blk: Block): Bool =
+        var found = false
+        (new BlockTraverser:
+          override def applySymbol(sym: Symbol): Unit = sym match
+            case ts: TermSymbol if ts.isPrivate => found = true
+            case _ =>
+        ).applyBlock(blk)
+        found
       
       def matchArgs(args: List[Arg], params: ParamList): Option[List[(VarSymbol, Result)]] =
         if args.exists(_.spread.isDefined) then
@@ -996,11 +1005,10 @@ class BlockSimplifier
         
         inline def isLoopBreaker = _isLoopBreaker
         
-        // Whether this method belongs to a module/object (as opposed to a class).
-        // Only module methods can be safely inlined, since class methods may access
-        // private fields via `this.#x` which are not accessible from outside the class.
+        // Whether this method belongs to a true module (as opposed to a class or
+        // an instance-based singleton object).
         def isModuleMethod: Bool = defn.dSym.owner match
-          case S(_: ModuleOrObjectSymbol) => true
+          case S(owner: ModuleOrObjectSymbol) => owner.tree.k is syntax.Mod
           case _ => false
         
         // Whether this function can be inlined without causing any code duplication,
@@ -1010,11 +1018,28 @@ class BlockSimplifier
           // false
         
         def shouldBeInlined(newBlk: Block, threshold: Int): Bool =
-          // Class instance methods access private fields via `this.#x` which cannot
-          // be accessed from outside the class, so they must not be inlined.
-          // Module/object methods are safe to inline because `this` refers to the
-          // module singleton which can be replaced by the qualifier path.
+          // Instance methods access instance state via `this`, so they must not be
+          // inlined as if they were static calls. True modules are safe because
+          // their `this` references can be replaced by call-site qualifier paths.
           if isMethod && !isModuleMethod then return false
+          // Instantiate nodes are rendered according to the receiving JS builder's
+          // freezing policy. Moving a body across compilation units with a different
+          // policy could silently turn mutable values into frozen values, or vice versa.
+          if defn.dSym.getState.compilationUnitConfig.exists(_.noFreeze =/= config.noFreeze)
+          then return false
+          // Accessors for JS-private members use a fresh Symbol shared by the owner
+          // definition and its out-of-owner references within one emitted module.
+          // There is deliberately no cross-module accessor ABI, so keep such accesses
+          // in the compilation unit that defines them.
+          if (defn.dSym.getState isnt State) && accessesPrivateMembers(newBlk)
+          then return false
+          // `import.meta.url` denotes the file containing the generated code.
+          // Moving it into a caller would silently change its meaning; worksheets
+          // cannot render it at all because their snippets are not JS modules.
+          if newBlk.freeVars.exists:
+            case sym: VarSymbol => sym.nme === "import"
+            case _ => false
+          then return false
           // If the definition is marked with inline, we should inline it regardless of the size of the body.
           // If both callee and caller are marked with inline, inlining will ignore the stricter @inline limits.
           // Remark: the case of a recursive function marked with inline will be blocked by loop breaker logic.
@@ -1263,7 +1288,7 @@ class BlockSimplifier
                     case (sym, value) :: argRest =>
                       val newSym = VarSymbol(sym.id)
                       go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
-                  go(blockBuilder, matchedArgs, Map.empty)
+                  go(blockBuilder, matchedArgs, buildAmbientSymbolMapping(ts))
           case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
             // * Non-method call (top-level function or direct reference).
             if m(ts).isLoopBreaker then return super.applyResult(r)(k)
@@ -1302,7 +1327,7 @@ class BlockSimplifier
                     case (sym, value) :: argRest =>
                       val newSym = VarSymbol(sym.id)
                       go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
-                  go(blockBuilder, matchedArgs, Map.empty)
+                  go(blockBuilder, matchedArgs, buildAmbientSymbolMapping(ts))
           case _ => super.applyResult(r)(k)
       
       def replace(m: InlinerMap, prog: Program): Program =

@@ -9,7 +9,7 @@ fun f() =
   42
 f()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f; f = function f() { return 42 }; return 42
+//│ let f; f = function f() { return 42 }; return 42 
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let f⁰; define f⁰ as fun f¹() { return 42 }; return 42
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -33,7 +33,13 @@ f()
 //│     }
 //│     constructor() {
 //│       A3 = this;
-//│       Predef.print("Hello");
+//│       let xs, callPrefix, tmp;
+//│       xs = [
+//│         "Hello"
+//│       ];
+//│       callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       tmp = runtime.safeCall(callPrefix(...xs));
+//│       runtime.safeCall(globalThis.console.log(...tmp));
 //│       Object.defineProperty(this, "class", {
 //│         value: A
 //│       });
@@ -50,7 +56,13 @@ f()
 //│   }
 //│   constructor() {
 //│     A2 = this;
-//│     Predef.print("Hello");
+//│     let xs, callPrefix, tmp;
+//│     xs = [
+//│       "Hello"
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp = runtime.safeCall(callPrefix(...xs));
+//│     runtime.safeCall(globalThis.console.log(...tmp));
 //│     Object.defineProperty(this, "class", {
 //│       value: A1
 //│     });
@@ -60,19 +72,33 @@ f()
 //│   static [definitionMetadata] = ["object", "A"];
 //│ });
 //│ return 42
+//│ 
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let f², A⁰;
 //│ define f² as fun f³() {
 //│   let A;
 //│   define A as object A¹ {
 //│     constructor() {
-//│       do Predef⁰.print⁰("Hello");
+//│       let xs, callPrefix, tmp;
+//│       set xs = mut ["Hello"];
+//│       set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│       set tmp = callPrefix(...xs);
+//│       do globalThis⁰.console⁰.log⁰(...tmp);
 //│       end
 //│     }
 //│   };
 //│   return 42
 //│ };
-//│ define A⁰ as object A² { constructor() { do Predef⁰.print⁰("Hello"); end } };
+//│ define A⁰ as object A² {
+//│   constructor() {
+//│     let xs, callPrefix, tmp;
+//│     set xs = mut ["Hello"];
+//│     set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│     set tmp = callPrefix(...xs);
+//│     do globalThis⁰.console⁰.log⁰(...tmp);
+//│     end
+//│   }
+//│ };
 //│ return 42
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > Hello

@@ -24,12 +24,19 @@ object Test with
 //│     globalThis.Object.freeze(this);
 //│   }
 //│   foo() {
-//│     Predef.print(Test1);
+//│     let xs, callPrefix, tmp;
+//│     xs = [
+//│       Test1
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp = runtime.safeCall(callPrefix(...xs));
+//│     runtime.safeCall(globalThis.console.log(...tmp));
 //│     return Test1.x
 //│   }
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["object", "Test"];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Test
@@ -41,7 +48,7 @@ print(Test)
 :sjs
 Test.foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ Predef.print(Test1); return Test1.x
+//│ return Test1.foo() 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > Test { x: 12, class: object Test }
 //│ = 12
@@ -49,7 +56,7 @@ Test.foo()
 :sjs
 val Test = "oops"
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let Test2; Test2 = "oops";
+//│ let Test2; Test2 = "oops"; 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ Test = "oops"
 
@@ -64,7 +71,7 @@ let f = () => x
 let x = 2
 f()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let x, f, x1, f1; x = 1; f1 = function f() { return x }; f = f1; x1 = 2; return x
+//│ let x, f, x1, f1; x = 1; f1 = function f() { return x }; f = f1; x1 = 2; return x 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 //│ f = fun f
@@ -77,10 +84,10 @@ module Test with
   val x = 1
   let x = 2
 //│ ╔══[COMPILATION ERROR] Name 'x' is already used
-//│ ║  l.78: 	  let x = 2
+//│ ║  l.85: 	  let x = 2
 //│ ║        	      ^^^^^
 //│ ╟── by a member declared in the same block
-//│ ║  l.77: 	  val x = 1
+//│ ║  l.84: 	  val x = 1
 //│ ╙──      	  ^^^^^^^^^
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
 //│ let Test4;
@@ -125,10 +132,17 @@ data class Cls(x) with
 //│     Cls1.class = this
 //│   }
 //│   constructor(x2) {
+//│     let xs1, callPrefix1, tmp1;
 //│     this.x = x2;
 //│     this.#x = this.x + 1;
 //│     this.#x1 = this.#x * 2;
-//│     Predef.print(this.x, this.#x1);
+//│     xs1 = [
+//│       this.x,
+//│       this.#x1
+//│     ];
+//│     callPrefix1 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp1 = runtime.safeCall(callPrefix1(...xs1));
+//│     runtime.safeCall(globalThis.console.log(...tmp1));
 //│   }
 //│   #x;
 //│   #x1;
@@ -141,6 +155,7 @@ data class Cls(x) with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Cls", ["x"]];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 let cls = Cls(10)
@@ -196,7 +211,7 @@ module Whoops with
 //│         Whoops1.w = Whoops1;
 //│       }
 //│       static g() {
-//│         return "Hello"
+//│         return Whoops.f()
 //│       }
 //│       toString() { return runtime.render(this); }
 //│       static [definitionMetadata] = ["class", "Whoops"];
@@ -208,6 +223,7 @@ module Whoops with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Whoops"];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 Whoops.f()
@@ -223,7 +239,7 @@ Whoops.Whoops.g()
 :e
 Runtime
 //│ ╔══[COMPILATION ERROR] Name not found: Runtime
-//│ ║  l.224: 	Runtime
+//│ ║  l.240: 	Runtime
 //│ ╙──       	^^^^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
@@ -259,6 +275,7 @@ module AA with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "AA"];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 

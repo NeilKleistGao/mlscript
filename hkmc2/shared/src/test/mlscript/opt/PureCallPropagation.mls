@@ -18,7 +18,12 @@ fun foo(x)(y)(z) =
 :soir
 foo(1)(2)(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ do Predef⁰.print⁰("hi"); return 6
+//│ let xs⁰, callPrefix, tmp;
+//│ set xs⁰ = mut ["hi"];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp = callPrefix(...xs⁰);
+//│ do globalThis⁰.console⁰.log⁰(...tmp);
+//│ return 6
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 //│ = 6
@@ -30,11 +35,20 @@ let f = foo(1)(2)
 print("hello")
 f(3) + f(4)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f⁰;
+//│ let f⁰, xs¹, callPrefix, tmp, xs², callPrefix1, tmp1, xs³, callPrefix2, tmp2;
 //│ set f⁰ = foo⁰(1)(2);
-//│ do Predef⁰.print⁰("hello");
-//│ do Predef⁰.print⁰("hi");
-//│ do Predef⁰.print⁰("hi");
+//│ set xs¹ = mut ["hello"];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp = callPrefix(...xs¹);
+//│ do globalThis⁰.console⁰.log⁰(...tmp);
+//│ set xs² = mut ["hi"];
+//│ set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp1 = callPrefix1(...xs²);
+//│ do globalThis⁰.console⁰.log⁰(...tmp1);
+//│ set xs³ = mut ["hi"];
+//│ set callPrefix2 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp2 = callPrefix2(...xs³);
+//│ do globalThis⁰.console⁰.log⁰(...tmp2);
 //│ return 13
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hello
@@ -53,7 +67,20 @@ let f = foo(1)(2) in
   print("hello")
   f(3) + f(4)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ do Predef⁰.print⁰("hello"); do Predef⁰.print⁰("hi"); do Predef⁰.print⁰("hi"); return 13
+//│ let xs⁴, callPrefix, tmp, xs⁵, callPrefix1, tmp1, xs⁶, callPrefix2, tmp2;
+//│ set xs⁴ = mut ["hello"];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp = callPrefix(...xs⁴);
+//│ do globalThis⁰.console⁰.log⁰(...tmp);
+//│ set xs⁵ = mut ["hi"];
+//│ set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp1 = callPrefix1(...xs⁵);
+//│ do globalThis⁰.console⁰.log⁰(...tmp1);
+//│ set xs⁶ = mut ["hi"];
+//│ set callPrefix2 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp2 = callPrefix2(...xs⁶);
+//│ do globalThis⁰.console⁰.log⁰(...tmp2);
+//│ return 13
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hello
 //│ > hi
@@ -65,7 +92,17 @@ let f = foo(1)(2)
 print("hello")
 f(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f¹; set f¹ = foo⁰(1)(2); do Predef⁰.print⁰("hello"); do Predef⁰.print⁰("hi"); return 6
+//│ let f¹, xs⁷, callPrefix, tmp, xs⁸, callPrefix1, tmp1;
+//│ set f¹ = foo⁰(1)(2);
+//│ set xs⁷ = mut ["hello"];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp = callPrefix(...xs⁷);
+//│ do globalThis⁰.console⁰.log⁰(...tmp);
+//│ set xs⁸ = mut ["hi"];
+//│ set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp1 = callPrefix1(...xs⁸);
+//│ do globalThis⁰.console⁰.log⁰(...tmp1);
+//│ return 6
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hello
 //│ > hi
@@ -81,27 +118,36 @@ let f = foo(1)(2)
 print("hello")
 f(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let foo¹, f², foo$worker⁰, lambda⁰;
+//│ let foo¹, f², foo$worker⁰, xs⁹, callPrefix, tmp, lambda⁰, xs¹⁰, callPrefix1, tmp1;
 //│ @inline
 //│ define foo¹ as fun foo²(x)(y) {
 //│   return foo$worker¹(x, y)
 //│ };
 //│ define foo$worker⁰ as fun foo$worker¹(x, y) {
-//│   let lambda;
-//│   do Predef⁰.print⁰("hi");
+//│   let lambda, xs, callPrefix2, tmp2;
+//│   set xs = mut ["hi"];
+//│   set callPrefix2 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp2 = callPrefix2(...xs);
+//│   do globalThis⁰.console⁰.log⁰(...tmp2);
 //│   @private
 //│   define lambda as fun lambda¹(z) {
 //│     return 42
 //│   };
 //│   return lambda¹
 //│ };
-//│ do Predef⁰.print⁰("hi");
+//│ set xs¹⁰ = mut ["hi"];
+//│ set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp1 = callPrefix1(...xs¹⁰);
+//│ do globalThis⁰.console⁰.log⁰(...tmp1);
 //│ @private
 //│ define lambda⁰ as fun lambda²(z) {
 //│   return 42
 //│ };
 //│ set f² = lambda²;
-//│ do Predef⁰.print⁰("hello");
+//│ set xs⁹ = mut ["hello"];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp = callPrefix(...xs⁹);
+//│ do globalThis⁰.console⁰.log⁰(...tmp);
 //│ return 42
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi

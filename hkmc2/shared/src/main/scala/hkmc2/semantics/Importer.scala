@@ -41,6 +41,7 @@ class Importer:
       file.ext match
       
       case "mjs" | "js" =>
+        sym.importPath = S(file.toString)
         Import(sym, file.toString, file)
         
       case "mls" if {
@@ -72,6 +73,7 @@ class Importer:
         Import(sym, path, file)
       
     else
+      sym.importPath = S(path)
       Import(sym, path, file)
     
 

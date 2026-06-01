@@ -26,11 +26,18 @@ fun test(x) =
 true and test(42)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ if (true === true) {
-//│   Predef.print(42);
+//│   let xs, callPrefix, tmp;
+//│   xs = [
+//│     42
+//│   ];
+//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp = runtime.safeCall(callPrefix(...xs));
+//│   runtime.safeCall(globalThis.console.log(...tmp));
 //│   if (42 === true) { return true }
 //│   return false;
 //│ }
 //│ return false;
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 42
 //│ = false
@@ -38,7 +45,7 @@ true and test(42)
 :fixme
 true or test(42)
 //│ ╔══[COMPILATION ERROR] Logical `or` is not yet supported.
-//│ ║  l.39: 	true or test(42)
+//│ ║  l.46: 	true or test(42)
 //│ ╙──      	^^^^^^^^^^^^^^^^
 //│ > 42
 //│ = false

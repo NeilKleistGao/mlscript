@@ -46,18 +46,31 @@ module Test with
 //│   }
 //│   static #s;
 //│   static {
+//│     let xs, callPrefix, tmp;
 //│     Test.#s = 1;
-//│     Predef.print(Test.#s);
+//│     xs = [
+//│       Test.#s
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp = runtime.safeCall(callPrefix(...xs));
+//│     runtime.safeCall(globalThis.console.log(...tmp));
 //│   }
 //│   static foo() {
-//│     return Predef.print(Test.#s)
+//│     let xs, callPrefix, tmp;
+//│     xs = [
+//│       Test.#s
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp = runtime.safeCall(callPrefix(...xs));
+//│     return runtime.safeCall(globalThis.console.log(...tmp))
 //│   }
 //│   static bar() {
-//│     return Predef.print(Test.#s)
+//│     return Test.foo()
 //│   }
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Test"];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 

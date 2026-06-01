@@ -6,7 +6,7 @@ val x = 2
 fun foo() =
   x + 1
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let foo, x; foo = function foo() { return x + 1 }; x = 2;
+//│ let foo, x; foo = function foo() { return x + 1 }; x = 2; 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ x = 2
 
@@ -20,13 +20,19 @@ class Test with
 //│     Test1 = this
 //│   }
 //│   constructor() {
-//│     let inlinedVal;
+//│     let inlinedVal, xs, callPrefix, tmp;
 //│     inlinedVal = x + 1;
-//│     Predef.print(inlinedVal);
+//│     xs = [
+//│       inlinedVal
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp = runtime.safeCall(callPrefix(...xs));
+//│     runtime.safeCall(globalThis.console.log(...tmp));
 //│   }
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Test"];
 //│ });
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 new Test

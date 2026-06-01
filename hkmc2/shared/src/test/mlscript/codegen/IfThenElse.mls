@@ -11,10 +11,27 @@ let f = x => if x then print("ok") else print("ko")
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let f, f1;
 //│ f1 = function f(x) {
-//│   if (x === true) { return Predef.print("ok") }
-//│   return Predef.print("ko");
+//│   if (x === true) {
+//│     let xs, callPrefix, tmp;
+//│     xs = [
+//│       "ok"
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp = runtime.safeCall(callPrefix(...xs));
+//│     return runtime.safeCall(globalThis.console.log(...tmp))
+//│   }
+//│   {
+//│     let xs, callPrefix, tmp;
+//│     xs = [
+//│       "ko"
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp = runtime.safeCall(callPrefix(...xs));
+//│     return runtime.safeCall(globalThis.console.log(...tmp));
+//│   }
 //│ };
 //│ f = f1;
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = fun f
 
@@ -30,14 +47,22 @@ let f = x => print((if x then "ok" else "ko") + "!")
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let f2, lambda;
 //│ lambda = (undefined, function (x) {
-//│   let tmp, tmp1;
+//│   let tmp, tmp1, xs, callPrefix, tmp2;
 //│   if (x === true) {
 //│     tmp = "ok";
-//│   } else { tmp = "ko"; }
+//│   } else {
+//│     tmp = "ko";
+//│   }
 //│   tmp1 = tmp + "!";
-//│   return Predef.print(tmp1)
+//│   xs = [
+//│     tmp1
+//│   ];
+//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp2 = runtime.safeCall(callPrefix(...xs));
+//│   return runtime.safeCall(globalThis.console.log(...tmp2))
 //│ });
 //│ f2 = lambda;
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = fun
 
@@ -46,14 +71,22 @@ let f = x => print((if x and x then "ok" else "ko") + "!")
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let f3, lambda1;
 //│ lambda1 = (undefined, function (x) {
-//│   let tmp, tmp1;
+//│   let tmp, tmp1, xs, callPrefix, tmp2;
 //│   if (x === true) {
 //│     tmp = "ok";
-//│   } else { tmp = "ko"; }
+//│   } else {
+//│     tmp = "ko";
+//│   }
 //│   tmp1 = tmp + "!";
-//│   return Predef.print(tmp1)
+//│   xs = [
+//│     tmp1
+//│   ];
+//│   callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp2 = runtime.safeCall(callPrefix(...xs));
+//│   return runtime.safeCall(globalThis.console.log(...tmp2))
 //│ });
 //│ f3 = lambda1;
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ f = fun
 // --- TODO: What we want ---

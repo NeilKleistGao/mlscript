@@ -47,6 +47,14 @@ abstract class Symbol(using State) extends Located:
     prefix + nme + State.dbgUid(uid)
   
   val directRefs: mutable.Buffer[Term.Ref] = mutable.Buffer.empty
+  
+  /** The JS module imported by this symbol, when it originates from an import.
+    *
+    * Inlining can move a reference outside the program that originally contained
+    * the import statement. JSBuilder uses this path to recreate the default import
+    * in the receiving program. */
+  var importPath: Opt[Str] = N
+  
   def ref(id: Tree.Ident =
     Tree.Ident("") // FIXME hack
   ): Term.Ref =
@@ -276,6 +284,13 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
   
   // * This is a hack for that `TermDef` currently doesn't have a symbol. 
   var tsym: Opt[TermSymbol] = N
+  
+  /** The generated JS module that owns this top-level symbol, when known.
+    *
+    * Inlining across compilation units can expose references to top-level definitions
+    * that are not part of the source-level module API. JSBuilder uses this path to
+    * export and import these definitions under stable internal names. */
+  var compilationUnitPath: Opt[Str] = N
   
   def toLoc: Option[Loc] = Loc(trees)
   

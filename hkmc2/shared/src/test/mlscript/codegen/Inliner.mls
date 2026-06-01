@@ -42,16 +42,22 @@ fun f(a, b, c) = a + b + c
 print(f(1, 2, 3))
 print(f(1, 2, ...[1]))
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f⁶, tmp, tmp1;
+//│ let f⁶, tmp, tmp1, xs⁰, xs¹, callPrefix, tmp2, callPrefix1, tmp3;
 //│ define f⁶ as fun f⁷(a, b, c) {
-//│   let tmp2;
-//│   set tmp2 = +⁰(a, b);
-//│   return +⁰(tmp2, c)
+//│   let tmp4;
+//│   set tmp4 = +⁰(a, b);
+//│   return +⁰(tmp4, c)
 //│ };
-//│ do Predef⁰.print⁰(6);
+//│ set xs⁰ = mut [6];
+//│ set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp3 = callPrefix1(...xs⁰);
+//│ do globalThis⁰.console⁰.log⁰(...tmp3);
 //│ set tmp = [1];
 //│ set tmp1 = f⁷(1, 2, ...tmp);
-//│ return Predef⁰.print⁰(tmp1)
+//│ set xs¹ = mut [tmp1];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp2 = callPrefix(...xs¹);
+//│ return globalThis⁰.console⁰.log⁰(...tmp2)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 6
 //│ > 4
@@ -88,8 +94,15 @@ f(1, ...[2], ...[3])
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let f¹⁰, tmp, tmp1, tmp2;
 //│ define f¹⁰ as fun f¹¹(a, ...b) {
-//│   do Predef⁰.print⁰(a);
-//│   return Predef⁰.print⁰(b)
+//│   let xs, xs1, callPrefix, tmp3, callPrefix1, tmp4;
+//│   set xs = mut [a];
+//│   set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp4 = callPrefix1(...xs);
+//│   do globalThis⁰.console⁰.log⁰(...tmp4);
+//│   set xs1 = mut [b];
+//│   set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp3 = callPrefix(...xs1);
+//│   return globalThis⁰.console⁰.log⁰(...tmp3)
 //│ };
 //│ set tmp = [2];
 //│ do f¹¹(1, ...tmp);
@@ -113,22 +126,46 @@ f(1, 2)
 f(1, 2, 3)
 f(1, 2, 3, 4)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f¹², c⁰, c¹, c²;
+//│ let f¹², c⁰, c¹, c², xs², xs³, callPrefix, tmp, callPrefix1, tmp1, xs⁴, xs⁵, callPrefix2, tmp2, callPrefix3, tmp3, xs⁶, xs⁷, callPrefix4, tmp4, callPrefix5, tmp5;
 //│ define f¹² as fun f¹³(a, b, ...c) {
-//│   let tmp;
-//│   set tmp = +⁰(a, b);
-//│   do Predef⁰.print⁰(tmp);
-//│   return Predef⁰.print⁰(c)
+//│   let tmp6, xs, xs1, callPrefix6, tmp7, callPrefix7, tmp8;
+//│   set tmp6 = +⁰(a, b);
+//│   set xs = mut [tmp6];
+//│   set callPrefix7 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp8 = callPrefix7(...xs);
+//│   do globalThis⁰.console⁰.log⁰(...tmp8);
+//│   set xs1 = mut [c];
+//│   set callPrefix6 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp7 = callPrefix6(...xs1);
+//│   return globalThis⁰.console⁰.log⁰(...tmp7)
 //│ };
 //│ set c⁰ = mut [];
-//│ do Predef⁰.print⁰(3);
-//│ do Predef⁰.print⁰(c⁰);
+//│ set xs⁶ = mut [3];
+//│ set callPrefix5 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp5 = callPrefix5(...xs⁶);
+//│ do globalThis⁰.console⁰.log⁰(...tmp5);
+//│ set xs⁷ = mut [c⁰];
+//│ set callPrefix4 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp4 = callPrefix4(...xs⁷);
+//│ do globalThis⁰.console⁰.log⁰(...tmp4);
 //│ set c¹ = mut [3];
-//│ do Predef⁰.print⁰(3);
-//│ do Predef⁰.print⁰(c¹);
+//│ set xs⁴ = mut [3];
+//│ set callPrefix3 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp3 = callPrefix3(...xs⁴);
+//│ do globalThis⁰.console⁰.log⁰(...tmp3);
+//│ set xs⁵ = mut [c¹];
+//│ set callPrefix2 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp2 = callPrefix2(...xs⁵);
+//│ do globalThis⁰.console⁰.log⁰(...tmp2);
 //│ set c² = mut [3, 4];
-//│ do Predef⁰.print⁰(3);
-//│ return Predef⁰.print⁰(c²)
+//│ set xs² = mut [3];
+//│ set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp1 = callPrefix1(...xs²);
+//│ do globalThis⁰.console⁰.log⁰(...tmp1);
+//│ set xs³ = mut [c²];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp = callPrefix(...xs³);
+//│ return globalThis⁰.console⁰.log⁰(...tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 3
 //│ > []
@@ -147,24 +184,35 @@ f(1, ...[2, 3])
 f(1, 2, ...[3])
 f(1, 2, 3, ...[4])
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f7, tmp5, tmp6, tmp7;
+//│ let f7, tmp13, tmp14, tmp15;
 //│ f7 = function f(a, b, ...c3) {
-//│   let tmp8;
-//│   tmp8 = a + b;
-//│   Predef.print(tmp8);
-//│   return Predef.print(c3)
+//│   let tmp16, xs8, xs9, callPrefix8, tmp17, callPrefix9, tmp18;
+//│   tmp16 = a + b;
+//│   xs8 = [
+//│     tmp16
+//│   ];
+//│   callPrefix9 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp18 = runtime.safeCall(callPrefix9(...xs8));
+//│   runtime.safeCall(globalThis.console.log(...tmp18));
+//│   xs9 = [
+//│     c3
+//│   ];
+//│   callPrefix8 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp17 = runtime.safeCall(callPrefix8(...xs9));
+//│   return runtime.safeCall(globalThis.console.log(...tmp17))
 //│ };
-//│ tmp5 = globalThis.Object.freeze([
+//│ tmp13 = globalThis.Object.freeze([
 //│   2,
 //│   3
 //│ ]);
-//│ f7(1, ...tmp5);
-//│ tmp6 = globalThis.Object.freeze([
+//│ f7(1, ...tmp13);
+//│ tmp14 = globalThis.Object.freeze([
 //│   3
 //│ ]);
-//│ f7(1, 2, ...tmp6);
-//│ tmp7 = globalThis.Object.freeze([ 4 ]);
-//│ return f7(1, 2, 3, ...tmp7)
+//│ f7(1, 2, ...tmp14);
+//│ tmp15 = globalThis.Object.freeze([ 4 ]);
+//│ return f7(1, 2, 3, ...tmp15)
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 3
 //│ > [3]
@@ -184,7 +232,7 @@ fun f() =
   g(true)
 f()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f8; f8 = function f() { return true }; return true
+//│ let f8; f8 = function f() { return true }; return true 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = true
 
@@ -217,14 +265,15 @@ f(1)(2)(3)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let f10, f11;
 //│ f11 = function f1(a, b, c3) {
-//│   let tmp8, tmp9, tmp10;
-//│   tmp8 = a + b;
-//│   tmp9 = tmp8 + c3;
-//│   tmp10 = tmp9 + 1;
-//│   return tmp10 * 2
+//│   let tmp16, tmp17, tmp18;
+//│   tmp16 = a + b;
+//│   tmp17 = tmp16 + c3;
+//│   tmp18 = tmp17 + 1;
+//│   return tmp18 * 2
 //│ };
 //│ f10 = function f(a) { return (b) => { return (c3) => { return f11(a, b, c3) } } };
 //│ return 14
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 14
 
@@ -239,25 +288,31 @@ fun foo(x)(y) =
   lam
 foo(1)(2)(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let foo⁰, lam$⁰, foo$worker⁰;
+//│ let foo⁰, lam$⁰, foo$worker⁰, xs⁸, callPrefix, tmp;
 //│ @inline @private
 //│ define lam$⁰ as fun lam$¹(x, y)(z) {
-//│   let tmp;
-//│   set tmp = +⁰(x, y);
-//│   return +⁰(tmp, z)
+//│   let tmp1;
+//│   set tmp1 = +⁰(x, y);
+//│   return +⁰(tmp1, z)
 //│ };
 //│ @inline
 //│ define foo⁰ as fun foo¹(x)(y) {
 //│   return foo$worker¹(x, y)
 //│ };
 //│ define foo$worker⁰ as fun foo$worker¹(x, y) {
-//│   let inlinedVal, tmp;
-//│   set tmp = +⁰(x, y);
-//│   set inlinedVal = +⁰(tmp, 4);
-//│   do Predef⁰.print⁰(inlinedVal);
+//│   let xs, callPrefix1, tmp1, inlinedVal, tmp2;
+//│   set tmp2 = +⁰(x, y);
+//│   set inlinedVal = +⁰(tmp2, 4);
+//│   set xs = mut [inlinedVal];
+//│   set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp1 = callPrefix1(...xs);
+//│   do globalThis⁰.console⁰.log⁰(...tmp1);
 //│   return lam$¹(x, y)
 //│ };
-//│ do Predef⁰.print⁰(7);
+//│ set xs⁸ = mut [7];
+//│ set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│ set tmp = callPrefix(...xs⁸);
+//│ do globalThis⁰.console⁰.log⁰(...tmp);
 //│ return 6
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 7
@@ -308,6 +363,7 @@ module A with
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "A"];
 //│ });
+//│ 
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let A⁰;
 //│ define A⁰ as class A¹
@@ -322,19 +378,7 @@ module A with
 fun f() = if hide(false) do f() + 1
 f()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let f²²;
-//│ define f²² as fun f²³() {
-//│   let scrut;
-//│   set scrut = Predef⁰.hide⁰(false);
-//│   match scrut
-//│     true =>
-//│       do f²³();
-//│       return runtime⁰.Unit⁰
-//│     else
-//│       return runtime⁰.Unit⁰
-//│   end
-//│ };
-//│ return f²³()
+//│ let f²²; define f²² as fun f²³() { return runtime⁰.Unit⁰ }; return runtime⁰.Unit⁰
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 

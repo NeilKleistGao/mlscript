@@ -232,6 +232,15 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
             case _ => s
         k(if (qual2 is qual) && (sym2 is p.symbol) then p else Select(qual2, name)(sym2).withLocOf(p))
     case _ => super.applyPath(p)(k)
+  
+  override def applyCase(cse: Case)(k: Case => Block): Block = cse match
+    case Case.Cls(cls, path) =>
+      val cls2 = mapping.get(cls) match
+        case Some(sym: ClassLikeSymbol) => sym
+        case _ => cls
+      applyPath(path): path2 =>
+        k(if (cls2 is cls) && (path2 is path) then cse else Case.Cls(cls2, path2))
+    case _ => super.applyCase(cse)(k)
 
   override def applyValue(v: Value)(k: Value => Block): Block = v match
     case Value.SimpleRef(l) =>

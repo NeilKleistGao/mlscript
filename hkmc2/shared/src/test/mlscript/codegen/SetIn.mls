@@ -7,7 +7,7 @@ let x = 0
 :sjs
 let x += 1
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let x1; x1 = x + 1;
+//│ let x1; x1 = x + 1; 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ x = 1
 
@@ -17,13 +17,13 @@ x
 :sjs
 set x = 0
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ x1 = 0; return runtime.Unit
+//│ x1 = 0; return runtime.Unit 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 :sjs
 set x += 1
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp; tmp = x1 + 1; x1 = tmp; return runtime.Unit
+//│ let tmp; tmp = x1 + 1; x1 = tmp; return runtime.Unit 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 x
@@ -33,15 +33,24 @@ x
 :sjs
 set x += 1 in print(x)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let old, tmp1, tmp2, tmp3;
+//│ let old, tmp1, tmp2;
 //│ old = x1;
 //│ try {
-//│   tmp2 = x1 + 1;
-//│   x1 = tmp2;
-//│   tmp3 = Predef.print(tmp2);
-//│   tmp1 = tmp3;
+//│   {
+//│     let xs, inlinedVal, callPrefix, tmp3;
+//│     tmp2 = x1 + 1;
+//│     x1 = tmp2;
+//│     xs = [
+//│       tmp2
+//│     ];
+//│     callPrefix = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│     tmp3 = runtime.safeCall(callPrefix(...xs));
+//│     inlinedVal = runtime.safeCall(globalThis.console.log(...tmp3));
+//│     tmp1 = inlinedVal;
+//│   }
 //│ } finally { x1 = old; }
 //│ return tmp1
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 2
 
@@ -80,7 +89,7 @@ example()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let example2;
 //│ example2 = function example() {
-//│   let x2, get_x, old1, tmp4, tmp5, get_x1;
+//│   let x2, get_x, old1, tmp7, tmp8, get_x1, xs4, xs5, callPrefix4, tmp9, callPrefix5, tmp10;
 //│   x2 = 0;
 //│   get_x1 = function get_x() {
 //│     return x2
@@ -89,21 +98,42 @@ example()
 //│   old1 = x2;
 //│   try {
 //│     {
-//│       let inlinedVal;
-//│       tmp4 = x2 + 1;
-//│       x2 = tmp4;
-//│       Predef.print(x2);
+//│       let xs6, inlinedVal, xs7, callPrefix6, tmp11, callPrefix7, tmp12;
+//│       tmp7 = x2 + 1;
+//│       x2 = tmp7;
+//│       xs6 = [
+//│         x2
+//│       ];
+//│       callPrefix7 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       tmp12 = runtime.safeCall(callPrefix7(...xs6));
+//│       runtime.safeCall(globalThis.console.log(...tmp12));
 //│       inlinedVal = x2;
-//│       Predef.print(inlinedVal);
+//│       xs7 = [
+//│         inlinedVal
+//│       ];
+//│       callPrefix6 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│       tmp11 = runtime.safeCall(callPrefix6(...xs7));
+//│       runtime.safeCall(globalThis.console.log(...tmp11));
 //│     }
 //│   } finally {
 //│     x2 = old1;
 //│   }
-//│   Predef.print(x2);
-//│   tmp5 = runtime.safeCall(get_x());
-//│   return Predef.print(tmp5)
+//│   xs4 = [
+//│     x2
+//│   ];
+//│   callPrefix5 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp10 = runtime.safeCall(callPrefix5(...xs4));
+//│   runtime.safeCall(globalThis.console.log(...tmp10));
+//│   tmp8 = runtime.safeCall(get_x());
+//│   xs5 = [
+//│     tmp8
+//│   ];
+//│   callPrefix4 = runtime.safeCall(Predef.map(Predef.renderAsStr));
+//│   tmp9 = runtime.safeCall(callPrefix4(...xs5));
+//│   return runtime.safeCall(globalThis.console.log(...tmp9))
 //│ };
 //│ return example2()
+//│ 
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ > 1
@@ -123,7 +153,7 @@ example()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let example⁰;
 //│ define example⁰ as fun example¹() {
-//│   let x, get_x, old, tmp, tmp1, tmp2, tmp3, get_x1;
+//│   let x, get_x, old, tmp, tmp1, tmp2, tmp3, get_x1, xs, xs1, callPrefix, tmp4, callPrefix1, tmp5;
 //│   set x = 0;
 //│   @private
 //│   define get_x1 as fun get_x⁰() {
@@ -132,18 +162,28 @@ example()
 //│   set get_x = get_x⁰;
 //│   set old = x;
 //│   try
+//│     let xs2, callPrefix2, tmp6;
 //│     set tmp1 = +⁰(x, 1);
 //│     set x = tmp1;
-//│     do Predef⁰.print⁰(x);
+//│     set xs2 = mut [x];
+//│     set callPrefix2 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│     set tmp6 = callPrefix2(...xs2);
+//│     do globalThis⁰.console⁰.log⁰(...tmp6);
 //│     set tmp2 = x;
 //│     set tmp = tmp2;
 //│     end
 //│   finally
 //│     set x = old;
 //│     end;
-//│     do Predef⁰.print⁰(x);
+//│     set xs = mut [x];
+//│   set callPrefix1 = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp5 = callPrefix1(...xs);
+//│   do globalThis⁰.console⁰.log⁰(...tmp5);
 //│   set tmp3 = get_x();
-//│   do Predef⁰.print⁰(tmp3);
+//│   set xs1 = mut [tmp3];
+//│   set callPrefix = Predef⁰.map⁰(Predef⁰.renderAsStr⁰);
+//│   set tmp4 = callPrefix(...xs1);
+//│   do globalThis⁰.console⁰.log⁰(...tmp4);
 //│   return tmp
 //│ };
 //│ return example¹()
