@@ -473,12 +473,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       // refresh symbols after copying parameter list
       override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)
     val paramRewrite = new BlockTransformer(varSymSubst):
-      override def applyBlock(b: Block) = b match
-        // process ctor: remove ValDefn of parameters already defined in the class parameters
-        // remove `val C.x = x` statements from the constructor
-        case Define(ValDefn(_, _, Value.SimpleRef(sym: VarSymbol)), rest)
-          if paramSymMap.contains(sym) => applyBlock(rest)
-        case _ => super.applyBlock(b)
       override def applyScopedBlock(b: Block) = b match
         case Scoped(s, bd) =>
           val nb = applySubBlock(bd)
