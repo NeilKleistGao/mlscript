@@ -93,7 +93,7 @@ let Predef1;
     return x
   }
   static get maybe() {
-    return true;
+    return Predef.hide(true);
   }
   static apply(f, ...args) {
     return runtime.safeCall(f(...args))
@@ -293,16 +293,13 @@ let Predef1;
   static mkStr(...xs) {
     let lambda, callPrefix;
     lambda = (undefined, function (acc, x) {
-      let tmp, args;
+      let tmp;
       if (typeof x === 'string') {
         tmp = true;
       } else {
         tmp = false;
       }
-      args = [
-        tmp
-      ];
-      runtime.safeCall(Predef.js_assert(...args));
+      Predef.check(tmp);
       return acc + x
     });
     callPrefix = runtime.safeCall(Predef.fold(lambda));

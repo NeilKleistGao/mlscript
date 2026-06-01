@@ -996,6 +996,13 @@ class BlockSimplifier
         
         inline def isLoopBreaker = _isLoopBreaker
         
+        // Whether this method belongs to a module/object (as opposed to a class).
+        // Only module methods can be safely inlined, since class methods may access
+        // private fields via `this.#x` which are not accessible from outside the class.
+        def isModuleMethod: Bool = defn.dSym.owner match
+          case S(_: ModuleOrObjectSymbol) => true
+          case _ => false
+        
         // Whether this function can be inlined without causing any code duplication,
         // i.e. the original definition can be removed and there is only one usage.
         def canBeInlineEliminated: Bool =
@@ -1003,6 +1010,11 @@ class BlockSimplifier
           // false
         
         def shouldBeInlined(newBlk: Block, threshold: Int): Bool =
+          // Class instance methods access private fields via `this.#x` which cannot
+          // be accessed from outside the class, so they must not be inlined.
+          // Module/object methods are safe to inline because `this` refers to the
+          // module singleton which can be replaced by the qualifier path.
+          if isMethod && !isModuleMethod then return false
           // If the definition is marked with inline, we should inline it regardless of the size of the body.
           // If both callee and caller are marked with inline, inlining will ignore the stricter @inline limits.
           // Remark: the case of a recursive function marked with inline will be blocked by loop breaker logic.
@@ -1207,6 +1219,10 @@ class BlockSimplifier
         override def applyResult(r: Result)(k: Result => Block): Block = r match
           case c @ Call(callPath @ MethodCallQualifier(qual, ts), argss) if m.contains(ts) && argss.nonEmpty =>
             // * Method call: extract the qualifier for `this` substitution.
+            // * Don't inline `this.method()` calls (within constructors/methods of the same
+            // * class/module), as inlining may bypass runtime checks (e.g., safeCall)
+            // * and incorrectly resolve forward references during initialization.
+            if qual.isInstanceOf[Value.This] then return super.applyResult(r)(k)
             if m(ts).isLoopBreaker then return super.applyResult(r)(k)
             newFunctionBody.get(ts)
             .getOrElse:
