@@ -139,7 +139,12 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
       val oldIsym = defn.isym
       assert(!mapping.isDefinedAt(oldIsym), s"isym already in mapping: $oldIsym")
       val newIsym: DefinitionSymbol[? <: ClassLikeDef] & InnerSymbol = oldIsym match
-        case c: ClassSymbol => new ClassSymbol(c.tree, c.id)
+        case c: ClassSymbol =>
+          val nc = new ClassSymbol(c.tree, c.id)
+          // Carry over the source-level definition so that JSBuilder's shouldBeLifted
+          // and sourceParamsOpt checks work correctly on refreshed (inlined) class copies.
+          nc.defn = c.defn
+          nc
         case m: ModuleOrObjectSymbol => new ModuleOrObjectSymbol(m.tree, m.id)
         case p: PatternSymbol => new PatternSymbol(p.id, p.params, p.body)
         case _ => lastWords(s"unexpected isym kind: $oldIsym")
@@ -160,16 +165,15 @@ class SymbolRefresher(existingMapping: Map[Symbol, Symbol])(using State) extends
         mapping.get(cs) match
           case Some(existing: ClassCtorSymbol) => existing
           case Some(existing: TermSymbol) =>
+            // The ctor symbol was already mapped to a TermSymbol by the FunDefn case
+            // (for the data-class wrapper function, whose dSym IS the ClassCtorSymbol).
+            // Create a fresh ClassCtorSymbol for the ClsLikeDefn, but do NOT overwrite
+            // the mapping or bms.tsym: the wrapper function needs the TermSymbol mapping
+            // for correct MemberRef disambiguation and JS code generation.
             val newOwner = newIsym match
               case cls: ClassSymbol => cls
               case _ => lastWords(s"ClassCtorSymbol for non-class: $newIsym")
-            val ncs = new ClassCtorSymbol(cs.k, S(newOwner), cs.id)
-            mapping(cs) = ncs
-            mapping.get(defn.sym) match
-              case Some(bms: BlockMemberSymbol) if bms.tsym.contains(existing) =>
-                bms.tsym = S(ncs)
-              case _ =>
-            ncs
+            new ClassCtorSymbol(cs.k, S(newOwner), cs.id)
           case None =>
             val newOwner = newIsym match
               case cls: ClassSymbol => cls
