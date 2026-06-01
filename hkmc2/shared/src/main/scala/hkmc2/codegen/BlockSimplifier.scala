@@ -501,6 +501,20 @@ class BlockSimplifier
     // trace[Block](s"Applying block: ${b.abbreviate} with map: ${assignedResults}", res => s"|= ${assignedResults}"):
       b match
       
+      // * Collapse immediately-invoked ANF path aliases without assuming that evaluating the
+      // * path is pure. Since there is no intervening statement and the local has no other use,
+      // * this preserves both the number and order of evaluations. This notably removes
+      // * forwarding temporaries introduced when inlining getters that return a JS selection.
+      case Assign(lhs: LocalVar, path: Path, Assign(nextLhs, call @ Call(Value.SimpleRef(fun: LocalVar), argss), rst))
+        if !inDryRun && (fun is lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs)
+          && !path.freeVars(lhs)
+          && !argss.iterator.flatten.exists(_.value.freeVars(lhs))
+          && !rst.freeVars(lhs)
+        =>
+          registerChange(s"immediate call prefix ${lhs.showDbg} ~> ${path.showDbg}")
+          val combined = Call(path, argss)(call.isMlsFun, call.mayRaiseEffects, call.explicitTailCall).withLocOf(call)
+          applyBlock(Assign(nextLhs, combined, rst))
+
       // * Discard local variables that are assigned just to be returned
       // * Note: the reason we do this here and not in DeadCodeElim is that we need to check `capturedVars`
       case Assign(lhs: LocalVar, rhs, Return(Value.SimpleRef(ret)))
@@ -946,7 +960,7 @@ class BlockSimplifier
       
       def buildAmbientSymbolMapping(callee: TermSymbol)(using State): Map[Symbol, Symbol] =
         callee.getState.ambientSymbolMappingTo(State, ctx)
-      
+
       def accessesPrivateMembers(blk: Block): Bool =
         var found = false
         (new BlockTraverser:
@@ -955,7 +969,7 @@ class BlockSimplifier
             case _ =>
         ).applyBlock(blk)
         found
-      
+
       def matchArgs(args: List[Arg], params: ParamList): Option[List[(VarSymbol, Result)]] =
         if args.exists(_.spread.isDefined) then
           // we require a precise match when any arg is a spread arg

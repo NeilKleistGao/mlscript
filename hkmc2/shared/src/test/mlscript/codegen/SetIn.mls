@@ -38,14 +38,13 @@ set x += 1 in print(x)
 //│ old = x1;
 //│ try {
 //│   {
-//│     let xs, inlinedVal, callPrefix, tmp3, inlinedVal1;
+//│     let xs, inlinedVal, callPrefix, tmp3;
 //│     tmp2 = x1 + 1;
 //│     x1 = tmp2;
 //│     xs = [
 //│       tmp2
 //│     ];
-//│     inlinedVal1 = Rendering.map;
-//│     callPrefix = runtime.safeCall(inlinedVal1(Predef.renderAsStr));
+//│     callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp3 = runtime.safeCall(callPrefix(...xs));
 //│     inlinedVal = runtime.safeCall(globalThis.console.log(...tmp3));
 //│     tmp1 = inlinedVal;
@@ -90,7 +89,7 @@ example()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let example2;
 //│ example2 = function example() {
-//│   let x2, get_x, old1, tmp7, tmp8, get_x1, xs4, xs5, callPrefix4, tmp9, callPrefix5, tmp10, inlinedVal4, inlinedVal5;
+//│   let x2, get_x, old1, tmp7, tmp8, get_x1, xs4, xs5, callPrefix4, tmp9, callPrefix5, tmp10;
 //│   x2 = 0;
 //│   get_x1 = function get_x() {
 //│     return x2
@@ -99,22 +98,20 @@ example()
 //│   old1 = x2;
 //│   try {
 //│     {
-//│       let xs6, inlinedVal6, xs7, callPrefix6, tmp11, callPrefix7, tmp12, inlinedVal7, inlinedVal8;
+//│       let xs6, inlinedVal, xs7, callPrefix6, tmp11, callPrefix7, tmp12;
 //│       tmp7 = x2 + 1;
 //│       x2 = tmp7;
 //│       xs6 = [
 //│         x2
 //│       ];
-//│       inlinedVal7 = Rendering.map;
-//│       callPrefix7 = runtime.safeCall(inlinedVal7(Predef.renderAsStr));
+//│       callPrefix7 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│       tmp12 = runtime.safeCall(callPrefix7(...xs6));
 //│       runtime.safeCall(globalThis.console.log(...tmp12));
-//│       inlinedVal6 = x2;
+//│       inlinedVal = x2;
 //│       xs7 = [
-//│         inlinedVal6
+//│         inlinedVal
 //│       ];
-//│       inlinedVal8 = Rendering.map;
-//│       callPrefix6 = runtime.safeCall(inlinedVal8(Predef.renderAsStr));
+//│       callPrefix6 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│       tmp11 = runtime.safeCall(callPrefix6(...xs7));
 //│       runtime.safeCall(globalThis.console.log(...tmp11));
 //│     }
@@ -124,16 +121,14 @@ example()
 //│   xs4 = [
 //│     x2
 //│   ];
-//│   inlinedVal4 = Rendering.map;
-//│   callPrefix5 = runtime.safeCall(inlinedVal4(Predef.renderAsStr));
+//│   callPrefix5 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│   tmp10 = runtime.safeCall(callPrefix5(...xs4));
 //│   runtime.safeCall(globalThis.console.log(...tmp10));
 //│   tmp8 = runtime.safeCall(get_x());
 //│   xs5 = [
 //│     tmp8
 //│   ];
-//│   inlinedVal5 = Rendering.map;
-//│   callPrefix4 = runtime.safeCall(inlinedVal5(Predef.renderAsStr));
+//│   callPrefix4 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│   tmp9 = runtime.safeCall(callPrefix4(...xs5));
 //│   return runtime.safeCall(globalThis.console.log(...tmp9))
 //│ };
@@ -157,7 +152,7 @@ example()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let example⁰;
 //│ define example⁰ as fun example¹() {
-//│   let x, get_x, old, tmp, tmp1, tmp2, tmp3, get_x1, xs, xs1, callPrefix, tmp4, callPrefix1, tmp5, inlinedVal, inlinedVal1;
+//│   let x, get_x, old, tmp, tmp1, tmp2, tmp3, get_x1, xs, xs1, callPrefix, tmp4, callPrefix1, tmp5;
 //│   set x = 0;
 //│   @private
 //│   define get_x1 as fun get_x⁰() {
@@ -166,12 +161,11 @@ example()
 //│   set get_x = get_x⁰;
 //│   set old = x;
 //│   try
-//│     let xs2, callPrefix2, tmp6, inlinedVal2;
+//│     let xs2, callPrefix2, tmp6;
 //│     set tmp1 = +⁰(x, 1);
 //│     set x = tmp1;
 //│     set xs2 = mut [x];
-//│     set inlinedVal2 = Rendering⁰.map﹖;
-//│     set callPrefix2 = inlinedVal2(Predef⁰.renderAsStr⁰);
+//│     set callPrefix2 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│     set tmp6 = callPrefix2(...xs2);
 //│     do globalThis⁰.console⁰.log⁰(...tmp6);
 //│     set tmp2 = x;
@@ -181,14 +175,12 @@ example()
 //│     set x = old;
 //│     end;
 //│     set xs = mut [x];
-//│   set inlinedVal = Rendering⁰.map﹖;
-//│   set callPrefix1 = inlinedVal(Predef⁰.renderAsStr⁰);
+//│   set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│   set tmp5 = callPrefix1(...xs);
 //│   do globalThis⁰.console⁰.log⁰(...tmp5);
 //│   set tmp3 = get_x();
 //│   set xs1 = mut [tmp3];
-//│   set inlinedVal1 = Rendering⁰.map﹖;
-//│   set callPrefix = inlinedVal1(Predef⁰.renderAsStr⁰);
+//│   set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│   set tmp4 = callPrefix(...xs1);
 //│   do globalThis⁰.console⁰.log⁰(...tmp4);
 //│   return tmp

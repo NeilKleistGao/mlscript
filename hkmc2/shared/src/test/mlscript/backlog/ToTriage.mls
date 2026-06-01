@@ -316,13 +316,12 @@ module Foo(x) with
 //│   }
 //│   static #x;
 //│   static {
-//│     let xs1, callPrefix1, tmp5, inlinedVal1;
+//│     let xs1, callPrefix1, tmp5;
 //│     Foo4.#x = x;
 //│     xs1 = [
 //│       Foo4.#x
 //│     ];
-//│     inlinedVal1 = Rendering.map;
-//│     callPrefix1 = runtime.safeCall(inlinedVal1(Predef.renderAsStr));
+//│     callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp5 = runtime.safeCall(callPrefix1(...xs1));
 //│     runtime.safeCall(globalThis.console.log(...tmp5));
 //│   }
@@ -337,7 +336,7 @@ module Foo(x) with
 module Foo(val x)
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.337: 	module Foo(val x)
+//│ ║  l.336: 	module Foo(val x)
 //│ ╙──       	               ^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo7;
@@ -358,7 +357,7 @@ module Foo(val x)
 // TODO support syntax?
 data class Foo(mut x)
 //│ ╔══[COMPILATION ERROR] Expected a valid parameter, found 'mut'-modified identifier
-//│ ║  l.359: 	data class Foo(mut x)
+//│ ║  l.358: 	data class Foo(mut x)
 //│ ╙──       	                   ^
 
 // ——— ——— ———
@@ -378,7 +377,7 @@ class Foo
 :e
 class Id(name: UnboundName)
 //│ ╔══[COMPILATION ERROR] Name not found: UnboundName
-//│ ║  l.379: 	class Id(name: UnboundName)
+//│ ║  l.378: 	class Id(name: UnboundName)
 //│ ╙──       	               ^^^^^^^^^^^
 //│ ═══[COMPILATION ERROR] Expected a type, got a non-type ‹error›
 //│ ═══[COMPILATION ERROR] Expected a type, got ‹error›

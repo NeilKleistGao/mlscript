@@ -31,15 +31,13 @@ let x in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let xs⁰, xs¹, callPrefix, tmp, callPrefix1, tmp1, inlinedVal, inlinedVal1;
+//│ let xs⁰, xs¹, callPrefix, tmp, callPrefix1, tmp1;
 //│ set xs⁰ = mut ["don't inline cont."];
-//│ set inlinedVal = Rendering⁰.map﹖;
-//│ set callPrefix1 = inlinedVal(Predef⁰.renderAsStr⁰);
+//│ set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│ set tmp1 = callPrefix1(...xs⁰);
 //│ do globalThis⁰.console⁰.log⁰(...tmp1);
 //│ set xs¹ = mut [1];
-//│ set inlinedVal1 = Rendering⁰.map﹖;
-//│ set callPrefix = inlinedVal1(Predef⁰.renderAsStr⁰);
+//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│ set tmp = callPrefix(...xs¹);
 //│ return globalThis⁰.console⁰.log⁰(...tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -54,20 +52,18 @@ let x = undefined in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x¹, xs², xs³, callPrefix, tmp, callPrefix1, tmp1, inlinedVal, inlinedVal1;
+//│ let x¹, xs², xs³, callPrefix, tmp, callPrefix1, tmp1;
 //│ set x¹ = undefined;
 //│ match false
 //│   true =>
 //│     set x¹ = 1;
 //│     end
 //│ set xs² = mut ["don't inline cont."];
-//│ set inlinedVal = Rendering⁰.map﹖;
-//│ set callPrefix1 = inlinedVal(Predef⁰.renderAsStr⁰);
+//│ set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│ set tmp1 = callPrefix1(...xs²);
 //│ do globalThis⁰.console⁰.log⁰(...tmp1);
 //│ set xs³ = mut [x¹];
-//│ set inlinedVal1 = Rendering⁰.map﹖;
-//│ set callPrefix = inlinedVal1(Predef⁰.renderAsStr⁰);
+//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│ set tmp = callPrefix(...xs³);
 //│ return globalThis⁰.console⁰.log⁰(...tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

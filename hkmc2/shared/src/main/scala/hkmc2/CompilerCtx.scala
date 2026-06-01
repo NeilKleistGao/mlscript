@@ -37,7 +37,7 @@ class CompilerCtx(
 
   def withPaths(newPaths: MLsCompiler.Paths): CompilerCtx =
     CompilerCtx(importing, beingCompiled, fs, cache, S(newPaths), rootConfig)
-  
+
   def withRootConfig(newRootConfig: Config): CompilerCtx =
     CompilerCtx(importing, beingCompiled, fs, cache, paths, S(newRootConfig))
   
@@ -137,7 +137,7 @@ class CompilerCtx(
       artifactConfig.givenIn:
         val resolver = Resolver(rtl)
         resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
-      
+
       // Imported compilation units are lowered even in worksheet mode so their
       // symbols carry IR definitions that the caller's inliner can inspect.
       if paths.isEmpty then

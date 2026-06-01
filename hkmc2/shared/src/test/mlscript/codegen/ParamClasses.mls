@@ -152,19 +152,17 @@ f.b
 Foo(print(1), print(2))
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
-//│ let xs, inlinedVal, xs1, inlinedVal1, callPrefix, tmp1, callPrefix1, tmp2, inlinedVal2, inlinedVal3;
+//│ let xs, inlinedVal, xs1, inlinedVal1, callPrefix, tmp1, callPrefix1, tmp2;
 //│ xs = [
 //│   1
 //│ ];
-//│ inlinedVal2 = Rendering.map;
-//│ callPrefix1 = runtime.safeCall(inlinedVal2(Predef.renderAsStr));
+//│ callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│ tmp2 = runtime.safeCall(callPrefix1(...xs));
 //│ inlinedVal = runtime.safeCall(globalThis.console.log(...tmp2));
 //│ xs1 = [
 //│   2
 //│ ];
-//│ inlinedVal3 = Rendering.map;
-//│ callPrefix = runtime.safeCall(inlinedVal3(Predef.renderAsStr));
+//│ callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│ tmp1 = runtime.safeCall(callPrefix(...xs1));
 //│ inlinedVal1 = runtime.safeCall(globalThis.console.log(...tmp1));
 //│ return Foo5(inlinedVal, inlinedVal1)
@@ -187,13 +185,12 @@ data class Inner(c) with
 //│     Inner1.class = this
 //│   }
 //│   constructor(c) {
-//│     let xs2, callPrefix2, tmp3, inlinedVal4;
+//│     let xs2, callPrefix2, tmp3;
 //│     this.c = c;
 //│     xs2 = [
 //│       this.c
 //│     ];
-//│     inlinedVal4 = Rendering.map;
-//│     callPrefix2 = runtime.safeCall(inlinedVal4(Predef.renderAsStr));
+//│     callPrefix2 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp3 = runtime.safeCall(callPrefix2(...xs2));
 //│     runtime.safeCall(globalThis.console.log(...tmp3));
 //│   }
@@ -238,7 +235,7 @@ class Foo(x, val y, z, val z, z) with
 //│     Foo7.class = this
 //│   }
 //│   constructor(x, y, z, z1, z2) {
-//│     let tmp3, tmp4, tmp5, tmp6, tmp7, xs2, xs3, xs4, xs5, xs6, callPrefix2, tmp8, callPrefix3, tmp9, callPrefix4, tmp10, callPrefix5, tmp11, callPrefix6, tmp12, inlinedVal4, inlinedVal5, inlinedVal6, inlinedVal7, inlinedVal8;
+//│     let tmp3, tmp4, tmp5, tmp6, tmp7, xs2, xs3, xs4, xs5, xs6, callPrefix2, tmp8, callPrefix3, tmp9, callPrefix4, tmp10, callPrefix5, tmp11, callPrefix6, tmp12;
 //│     this.y = y;
 //│     this.z = z1;
 //│     this.#z = z2;
@@ -248,40 +245,35 @@ class Foo(x, val y, z, val z, z) with
 //│     xs2 = [
 //│       tmp3
 //│     ];
-//│     inlinedVal4 = Rendering.map;
-//│     callPrefix6 = runtime.safeCall(inlinedVal4(Predef.renderAsStr));
+//│     callPrefix6 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp12 = runtime.safeCall(callPrefix6(...xs2));
 //│     runtime.safeCall(globalThis.console.log(...tmp12));
 //│     tmp4 = "y = " + this.#y;
 //│     xs3 = [
 //│       tmp4
 //│     ];
-//│     inlinedVal5 = Rendering.map;
-//│     callPrefix5 = runtime.safeCall(inlinedVal5(Predef.renderAsStr));
+//│     callPrefix5 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp11 = runtime.safeCall(callPrefix5(...xs3));
 //│     runtime.safeCall(globalThis.console.log(...tmp11));
 //│     tmp5 = "this.y = " + this.y;
 //│     xs4 = [
 //│       tmp5
 //│     ];
-//│     inlinedVal6 = Rendering.map;
-//│     callPrefix4 = runtime.safeCall(inlinedVal6(Predef.renderAsStr));
+//│     callPrefix4 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp10 = runtime.safeCall(callPrefix4(...xs4));
 //│     runtime.safeCall(globalThis.console.log(...tmp10));
 //│     tmp6 = "z = " + this.#z;
 //│     xs5 = [
 //│       tmp6
 //│     ];
-//│     inlinedVal7 = Rendering.map;
-//│     callPrefix3 = runtime.safeCall(inlinedVal7(Predef.renderAsStr));
+//│     callPrefix3 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp9 = runtime.safeCall(callPrefix3(...xs5));
 //│     runtime.safeCall(globalThis.console.log(...tmp9));
 //│     tmp7 = "this.z = " + this.z;
 //│     xs6 = [
 //│       tmp7
 //│     ];
-//│     inlinedVal8 = Rendering.map;
-//│     callPrefix2 = runtime.safeCall(inlinedVal8(Predef.renderAsStr));
+//│     callPrefix2 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp8 = runtime.safeCall(callPrefix2(...xs6));
 //│     runtime.safeCall(globalThis.console.log(...tmp8));
 //│   }
@@ -309,10 +301,10 @@ Foo(10, 20, 30, 40, 50)
 class Foo(val z, val z)
 //│ ╔══[COMPILATION ERROR] Duplicate definition of member named 'z'.
 //│ ╟── Defined at: 
-//│ ║  l.309: 	class Foo(val z, val z)
+//│ ║  l.301: 	class Foo(val z, val z)
 //│ ║         	              ^
 //│ ╟── Defined at: 
-//│ ║  l.309: 	class Foo(val z, val z)
+//│ ║  l.301: 	class Foo(val z, val z)
 //│ ╙──       	                     ^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo9;

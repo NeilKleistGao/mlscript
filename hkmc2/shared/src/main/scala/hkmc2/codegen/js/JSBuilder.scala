@@ -58,7 +58,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
   
   def mkErr(errMsg: Message)(using Raise, Scope): Document =
     doc"throw globalThis.Error(${result(Value.Lit(syntax.Tree.StrLit(errMsg.show)))})"
-  
+
   def errExpr(errMsg: Message)(using Raise, Scope): Document =
     raise(ErrorReport(errMsg -> N :: Nil,
       source = Diagnostic.Source.Compilation))
@@ -92,10 +92,10 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
         doc"""const $name = globalThis.Symbol(${makeStringLiteral(ts.nme)});"""
     ).mkDocument(doc" # ")
     if accessors.isEmpty then doc else doc :/: accessors
-  
+
   private def allocatePrivateAccessorNames()(using Raise, Scope): Unit =
     privateAccessorSymbols.valuesIterator.foreach(scope.allocateOrGetName(_))
-  
+
   private def collectExternalPrivateAccessors(p: Program)(using State): Unit =
     privateAccessorSymbols.clear()
     var owners: List[InnerSymbol] = Nil
@@ -150,17 +150,17 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       case c => s"$$${c.toInt.toHexString}$$"
     .mkString
     s"_$$_modulePrivate_$$_${encodedName}_$$_${sym.uid.asInt}"
-  
+
   private def relativeImportPath(path: Str, wd: io.Path): Str =
     if path.startsWith("/")
     then "./" + io.Path(path).relativeTo(wd).map(_.toString).getOrElse(path)
     else path
-  
+
   private def locallyDefinedSymbols(p: Program): Set[Symbol] =
     p.main match
       case Scoped(syms, _) => syms.iterator.map[Symbol](identity).toSet
       case _ => Set.empty
-  
+
   private def externalCompilationUnitSymbols(p: Program, currentModulePath: Opt[Str]): Ls[BlockMemberSymbol] =
     val importedSymbols = p.imports.iterator.map(_._1).toSet
     val localSymbols = locallyDefinedSymbols(p)
@@ -177,7 +177,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
         case _ =>
     ).applyBlock(p.main)
     externalSymbols.toList.sortBy(_.uid)
-  
+
   private def externalDefaultImportSymbols(p: Program): Ls[ImportSymbol] =
     val importedSymbols = p.imports.iterator.map(_._1).toSet
     val localSymbols = locallyDefinedSymbols(p)
@@ -191,7 +191,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
         case _ =>
     ).applyBlock(p.main)
     externalSymbols.toList.sortBy(_.uid)
-  
+
   private def ownCompilationUnitSymbols(p: Program, currentModulePath: Str): Ls[BlockMemberSymbol] =
     p.main match
     case Scoped(syms, body) =>
@@ -204,7 +204,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       .toList
       .sortBy(_.uid)
     case _ => Nil
-  
+
   def runtimeVar(using Raise, Scope): Document = scope.lookup_!(State.runtimeSymbol, N)
   
   def argument(a: Arg)(using Raise, Scope): Document =
@@ -877,7 +877,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
   
   def programBody(p: Program, exprt: Opt[BlockMemberSymbol], wd: io.Path)(using Raise, Scope): Document =
     programBodyImpl(p, exprt, wd, N)
-  
+
   private def programBodyImpl(p: Program, exprt: Opt[BlockMemberSymbol], wd: io.Path, currentModulePath: Opt[Str])
       (using Raise, Scope): Document =
     collectExternalPrivateAccessors(p)

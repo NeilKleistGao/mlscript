@@ -298,7 +298,7 @@ object Elaborator:
           Map(from.module -> toModule, from.bms -> toBms) ++
             from.module.tree.definedSymbols.iterator.flatMap: (nme, sym) =>
               toModule.tree.definedSymbols.get(nme).map(sym -> _)
-        
+
         Map[Symbol, Symbol](
           Int -> target.Int,
           Int31 -> target.Int31,

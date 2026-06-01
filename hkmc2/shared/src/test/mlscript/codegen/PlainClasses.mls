@@ -61,18 +61,17 @@ data class Foo with { print("hi") }
 print("ok")
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
-//│ let Foo3, xs, callPrefix, tmp, inlinedVal;
+//│ let Foo3, xs, callPrefix, tmp;
 //│ (class Foo2 {
 //│   static {
 //│     Foo3 = this
 //│   }
 //│   constructor() {
-//│     let xs1, callPrefix1, tmp1, inlinedVal1;
+//│     let xs1, callPrefix1, tmp1;
 //│     xs1 = [
 //│       "hi"
 //│     ];
-//│     inlinedVal1 = Rendering.map;
-//│     callPrefix1 = runtime.safeCall(inlinedVal1(Predef.renderAsStr));
+//│     callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp1 = runtime.safeCall(callPrefix1(...xs1));
 //│     runtime.safeCall(globalThis.console.log(...tmp1));
 //│   }
@@ -82,8 +81,7 @@ print("ok")
 //│ xs = [
 //│   "ok"
 //│ ];
-//│ inlinedVal = Rendering.map;
-//│ callPrefix = runtime.safeCall(inlinedVal(Predef.renderAsStr));
+//│ callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│ tmp = runtime.safeCall(callPrefix(...xs));
 //│ return runtime.safeCall(globalThis.console.log(...tmp))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -96,18 +94,17 @@ fun test() =
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let test;
 //│ test = function test() {
-//│   let Foo5, xs1, callPrefix1, tmp1, inlinedVal1;
+//│   let Foo5, xs1, callPrefix1, tmp1;
 //│   (class Foo4 {
 //│     static {
 //│       Foo5 = this
 //│     }
 //│     constructor() {
-//│       let xs2, callPrefix2, tmp2, inlinedVal2;
+//│       let xs2, callPrefix2, tmp2;
 //│       xs2 = [
 //│         "hi"
 //│       ];
-//│       inlinedVal2 = Rendering.map;
-//│       callPrefix2 = runtime.safeCall(inlinedVal2(Predef.renderAsStr));
+//│       callPrefix2 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│       tmp2 = runtime.safeCall(callPrefix2(...xs2));
 //│       runtime.safeCall(globalThis.console.log(...tmp2));
 //│     }
@@ -117,8 +114,7 @@ fun test() =
 //│   xs1 = [
 //│     "ok"
 //│   ];
-//│   inlinedVal1 = Rendering.map;
-//│   callPrefix1 = runtime.safeCall(inlinedVal1(Predef.renderAsStr));
+//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│   tmp1 = runtime.safeCall(callPrefix1(...xs1));
 //│   runtime.safeCall(globalThis.console.log(...tmp1));
 //│   return Foo5
@@ -135,7 +131,7 @@ let t = test()
 :e
 new t
 //│ ╔══[COMPILATION ERROR] Expected a statically known class; found reference.
-//│ ║  l.136: 	new t
+//│ ║  l.132: 	new t
 //│ ║         	    ^
 //│ ╙── The 'new' keyword requires a statically known class; use the 'new!' operator for dynamic instantiation.
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
@@ -154,7 +150,7 @@ new! t
 :e
 new t()
 //│ ╔══[COMPILATION ERROR] Expected a statically known class; found reference.
-//│ ║  l.155: 	new t()
+//│ ║  l.151: 	new t()
 //│ ║         	    ^
 //│ ╙── The 'new' keyword requires a statically known class; use the 'new!' operator for dynamic instantiation.
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
@@ -210,14 +206,13 @@ class Foo with
 //│     Foo8 = this
 //│   }
 //│   constructor() {
-//│     let xs1, callPrefix1, tmp1, inlinedVal1;
+//│     let xs1, callPrefix1, tmp1;
 //│     this.x1 = 1;
 //│     this.x2 = 2;
 //│     xs1 = [
 //│       "hello"
 //│     ];
-//│     inlinedVal1 = Rendering.map;
-//│     callPrefix1 = runtime.safeCall(inlinedVal1(Predef.renderAsStr));
+//│     callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│     tmp1 = runtime.safeCall(callPrefix1(...xs1));
 //│     runtime.safeCall(globalThis.console.log(...tmp1));
 //│   }
@@ -264,29 +259,26 @@ print(a.x)
 print(a.foo(1))
 print(a.bar(1))
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let a, tmp1, tmp2, xs1, xs2, xs3, callPrefix1, tmp3, callPrefix2, tmp4, callPrefix3, tmp5, inlinedVal1, inlinedVal2, inlinedVal3;
+//│ let a, tmp1, tmp2, xs1, xs2, xs3, callPrefix1, tmp3, callPrefix2, tmp4, callPrefix3, tmp5;
 //│ a = globalThis.Object.freeze(new Foo10());
 //│ xs1 = [
 //│   a.x
 //│ ];
-//│ inlinedVal1 = Rendering.map;
-//│ callPrefix3 = runtime.safeCall(inlinedVal1(Predef.renderAsStr));
+//│ callPrefix3 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│ tmp5 = runtime.safeCall(callPrefix3(...xs1));
 //│ runtime.safeCall(globalThis.console.log(...tmp5));
 //│ tmp1 = runtime.safeCall(a.foo(1));
 //│ xs2 = [
 //│   tmp1
 //│ ];
-//│ inlinedVal2 = Rendering.map;
-//│ callPrefix2 = runtime.safeCall(inlinedVal2(Predef.renderAsStr));
+//│ callPrefix2 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│ tmp4 = runtime.safeCall(callPrefix2(...xs2));
 //│ runtime.safeCall(globalThis.console.log(...tmp4));
 //│ tmp2 = runtime.safeCall(a.bar(1));
 //│ xs3 = [
 //│   tmp2
 //│ ];
-//│ inlinedVal3 = Rendering.map;
-//│ callPrefix1 = runtime.safeCall(inlinedVal3(Predef.renderAsStr));
+//│ callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
 //│ tmp3 = runtime.safeCall(callPrefix1(...xs3));
 //│ return runtime.safeCall(globalThis.console.log(...tmp3))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -303,10 +295,10 @@ class Foo with
   val x = 2
 //│ ╔══[COMPILATION ERROR] Multiple definitions of symbol 'x'
 //│ ╟── defined here
-//│ ║  l.302: 	  val x = 1
+//│ ║  l.294: 	  val x = 1
 //│ ║         	  ^^^^^^^^^
 //│ ╟── defined here
-//│ ║  l.303: 	  val x = 2
+//│ ║  l.295: 	  val x = 2
 //│ ╙──       	  ^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo12;
@@ -328,10 +320,10 @@ class Foo with
   val x = 1
   let x = 2
 //│ ╔══[COMPILATION ERROR] Name 'x' is already used
-//│ ║  l.329: 	  let x = 2
+//│ ║  l.321: 	  let x = 2
 //│ ║         	      ^^^^^
 //│ ╟── by a member declared in the same block
-//│ ║  l.328: 	  val x = 1
+//│ ║  l.320: 	  val x = 1
 //│ ╙──       	  ^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo14;
@@ -357,7 +349,7 @@ class Foo with
 :e
 class Foo with val x = 1
 //│ ╔══[COMPILATION ERROR] Illegal body of class definition (should be a block; found term definition).
-//│ ║  l.358: 	class Foo with val x = 1
+//│ ║  l.350: 	class Foo with val x = 1
 //│ ╙──       	               ^^^^^^^^^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo16;

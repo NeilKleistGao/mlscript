@@ -12,10 +12,9 @@ in
   set x = hide(2)
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let xs⁰, callPrefix, tmp, inlinedVal;
+//│ let xs⁰, callPrefix, tmp;
 //│ set xs⁰ = mut [2];
-//│ set inlinedVal = Rendering⁰.map﹖;
-//│ set callPrefix = inlinedVal(Predef⁰.renderAsStr⁰);
+//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│ set tmp = callPrefix(...xs⁰);
 //│ return globalThis⁰.console⁰.log⁰(...tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -31,15 +30,13 @@ in
   set x += 1
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let xs¹, xs², callPrefix, tmp, callPrefix1, tmp1, inlinedVal, inlinedVal1;
+//│ let xs¹, xs², callPrefix, tmp, callPrefix1, tmp1;
 //│ set xs¹ = mut [2];
-//│ set inlinedVal = Rendering⁰.map﹖;
-//│ set callPrefix1 = inlinedVal(Predef⁰.renderAsStr⁰);
+//│ set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│ set tmp1 = callPrefix1(...xs¹);
 //│ do globalThis⁰.console⁰.log⁰(...tmp1);
 //│ set xs² = mut [5];
-//│ set inlinedVal1 = Rendering⁰.map﹖;
-//│ set callPrefix = inlinedVal1(Predef⁰.renderAsStr⁰);
+//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
 //│ set tmp = callPrefix(...xs²);
 //│ return globalThis⁰.console⁰.log⁰(...tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
