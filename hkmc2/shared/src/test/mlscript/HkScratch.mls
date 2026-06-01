@@ -1,12 +1,24 @@
 :js
-// :de
-// :sjs
-// :pt
-// :elt
 
-:global
-// :d
-// :todo
+:sjs
+:sir
+module M with
+  fun f(x) = x + 1
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let M1;
+//│ (class M {
+//│   static {
+//│     M1 = this
+//│   }
+//│   static f(x) {
+//│     return x + 1
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["class", "M"];
+//│ });
+//│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
+//│ let M⁰; define M⁰ as class M¹ module M² { method f⁰ = fun f¹(x) { return +⁰(x, 1) } }; end
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
-
-
+M.f(1)
+//│ = 2
