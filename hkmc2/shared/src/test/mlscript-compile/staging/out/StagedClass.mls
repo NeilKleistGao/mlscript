@@ -5,7 +5,7 @@ module StagedClass with
     class Bar(val x) with
       fun f(y, z) =
         let {tmp}
-        tmp = this.x + y
+        tmp = x + y
         tmp + z
     class Baz(val x) with
       ()
@@ -27,8 +27,8 @@ module StagedClass with
         let {scrut}
         scrut = <(x, y)
         if scrut is
-          true then new StagedClass.Bar(x)
-          else new StagedClass.Bar(y)
+          true then new Bar(x)
+          else new Bar(y)
       fun g(y) =
         let {tmp1}
         tmp1 = x + y
@@ -36,11 +36,11 @@ module StagedClass with
       fun h(y) =
         let {tmp2}
         tmp2 = x + y
-        StagedClass.helpFoo(tmp2)
+        helpFoo(tmp2)
       private fun f_X_sp_0(y) =
         let {scrut}
         scrut = true
-        new StagedClass.Bar(x)
+        new Bar(x)
     fun bar(b) =
       if b is
         true then Bar(0)
@@ -48,7 +48,7 @@ module StagedClass with
     fun baz(b) =
       if b is
         true then Baz(1)
-        else new Baz(2)
+        else new Baz.class(2)
     fun f(x) =
       let {x__, y4, arg_Baz_0_, arg_Bar_0_}
       if x is

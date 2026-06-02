@@ -47,14 +47,14 @@ Example.foo() + 1
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful application of type M.
 //│ ║  l.46: 	Example.foo() + 1
 //│ ╙──      	^^^^^^^^^^^^^
-//│ = "class M {   static {     M1 = this   }   static mtd() {     runtime.checkArgs(\"mtd\", 0, true, arguments.length);     return 42   }   toString() { return runtime.render(this); }   static [definitionMetadata] = [\"class\", \"M\"];  }1"
+//│ = "class M {   static {     M1 = this   }   static mtd() {     runtime.checkArgs(\"mtd\", 0, true, arguments.length);     return 42   }   toString() { return runtime.render(this); }   static [definitionMetadata] = [\"class\", \"M\"]; }1"
 
 :e
 M + 1
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
 //│ ║  l.53: 	M + 1
 //│ ╙──      	^
-//│ = "class M {   static {     M1 = this   }   static mtd() {     runtime.checkArgs(\"mtd\", 0, true, arguments.length);     return 42   }   toString() { return runtime.render(this); }   static [definitionMetadata] = [\"class\", \"M\"];  }1"
+//│ = "class M {   static {     M1 = this   }   static mtd() {     runtime.checkArgs(\"mtd\", 0, true, arguments.length);     return 42   }   toString() { return runtime.render(this); }   static [definitionMetadata] = [\"class\", \"M\"]; }1"
 
 :e
 M |> id
@@ -109,4 +109,27 @@ id(module 1)
 //│ ║  l.107: 	id(module 1)
 //│ ╙──       	   ^^^^^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+
+:e
+fun f(x) = x is M
+//│ ╔══[COMPILATION ERROR] Pattern name not found: M.
+//│ ║  l.115: 	fun f(x) = x is M
+//│ ╙──       	                ^
+
+f(0)
+//│ = true
+
+:noModuleCheck
+f(M)
+//│ = true
+
+:e
+f(new M)
+//│ ╔══[COMPILATION ERROR] Expected a statically known class; found reference of type M.
+//│ ║  l.128: 	f(new M)
+//│ ║         	      ^
+//│ ╙── The 'new' keyword requires a statically known class; use the 'new!' operator for dynamic instantiation.
+//│ = true
+
 

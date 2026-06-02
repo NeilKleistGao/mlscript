@@ -10,6 +10,9 @@ module Runtime with ...
 object Unit with
   fun toString() = "()"
 
+// This object is used as a marker for non-local label continues.
+object Continue
+
 // This object is used as a marker for the end of a while loop in the compiled codegen.
 // It is possible for the loop body to contain a return statement,
 // in which case we want to distinguish between returning from the loop body and loop termination.
@@ -104,8 +107,9 @@ module Str with
 
   fun leave(string, n) = string.slice(n)
 
-// TODO: to add annotations we would need to import Symbol definitions from Block.mls
-// A staged class with no parameters has the same runtime value as its staged companion, this causes an unwated collision when creating a symbol for both the class and the module, 
+// A global map for Symbols defined during reflection instrumentation to ensure uniqueness of symbols across different staged functions and compilation units
+// A staged class with no parameters has the same runtime value as its staged companion,
+// and this causes an unwated collision when creating a symbol for both the class and the module, 
 // so we need to split the map into the which type of symbol used.
 module SymbolMap with
   val classMap = new Map()

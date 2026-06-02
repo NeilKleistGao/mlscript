@@ -1,6 +1,7 @@
 :js
 :staging
 
+:noOpt // To expose the problem
 :checkIR
 staged module Rebinding with
   fun lit() =
@@ -35,6 +36,18 @@ staged module Expressions with
       else 0
 //│ x = [1, 2, 3]
 
+// * LetSplit lowers to a Label/Break pair, which the staged-module
+// * compiler (`ReflectionInstrumenter`) doesn't yet understand. With
+// * the sharing threshold forced to 1, the shared `else` below would
+// * emit exactly that — tracked here as a fixme.
+:fixme
+:patMatConsequentSharingThreshold 1
+staged module Example with
+  fun f(x, y, z) = if
+    x is 0 and y is 0 and z is 0 then 1
+    else 2
+//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
+
 class Outside(a)
 staged module ClassInstrumentation with
   class Inside(a, b)
@@ -42,7 +55,7 @@ staged module ClassInstrumentation with
   fun inst1() = Outside(1)
   fun inst2() = new NoArg
   fun app1() = Outside(1)
-  fun app2() = Inside(1, 2) 
+  fun app2() = Inside(1, 2)
 
 module Nonstaged with
   fun f() = 1
@@ -61,7 +74,6 @@ staged module Arguments with
 // :e
 staged module BadArguments with
   fun f() = Arguments.g(1)(2, 3)
-
 
 staged module OtherBlocks with
   fun scope() =
@@ -86,6 +98,7 @@ staged module ClassFunctions with
   class InnerClass() with
     fun f() = 1 + Arguments.f(1)
     fun g() = f()
+
 
 // name collision
 class A()
@@ -115,13 +128,6 @@ staged module LabelBreak with
     1 then 1 + 1 + 1
     else 1 + 1 + 1
 //│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.Label.
-//│ ╔══[COMPILATION ERROR] No definition found in scope for member 'x'
-//│ ║  l.110: 	    let x = 1
-//│ ║         	        ^
-//│ ╟── which references the symbol introduced here
-//│ ║  l.110: 	    let x = 1
-//│ ╙──       	        ^
 
 :e
 class C(val a)
@@ -129,9 +135,9 @@ staged module A with
   let x = C(1)
   fun f() = set x.a = 0
   fun g() = {1 : 2}
-//│ ═══[COMPILATION ERROR] Other Blocks not supported in staged module: class hkmc2.codegen.AssignField
+//│ ═══[COMPILATION ERROR] Field assignment is not supported in staged modules: a
 //│ ╔══[COMPILATION ERROR] Other Results not supported in staged module: class hkmc2.codegen.Record
-//│ ║  l.131: 	  fun g() = {1 : 2}
+//│ ║  l.137: 	  fun g() = {1 : 2}
 //│ ╙──       	                 ^
 
 :todo

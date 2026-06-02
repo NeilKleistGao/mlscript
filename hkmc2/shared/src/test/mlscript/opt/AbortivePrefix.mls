@@ -5,9 +5,9 @@
 :sjs
 fun f =
   if true then return 1 else return 2
-  (???)
+  ???
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f; f = function f() { let scrut; scrut = true; if (scrut === true) { return 1 } return 2; };
+//│ let f; f = function f() { if (true === true) { return 1 } return 2; };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 // * Note: we now remove the call to `???` because
@@ -17,31 +17,8 @@ fun f =
 :soir
 fun f =
   if true and false then return()
-  (???)
+  ???
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let f⁰;
-//│ define f⁰ as fun f¹() {
-//│   let scrut, scrut1;
-//│   block split_root$:
-//│     block split_default$:
-//│       set scrut = true;
-//│       match scrut
-//│         true =>
-//│           set scrut1 = false;
-//│           match scrut1
-//│             true =>
-//│               return runtime⁰.Unit⁰
-//│             else
-//│               break split_default$
-//│           end
-//│         else
-//│           break split_default$
-//│       end
-//│     throw new globalThis⁰.Error⁰("match error")
-//│   return Predef⁰.notImplementedError⁰
-//│ };
-//│ end
-//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let f⁰;
 //│ define f⁰ as fun f¹() {
 //│   let scrut, scrut1;
@@ -60,21 +37,50 @@ fun f =
 //│   end
 //│ };
 //│ end
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let f⁰;
+//│ define f⁰ as fun f¹() {
+//│   match true
+//│     true =>
+//│       match false
+//│         true =>
+//│           return runtime⁰.Unit⁰
+//│         else
+//│           throw new globalThis⁰.Error⁰("match error")
+//│       end
+//│     else
+//│       throw new globalThis⁰.Error⁰("match error")
+//│   end
+//│ };
+//│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
+// * The trailing `???` puts the `if` in non-tail position, so `LetSplit` lowering
+// * adds a `σ$x` exit-label around the let-split. Every consequent returns, so no
+// * consequent breaks from `σ$x`. The optimizer removes it.
+:ucs normalized
 :sir
 :soir
 fun f =
   if true and false then return "1"
   else return "2 long long long long long long long long long long long long long long"
   (???)
+//│ Normalized:
+//│ >  ‹if|while›
+//│ >    let tmp:scrut = true
+//│ >    let-split σ = else return "2 long long long long long long long long long long long long long long"
+//│ >    tmp:scrut is true and
+//│ >      let tmp:scrut = false
+//│ >      tmp:scrut is true then return "1"
+//│ >      $σ
+//│ >    $σ
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
 //│ let f²;
 //│ define f² as fun f³() {
-//│   let scrut, scrut1;
-//│   block split_root$:
-//│     block split_1$:
-//│       set scrut = true;
+//│   let scrut, scrut1, tmp, tmp1;
+//│   set scrut = true;
+//│   block σ$x:
+//│     block σ:
 //│       match scrut
 //│         true =>
 //│           set scrut1 = false;
@@ -82,32 +88,28 @@ fun f =
 //│             true =>
 //│               return "1"
 //│             else
-//│               break split_1$
+//│               break σ
 //│           end
 //│         else
-//│           break split_1$
+//│           break σ
 //│       end
 //│     return "2 long long long long long long long long long long long long long long"
+//│   set tmp1 = tmp;
 //│   return Predef⁰.notImplementedError⁰
 //│ };
 //│ end
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let f²;
 //│ define f² as fun f³() {
-//│   let scrut, scrut1;
-//│   set scrut = true;
-//│   match scrut
+//│   match true
 //│     true =>
-//│       set scrut1 = false;
-//│       match scrut1
+//│       match false
 //│         true =>
 //│           return "1"
 //│         else
-//│           return "2 long long long long long long long long long long long long long long"
+//│           end
 //│       end
-//│     else
-//│       return "2 long long long long long long long long long long long long long long"
-//│   end
+//│   return "2 long long long long long long long long long long long long long long"
 //│ };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

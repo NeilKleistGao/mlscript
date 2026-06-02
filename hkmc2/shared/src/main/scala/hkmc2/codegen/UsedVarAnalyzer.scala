@@ -73,7 +73,7 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
         case _ => super.applyBlock(b)
       
       override def applyPath(p: Path): Unit = p match
-        case Value.Ref(_: BuiltinSymbol, _) => super.applyPath(p)
+        case Value.SimpleRef(_: BuiltinSymbol) => super.applyPath(p)
         case RefOfBms(_, SDSym(dSym), _) =>
           val node = scopeData.getNode(dSym)
           node.obj match
@@ -101,9 +101,9 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
                 case _: ScopedObject.Class | _: ScopedObject.ClassCtor | _: ScopedObject.Companion => accessed.refdDefns.add(node.obj.toInfo)
                 case _ => ()
               case _ => super.applyPath(p)
-              
-        case Value.Ref(l, _) =>
-          accessed.accessed.add(l)
+        
+        case r: Value.RefLike =>
+          accessed.accessed.add(r.symbol)
         case _ => super.applyPath(p)
     accessed.toIMut
     
@@ -270,21 +270,8 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
     
     val cap = reqdCaptureLocalsBlk(blk, nexts.toList, s.obj.definedLocals, locals)
     
-    // In a class, all variables that are mutated by a child scope and accessed by a lifted class must be captured
-    val additional = s.obj match
-      case _: ScopedObject.Companion | _: ScopedObject.Class =>
-        val (a, b) = s.children.map: c =>
-            val acc = accessMap(c.obj.toInfo)
-            val accAll = accessMapWithIgnored(c.obj.toInfo)
-            (accAll.mutated, acc.accessed)
-          .unzip
-        a.flatten.toSet.intersect(b.flatten.toSet)
-      case _ => Set.empty
-  
-    val newCap = cap ++ additional
-    
     val cur: Map[ScopedInfo, Set[Local]] = nodes.map: n =>
-        n.obj.toInfo -> newCap.intersect(n.obj.definedLocals)
+        n.obj.toInfo -> cap.intersect(n.obj.definedLocals)
       .toMap
     
     nexts.foldLeft(cur):
@@ -351,7 +338,7 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
             rec(sub) |> merge
             rec(finallyDo) |> merge
             applySubBlock(rest)
-          case Return(res, false) =>
+          case Return(res) =>
             applyResult(res)
             hasReader = Set.empty
             hasMutator = Set.empty
@@ -451,9 +438,9 @@ class UsedVarAnalyzer(b: Block, scopeData: ScopeData)(using State):
           case _ => super.applyResult(r)
         
         override def applyPath(p: Path): Unit = p match
-          case RefOfBms(_, SDSym(d), _) => handleScopeRef(d)          
-          case Value.Ref(l, _) =>
-            if hasMutator.contains(l) then reqCapture += (l)
+          case RefOfBms(_, SDSym(d), _) => handleScopeRef(d)
+          case r: Value.RefLike =>
+            if hasMutator.contains(r.symbol) then reqCapture += r.symbol
           case _ => super.applyPath(p)
         
         override def applyDefn(defn: Defn): Unit = defn match

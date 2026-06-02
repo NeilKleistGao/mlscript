@@ -44,9 +44,12 @@ staged module M with
   fun f() = x => x
   fun g()() = 1
 
+:noModuleCheck
 :silent
 let x = M."f_instr"().body.rest.rhs.cls.l
 let y = M."g_instr"().body.rest.rhs.cls.l
+assert x.value != y.value
+// check that the two functions will be printed differently
 assert x.name != y.name
 
 staged module Shadowing with
@@ -76,13 +79,13 @@ staged module M with
   val a = Math.cos(1) is Array // doesn't handle Array
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'Array'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.110: 	declare class Array[T]
+//│ ║  l.105: 	declare class Array[T]
 //│ ╙──       	              ^^^^^^^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'Array'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.110: 	declare class Array[T]
+//│ ║  l.105: 	declare class Array[T]
 //│ ╙──       	              ^^^^^^^^
 //│ ╔══[COMPILATION ERROR] No definition found in scope for member 'Array'
 //│ ╟── which references the symbol introduced here
-//│ ║  l.110: 	declare class Array[T]
+//│ ║  l.105: 	declare class Array[T]
 //│ ╙──       	              ^^^^^^^^

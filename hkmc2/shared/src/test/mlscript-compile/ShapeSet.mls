@@ -191,7 +191,7 @@ private fun shape2path(s: Shape, allocs) =
       allocs.push(tupSym)
       let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
-      [fullBlock, Block.ValueRef(tupSym)]
+      [fullBlock, Block.ValueSimpleRef(tupSym)]
     Class(sym, fields) then
       let mapped = fields.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)
@@ -199,9 +199,9 @@ private fun shape2path(s: Shape, allocs) =
       let paths = mapped.map(_.1) 
       let clsSym = freshId("obj")
       allocs.push(clsSym)
-      let clsAssign = Block.Assign(clsSym, Block.Instantiate(Block.ValueRef(sym), paths.map(Block.Arg(_))), Block.End())
+      let clsAssign = Block.Assign(clsSym, Block.Instantiate(Block.ValueMemberRef(sym), paths.map(Block.Arg(_))), Block.End())
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(clsAssign, ...blocks)
-      [fullBlock, Block.ValueRef(clsSym)]
+      [fullBlock, Block.ValueSimpleRef(clsSym)]
   
 fun shapeset2path(s: ShapeSet, allocs) =
   assert staticSet(s)

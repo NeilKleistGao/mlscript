@@ -17,57 +17,39 @@ let discard = drop _
 
 discard of { a: 0, b: 11111 }
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let a, b, tmp;
-//│ a = 0;
-//│ b = 11111;
-//│ tmp = globalThis.Object.freeze({ a: a, b: b });
-//│ runtime.safeCall(discard(tmp))
+//│ let tmp; tmp = globalThis.Object.freeze({ a: 0, b: 11111 }); return runtime.safeCall(discard(tmp))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 discard of { a: 0, b: 11111 }
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let a1, b1, tmp1;
-//│ a1 = 0;
-//│ b1 = 11111;
-//│ tmp1 = globalThis.Object.freeze({ a: a1, b: b1 });
-//│ runtime.safeCall(discard(tmp1))
+//│ let tmp1;
+//│ tmp1 = globalThis.Object.freeze({ a: 0, b: 11111 });
+//│ return runtime.safeCall(discard(tmp1))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
 discard of { aaaa: 1 }
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let aaaa, tmp2;
-//│ aaaa = 1;
-//│ tmp2 = globalThis.Object.freeze({ aaaa: aaaa });
-//│ runtime.safeCall(discard(tmp2))
+//│ let tmp2; tmp2 = globalThis.Object.freeze({ aaaa: 1 }); return runtime.safeCall(discard(tmp2))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 discard of { aaaaaaaaa: 1, bbbb: 2 }
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let aaaaaaaaa, bbbb, tmp3;
-//│ aaaaaaaaa = 1;
-//│ bbbb = 2;
-//│ tmp3 = globalThis.Object.freeze({
-//│   aaaaaaaaa: aaaaaaaaa,
-//│   bbbb: bbbb
-//│ });
-//│ runtime.safeCall(discard(tmp3))
+//│ let tmp3;
+//│ tmp3 = globalThis.Object.freeze({ aaaaaaaaa: 1, bbbb: 2 });
+//│ return runtime.safeCall(discard(tmp3))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 discard of { aaaaaaaaa: 1, bbbbbbbb: 2, ccccccccc: 3, dddddddddd: 4 }
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let aaaaaaaaa1, bbbbbbbb, ccccccccc, dddddddddd, tmp4;
-//│ aaaaaaaaa1 = 1;
-//│ bbbbbbbb = 2;
-//│ ccccccccc = 3;
-//│ dddddddddd = 4;
+//│ let tmp4;
 //│ tmp4 = globalThis.Object.freeze({
-//│   aaaaaaaaa: aaaaaaaaa1,
-//│   bbbbbbbb: bbbbbbbb,
-//│   ccccccccc: ccccccccc,
-//│   dddddddddd: dddddddddd
+//│   aaaaaaaaa: 1,
+//│   bbbbbbbb: 2,
+//│   ccccccccc: 3,
+//│   dddddddddd: 4
 //│ });
-//│ runtime.safeCall(discard(tmp4))
+//│ return runtime.safeCall(discard(tmp4))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -78,7 +60,7 @@ discard of [ "aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb" ]
 //│   "aaaaaaaaaaaaaaa",
 //│   "bbbbbbbbbbbbbbbb"
 //│ ]);
-//│ runtime.safeCall(discard(tmp5))
+//│ return runtime.safeCall(discard(tmp5))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 discard of [ "aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "ccccccccccccccccc", "dddddddddddddddddd" ]
@@ -90,7 +72,7 @@ discard of [ "aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "ccccccccccccccccc", "dddddd
 //│   "ccccccccccccccccc",
 //│   "dddddddddddddddddd"
 //│ ]);
-//│ runtime.safeCall(discard(tmp6))
+//│ return runtime.safeCall(discard(tmp6))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 discard of [[ "aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "ccccccccccccccccc", "dddddddddddddddddd" ]]
@@ -103,7 +85,7 @@ discard of [[ "aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "ccccccccccccccccc", "ddddd
 //│   "dddddddddddddddddd"
 //│ ]);
 //│ tmp8 = globalThis.Object.freeze([ tmp7 ]);
-//│ runtime.safeCall(discard(tmp8))
+//│ return runtime.safeCall(discard(tmp8))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 

@@ -9,7 +9,6 @@ import hkmc2.ScopeData.*
 import hkmc2.semantics.Elaborator.State
 
 import hkmc2.syntax.Tree
-import hkmc2.codegen.llir.FreshInt
 import java.util.IdentityHashMap
 import scala.collection.mutable.Map as MutMap
 import scala.collection.mutable.Set as MutSet
@@ -17,8 +16,8 @@ import scala.collection.mutable.Set as MutSet
 object ScopeData:
   opaque type ScopeUID = Int
   class FreshUID:
-    private val underlying = FreshInt()
-    def make: ScopeUID = underlying.make
+    private val underlying = new Uid.Symbol.State
+    def make: ScopeUID = underlying.nextUid.asInt
   
   class ScopeFinder(fresh: FreshUID, ignoredClasses: Set[DefinitionSymbol[?] & InnerSymbol]) extends BlockTraverserShallow:
     var objs: List[ScopedObject] = Nil
@@ -67,7 +66,7 @@ object ScopeData:
   type LiftedSym = DefinitionSymbol[?]
   
   extension (d: DefinitionSymbol[?])
-    def asBmsRef = Value.Ref(d.asBlkMember.get, S(d))
+    def asBmsRef = d.asBlkMember.get.asMemberRef(d)
   
   enum MethodKind:
     case ClsMethod
@@ -104,17 +103,16 @@ object ScopeData:
         // the lifter may try to capture those locals.
         case Top(b) => Set.empty
         case Class(cls, _) =>
-          // Public fields are not included, as they are accessed using
-          // a field selection rather than directly using the BlockMemberSymbol.
+          // Public/private fields are not included, as they are accessed using
+          // a field selection rather than directly using the symbol.
           val paramsSet: Set[Local] = cls.paramsOpt match
             case Some(value) => value.params.map(_.sym).toSet
             case None => Set.empty
           val auxSet: Set[Local] = cls.auxParams.flatMap: p =>
               p.params.map(_.sym)
             .toSet
-          paramsSet ++ auxSet ++ cls.privateFields + cls.isym
-        case Companion(clsBody, compDefn) =>
-          clsBody.privateFields.toSet + clsBody.isym
+          paramsSet ++ auxSet + cls.isym
+        case Companion(clsBody, compDefn) => Set(clsBody.isym)
         case _: ClassCtor => Set.empty
         case Func(fun, _) => fun.params.flatMap: p =>
             p.restParam.map(_.sym) ++ p.params.map(_.sym)

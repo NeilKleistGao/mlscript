@@ -21,6 +21,9 @@ abstract class Symbol(using State) extends Located:
   
   val uid: Uid[Symbol] = State.suid.nextUid
   
+  def showDbg(using DebugPrinter): Str =
+    this.showAsPlain
+  
   def showPlainName(using scp: Scope): hkmc2.document.Document =
     import hkmc2.document.*
     scp.allocateOrGetName(this)(using throw _)
@@ -137,16 +140,6 @@ abstract class Symbol(using State) extends Located:
     asPat orElse
     asMod
   
-  def orElseDisamb(disamb: Opt[DefinitionSymbol[?]]): Symbol = (this, disamb) match
-    case (bms: BlockMemberSymbol, S(disamb)) =>
-      disamb
-    case (bms: BlockMemberSymbol, N) =>
-      lastWords(s"Cannot disambiguate overloaded member symbol ${bms.nme}: no disambiguation provided")
-    case (sym, N) =>
-      sym
-    case (sym, S(_)) =>
-      lastWords(s"Cannot disambiguate non-BlockMember symbol ${sym.nme}: disambiguation provided")
-  
   override def equals(x: Any): Bool = this is x
   override def hashCode: Int = uid.hashCode
   
@@ -192,6 +185,7 @@ object FlowSymbol:
   
 end FlowSymbol
 
+sealed trait LocalVarSymbol extends LocalSymbol
 sealed trait LocalSymbol extends Symbol:
   def subst(using s: SymbolSubst): LocalSymbol
 sealed trait NamedSymbol extends Symbol:
@@ -205,11 +199,21 @@ class LabelSymbol(val trm: Opt[Term], name: Str = "lbl")(using State) extends Lo
   def toLoc = trm.flatMap(_.toLoc)
   override def prefix: Str = "label:"
 
+/** Symbol representing a named split (join point) introduced during normalization.
+  * The `body` field holds the shared split that this symbol references.
+  * The `label` field is set during lowering to the corresponding LabelSymbol. */
+class SplitSymbol(val body: Split, name: Str = "split")(using State) extends LocalSymbol:
+  var label: Opt[LabelSymbol] = N
+  def nme = name
+  def subst(using s: SymbolSubst): SplitSymbol = this // SplitSymbols are not substituted
+  def toLoc = body.toLoc
+  override def prefix: Str = "split:"
+
 abstract class BlockLocalSymbol(name: Str)(using State) extends FlowSymbol(name):
   self: LocalSymbol => // * using `with LocalSymbol` in the `extends` clause makes Scala think there's a bad override
   var decl: Opt[Declaration] = N
 
-class TempSymbol(val trm: Opt[Term], dbgNme: Str = "tmp")(using State) extends BlockLocalSymbol(dbgNme) with LocalSymbol:
+class TempSymbol(val trm: Opt[Term], dbgNme: Str = "tmp")(using State) extends BlockLocalSymbol(dbgNme) with LocalVarSymbol:
   // val nameHints: MutSet[Str] = MutSet.empty // * May be useful later?
   override def toLoc: Option[Loc] = trm.flatMap(_.toLoc)
   override def prefix: Str = "tmp:"
@@ -225,7 +229,7 @@ class InstSymbol(val origin: Symbol)(using State) extends LocalSymbol:
   def subst(using sub: SymbolSubst): InstSymbol = sub.mapInstSym(this)
 
 
-class VarSymbol(val id: Ident)(using State) extends BlockLocalSymbol(id.name) with NamedSymbol with LocalSymbol:
+class VarSymbol(val id: Ident)(using State) extends BlockLocalSymbol(id.name) with NamedSymbol with LocalVarSymbol:
   val name: Str = id.name
   override def toLoc: Opt[Loc] = id.toLoc
   // override def toString: Str = s"$name@$uid"
@@ -239,7 +243,7 @@ class BuiltinSymbol
   
   def subst(using sub: SymbolSubst): BuiltinSymbol = sub.mapBuiltInSym(this)
   
-  def isPure: Bool = true // * For now, all builtins are pure
+  def isPure: Bool = nme =/= "super" // * For now, all other builtins are pure
   
   // * A basic approximation of builtin operator types
   lazy val signature : semantics.flow.Producer =
@@ -313,7 +317,7 @@ sealed abstract class MemberSymbol(using State) extends Symbol:
 class TermSymbol(val k: TermDefKind, val owner: Opt[InnerSymbol], val id: Tree.Ident)(using State)
     extends MemberSymbol
     with DefinitionSymbol[TermDefinition]
-    with LocalSymbol
+    with LocalVarSymbol
     with NamedSymbol:
   def nme: Str = id.name
   def name: Str = nme
@@ -322,6 +326,7 @@ class TermSymbol(val k: TermDefKind, val owner: Opt[InnerSymbol], val id: Tree.I
   override def prefix: Str = s"term:${owner.map(o => s"${o.nme}/").getOrElse("")}"
   override def showPrefix(using Scope, ShowCfg, Raise): Str =
     "term:" + owner.map(_.showName + "/").getOrElse("")
+  def isPrivate: Bool = (k is LetBind) && owner.exists(!_.isInstanceOf[TopLevelSymbol])
   
   def subst(using sub: SymbolSubst): TermSymbol = sub.mapTermSym(this)
 
@@ -394,6 +399,14 @@ sealed trait DefinitionSymbol[Defn <: Definition] extends Symbol:
   var decl: Opt[Declaration] = N // NOTE: currently only assigned for class params and only used by deforestation; may want to just remove it once deforestation is improved
   def bms: Opt[BlockMemberSymbol] = defn.map(_.bsym) 
   
+  // * Although the IR is immutable,
+  // * we consider that a given symbol is *owned* by the IR Defn node that defines it.
+  var irDefn: Opt[codegen.Defn] = N
+  def irFunDefn: Opt[codegen.FunDefn] = irDefn.collectFirst:
+    case fd: codegen.FunDefn => fd
+  def irClsLikeDefn: Opt[codegen.ClsLikeDefn] = irDefn.collectFirst:
+    case cd: codegen.ClsLikeDefn => cd
+  
   /** Whether we know it's pure when selected (eg getters are not always pure). */
   def isPure: Bool =
     this match
@@ -407,8 +420,6 @@ sealed trait DefinitionSymbol[Defn <: Definition] extends Symbol:
         case _ => false
   
   def subst(using sub: SymbolSubst): DefinitionSymbol[Defn]
-  
-  def asMemSym: MemberSymbol = this
   
 end DefinitionSymbol
 
@@ -492,4 +503,3 @@ class TopLevelSymbol(blockNme: Str)(using State)
   override def prefix: Str = "globalThis:"
   
   def subst(using sub: SymbolSubst): TopLevelSymbol = sub.mapTopLevelSym(this)
-

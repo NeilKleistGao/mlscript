@@ -7,7 +7,7 @@ let NoFreeze1;
     NoFreeze1 = this
   }
   static {
-    this.Foo = function Foo(x) {
+    NoFreeze.Foo = function Foo(x) {
       return (new Foo.class(x));
     };
     (class Foo {
@@ -18,16 +18,16 @@ let NoFreeze1;
         this.x = x;
       }
       toString() { return runtime.render(this); }
-      static [definitionMetadata] = ["class", "Foo", ["x"]]; 
+      static [definitionMetadata] = ["class", "Foo", ["x"]];
     });
   }
   static foo() {
     return (new NoFreeze.Foo.class(0))
-  } 
+  }
   static bar() {
     return runtime.safeCall(NoFreeze1["foo"]())
   }
   toString() { return runtime.render(this); }
-  static [definitionMetadata] = ["class", "NoFreeze"]; 
+  static [definitionMetadata] = ["class", "NoFreeze"];
 });
 let NoFreeze = NoFreeze1; export default NoFreeze;

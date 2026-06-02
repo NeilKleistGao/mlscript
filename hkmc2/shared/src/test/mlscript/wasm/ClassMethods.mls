@@ -77,9 +77,10 @@ a.A#get() + A(2).get()
 //│               (local.set $tmp2
 //│                 (call $A_get
 //│                   (local.get $tmp1)))
-//│               (call $plus_impl
-//│                 (local.get $tmp)
-//│                 (local.get $tmp2))))))))
+//│               (return
+//│                 (call $plus_impl
+//│                   (local.get $tmp)
+//│                   (local.get $tmp2)))))))))
 //│   (elem $A_init declare func $A_init)
 //│   (elem $A_ctor declare func $A_ctor)
 //│   (elem $A_get declare func $A_get)
@@ -101,6 +102,15 @@ class A(val x) with
 A(1).add(2)
 //│ Wasm result:
 //│ = 3
+
+
+class CurriedPair(val x)(val y) with
+  fun sum() = x + y
+let p = CurriedPair(1)(2)
+let q = new CurriedPair(3)(4)
+p.CurriedPair#sum() + q.CurriedPair#sum()
+//│ Wasm result:
+//│ = 10
 
 
 class C(val x) with
@@ -178,7 +188,7 @@ let d = Counter(c.Counter#get())
 :todo
 d.Counter#inc().Counter#double().Counter#get()
 //│ ╔══[COMPILATION ERROR] Cannot find variable `d` (VarSymbol) in local or global scope.
-//│ ║  l.175: 	let d = Counter(c.Counter#get())
+//│ ║  l.185: 	let d = Counter(c.Counter#get())
 //│ ╙──       	    ^
 //│ /!!!\ Uncaught error: java.lang.Exception: Internal Error: Missing type definition for symbol `member:Counter`
 
@@ -199,5 +209,5 @@ class A(val x) with
   fun get() = x
 A(1).get
 //│ ╔══[COMPILATION ERROR] `member:get` is neither a field access nor a callable method
-//│ ║  l.200: 	A(1).get
+//│ ║  l.210: 	A(1).get
 //│ ╙──       	    ^^^^
