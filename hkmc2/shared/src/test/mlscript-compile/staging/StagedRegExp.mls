@@ -38,7 +38,7 @@ staged module StagedRegExp with
       let s = len(arr)
       if s - i == s then new DedupSet(push(arr, e))
       else 
-        let e' = arr.(i)
+        let e' = arr.(s - i)
         if e.eq(e') then this else addImp(e, i - 1)
     fun add(e) =
       addImp(e, len(arr))
@@ -95,11 +95,11 @@ staged module StagedRegExp with
   fun notDigit() = new Not(CharSet.digit())
 
   fun mkUnion(arr, i, s) =
-    if s - i == s - 1 then arr.(i)
+    if s - i == s - 1 then arr.(s - i)
     else
-      if arr.(i) is
+      if arr.(s - i) is
         Nothing() then mkUnion(arr, i - 1, s)
-        else new Union(arr.(i), mkUnion(arr, i - 1, s))
+        else new Union(arr.(s - i), mkUnion(arr, i - 1, s))
 
   staged class Union(val p1, val p2) extends RegExp with
     fun derive(c) = (new Union(p1.derive(c), p2.derive(c))).normalize()
@@ -116,7 +116,7 @@ staged module StagedRegExp with
       let p2' = p2.normalize()
       let arr1 = if p1' is Union then p1'.flat() else [p1']
       let arr2 = if p2' is Union then p2'.flat() else [p2']
-      let s = iter(new DedupSet(arr1), arr2, 0, len(arr2))
+      let s = iter(new DedupSet(arr1), arr2, len(arr2), len(arr2))
       mkUnion(s.arr, len(s.arr), len(s.arr))
     fun eq(other) =
       let n = other.normalize()

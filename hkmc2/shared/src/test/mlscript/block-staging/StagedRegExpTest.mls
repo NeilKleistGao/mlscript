@@ -45,47 +45,38 @@ match(Not(["x", "y", "z"]), "xyz")
 match(Not(["x", "y", "z"]), "w")
 //│ = Some("w")
 
-:fixme this generation should be fixed in another branch
 match(Union(Union(Exact("x"), Exact("y")), Exact("z")), "z")
-//│ ═══[RUNTIME ERROR] TypeError: this.p1.normalize is not a function
+//│ = Some("z")
 
-:fixme this generation should be fixed in another branch
 match(Union(Union(Exact("x"), Exact("y")), Exact("z")), "y")
-//│ ═══[RUNTIME ERROR] TypeError: this.p1.normalize is not a function
+//│ = Some("y")
 
 match(Union(Union(Exact("x"), Exact("y")), Exact("z")), "w")
 //│ = None
 
-:fixme this generation should be fixed in another branch
 match(question(Exact("x")), "x")
-//│ ═══[RUNTIME ERROR] TypeError: p.canBeEmpty is not a function
+//│ = Some("x")
 
 match(question(Exact("x")), "y")
 //│ = Some("")
 
-:fixme this generation should be fixed in another branch
 match(question(Exact("x")), "xx")
-//│ ═══[RUNTIME ERROR] TypeError: p.startsWith is not a function
+//│ = Some("x")
 
-:fixme this generation should be fixed in another branch
 match(question(Any()), "y")
-//│ ═══[RUNTIME ERROR] TypeError: p.canBeEmpty is not a function
+//│ = Some("y")
 
-:fixme this generation should be fixed in another branch
 match(Concat(Star(Exact("x")), Exact("y")), "x")
-//│ ═══[RUNTIME ERROR] TypeError: p.canBeEmpty is not a function
+//│ = None
 
-:fixme this generation should be fixed in another branch
 match(Concat(Star(Exact("x")), Exact("y")), "y")
-//│ ═══[RUNTIME ERROR] TypeError: p.canBeEmpty is not a function
+//│ = Some("y")
 
-:fixme this generation should be fixed in another branch
 match(Concat(Star(Exact("x")), Exact("y")), "xxxxxy")
-//│ ═══[RUNTIME ERROR] TypeError: p.startsWith is not a function
+//│ = Some("xxxxxy")
 
-:fixme this generation should be fixed in another branch
 match(Concat(Star(Exact("x")), Exact("y")), "xyyyy")
-//│ ═══[RUNTIME ERROR] TypeError: p.startsWith is not a function
+//│ = Some("xy")
 
 
 match(plus(Exact("x")), "")
@@ -118,7 +109,6 @@ match(nTimes(Exact("x"), 3), "xx")
 :silent
 let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord())) 
 
-:fixme this generation should be fixed in another branch
 matchAll(p, "To be or not to be, that is the question.")
-//│ ═══[RUNTIME ERROR] TypeError: p.startsWith is not a function
+//│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
 

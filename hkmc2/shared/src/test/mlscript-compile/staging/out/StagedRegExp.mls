@@ -6,11 +6,11 @@ module StagedRegExp with
     class DedupSet(val arr) with
       ()
       fun add(e) =
-        let {tmp3}
-        tmp3 = len(arr)
-        addImp(e, tmp3)
+        let {tmp4}
+        tmp4 = len(arr)
+        addImp(e, tmp4)
       fun addImp(e, i) =
-        let {s, scrut, e__, scrut1, tmp, tmp1, tmp2}
+        let {s, scrut, e__, scrut1, tmp, tmp1, tmp2, tmp3}
         s = len(arr)
         tmp = s - i
         scrut = ==(tmp, s)
@@ -19,13 +19,14 @@ module StagedRegExp with
             tmp1 = push(arr, e)
             new DedupSet.class(tmp1)
           else
-            e__ = arr.(i)
+            tmp2 = s - i
+            e__ = arr.(tmp2)
             scrut1 = e.eq(e__)
             if scrut1 is
               true then this
               else
-                tmp2 = i - 1
-                addImp(e, tmp2)
+                tmp3 = i - 1
+                addImp(e, tmp3)
     class RegExp() with
       ()
     class Nothing() extends RegExp() with
@@ -172,9 +173,9 @@ module StagedRegExp with
           else false
       fun normalize() = this
       fun startsWith(c) =
-        let {tmp4}
-        tmp4 = has(chars, c)
-        not tmp4
+        let {tmp5}
+        tmp5 = has(chars, c)
+        not tmp5
       private fun canBeEmpty_Not_sp_0() = false
       private fun derive_Not_sp_0(c) =
         let {scrut3}
@@ -185,87 +186,88 @@ module StagedRegExp with
       private fun normalize_Not_sp_0() = this
       private fun normalize_Not_sp_1() = this
       private fun startsWith_Not_sp_0(c) =
-        let {tmp4}
-        tmp4 = has_StagedRegExp_sp_2(chars, c)
-        not tmp4
+        let {tmp5}
+        tmp5 = has_StagedRegExp_sp_2(chars, c)
+        not tmp5
     class Union(val p1, val p2) extends RegExp() with
       ()
       fun canBeEmpty() =
-        let {tmp8}
-        tmp8 = p1.canBeEmpty()
-        if tmp8 is
+        let {tmp9}
+        tmp9 = p1.canBeEmpty()
+        if tmp9 is
           false then p2.canBeEmpty()
           else true
       fun derive(c) =
-        let {tmp5, tmp6, tmp7}
-        tmp5 = p1.derive(c)
-        tmp6 = p2.derive(c)
-        tmp7 = new Union.class(tmp5, tmp6)
-        tmp7.normalize_Union_sp_0()
+        let {tmp6, tmp7, tmp8}
+        tmp6 = p1.derive(c)
+        tmp7 = p2.derive(c)
+        tmp8 = new Union.class(tmp6, tmp7)
+        tmp8.normalize_Union_sp_0()
       fun eq(other) =
-        let {n, tmp21, tmp22, tmp23}
+        let {n, tmp23, tmp24, tmp25}
         n = other.normalize()
         if n is
           Union then
-            tmp21 = normalize()
-            tmp22 = tmp21.flat()
-            tmp23 = n.flat_Union_sp_0()
-            setEq(tmp22, tmp23)
+            tmp23 = normalize()
+            tmp24 = tmp23.flat()
+            tmp25 = n.flat_Union_sp_0()
+            setEq(tmp24, tmp25)
           else false
       fun flat() =
-        let {p1__, scrut4, p2__, scrut5, tmp9, tmp10}
+        let {p1__, scrut4, p2__, scrut5, tmp10, tmp11}
         scrut4 = p1
         if scrut4 is
           Union then
-            tmp9 = p1.flat()
+            tmp10 = p1.flat()
           else
-            tmp9 = [p1]
-        p1__ = tmp9
+            tmp10 = [p1]
+        p1__ = tmp10
         scrut5 = p2
         if scrut5 is
           Union then
-            tmp10 = p2.flat()
+            tmp11 = p2.flat()
           else
-            tmp10 = [p2]
-        p2__ = tmp10
+            tmp11 = [p2]
+        p2__ = tmp11
         concat(p1__, p2__)
       fun iter(st, arr, i, s) =
-        let {scrut6, tmp11, tmp12, tmp13, tmp14}
-        tmp11 = s - i
-        scrut6 = ==(tmp11, s)
+        let {scrut6, tmp12, tmp13, tmp14, tmp15}
+        tmp12 = s - i
+        scrut6 = ==(tmp12, s)
         if scrut6 is
           true then st
           else
-            tmp12 = s - i
-            tmp13 = st.add(arr.(tmp12))
-            tmp14 = i - 1
-            iter(tmp13, arr, tmp14, s)
+            tmp13 = s - i
+            tmp14 = st.add(arr.(tmp13))
+            tmp15 = i - 1
+            iter(tmp14, arr, tmp15, s)
       fun normalize() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize()
         p2__1 = p2.normalize()
         if p1__1 is
           Union then
-            tmp15 = p1__1.flat_Union_sp_0()
+            tmp16 = p1__1.flat_Union_sp_0()
           else
-            tmp15 = [p1__1]
-        arr11 = tmp15
+            tmp16 = [p1__1]
+        arr11 = tmp16
         if p2__1 is
           Union then
-            tmp16 = p2__1.flat_Union_sp_0()
+            tmp17 = p2__1.flat_Union_sp_0()
           else
-            tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+            tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len(arr2)
+        tmp20 = len(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       fun startsWith(c) =
-        let {tmp24}
-        tmp24 = p1.startsWith(c)
-        if tmp24 is
+        let {tmp26}
+        tmp26 = p1.startsWith(c)
+        if tmp26 is
           false then p2.startsWith(c)
           else true
       private fun canBeEmpty_Union_sp_0() = false
@@ -273,214 +275,223 @@ module StagedRegExp with
       private fun canBeEmpty_Union_sp_2() = true
       private fun canBeEmpty_Union_sp_3() = true
       private fun derive_Union_sp_0(c) =
-        let {tmp5, tmp6, tmp7}
-        tmp5 = p1.derive_Concat_sp_17(c)
-        tmp6 = p2.derive_Union_sp_1(c)
-        tmp7 = new Union.class(tmp5, tmp6)
-        tmp7.normalize_Union_sp_12()
+        let {tmp6, tmp7, tmp8}
+        tmp6 = p1.derive_Concat_sp_17(c)
+        tmp7 = p2.derive_Union_sp_1(c)
+        tmp8 = new Union.class(tmp6, tmp7)
+        tmp8.normalize_Union_sp_12()
       private fun derive_Union_sp_1(c) =
-        let {tmp5, tmp6, tmp7}
-        tmp5 = p1.derive_Concat_sp_18(c)
-        tmp6 = p2.derive_Concat_sp_19(c)
-        tmp7 = new Union.class(tmp5, tmp6)
-        tmp7.normalize_Union_sp_11()
+        let {tmp6, tmp7, tmp8}
+        tmp6 = p1.derive_Concat_sp_18(c)
+        tmp7 = p2.derive_Concat_sp_19(c)
+        tmp8 = new Union.class(tmp6, tmp7)
+        tmp8.normalize_Union_sp_11()
       private fun derive_Union_sp_2(c) =
-        let {tmp5, tmp6, tmp7}
-        tmp5 = p1.derive_Exact_sp_3(c)
-        tmp6 = p2.derive_Empty_sp_0(c)
-        tmp7 = new Union.class(tmp5, tmp6)
-        tmp7.normalize_Union_sp_7()
+        let {tmp6, tmp7, tmp8}
+        tmp6 = p1.derive_Exact_sp_3(c)
+        tmp7 = p2.derive_Empty_sp_0(c)
+        tmp8 = new Union.class(tmp6, tmp7)
+        tmp8.normalize_Union_sp_7()
       private fun derive_Union_sp_3(c) =
-        let {tmp5, tmp6, tmp7}
-        tmp5 = p1.derive_In_sp_2(c)
-        tmp6 = p2.derive_Empty_sp_0(c)
-        tmp7 = new Union.class(tmp5, tmp6)
-        tmp7.normalize_Union_sp_7()
+        let {tmp6, tmp7, tmp8}
+        tmp6 = p1.derive_In_sp_2(c)
+        tmp7 = p2.derive_Empty_sp_0(c)
+        tmp8 = new Union.class(tmp6, tmp7)
+        tmp8.normalize_Union_sp_7()
       private fun flat_Union_sp_0() =
-        let {p1__, scrut4, p2__, scrut5, tmp9, tmp10}
+        let {p1__, scrut4, p2__, scrut5, tmp10, tmp11}
         scrut4 = p1
         if scrut4 is
           Union then
-            tmp9 = p1.flat()
+            tmp10 = p1.flat()
           else
-            tmp9 = [p1]
-        p1__ = tmp9
+            tmp10 = [p1]
+        p1__ = tmp10
         scrut5 = p2
         if scrut5 is
           Union then
-            tmp10 = p2.flat()
+            tmp11 = p2.flat()
           else
-            tmp10 = [p2]
-        p2__ = tmp10
+            tmp11 = [p2]
+        p2__ = tmp11
         concat(p1__, p2__)
       private fun normalize_Union_sp_0() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize()
         p2__1 = p2.normalize()
         if p1__1 is
           Union then
-            tmp15 = p1__1.flat_Union_sp_0()
+            tmp16 = p1__1.flat_Union_sp_0()
           else
-            tmp15 = [p1__1]
-        arr11 = tmp15
+            tmp16 = [p1__1]
+        arr11 = tmp16
         if p2__1 is
           Union then
-            tmp16 = p2__1.flat_Union_sp_0()
+            tmp17 = p2__1.flat_Union_sp_0()
           else
-            tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+            tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len(arr2)
+        tmp20 = len(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_1() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_0()
         p2__1 = p2.normalize()
         if p1__1 is
           Union then
-            tmp15 = p1__1.flat_Union_sp_0()
+            tmp16 = p1__1.flat_Union_sp_0()
           else
-            tmp15 = [p1__1]
-        arr11 = tmp15
+            tmp16 = [p1__1]
+        arr11 = tmp16
         if p2__1 is
           Union then
-            tmp16 = p2__1.flat_Union_sp_0()
+            tmp17 = p2__1.flat_Union_sp_0()
           else
-            tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+            tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len(arr2)
+        tmp20 = len(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_10() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_In_sp_5()
         p2__1 = p2.normalize_Empty_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = 1
-        s2 = iter(tmp17, arr2, 0, 1)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = 1
+        tmp20 = 1
+        s2 = iter(tmp18, arr2, 1, 1)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_11() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         if p1 is
           Concat then
             p1__1 = p1.normalize_Concat_sp_33()
           Nothing then
             p1__1 = p1.normalize_Nothing_sp_0()
         p2__1 = p2.normalize()
-        tmp15 = [p1__1]
-        arr11 = tmp15
+        tmp16 = [p1__1]
+        arr11 = tmp16
         if p2__1 is
           Union then
-            tmp16 = p2__1.flat_Union_sp_0()
+            tmp17 = p2__1.flat_Union_sp_0()
           else
-            tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+            tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len(arr2)
+        tmp20 = len(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_12() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         if p1 is
           Concat then
             p1__1 = p1.normalize_Concat_sp_31()
           Nothing then
             p1__1 = p1.normalize_Nothing_sp_0()
         p2__1 = p2.normalize()
-        tmp15 = [p1__1]
-        arr11 = tmp15
+        tmp16 = [p1__1]
+        arr11 = tmp16
         if p2__1 is
           Union then
-            tmp16 = p2__1.flat_Union_sp_0()
+            tmp17 = p2__1.flat_Union_sp_0()
           else
-            tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+            tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len(arr2)
+        tmp20 = len(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_13() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_41()
         p2__1 = p2.normalize_Union_sp_14()
-        tmp15 = [p1__1]
-        arr11 = tmp15
+        tmp16 = [p1__1]
+        arr11 = tmp16
         if p2__1 is
           Union then
-            tmp16 = p2__1.flat_Union_sp_0()
+            tmp17 = p2__1.flat_Union_sp_0()
           else
-            tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+            tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len(arr2)
+        tmp20 = len(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_14() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_42()
         p2__1 = p2.normalize_Concat_sp_43()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len_StagedRegExp_sp_6(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len_StagedRegExp_sp_6(arr2)
+        tmp20 = len_StagedRegExp_sp_6(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_15() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Exact_sp_8()
         p2__1 = p2.normalize_Empty_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = 1
-        s2 = iter(tmp17, arr2, 0, 1)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = 1
+        tmp20 = 1
+        s2 = iter(tmp18, arr2, 1, 1)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_16() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_37()
         if p2 is
           Empty then
             p2__1 = p2.normalize_Empty_sp_0()
           Nothing then
             p2__1 = p2.normalize_Nothing_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len_StagedRegExp_sp_5(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len_StagedRegExp_sp_5(arr2)
+        tmp20 = len_StagedRegExp_sp_5(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_17() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_47()
         if p2 is
           Nothing then
@@ -493,174 +504,183 @@ module StagedRegExp with
             p2__1 = p2.normalize_Concat_sp_37()
           Concat then
             p2__1 = p2.normalize_Concat_sp_50()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len_StagedRegExp_sp_7(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len_StagedRegExp_sp_7(arr2)
+        tmp20 = len_StagedRegExp_sp_7(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_2() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_3()
         if p2 is
           Concat then
             p2__1 = p2.normalize_Concat_sp_5()
           Nothing then
             p2__1 = p2.normalize_Nothing_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len_StagedRegExp_sp_0(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len_StagedRegExp_sp_0(arr2)
+        tmp20 = len_StagedRegExp_sp_0(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_3() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_20()
         p2__1 = p2.normalize_Empty_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = 1
-        s2 = iter(tmp17, arr2, 0, 1)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = 1
+        tmp20 = 1
+        s2 = iter(tmp18, arr2, 1, 1)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_4() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_21()
         p2__1 = p2.normalize_Empty_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = 1
-        s2 = iter(tmp17, arr2, 0, 1)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = 1
+        tmp20 = 1
+        s2 = iter(tmp18, arr2, 1, 1)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_5() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_10()
         if p2 is
           Concat then
             p2__1 = p2.normalize_Concat_sp_12()
           Nothing then
             p2__1 = p2.normalize_Nothing_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len_StagedRegExp_sp_2(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len_StagedRegExp_sp_2(arr2)
+        tmp20 = len_StagedRegExp_sp_2(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_6() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_23()
         if p2 is
           Nothing then
             p2__1 = p2.normalize_Nothing_sp_0()
           Concat then
             p2__1 = p2.normalize_Concat_sp_29()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len_StagedRegExp_sp_3(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len_StagedRegExp_sp_3(arr2)
+        tmp20 = len_StagedRegExp_sp_3(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_7() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         if p1 is
           Empty then
             p1__1 = p1.normalize_Empty_sp_0()
           Nothing then
             p1__1 = p1.normalize_Nothing_sp_0()
         p2__1 = p2.normalize_Nothing_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = 1
-        s2 = iter(tmp17, arr2, 0, 1)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = 1
+        tmp20 = 1
+        s2 = iter(tmp18, arr2, 1, 1)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_8() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_34()
         if p2 is
           Empty then
             p2__1 = p2.normalize_Empty_sp_0()
           Nothing then
             p2__1 = p2.normalize_Nothing_sp_0()
-        tmp15 = [p1__1]
-        arr11 = tmp15
-        tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len_StagedRegExp_sp_5(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+        tmp16 = [p1__1]
+        arr11 = tmp16
+        tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len_StagedRegExp_sp_5(arr2)
+        tmp20 = len_StagedRegExp_sp_5(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun normalize_Union_sp_9() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20}
+        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
         p1__1 = p1.normalize_Concat_sp_35()
         p2__1 = p2.normalize()
-        tmp15 = [p1__1]
-        arr11 = tmp15
+        tmp16 = [p1__1]
+        arr11 = tmp16
         if p2__1 is
           Union then
-            tmp16 = p2__1.flat_Union_sp_0()
+            tmp17 = p2__1.flat_Union_sp_0()
           else
-            tmp16 = [p2__1]
-        arr2 = tmp16
-        tmp17 = new DedupSet(arr11)
-        tmp18 = len(arr2)
-        s2 = iter(tmp17, arr2, 0, tmp18)
-        tmp19 = len(s2.arr)
-        tmp20 = len(s2.arr)
-        mkUnion(s2.arr, tmp19, tmp20)
+            tmp17 = [p2__1]
+        arr2 = tmp17
+        tmp18 = new DedupSet(arr11)
+        tmp19 = len(arr2)
+        tmp20 = len(arr2)
+        s2 = iter(tmp18, arr2, tmp19, tmp20)
+        tmp21 = len(s2.arr)
+        tmp22 = len(s2.arr)
+        mkUnion(s2.arr, tmp21, tmp22)
       private fun startsWith_Union_sp_0(c) =
-        let {tmp24}
-        tmp24 = p1.startsWith_Concat_sp_17(c)
-        if tmp24 is
+        let {tmp26}
+        tmp26 = p1.startsWith_Concat_sp_17(c)
+        if tmp26 is
           false then p2.startsWith_Union_sp_1(c)
           else true
       private fun startsWith_Union_sp_1(c) =
-        let {tmp24}
-        tmp24 = p1.startsWith_Concat_sp_18(c)
-        if tmp24 is
+        let {tmp26}
+        tmp26 = p1.startsWith_Concat_sp_18(c)
+        if tmp26 is
           false then p2.startsWith_Concat_sp_19(c)
           else true
       private fun startsWith_Union_sp_2(c) =
-        let {tmp24}
-        tmp24 = p1.startsWith_Exact_sp_3(c)
-        if tmp24 is
+        let {tmp26}
+        tmp26 = p1.startsWith_Exact_sp_3(c)
+        if tmp26 is
           false then p2.startsWith_Empty_sp_0(c)
           else true
       private fun startsWith_Union_sp_3(c) =
-        let {tmp24}
-        tmp24 = p1.startsWith_In_sp_2(c)
-        if tmp24 is
+        let {tmp26}
+        tmp26 = p1.startsWith_In_sp_2(c)
+        if tmp26 is
           false then p2.startsWith_Empty_sp_0(c)
           else true
     class In(val chars) extends RegExp() with
@@ -725,18 +745,18 @@ module StagedRegExp with
               else false
           else false
       fun derive(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive(c)
         scrut8 = p1.canBeEmpty()
         if scrut8 is
           true then
-            tmp25 = new Concat.class(p1__2, p2)
-            tmp26 = p2.derive(c)
-            tmp27 = new Union(tmp25, tmp26)
-            tmp27.normalize_Union_sp_1()
+            tmp27 = new Concat.class(p1__2, p2)
+            tmp28 = p2.derive(c)
+            tmp29 = new Union(tmp27, tmp28)
+            tmp29.normalize_Union_sp_1()
           else
-            tmp28 = new Concat.class(p1__2, p2)
-            tmp28.normalize_Concat_sp_0()
+            tmp30 = new Concat.class(p1__2, p2)
+            tmp30.normalize_Concat_sp_0()
       fun eq(other) =
         let {p2__2, p1__4, scrut11, scrut12, arg_Concat_0_, arg_Concat_1_}
         if other is
@@ -755,18 +775,18 @@ module StagedRegExp with
               else false
           else false
       fun normalize() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then p2.normalize()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize()
+            new Concat.class(p1__3, tmp31)
       fun startsWith(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty()
             if scrut13 is
@@ -805,110 +825,110 @@ module StagedRegExp with
       private fun canBeEmpty_Concat_sp_8() = false
       private fun canBeEmpty_Concat_sp_9() = false
       private fun derive_Concat_sp_0(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_1(c)
         scrut8 = p1.canBeEmpty_Concat_sp_1()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_3()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_3()
       private fun derive_Concat_sp_1(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_In_sp_0(c)
         scrut8 = p1.canBeEmpty_In_sp_0()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_2()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_2()
       private fun derive_Concat_sp_10(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_11(c)
         scrut8 = p1.canBeEmpty_Concat_sp_11()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_27()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_27()
       private fun derive_Concat_sp_11(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_12(c)
         scrut8 = p1.canBeEmpty_Concat_sp_12()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_26()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_26()
       private fun derive_Concat_sp_12(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Not_sp_0(c)
         scrut8 = p1.canBeEmpty_Not_sp_0()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_25()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_25()
       private fun derive_Concat_sp_13(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive(c)
         scrut8 = p1.canBeEmpty()
         if scrut8 is
           true then
-            tmp25 = new Concat.class(p1__2, p2)
-            tmp26 = p2.derive_Concat_sp_10(c)
-            tmp27 = new Union(tmp25, tmp26)
-            tmp27.normalize_Union_sp_6()
+            tmp27 = new Concat.class(p1__2, p2)
+            tmp28 = p2.derive_Concat_sp_10(c)
+            tmp29 = new Union(tmp27, tmp28)
+            tmp29.normalize_Union_sp_6()
           else
-            tmp28 = new Concat.class(p1__2, p2)
-            tmp28.normalize_Concat_sp_23()
+            tmp30 = new Concat.class(p1__2, p2)
+            tmp30.normalize_Concat_sp_23()
       private fun derive_Concat_sp_14(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_15(c)
         scrut8 = p1.canBeEmpty_Concat_sp_15()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_44()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_44()
       private fun derive_Concat_sp_15(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_16(c)
         scrut8 = p1.canBeEmpty_Concat_sp_16()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_38()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_38()
       private fun derive_Concat_sp_16(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Union_sp_0(c)
         scrut8 = p1.canBeEmpty_Union_sp_0()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_37()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_37()
       private fun derive_Concat_sp_17(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Exact_sp_2(c)
         scrut8 = p1.canBeEmpty_Exact_sp_2()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_30()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_30()
       private fun derive_Concat_sp_18(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Exact_sp_2(c)
         scrut8 = p1.canBeEmpty_Exact_sp_2()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_32()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_32()
       private fun derive_Concat_sp_19(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Union_sp_2(c)
         scrut8 = p1.canBeEmpty_Union_sp_2()
-        tmp25 = new Concat.class(p1__2, p2)
-        tmp26 = p2.derive_Concat_sp_20(c)
-        tmp27 = new Union(tmp25, tmp26)
-        tmp27.normalize_Union_sp_9()
+        tmp27 = new Concat.class(p1__2, p2)
+        tmp28 = p2.derive_Concat_sp_20(c)
+        tmp29 = new Union(tmp27, tmp28)
+        tmp29.normalize_Union_sp_9()
       private fun derive_Concat_sp_2(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Star_sp_0(c)
         scrut8 = p1.canBeEmpty_Star_sp_0()
-        tmp25 = new Concat.class(p1__2, p2)
-        tmp26 = p2.derive_Concat_sp_3(c)
-        tmp27 = new Union(tmp25, tmp26)
-        tmp27.normalize_Union_sp_2()
+        tmp27 = new Concat.class(p1__2, p2)
+        tmp28 = p2.derive_Concat_sp_3(c)
+        tmp29 = new Union(tmp27, tmp28)
+        tmp29.normalize_Union_sp_2()
       private fun derive_Concat_sp_20(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Union_sp_3(c)
         scrut8 = p1.canBeEmpty_Union_sp_3()
-        tmp25 = new Concat.class(p1__2, p2)
-        tmp26 = p2.derive_In_sp_2(c)
-        tmp27 = new Union(tmp25, tmp26)
-        tmp27.normalize_Union_sp_8()
+        tmp27 = new Concat.class(p1__2, p2)
+        tmp28 = p2.derive_In_sp_2(c)
+        tmp29 = new Union(tmp27, tmp28)
+        tmp29.normalize_Union_sp_8()
       private fun derive_Concat_sp_21(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_22(c)
         scrut8 = p1.canBeEmpty_Concat_sp_22()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_49()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_49()
       private fun derive_Concat_sp_22(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         if p1 is
           Exact then
             p1__2 = p1.derive_Exact_sp_4(c)
@@ -919,23 +939,23 @@ module StagedRegExp with
             scrut8 = p1.canBeEmpty_Exact_sp_4()
           Concat then
             scrut8 = p1.canBeEmpty_Concat_sp_23()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_47()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_47()
       private fun derive_Concat_sp_23(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive(c)
         scrut8 = p1.canBeEmpty()
         if scrut8 is
           true then
-            tmp25 = new Concat.class(p1__2, p2)
-            tmp26 = p2.derive_Exact_sp_4(c)
-            tmp27 = new Union(tmp25, tmp26)
-            tmp27.normalize_Union_sp_16()
+            tmp27 = new Concat.class(p1__2, p2)
+            tmp28 = p2.derive_Exact_sp_4(c)
+            tmp29 = new Union(tmp27, tmp28)
+            tmp29.normalize_Union_sp_16()
           else
-            tmp28 = new Concat.class(p1__2, p2)
-            tmp28.normalize_Concat_sp_37()
+            tmp30 = new Concat.class(p1__2, p2)
+            tmp30.normalize_Concat_sp_37()
       private fun derive_Concat_sp_24(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         if p1 is
           Concat then
             p1__2 = p1.derive_Concat_sp_25(c)
@@ -946,10 +966,10 @@ module StagedRegExp with
             scrut8 = p1.canBeEmpty_Concat_sp_25()
           Concat then
             scrut8 = p1.canBeEmpty_Concat_sp_26()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_0()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_0()
       private fun derive_Concat_sp_25(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         if p1 is
           Exact then
             p1__2 = p1.derive_Exact_sp_4(c)
@@ -960,91 +980,91 @@ module StagedRegExp with
             scrut8 = p1.canBeEmpty_Exact_sp_4()
           Concat then
             scrut8 = p1.canBeEmpty_Concat_sp_23()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_50()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_50()
       private fun derive_Concat_sp_26(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive(c)
         scrut8 = p1.canBeEmpty()
         if scrut8 is
           true then
-            tmp25 = new Concat.class(p1__2, p2)
+            tmp27 = new Concat.class(p1__2, p2)
             if p2 is
               Nothing then
-                tmp26 = p2.derive_Nothing_sp_0(c)
+                tmp28 = p2.derive_Nothing_sp_0(c)
               Nothing then
-                tmp26 = p2.derive_Nothing_sp_0(c)
+                tmp28 = p2.derive_Nothing_sp_0(c)
               Concat then
-                tmp26 = p2.derive_Concat_sp_25(c)
-            tmp27 = new Union(tmp25, tmp26)
-            tmp27.normalize_Union_sp_17()
+                tmp28 = p2.derive_Concat_sp_25(c)
+            tmp29 = new Union(tmp27, tmp28)
+            tmp29.normalize_Union_sp_17()
           else
-            tmp28 = new Concat.class(p1__2, p2)
-            tmp28.normalize_Concat_sp_47()
+            tmp30 = new Concat.class(p1__2, p2)
+            tmp30.normalize_Concat_sp_47()
       private fun derive_Concat_sp_3(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Exact_sp_0(c)
         scrut8 = p1.canBeEmpty_Exact_sp_0()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_8()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_8()
       private fun derive_Concat_sp_4(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_5(c)
         scrut8 = p1.canBeEmpty_Concat_sp_5()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_13()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_13()
       private fun derive_Concat_sp_5(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_6(c)
         scrut8 = p1.canBeEmpty_Concat_sp_6()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_10()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_10()
       private fun derive_Concat_sp_6(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_In_sp_1(c)
         scrut8 = p1.canBeEmpty_In_sp_1()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_9()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_9()
       private fun derive_Concat_sp_7(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Concat_sp_8(c)
         scrut8 = p1.canBeEmpty_Concat_sp_8()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_23()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_23()
       private fun derive_Concat_sp_8(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Star_sp_1(c)
         scrut8 = p1.canBeEmpty_Star_sp_1()
-        tmp25 = new Concat.class(p1__2, p2)
-        tmp26 = p2.derive_Concat_sp_9(c)
-        tmp27 = new Union(tmp25, tmp26)
-        tmp27.normalize_Union_sp_5()
+        tmp27 = new Concat.class(p1__2, p2)
+        tmp28 = p2.derive_Concat_sp_9(c)
+        tmp29 = new Union(tmp27, tmp28)
+        tmp29.normalize_Union_sp_5()
       private fun derive_Concat_sp_9(c) =
-        let {p1__2, scrut8, tmp25, tmp26, tmp27, tmp28}
+        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
         p1__2 = p1.derive_Exact_sp_1(c)
         scrut8 = p1.canBeEmpty_Exact_sp_1()
-        tmp28 = new Concat.class(p1__2, p2)
-        tmp28.normalize_Concat_sp_22()
+        tmp30 = new Concat.class(p1__2, p2)
+        tmp30.normalize_Concat_sp_22()
       private fun normalize_Concat_sp_0() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then p2.normalize()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_1() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then p2.normalize_Star_sp_0()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Star_sp_0()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Star_sp_0()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_10() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Star then
             p1__3 = p1.normalize_Star_sp_2()
@@ -1053,20 +1073,20 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_11()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_11()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_11() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_2()
-        tmp29 = p2.normalize_Concat_sp_12()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_12()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_12() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_3()
-        tmp29 = p2.normalize_Exact_sp_3()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Exact_sp_3()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_13() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Nothing then
             p1__3 = p1.normalize_Nothing_sp_0()
@@ -1075,44 +1095,44 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_15()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_15()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_14() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Star_sp_2()
-        tmp29 = p2.normalize_Concat_sp_11()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_11()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_15() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Concat_sp_16()
-        tmp29 = p2.normalize_Concat_sp_19()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_19()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_16() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Concat_sp_17()
-        tmp29 = p2.normalize_Concat_sp_18()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_18()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_17() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Not_sp_0()
-        tmp29 = p2.normalize_Star_sp_3()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Star_sp_3()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_18() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Not_sp_1()
-        tmp29 = p2.normalize_Star_sp_4()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Star_sp_4()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_19() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Union_sp_3()
         if p1__3 is
           Empty then p2.normalize_Union_sp_4()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Union_sp_4()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Union_sp_4()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_2() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Empty then
             p1__3 = p1.normalize_Empty_sp_0()
@@ -1122,17 +1142,17 @@ module StagedRegExp with
           Empty then p2.normalize_Star_sp_1()
           Nothing then p1__3
       private fun normalize_Concat_sp_20() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_4()
-        tmp29 = p2.normalize_Star_sp_5()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Star_sp_5()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_21() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_5()
-        tmp29 = p2.normalize_Star_sp_5()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Star_sp_5()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_22() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Empty then
             p1__3 = p1.normalize_Empty_sp_0()
@@ -1142,21 +1162,21 @@ module StagedRegExp with
           Empty then p2.normalize_Concat_sp_12()
           Nothing then p1__3
       private fun normalize_Concat_sp_23() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then p2.normalize_Concat_sp_24()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_24()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_24()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_24() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Concat_sp_16()
-        tmp29 = p2.normalize()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_25() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Empty then
             p1__3 = p1.normalize_Empty_sp_0()
@@ -1166,7 +1186,7 @@ module StagedRegExp with
           Empty then p2.normalize_Star_sp_3()
           Nothing then p1__3
       private fun normalize_Concat_sp_26() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Star then
             p1__3 = p1.normalize_Star_sp_3()
@@ -1175,10 +1195,10 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_18()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_18()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_27() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Nothing then
             p1__3 = p1.normalize_Nothing_sp_0()
@@ -1187,20 +1207,20 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_28() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Star_sp_3()
-        tmp29 = p2.normalize_Concat_sp_18()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_18()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_29() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Concat_sp_28()
-        tmp29 = p2.normalize()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_3() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Star then
             p1__3 = p1.normalize_Star_sp_1()
@@ -1209,10 +1229,10 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_4()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_4()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_30() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Empty then
             p1__3 = p1.normalize_Empty_sp_0()
@@ -1222,12 +1242,12 @@ module StagedRegExp with
           Empty then p2.normalize_Concat_sp_31()
           Nothing then p1__3
       private fun normalize_Concat_sp_31() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_6()
-        tmp29 = p2.normalize_In_sp_3()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_In_sp_3()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_32() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Empty then
             p1__3 = p1.normalize_Empty_sp_0()
@@ -1237,48 +1257,48 @@ module StagedRegExp with
           Empty then p2.normalize_Concat_sp_33()
           Nothing then p1__3
       private fun normalize_Concat_sp_33() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_In_sp_4()
-        tmp29 = p2.normalize_In_sp_5()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_In_sp_5()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_34() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then p2.normalize_In_sp_5()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_In_sp_5()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_In_sp_5()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_35() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then p2.normalize_Concat_sp_36()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_36()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_36()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_36() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Union_sp_10()
         if p1__3 is
           Empty then p2.normalize_In_sp_5()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_In_sp_5()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_In_sp_5()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_37() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then p2.normalize_Exact_sp_1()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Exact_sp_1()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Exact_sp_1()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_38() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Exact then
             p1__3 = p1.normalize_Exact_sp_1()
@@ -1289,51 +1309,51 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_39()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_39()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_39() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Concat_sp_40()
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_40()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_40()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_4() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_0()
-        tmp29 = p2.normalize_Concat_sp_5()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_5()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_40() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Union_sp_13()
         if p1__3 is
           Empty then p2.normalize_Exact_sp_1()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Exact_sp_1()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Exact_sp_1()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_41() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_7()
-        tmp29 = p2.normalize_Concat_sp_31()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_31()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_42() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_7()
-        tmp29 = p2.normalize_Concat_sp_33()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_33()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_43() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Union_sp_15()
         if p1__3 is
           Empty then p2.normalize_Concat_sp_36()
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Concat_sp_36()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Concat_sp_36()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_44() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Nothing then
             p1__3 = p1.normalize_Nothing_sp_0()
@@ -1344,10 +1364,10 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize_Union_sp_13()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize_Union_sp_13()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_45() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Exact then
             p1__3 = p1.normalize_Exact_sp_1()
@@ -1358,12 +1378,12 @@ module StagedRegExp with
           else
             if p2 is
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Concat then
-                tmp29 = p2.normalize_Concat_sp_46()
-            new Concat.class(p1__3, tmp29)
+                tmp31 = p2.normalize_Concat_sp_46()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_46() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Exact then
             p1__3 = p1.normalize_Exact_sp_1()
@@ -1374,14 +1394,14 @@ module StagedRegExp with
           else
             if p2 is
               Exact then
-                tmp29 = p2.normalize_Exact_sp_1()
+                tmp31 = p2.normalize_Exact_sp_1()
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Concat then
-                tmp29 = p2.normalize_Concat_sp_37()
-            new Concat.class(p1__3, tmp29)
+                tmp31 = p2.normalize_Concat_sp_37()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_47() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then
@@ -1393,14 +1413,14 @@ module StagedRegExp with
           else
             if p2 is
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Concat then
-                tmp29 = p2.normalize_Concat_sp_48()
-            new Concat.class(p1__3, tmp29)
+                tmp31 = p2.normalize_Concat_sp_48()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_48() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Exact then
             p1__3 = p1.normalize_Exact_sp_1()
@@ -1411,16 +1431,16 @@ module StagedRegExp with
           else
             if p2 is
               Exact then
-                tmp29 = p2.normalize_Exact_sp_1()
+                tmp31 = p2.normalize_Exact_sp_1()
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Concat then
-                tmp29 = p2.normalize_Concat_sp_37()
-            new Concat.class(p1__3, tmp29)
+                tmp31 = p2.normalize_Concat_sp_37()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_49() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Nothing then
             p1__3 = p1.normalize_Nothing_sp_0()
@@ -1433,15 +1453,15 @@ module StagedRegExp with
         if p1__3 is
           Nothing then p1__3
           else
-            tmp29 = p2.normalize()
-            new Concat.class(p1__3, tmp29)
+            tmp31 = p2.normalize()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_5() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Concat_sp_6()
-        tmp29 = p2.normalize_Concat_sp_7()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_7()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_50() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize()
         if p1__3 is
           Empty then
@@ -1454,26 +1474,26 @@ module StagedRegExp with
           else
             if p2 is
               Exact then
-                tmp29 = p2.normalize_Exact_sp_1()
+                tmp31 = p2.normalize_Exact_sp_1()
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Nothing then
-                tmp29 = p2.normalize_Nothing_sp_0()
+                tmp31 = p2.normalize_Nothing_sp_0()
               Concat then
-                tmp29 = p2.normalize_Concat_sp_37()
-            new Concat.class(p1__3, tmp29)
+                tmp31 = p2.normalize_Concat_sp_37()
+            new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_6() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_In_sp_0()
-        tmp29 = p2.normalize_Star_sp_1()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Star_sp_1()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_7() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         p1__3 = p1.normalize_Exact_sp_1()
-        tmp29 = p2.normalize_Concat_sp_6()
-        new Concat.class(p1__3, tmp29)
+        tmp31 = p2.normalize_Concat_sp_6()
+        new Concat.class(p1__3, tmp31)
       private fun normalize_Concat_sp_8() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Empty then
             p1__3 = p1.normalize_Empty_sp_0()
@@ -1483,7 +1503,7 @@ module StagedRegExp with
           Empty then p2.normalize_Concat_sp_5()
           Nothing then p1__3
       private fun normalize_Concat_sp_9() =
-        let {p1__3, tmp29}
+        let {p1__3, tmp31}
         if p1 is
           Empty then
             p1__3 = p1.normalize_Empty_sp_0()
@@ -1493,49 +1513,49 @@ module StagedRegExp with
           Empty then p2.normalize_Star_sp_2()
           Nothing then p1__3
       private fun startsWith_Concat_sp_0(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_1(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_1(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_1()
             false
           else true
       private fun startsWith_Concat_sp_1(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_In_sp_0(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_In_sp_0(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_In_sp_0()
             false
           else true
       private fun startsWith_Concat_sp_10(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_11(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_11(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_11()
             false
           else true
       private fun startsWith_Concat_sp_11(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_12(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_12(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_12()
             false
           else true
       private fun startsWith_Concat_sp_12(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Not_sp_0(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Not_sp_0(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Not_sp_0()
             false
           else true
       private fun startsWith_Concat_sp_13(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty()
             if scrut13 is
@@ -1547,49 +1567,49 @@ module StagedRegExp with
               else false
           else true
       private fun startsWith_Concat_sp_14(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_15(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_15(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_15()
             false
           else true
       private fun startsWith_Concat_sp_15(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_16(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_16(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_16()
             false
           else true
       private fun startsWith_Concat_sp_16(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Union_sp_0(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Union_sp_0(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Union_sp_0()
             false
           else true
       private fun startsWith_Concat_sp_17(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Exact_sp_2(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Exact_sp_2(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Exact_sp_2()
             false
           else true
       private fun startsWith_Concat_sp_18(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Exact_sp_2(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Exact_sp_2(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Exact_sp_2()
             false
           else true
       private fun startsWith_Concat_sp_19(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Union_sp_2(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Union_sp_2(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Union_sp_2()
             scrut14 = p2.startsWith_Concat_sp_20(c)
@@ -1598,9 +1618,9 @@ module StagedRegExp with
               else false
           else true
       private fun startsWith_Concat_sp_2(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Star_sp_0(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Star_sp_0(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Star_sp_0()
             scrut14 = p2.startsWith_Concat_sp_3(c)
@@ -1609,9 +1629,9 @@ module StagedRegExp with
               else false
           else true
       private fun startsWith_Concat_sp_20(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Union_sp_3(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Union_sp_3(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Union_sp_3()
             scrut14 = p2.startsWith_In_sp_2(c)
@@ -1620,21 +1640,21 @@ module StagedRegExp with
               else false
           else true
       private fun startsWith_Concat_sp_21(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_22(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_22(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_22()
             false
           else true
       private fun startsWith_Concat_sp_22(c) =
-        let {scrut13, scrut14, tmp30}
+        let {scrut13, scrut14, tmp32}
         if p1 is
           Exact then
-            tmp30 = p1.startsWith_Exact_sp_4(c)
+            tmp32 = p1.startsWith_Exact_sp_4(c)
           Concat then
-            tmp30 = p1.startsWith_Concat_sp_23(c)
-        if tmp30 is
+            tmp32 = p1.startsWith_Concat_sp_23(c)
+        if tmp32 is
           false then
             if p1 is
               Exact then
@@ -1644,9 +1664,9 @@ module StagedRegExp with
             false
           else true
       private fun startsWith_Concat_sp_23(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty()
             if scrut13 is
@@ -1658,13 +1678,13 @@ module StagedRegExp with
               else false
           else true
       private fun startsWith_Concat_sp_24(c) =
-        let {scrut13, scrut14, tmp30}
+        let {scrut13, scrut14, tmp32}
         if p1 is
           Concat then
-            tmp30 = p1.startsWith_Concat_sp_25(c)
+            tmp32 = p1.startsWith_Concat_sp_25(c)
           Concat then
-            tmp30 = p1.startsWith_Concat_sp_26(c)
-        if tmp30 is
+            tmp32 = p1.startsWith_Concat_sp_26(c)
+        if tmp32 is
           false then
             if p1 is
               Concat then
@@ -1674,13 +1694,13 @@ module StagedRegExp with
             false
           else true
       private fun startsWith_Concat_sp_25(c) =
-        let {scrut13, scrut14, tmp30}
+        let {scrut13, scrut14, tmp32}
         if p1 is
           Exact then
-            tmp30 = p1.startsWith_Exact_sp_4(c)
+            tmp32 = p1.startsWith_Exact_sp_4(c)
           Concat then
-            tmp30 = p1.startsWith_Concat_sp_23(c)
-        if tmp30 is
+            tmp32 = p1.startsWith_Concat_sp_23(c)
+        if tmp32 is
           false then
             if p1 is
               Exact then
@@ -1690,9 +1710,9 @@ module StagedRegExp with
             false
           else true
       private fun startsWith_Concat_sp_26(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty()
             if scrut13 is
@@ -1710,49 +1730,49 @@ module StagedRegExp with
               else false
           else true
       private fun startsWith_Concat_sp_3(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Exact_sp_0(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Exact_sp_0(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Exact_sp_0()
             false
           else true
       private fun startsWith_Concat_sp_4(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_5(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_5(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_5()
             false
           else true
       private fun startsWith_Concat_sp_5(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_6(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_6(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_6()
             false
           else true
       private fun startsWith_Concat_sp_6(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_In_sp_1(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_In_sp_1(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_In_sp_1()
             false
           else true
       private fun startsWith_Concat_sp_7(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Concat_sp_8(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Concat_sp_8(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Concat_sp_8()
             false
           else true
       private fun startsWith_Concat_sp_8(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Star_sp_1(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Star_sp_1(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Star_sp_1()
             scrut14 = p2.startsWith_Concat_sp_9(c)
@@ -1761,9 +1781,9 @@ module StagedRegExp with
               else false
           else true
       private fun startsWith_Concat_sp_9(c) =
-        let {scrut13, scrut14, tmp30}
-        tmp30 = p1.startsWith_Exact_sp_1(c)
-        if tmp30 is
+        let {scrut13, scrut14, tmp32}
+        tmp32 = p1.startsWith_Exact_sp_1(c)
+        if tmp32 is
           false then
             scrut13 = p1.canBeEmpty_Exact_sp_1()
             false
@@ -1772,11 +1792,11 @@ module StagedRegExp with
       ()
       fun canBeEmpty() = true
       fun derive(c) =
-        let {tmp31, tmp32, tmp33}
-        tmp31 = p.derive(c)
-        tmp32 = new Star.class(p)
-        tmp33 = new Concat(tmp31, tmp32)
-        tmp33.normalize_Concat_sp_1()
+        let {tmp33, tmp34, tmp35}
+        tmp33 = p.derive(c)
+        tmp34 = new Star.class(p)
+        tmp35 = new Concat(tmp33, tmp34)
+        tmp35.normalize_Concat_sp_1()
       fun eq(other) =
         let {p__, arg_Star_0_}
         if other is
@@ -1786,72 +1806,72 @@ module StagedRegExp with
             p.eq(p__)
           else false
       fun normalize() =
-        let {tmp34}
-        tmp34 = p.normalize()
-        new Star.class(tmp34)
+        let {tmp36}
+        tmp36 = p.normalize()
+        new Star.class(tmp36)
       fun startsWith(c) = p.startsWith(c)
       private fun canBeEmpty_Star_sp_0() = true
       private fun canBeEmpty_Star_sp_1() = true
       private fun derive_Star_sp_0(c) =
-        let {tmp31, tmp32, tmp33}
-        tmp31 = p.derive_In_sp_0(c)
-        tmp32 = new Star.class(p)
-        tmp33 = new Concat(tmp31, tmp32)
-        tmp33.normalize_Concat_sp_2()
+        let {tmp33, tmp34, tmp35}
+        tmp33 = p.derive_In_sp_0(c)
+        tmp34 = new Star.class(p)
+        tmp35 = new Concat(tmp33, tmp34)
+        tmp35.normalize_Concat_sp_2()
       private fun derive_Star_sp_1(c) =
-        let {tmp31, tmp32, tmp33}
-        tmp31 = p.derive_In_sp_1(c)
-        tmp32 = new Star.class(p)
-        tmp33 = new Concat(tmp31, tmp32)
-        tmp33.normalize_Concat_sp_9()
+        let {tmp33, tmp34, tmp35}
+        tmp33 = p.derive_In_sp_1(c)
+        tmp34 = new Star.class(p)
+        tmp35 = new Concat(tmp33, tmp34)
+        tmp35.normalize_Concat_sp_9()
       private fun normalize_Star_sp_0() =
-        let {tmp34}
-        tmp34 = p.normalize()
-        new Star.class(tmp34)
+        let {tmp36}
+        tmp36 = p.normalize()
+        new Star.class(tmp36)
       private fun normalize_Star_sp_1() =
-        let {tmp34}
-        tmp34 = p.normalize_In_sp_0()
-        new Star.class(tmp34)
+        let {tmp36}
+        tmp36 = p.normalize_In_sp_0()
+        new Star.class(tmp36)
       private fun normalize_Star_sp_2() =
-        let {tmp34}
-        tmp34 = p.normalize_In_sp_1()
-        new Star.class(tmp34)
+        let {tmp36}
+        tmp36 = p.normalize_In_sp_1()
+        new Star.class(tmp36)
       private fun normalize_Star_sp_3() =
-        let {tmp34}
-        tmp34 = p.normalize_Not_sp_0()
-        new Star.class(tmp34)
+        let {tmp36}
+        tmp36 = p.normalize_Not_sp_0()
+        new Star.class(tmp36)
       private fun normalize_Star_sp_4() =
-        let {tmp34}
-        tmp34 = p.normalize_Not_sp_1()
-        new Star.class(tmp34)
+        let {tmp36}
+        tmp36 = p.normalize_Not_sp_1()
+        new Star.class(tmp36)
       private fun normalize_Star_sp_5() =
-        let {tmp34}
-        tmp34 = p.normalize_In_sp_2()
-        new Star.class(tmp34)
+        let {tmp36}
+        tmp36 = p.normalize_In_sp_2()
+        new Star.class(tmp36)
       private fun startsWith_Star_sp_0(c) = p.startsWith_In_sp_0(c)
       private fun startsWith_Star_sp_1(c) = p.startsWith_In_sp_1(c)
     fun arrEq(arr1, arr2) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".eq(arr1, arr2)
     fun concat(lhs, rhs) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".concat(lhs, rhs)
     fun digits() =
-      let {tmp46, tup_8}
+      let {tmp51, tup_8}
       tup_8 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      tmp46 = tup_8
-      new In(tmp46)
+      tmp51 = tup_8
+      new In(tmp51)
     fun has(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
     fun len(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
     fun match(p, s) = matchImpl_StagedRegExp_sp_0(p, s, "")
     fun matchAll(p, s) =
-      let {tmp61}
-      tmp61 = []
-      matchAllImpl_StagedRegExp_sp_0(p, s, tmp61)
+      let {tmp66}
+      tmp66 = []
+      matchAllImpl_StagedRegExp_sp_0(p, s, tmp66)
     fun matchAllEmail(s) =
-      let {p7, email, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tup_9, tup_10, tup_11, obj_12, tup_13, obj_14, obj_15, obj_16}
+      let {p7, email, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tup_9, tup_10, tup_11, obj_12, tup_13, obj_14, obj_15, obj_16}
       tup_9 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-      tmp62 = tup_9
-      tmp63 = ["-", "."]
+      tmp67 = tup_9
+      tmp68 = ["-", "."]
       tup_10 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "."]
-      tmp64 = tup_10
-      tmp65 = new In(tmp64)
+      tmp69 = tup_10
+      tmp70 = new In(tmp69)
       tup_11 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "."]
       obj_12 = new In(tup_11)
       tup_13 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "."]
@@ -1859,51 +1879,51 @@ module StagedRegExp with
       obj_15 = new Star(obj_14)
       obj_16 = new Concat(obj_12, obj_15)
       p7 = obj_16
-      tmp66 = new Exact("@")
-      tmp67 = new Exact(".")
-      tmp68 = new Concat(tmp67, p7)
-      tmp69 = new Concat(p7, tmp68)
-      tmp70 = new Concat(tmp66, tmp69)
-      email = new Concat(p7, tmp70)
+      tmp71 = new Exact("@")
+      tmp72 = new Exact(".")
+      tmp73 = new Concat(tmp72, p7)
+      tmp74 = new Concat(p7, tmp73)
+      tmp75 = new Concat(tmp71, tmp74)
+      email = new Concat(p7, tmp75)
       matchAll_StagedRegExp_sp_0(email, s)
     fun matchAllIPv4(s) =
-      let {fo, fi, segment, ipv4, tmp97, tmp98, tmp99, tmp100, tmp101, tmp102, tmp103, tmp104, tmp105, tmp106, tmp107, tmp108, tmp109, tmp110, tmp111, tmp112, tmp113, tmp114, tmp115, tmp116, tmp117, tup_59, obj_60, obj_61, obj_62, obj_63, tup_64, obj_65, tup_66, obj_67, obj_68, obj_69, tup_70, obj_71, obj_157, obj_158, tup_159, obj_160, obj_161, obj_162, obj_163, tup_164, obj_165, tup_166, obj_167, obj_168, obj_169, obj_170, obj_171, obj_172, tup_173, obj_174, obj_175, obj_176, tup_177, obj_178, obj_179, obj_180, obj_181, obj_182, obj_183, obj_184, obj_185, obj_186, tup_187, obj_188, obj_189, obj_190, obj_191, tup_192, obj_193, tup_194, obj_195, obj_196, obj_197, obj_198, obj_199, obj_200, tup_201, obj_202, obj_203, obj_204, tup_205, obj_206, obj_207, obj_208, obj_209, obj_210, obj_211, obj_212, obj_213, obj_214, tup_215, obj_216, obj_217, obj_218, obj_219, tup_220, obj_221, tup_222, obj_223, obj_224, obj_225, obj_226, obj_227, obj_228, tup_229, obj_230, obj_231, obj_232, tup_233, obj_234, obj_235, obj_236, obj_237, obj_238, obj_239, obj_240, obj_241, obj_242}
-      tmp97 = ["0", "1", "2", "3", "4"]
-      fo = new In(tmp97)
-      tmp98 = ["0", "1", "2", "3", "4", "5"]
-      fi = new In(tmp98)
-      tmp99 = new Exact("2")
-      tmp100 = new Exact("5")
-      tmp101 = new Concat(tmp100, fi)
-      tmp102 = new Concat(tmp99, tmp101)
-      tmp103 = new Exact("2")
+      let {fo, fi, segment, ipv4, tmp102, tmp103, tmp104, tmp105, tmp106, tmp107, tmp108, tmp109, tmp110, tmp111, tmp112, tmp113, tmp114, tmp115, tmp116, tmp117, tmp118, tmp119, tmp120, tmp121, tmp122, tup_59, obj_60, obj_61, obj_62, obj_63, tup_64, obj_65, tup_66, obj_67, obj_68, obj_69, tup_70, obj_71, obj_157, obj_158, tup_159, obj_160, obj_161, obj_162, obj_163, tup_164, obj_165, tup_166, obj_167, obj_168, obj_169, obj_170, obj_171, obj_172, tup_173, obj_174, obj_175, obj_176, tup_177, obj_178, obj_179, obj_180, obj_181, obj_182, obj_183, obj_184, obj_185, obj_186, tup_187, obj_188, obj_189, obj_190, obj_191, tup_192, obj_193, tup_194, obj_195, obj_196, obj_197, obj_198, obj_199, obj_200, tup_201, obj_202, obj_203, obj_204, tup_205, obj_206, obj_207, obj_208, obj_209, obj_210, obj_211, obj_212, obj_213, obj_214, tup_215, obj_216, obj_217, obj_218, obj_219, tup_220, obj_221, tup_222, obj_223, obj_224, obj_225, obj_226, obj_227, obj_228, tup_229, obj_230, obj_231, obj_232, tup_233, obj_234, obj_235, obj_236, obj_237, obj_238, obj_239, obj_240, obj_241, obj_242}
+      tmp102 = ["0", "1", "2", "3", "4"]
+      fo = new In(tmp102)
+      tmp103 = ["0", "1", "2", "3", "4", "5"]
+      fi = new In(tmp103)
+      tmp104 = new Exact("2")
+      tmp105 = new Exact("5")
+      tmp106 = new Concat(tmp105, fi)
+      tmp107 = new Concat(tmp104, tmp106)
+      tmp108 = new Exact("2")
       tup_59 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
       obj_60 = new In(tup_59)
-      tmp104 = obj_60
-      tmp105 = new Concat(fo, tmp104)
-      tmp106 = new Concat(tmp103, tmp105)
-      tmp107 = new Exact("1")
+      tmp109 = obj_60
+      tmp110 = new Concat(fo, tmp109)
+      tmp111 = new Concat(tmp108, tmp110)
+      tmp112 = new Exact("1")
       obj_61 = new Exact("1")
       obj_62 = new Empty()
       obj_63 = new Union(obj_61, obj_62)
-      tmp108 = obj_63
+      tmp113 = obj_63
       tup_64 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
       obj_65 = new In(tup_64)
-      tmp109 = obj_65
+      tmp114 = obj_65
       tup_66 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
       obj_67 = new In(tup_66)
       obj_68 = new Empty()
       obj_69 = new Union(obj_67, obj_68)
-      tmp110 = obj_69
+      tmp115 = obj_69
       tup_70 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
       obj_71 = new In(tup_70)
-      tmp111 = obj_71
-      tmp112 = new Concat(tmp110, tmp111)
-      tmp113 = new Concat(tmp108, tmp112)
-      tmp114 = new Union(tmp106, tmp113)
-      segment = new Union(tmp102, tmp114)
-      tmp115 = new Exact(".")
-      tmp116 = new Concat(segment, tmp115)
+      tmp116 = obj_71
+      tmp117 = new Concat(tmp115, tmp116)
+      tmp118 = new Concat(tmp113, tmp117)
+      tmp119 = new Union(tmp111, tmp118)
+      segment = new Union(tmp107, tmp119)
+      tmp120 = new Exact(".")
+      tmp121 = new Concat(segment, tmp120)
       obj_157 = new Exact("2")
       obj_158 = new Exact("5")
       tup_159 = ["0", "1", "2", "3", "4", "5"]
@@ -1990,13 +2010,13 @@ module StagedRegExp with
       obj_240 = new Concat(obj_238, obj_239)
       obj_241 = new Concat(obj_212, obj_240)
       obj_242 = new Concat(obj_184, obj_241)
-      tmp117 = obj_242
-      ipv4 = new Concat(tmp117, segment)
+      tmp122 = obj_242
+      ipv4 = new Concat(tmp122, segment)
       matchAll_StagedRegExp_sp_2(ipv4, s)
     fun matchAllImpl(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2005,28 +2025,28 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl(p, tmp65, res)
     fun matchAllURI(s) =
-      let {n1, n2, n3, w, d, p8, head, body, params, uri, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91, tmp92, tmp93, tmp94, tmp95, tmp96, tup_19, obj_20, tup_21, obj_22, tup_23, tup_24, tup_25, tup_26, tup_27, obj_28, tup_29, obj_30, obj_31, obj_32, tup_33, obj_34, tup_35, obj_36, obj_37, obj_38, tup_39, obj_40, tup_41, obj_42, obj_43, obj_44, obj_45, tup_46, obj_47, obj_48, obj_49, obj_50, obj_51, obj_52, tup_53, obj_54, obj_55, obj_56, obj_57, obj_58}
-      tmp71 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-      n1 = new Not(tmp71)
-      tmp72 = ["?", "#", " ", "\n", "\t", "\r"]
-      n2 = new Not(tmp72)
-      tmp73 = ["#", " ", "\n", "\t", "\r"]
-      n3 = new Not(tmp73)
+      let {n1, n2, n3, w, d, p8, head, body, params, uri, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91, tmp92, tmp93, tmp94, tmp95, tmp96, tmp97, tmp98, tmp99, tmp100, tmp101, tup_19, obj_20, tup_21, obj_22, tup_23, tup_24, tup_25, tup_26, tup_27, obj_28, tup_29, obj_30, obj_31, obj_32, tup_33, obj_34, tup_35, obj_36, obj_37, obj_38, tup_39, obj_40, tup_41, obj_42, obj_43, obj_44, obj_45, tup_46, obj_47, obj_48, obj_49, obj_50, obj_51, obj_52, tup_53, obj_54, obj_55, obj_56, obj_57, obj_58}
+      tmp76 = ["/", "?", "#", " ", "\n", "\t", "\r"]
+      n1 = new Not(tmp76)
+      tmp77 = ["?", "#", " ", "\n", "\t", "\r"]
+      n2 = new Not(tmp77)
+      tmp78 = ["#", " ", "\n", "\t", "\r"]
+      n3 = new Not(tmp78)
       tup_19 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
       obj_20 = new In(tup_19)
       w = obj_20
@@ -2034,12 +2054,12 @@ module StagedRegExp with
       obj_22 = new In(tup_21)
       d = obj_22
       tup_23 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-      tmp74 = tup_23
+      tmp79 = tup_23
       tup_24 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      tmp75 = tup_24
-      tmp76 = ["-", "_"]
+      tmp80 = tup_24
+      tmp81 = ["-", "_"]
       tup_25 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-      tmp77 = tup_25
+      tmp82 = tup_25
       tup_26 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
       p8 = tup_26
       tup_27 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
@@ -2048,32 +2068,32 @@ module StagedRegExp with
       obj_30 = new In(tup_29)
       obj_31 = new Star(obj_30)
       obj_32 = new Concat(obj_28, obj_31)
-      tmp78 = obj_32
-      tmp79 = new Exact(":")
-      tmp80 = new Exact("/")
-      tmp81 = new Exact("/")
-      tmp82 = new Concat(tmp80, tmp81)
-      tmp83 = new Concat(tmp79, tmp82)
-      head = new Concat(tmp78, tmp83)
+      tmp83 = obj_32
+      tmp84 = new Exact(":")
+      tmp85 = new Exact("/")
+      tmp86 = new Exact("/")
+      tmp87 = new Concat(tmp85, tmp86)
+      tmp88 = new Concat(tmp84, tmp87)
+      head = new Concat(tmp83, tmp88)
       tup_33 = ["/", "?", "#", " ", "\n", "\t", "\r"]
       obj_34 = new Not(tup_33)
       tup_35 = ["/", "?", "#", " ", "\n", "\t", "\r"]
       obj_36 = new Not(tup_35)
       obj_37 = new Star(obj_36)
       obj_38 = new Concat(obj_34, obj_37)
-      tmp84 = obj_38
+      tmp89 = obj_38
       tup_39 = ["?", "#", " ", "\n", "\t", "\r"]
       obj_40 = new Not(tup_39)
       tup_41 = ["?", "#", " ", "\n", "\t", "\r"]
       obj_42 = new Not(tup_41)
       obj_43 = new Star(obj_42)
       obj_44 = new Concat(obj_40, obj_43)
-      tmp85 = obj_44
-      body = new Concat(tmp84, tmp85)
-      tmp86 = new Exact("?")
-      tmp87 = new In(p8)
-      tmp88 = new Star(tmp87)
-      tmp89 = new Concat(tmp86, tmp88)
+      tmp90 = obj_44
+      body = new Concat(tmp89, tmp90)
+      tmp91 = new Exact("?")
+      tmp92 = new In(p8)
+      tmp93 = new Star(tmp92)
+      tmp94 = new Concat(tmp91, tmp93)
       obj_45 = new Exact("?")
       tup_46 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
       obj_47 = new In(tup_46)
@@ -2081,11 +2101,11 @@ module StagedRegExp with
       obj_49 = new Concat(obj_45, obj_48)
       obj_50 = new Empty()
       obj_51 = new Union(obj_49, obj_50)
-      tmp90 = obj_51
-      tmp91 = new Exact("#")
-      tmp92 = new In(p8)
-      tmp93 = new Star(tmp92)
-      tmp94 = new Concat(tmp91, tmp93)
+      tmp95 = obj_51
+      tmp96 = new Exact("#")
+      tmp97 = new In(p8)
+      tmp98 = new Star(tmp97)
+      tmp99 = new Concat(tmp96, tmp98)
       obj_52 = new Exact("#")
       tup_53 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
       obj_54 = new In(tup_53)
@@ -2093,15 +2113,15 @@ module StagedRegExp with
       obj_56 = new Concat(obj_52, obj_55)
       obj_57 = new Empty()
       obj_58 = new Union(obj_56, obj_57)
-      tmp95 = obj_58
-      params = new Concat(tmp90, tmp95)
-      tmp96 = new Concat(body, params)
-      uri = new Concat(head, tmp96)
+      tmp100 = obj_58
+      params = new Concat(tmp95, tmp100)
+      tmp101 = new Concat(body, params)
+      uri = new Concat(head, tmp101)
       matchAll_StagedRegExp_sp_1(uri, s)
     fun matchImpl(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           scrut19 = p.canBeEmpty()
@@ -2116,76 +2136,80 @@ module StagedRegExp with
               scrut20 = p.startsWith(c18)
               if scrut20 is
                 true then
-                  tmp51 = p.derive(c18)
-                  tmp52 = s.slice(1)
-                  tmp53 = acc + c18
-                  matchImpl(tmp51, tmp52, tmp53)
+                  tmp56 = p.derive(c18)
+                  tmp57 = s.slice(1)
+                  tmp58 = acc + c18
+                  matchImpl(tmp56, tmp57, tmp58)
                 else
                   scrut21 = p.canBeEmpty()
                   if scrut21 is
                     true then new Some(acc)
                     else new None()
     fun mkUnion(arr, i, s) =
-      let {scrut15, scrut16, tmp38, tmp39, tmp40, tmp41, tmp42}
-      tmp38 = s - i
-      tmp39 = s - 1
-      scrut15 = ==(tmp38, tmp39)
+      let {scrut15, scrut16, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47}
+      tmp40 = s - i
+      tmp41 = s - 1
+      scrut15 = ==(tmp40, tmp41)
       if scrut15 is
-        true then arr.(i)
+        true then
+          tmp42 = s - i
+          arr.(tmp42)
         else
-          scrut16 = arr.(i)
+          tmp43 = s - i
+          scrut16 = arr.(tmp43)
           if scrut16 is
             Nothing then
-              tmp40 = i - 1
-              mkUnion(arr, tmp40, s)
+              tmp44 = i - 1
+              mkUnion(arr, tmp44, s)
             else
-              tmp41 = i - 1
-              tmp42 = mkUnion(arr, tmp41, s)
-              new Union(arr.(i), tmp42)
+              tmp45 = s - i
+              tmp46 = i - 1
+              tmp47 = mkUnion(arr, tmp46, s)
+              new Union(arr.(tmp45), tmp47)
     fun nTimes(r, i) =
-      let {scrut17, tmp47, tmp48}
+      let {scrut17, tmp52, tmp53}
       scrut17 = ==(i, 1)
       if scrut17 is
         true then r
         else
-          tmp47 = i - 1
-          tmp48 = nTimes(r, tmp47)
-          new Concat(r, tmp48)
+          tmp52 = i - 1
+          tmp53 = nTimes(r, tmp52)
+          new Concat(r, tmp53)
     fun notDigit() =
-      let {tmp37, tup_5}
+      let {tmp39, tup_5}
       tup_5 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      tmp37 = tup_5
-      new Not(tmp37)
+      tmp39 = tup_5
+      new Not(tmp39)
     fun notSpace() =
-      let {tmp36, tup_4}
+      let {tmp38, tup_4}
       tup_4 = [" ", "\n", "\t", "\r"]
-      tmp36 = tup_4
-      new Not(tmp36)
+      tmp38 = tup_4
+      new Not(tmp38)
     fun notWord() =
-      let {tmp35, tup_3}
+      let {tmp37, tup_3}
       tup_3 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-      tmp35 = tup_3
-      new Not(tmp35)
+      tmp37 = tup_3
+      new Not(tmp37)
     fun plus(r) =
-      let {tmp49}
-      tmp49 = new Star(r)
-      new Concat(r, tmp49)
+      let {tmp54}
+      tmp54 = new Star(r)
+      new Concat(r, tmp54)
     fun push(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(arr, ele)
     fun question(r) =
-      let {tmp43}
-      tmp43 = new Empty()
-      new Union(r, tmp43)
+      let {tmp48}
+      tmp48 = new Empty()
+      new Union(r, tmp48)
     fun setEq(s1, s2) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".setEq(s1, s2)
     fun spaces() =
-      let {tmp45, tup_7}
+      let {tmp50, tup_7}
       tup_7 = [" ", "\n", "\t", "\r"]
-      tmp45 = tup_7
-      new In(tmp45)
+      tmp50 = tup_7
+      new In(tmp50)
     fun words() =
-      let {tmp44, tup_6}
+      let {tmp49, tup_6}
       tup_6 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-      tmp44 = tup_6
-      new In(tmp44)
+      tmp49 = tup_6
+      new In(tmp49)
     private fun has_StagedRegExp_sp_0(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
     private fun has_StagedRegExp_sp_1(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
     private fun has_StagedRegExp_sp_2(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
@@ -2199,9 +2223,9 @@ module StagedRegExp with
     private fun len_StagedRegExp_sp_6(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
     private fun len_StagedRegExp_sp_7(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
     private fun matchAllImpl_StagedRegExp_sp_0(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2210,24 +2234,24 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_0(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl_StagedRegExp_sp_0(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_0(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_0(p, tmp65, res)
     private fun matchAllImpl_StagedRegExp_sp_1(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2236,24 +2260,24 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_2(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl_StagedRegExp_sp_2(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_1(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl_StagedRegExp_sp_1(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_1(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_1(p, tmp65, res)
     private fun matchAllImpl_StagedRegExp_sp_2(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2262,24 +2286,24 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_2(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl_StagedRegExp_sp_2(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_2(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl_StagedRegExp_sp_2(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_2(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_2(p, tmp65, res)
     private fun matchAllImpl_StagedRegExp_sp_3(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2288,24 +2312,24 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_4(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl_StagedRegExp_sp_4(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_3(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl_StagedRegExp_sp_3(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_3(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_3(p, tmp65, res)
     private fun matchAllImpl_StagedRegExp_sp_4(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2314,24 +2338,24 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_4(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl_StagedRegExp_sp_4(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_4(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl_StagedRegExp_sp_4(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_4(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_4(p, tmp65, res)
     private fun matchAllImpl_StagedRegExp_sp_5(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2340,24 +2364,24 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_6(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl_StagedRegExp_sp_6(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_5(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl_StagedRegExp_sp_5(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_5(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_5(p, tmp65, res)
     private fun matchAllImpl_StagedRegExp_sp_6(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp54, arg_Some_0_, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60}
-      tmp54 = len(s)
-      scrut22 = ==(tmp54, 0)
+      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+      tmp59 = len(s)
+      scrut22 = ==(tmp59, 0)
       if scrut22 is
         true then res
         else
@@ -2366,36 +2390,36 @@ module StagedRegExp with
             Some then
               arg_Some_0_ = scrut23.x
               ss = arg_Some_0_
-              tmp55 = len(ss)
-              scrut24 = >(tmp55, 0)
+              tmp60 = len(ss)
+              scrut24 = >(tmp60, 0)
               if scrut24 is
                 true then
-                  tmp56 = len(ss)
-                  tmp57 = s.slice(tmp56)
-                  tmp58 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_6(p, tmp57, tmp58)
+                  tmp61 = len(ss)
+                  tmp62 = s.slice(tmp61)
+                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl_StagedRegExp_sp_6(p, tmp62, tmp63)
                 else
-                  tmp59 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_6(p, tmp59, res)
+                  tmp64 = s.slice(1)
+                  matchAllImpl_StagedRegExp_sp_6(p, tmp64, res)
             else
-              tmp60 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_6(p, tmp60, res)
+              tmp65 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_6(p, tmp65, res)
     private fun matchAll_StagedRegExp_sp_0(p, s) =
-      let {tmp61}
-      tmp61 = []
-      matchAllImpl_StagedRegExp_sp_1(p, s, tmp61)
+      let {tmp66}
+      tmp66 = []
+      matchAllImpl_StagedRegExp_sp_1(p, s, tmp66)
     private fun matchAll_StagedRegExp_sp_1(p, s) =
-      let {tmp61}
-      tmp61 = []
-      matchAllImpl_StagedRegExp_sp_3(p, s, tmp61)
+      let {tmp66}
+      tmp66 = []
+      matchAllImpl_StagedRegExp_sp_3(p, s, tmp66)
     private fun matchAll_StagedRegExp_sp_2(p, s) =
-      let {tmp61}
-      tmp61 = []
-      matchAllImpl_StagedRegExp_sp_5(p, s, tmp61)
+      let {tmp66}
+      tmp66 = []
+      matchAllImpl_StagedRegExp_sp_5(p, s, tmp66)
     private fun matchImpl_StagedRegExp_sp_0(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           scrut19 = p.canBeEmpty()
@@ -2410,19 +2434,19 @@ module StagedRegExp with
               scrut20 = p.startsWith(c18)
               if scrut20 is
                 true then
-                  tmp51 = p.derive(c18)
-                  tmp52 = s.slice(1)
-                  tmp53 = "" + c18
-                  matchImpl(tmp51, tmp52, tmp53)
+                  tmp56 = p.derive(c18)
+                  tmp57 = s.slice(1)
+                  tmp58 = "" + c18
+                  matchImpl(tmp56, tmp57, tmp58)
                 else
                   scrut21 = p.canBeEmpty()
                   if scrut21 is
                     true then new Some(acc)
                     else new None()
     private fun matchImpl_StagedRegExp_sp_1(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           scrut19 = p.canBeEmpty_Concat_sp_0()
@@ -2432,17 +2456,17 @@ module StagedRegExp with
           scrut20 = p.startsWith_Concat_sp_0(c18)
           if scrut20 is
             true then
-              tmp51 = p.derive_Concat_sp_0(c18)
-              tmp52 = s.slice(1)
-              tmp53 = "" + c18
-              matchImpl_StagedRegExp_sp_2(tmp51, tmp52, tmp53)
+              tmp56 = p.derive_Concat_sp_0(c18)
+              tmp57 = s.slice(1)
+              tmp58 = "" + c18
+              matchImpl_StagedRegExp_sp_2(tmp56, tmp57, tmp58)
             else
               scrut21 = p.canBeEmpty_Concat_sp_0()
               new None()
     private fun matchImpl_StagedRegExp_sp_2(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           if p is
@@ -2459,17 +2483,17 @@ module StagedRegExp with
               scrut20 = p.startsWith_Concat_sp_2(c18)
               if scrut20 is
                 true then
-                  tmp51 = p.derive_Concat_sp_2(c18)
-                  tmp52 = s.slice(1)
-                  tmp53 = acc + c18
-                  matchImpl(tmp51, tmp52, tmp53)
+                  tmp56 = p.derive_Concat_sp_2(c18)
+                  tmp57 = s.slice(1)
+                  tmp58 = acc + c18
+                  matchImpl(tmp56, tmp57, tmp58)
                 else
                   scrut21 = p.canBeEmpty_Concat_sp_2()
                   new None()
     private fun matchImpl_StagedRegExp_sp_3(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           scrut19 = p.canBeEmpty_Concat_sp_4()
@@ -2479,17 +2503,17 @@ module StagedRegExp with
           scrut20 = p.startsWith_Concat_sp_4(c18)
           if scrut20 is
             true then
-              tmp51 = p.derive_Concat_sp_4(c18)
-              tmp52 = s.slice(1)
-              tmp53 = "" + c18
-              matchImpl_StagedRegExp_sp_4(tmp51, tmp52, tmp53)
+              tmp56 = p.derive_Concat_sp_4(c18)
+              tmp57 = s.slice(1)
+              tmp58 = "" + c18
+              matchImpl_StagedRegExp_sp_4(tmp56, tmp57, tmp58)
             else
               scrut21 = p.canBeEmpty_Concat_sp_4()
               new None()
     private fun matchImpl_StagedRegExp_sp_4(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           if p is
@@ -2506,17 +2530,17 @@ module StagedRegExp with
               scrut20 = p.startsWith_Concat_sp_7(c18)
               if scrut20 is
                 true then
-                  tmp51 = p.derive_Concat_sp_7(c18)
-                  tmp52 = s.slice(1)
-                  tmp53 = acc + c18
-                  matchImpl_StagedRegExp_sp_5(tmp51, tmp52, tmp53)
+                  tmp56 = p.derive_Concat_sp_7(c18)
+                  tmp57 = s.slice(1)
+                  tmp58 = acc + c18
+                  matchImpl_StagedRegExp_sp_5(tmp56, tmp57, tmp58)
                 else
                   scrut21 = p.canBeEmpty_Concat_sp_7()
                   new None()
     private fun matchImpl_StagedRegExp_sp_5(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           if p is
@@ -2541,12 +2565,12 @@ module StagedRegExp with
                 true then
                   if p is
                     Concat then
-                      tmp51 = p.derive_Concat_sp_10(c18)
+                      tmp56 = p.derive_Concat_sp_10(c18)
                     Concat then
-                      tmp51 = p.derive_Concat_sp_13(c18)
-                  tmp52 = s.slice(1)
-                  tmp53 = acc + c18
-                  matchImpl(tmp51, tmp52, tmp53)
+                      tmp56 = p.derive_Concat_sp_13(c18)
+                  tmp57 = s.slice(1)
+                  tmp58 = acc + c18
+                  matchImpl(tmp56, tmp57, tmp58)
                 else
                   if p is
                     Concat then
@@ -2555,9 +2579,9 @@ module StagedRegExp with
                       scrut21 = p.canBeEmpty_Concat_sp_13()
                   new None()
     private fun matchImpl_StagedRegExp_sp_6(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           scrut19 = p.canBeEmpty_Concat_sp_14()
@@ -2567,17 +2591,17 @@ module StagedRegExp with
           scrut20 = p.startsWith_Concat_sp_14(c18)
           if scrut20 is
             true then
-              tmp51 = p.derive_Concat_sp_14(c18)
-              tmp52 = s.slice(1)
-              tmp53 = "" + c18
-              matchImpl_StagedRegExp_sp_7(tmp51, tmp52, tmp53)
+              tmp56 = p.derive_Concat_sp_14(c18)
+              tmp57 = s.slice(1)
+              tmp58 = "" + c18
+              matchImpl_StagedRegExp_sp_7(tmp56, tmp57, tmp58)
             else
               scrut21 = p.canBeEmpty_Concat_sp_14()
               new None()
     private fun matchImpl_StagedRegExp_sp_7(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           if p is
@@ -2596,17 +2620,17 @@ module StagedRegExp with
               scrut20 = p.startsWith_Concat_sp_21(c18)
               if scrut20 is
                 true then
-                  tmp51 = p.derive_Concat_sp_21(c18)
-                  tmp52 = s.slice(1)
-                  tmp53 = acc + c18
-                  matchImpl_StagedRegExp_sp_8(tmp51, tmp52, tmp53)
+                  tmp56 = p.derive_Concat_sp_21(c18)
+                  tmp57 = s.slice(1)
+                  tmp58 = acc + c18
+                  matchImpl_StagedRegExp_sp_8(tmp56, tmp57, tmp58)
                 else
                   scrut21 = p.canBeEmpty_Concat_sp_21()
                   new None()
     private fun matchImpl_StagedRegExp_sp_8(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp50, tmp51, tmp52, tmp53}
-      tmp50 = len(s)
-      scrut18 = ==(tmp50, 0)
+      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+      tmp55 = len(s)
+      scrut18 = ==(tmp55, 0)
       if scrut18 is
         true then
           if p is
@@ -2625,10 +2649,10 @@ module StagedRegExp with
               scrut20 = p.startsWith_Concat_sp_24(c18)
               if scrut20 is
                 true then
-                  tmp51 = p.derive_Concat_sp_24(c18)
-                  tmp52 = s.slice(1)
-                  tmp53 = acc + c18
-                  matchImpl(tmp51, tmp52, tmp53)
+                  tmp56 = p.derive_Concat_sp_24(c18)
+                  tmp57 = s.slice(1)
+                  tmp58 = acc + c18
+                  matchImpl(tmp56, tmp57, tmp58)
                 else
                   scrut21 = p.canBeEmpty_Concat_sp_24()
                   new None()
@@ -2636,9 +2660,9 @@ module StagedRegExp with
     private fun match_StagedRegExp_sp_1(p, s) = matchImpl_StagedRegExp_sp_3(p, s, "")
     private fun match_StagedRegExp_sp_2(p, s) = matchImpl_StagedRegExp_sp_6(p, s, "")
     private fun nTimes_StagedRegExp_sp_0(r, i) =
-      let {scrut17, tmp47, tmp48, obj_100, obj_101, tup_102, obj_103, obj_104, obj_105, obj_106, tup_107, obj_108, tup_109, obj_110, obj_111, obj_112, obj_113, obj_114, obj_115, tup_116, obj_117, obj_118, obj_119, tup_120, obj_121, obj_122, obj_123, obj_124, obj_125, obj_126, obj_127, obj_128, obj_129, tup_130, obj_131, obj_132, obj_133, obj_134, tup_135, obj_136, tup_137, obj_138, obj_139, obj_140, obj_141, obj_142, obj_143, tup_144, obj_145, obj_146, obj_147, tup_148, obj_149, obj_150, obj_151, obj_152, obj_153, obj_154, obj_155, obj_156}
+      let {scrut17, tmp52, tmp53, obj_100, obj_101, tup_102, obj_103, obj_104, obj_105, obj_106, tup_107, obj_108, tup_109, obj_110, obj_111, obj_112, obj_113, obj_114, obj_115, tup_116, obj_117, obj_118, obj_119, tup_120, obj_121, obj_122, obj_123, obj_124, obj_125, obj_126, obj_127, obj_128, obj_129, tup_130, obj_131, obj_132, obj_133, obj_134, tup_135, obj_136, tup_137, obj_138, obj_139, obj_140, obj_141, obj_142, obj_143, tup_144, obj_145, obj_146, obj_147, tup_148, obj_149, obj_150, obj_151, obj_152, obj_153, obj_154, obj_155, obj_156}
       scrut17 = false
-      tmp47 = 2
+      tmp52 = 2
       obj_100 = new Exact("2")
       obj_101 = new Exact("5")
       tup_102 = ["0", "1", "2", "3", "4", "5"]
@@ -2696,12 +2720,12 @@ module StagedRegExp with
       obj_154 = new Exact(".")
       obj_155 = new Concat(obj_153, obj_154)
       obj_156 = new Concat(obj_127, obj_155)
-      tmp48 = obj_156
-      new Concat(r, tmp48)
+      tmp53 = obj_156
+      new Concat(r, tmp53)
     private fun nTimes_StagedRegExp_sp_1(r, i) =
-      let {scrut17, tmp47, tmp48, obj_72, obj_73, tup_74, obj_75, obj_76, obj_77, obj_78, tup_79, obj_80, tup_81, obj_82, obj_83, obj_84, obj_85, obj_86, obj_87, tup_88, obj_89, obj_90, obj_91, tup_92, obj_93, obj_94, obj_95, obj_96, obj_97, obj_98, obj_99}
+      let {scrut17, tmp52, tmp53, obj_72, obj_73, tup_74, obj_75, obj_76, obj_77, obj_78, tup_79, obj_80, tup_81, obj_82, obj_83, obj_84, obj_85, obj_86, obj_87, tup_88, obj_89, obj_90, obj_91, tup_92, obj_93, obj_94, obj_95, obj_96, obj_97, obj_98, obj_99}
       scrut17 = false
-      tmp47 = 1
+      tmp52 = 1
       obj_72 = new Exact("2")
       obj_73 = new Exact("5")
       tup_74 = ["0", "1", "2", "3", "4", "5"]
@@ -2730,41 +2754,41 @@ module StagedRegExp with
       obj_97 = new Union(obj_77, obj_96)
       obj_98 = new Exact(".")
       obj_99 = new Concat(obj_97, obj_98)
-      tmp48 = obj_99
-      new Concat(r, tmp48)
+      tmp53 = obj_99
+      new Concat(r, tmp53)
     private fun nTimes_StagedRegExp_sp_2(r, i) =
-      let {scrut17, tmp47, tmp48}
+      let {scrut17, tmp52, tmp53}
       scrut17 = true
       r
     private fun plus_StagedRegExp_sp_0(r) =
-      let {tmp49}
-      tmp49 = new Star(r)
-      new Concat(r, tmp49)
+      let {tmp54}
+      tmp54 = new Star(r)
+      new Concat(r, tmp54)
     private fun plus_StagedRegExp_sp_1(r) =
-      let {tmp49}
-      tmp49 = new Star(r)
-      new Concat(r, tmp49)
+      let {tmp54}
+      tmp54 = new Star(r)
+      new Concat(r, tmp54)
     private fun plus_StagedRegExp_sp_2(r) =
-      let {tmp49}
-      tmp49 = new Star(r)
-      new Concat(r, tmp49)
+      let {tmp54}
+      tmp54 = new Star(r)
+      new Concat(r, tmp54)
     private fun plus_StagedRegExp_sp_3(r) =
-      let {tmp49}
-      tmp49 = new Star(r)
-      new Concat(r, tmp49)
+      let {tmp54}
+      tmp54 = new Star(r)
+      new Concat(r, tmp54)
     private fun question_StagedRegExp_sp_0(r) =
-      let {tmp43}
-      tmp43 = new Empty()
-      new Union(r, tmp43)
+      let {tmp48}
+      tmp48 = new Empty()
+      new Union(r, tmp48)
     private fun question_StagedRegExp_sp_1(r) =
-      let {tmp43}
-      tmp43 = new Empty()
-      new Union(r, tmp43)
+      let {tmp48}
+      tmp48 = new Empty()
+      new Union(r, tmp48)
     private fun question_StagedRegExp_sp_2(r) =
-      let {tmp43}
-      tmp43 = new Empty()
-      new Union(r, tmp43)
+      let {tmp48}
+      tmp48 = new Empty()
+      new Union(r, tmp48)
     private fun question_StagedRegExp_sp_3(r) =
-      let {tmp43}
-      tmp43 = new Empty()
-      new Union(r, tmp43)
+      let {tmp48}
+      tmp48 = new Empty()
+      new Union(r, tmp48)
