@@ -124,6 +124,10 @@ class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id)
 
     k(newDefn)
 
+// replaces VarSymbols using map
+class VarSymSubst(map: Map[VarSymbol, VarSymbol]) extends SymbolSubst:
+  override def mapVarSym(l: VarSymbol): VarSymbol = map.getOrElse(l, l)
+
 // transform Block to Block IR so that it can be instrumented in mlscript
 class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(SymbolSubst.Id):
   import Helpers._
@@ -473,19 +477,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   def stageCtor(ctorFun: FunDefn): FunDefn = 
     // refresh VarSymbols for ctor
     val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id))).flatten.toMap
-    val varSymSubst = new SymbolSubst():
-      // refresh symbols after copying parameter list
-      override def mapVarSym(l: VarSymbol): VarSymbol = paramSymMap.getOrElse(l, l)
-    val paramRewrite = new BlockTransformer(varSymSubst) //:
-      // override def applyScopedBlock(b: Block) = b match
-      //   case Scoped(s, bd) =>
-      //     val nb = applySubBlock(bd)
-      //     val ns = s.map({
-      //       case sym: LocalVarSymbol => applySimpleSymbol(sym)
-      //       case sym: BlockMemberSymbol => applyImportSymbol(sym)
-      //     })
-      //     if (nb is bd) && (s is ns) then b else Scoped(ns, nb)
-        // case _ => applySubBlock(b)
+    // refresh symbols after copying parameter list
+    val paramRewrite = new BlockTransformer(VarSymSubst(paramSymMap))
     stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(true))
 
   case class StagingCfg(ownerSym: DefinitionSymbol[? <: ClassLikeDef] & InnerSymbol, modSym: InnerSymbol, nestedPropagates: Ls[Path], codegenClasses: Ls[BlockMemberSymbol]):
@@ -699,10 +692,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           val symMap = entryFun.params.flatMap(_.params.map(_.sym))
             .zip(companionFun.params.flatMap(_.params.map(_.sym)))
             .toMap
-          val transformer = new BlockTransformer(new SymbolSubst():
-            override def mapVarSym(l: VarSymbol): VarSymbol = symMap.getOrElse(l, l)
-          )
-          val combinedBody = Begin(companionFun.body, transformer.applyBlock(entryFun.body))
+          val paramRewrite = new BlockTransformer(VarSymSubst(symMap))
+          val combinedBody = Begin(companionFun.body, paramRewrite.applyBlock(entryFun.body))
           companionFun.copy(body = combinedBody)(companionFun.configOverride, companionFun.annotations)
         case _ =>
           raise(ErrorReport(msg"There shouldn't be more than one entry function generated in a module." -> N :: Nil))
