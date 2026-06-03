@@ -71,12 +71,6 @@ class FirstClassFunctionTransformer
         k(p)
     case _ => k(p)
 
-  private def pathStartsWith(p: Path, symbol: Local): Bool = p match
-    case r: Value.Ref => r.symbol is symbol
-    case Select(p, _) => pathStartsWith(p, symbol)
-    case DynSelect(p, _, _) => pathStartsWith(p, symbol)
-    case _ => false
-
   override def applyResult(r: Result)(k: Result => Block): Block = r match
     case c @ Call(fun, argss) => applyListOf(argss, (args, k2) => applyArgs(args)(k2)): argss2 =>
       def call(f: Path) = Call(f, argss2.ne_!)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall)
@@ -122,7 +116,7 @@ class FirstClassFunctionTransformer
 
 
 class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSubst()):
-  private val contMap = HashMap.empty[Symbol, Symbol]
+  private val contMap = HashMap.empty[LabelSymbol, BlockMemberSymbol]
 
   override def applyBlock(b: Block): Block = b match
     case Label(label, false, body, rest) =>
@@ -131,6 +125,6 @@ class LabelTransformer(using State, Raise) extends BlockTransformer(new SymbolSu
       contMap.addOne(label -> contSym)
       super.applyBlock(Scoped(Set(contSym), Define(contFun, body)))
     case Break(label) => contMap.get(label) match
-      case Some(sym: Symbol) => Return(Call(Value.Ref(sym, N), Nil ne_:: Nil)(true, false, false))
+      case S(sym) => Return(Call(sym.asPath, Nil ne_:: Nil)(true, false, false))
       case _ => super.applyBlock(b)
     case _ => super.applyBlock(b)
