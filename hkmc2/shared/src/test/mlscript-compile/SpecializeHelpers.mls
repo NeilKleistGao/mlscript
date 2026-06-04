@@ -61,7 +61,10 @@ class Ctx(
     staticCallCtx.set(key, entry)
     this
   fun clone = Ctx(new Map(ctx), new Map(valDefnCtx), new Map(staticCallCtx), allocs, thisShape)
-  fun clearCtx = Ctx(new Map(), new Map(), new Map(staticCallCtx), allocs, thisShape)
+  // For propagation of instantiation of derived class,
+  // we need to keep track of fields defined in parent class,
+  // which is stored in valDefnCtx
+  fun clearCtx = Ctx(new Map(), valDefnCtx, new Map(staticCallCtx), allocs, thisShape)
   fun sub(other: Ctx) =
     let res = new Map()
     fun otherIsBot(ps) =
@@ -360,13 +363,9 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
     let genMap = value.(mapPropName)
     not (genMap is undefined) and
       let f_gen = genMap.get(fld)
-      not (f_gen is Runtime.Unit) and  // staged function
+      not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
-        staticSet(res.1) then
-          let v2p = shapeset2path(res.1, ctx.allocs)
-          [v2p.0, v2p.1, res.1]
-        else
-          [End(), Call(Select(ValueThis(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
+        [End(), Call(Select(ValueThis(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
       else
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
     argShapes.every(staticSet) and // non staged function and params known
@@ -603,8 +602,8 @@ fun specializeName(cache, funName, isMethod, ps, shapes) =
 
 fun isStaticShapePath(s: Shape) = if s is
   Lit(_) then true
-  Arr(shapes) then shapes.every(x => x is Lit)
-  Class(_, fields) then fields.every(x => x is Lit)
+  // Arr(shapes) then shapes.every(x => x is Lit)
+  // Class(_, fields) then fields.every(x => x is Lit)
   else false
 
 fun isStaticSetPath(ss: ShapeSet) =
