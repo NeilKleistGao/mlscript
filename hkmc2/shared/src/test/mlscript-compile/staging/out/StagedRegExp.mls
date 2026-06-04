@@ -39,17 +39,6 @@ module StagedRegExp with
           else false
       fun normalize() = this
       fun startsWith(c) = false
-      private fun canBeEmpty_Nothing_sp_0() = false
-      private fun derive_Nothing_sp_0(c) =
-        let {obj_244}
-        obj_244 = new Nothing()
-        obj_244
-      private fun normalize_Nothing_sp_0() =
-        let {obj_18}
-        obj_18 = new Nothing()
-        obj_18
-      private fun normalize_Nothing_sp_1() = this
-      private fun startsWith_Nothing_sp_0(c) = false
     class Empty() extends RegExp() with
       ()
       fun canBeEmpty() = true
@@ -63,16 +52,6 @@ module StagedRegExp with
           else false
       fun normalize() = this
       fun startsWith(c) = false
-      private fun canBeEmpty_Empty_sp_0() = true
-      private fun derive_Empty_sp_0(c) =
-        let {obj_243}
-        obj_243 = new Nothing()
-        obj_243
-      private fun normalize_Empty_sp_0() =
-        let {obj_17}
-        obj_17 = new Empty()
-        obj_17
-      private fun startsWith_Empty_sp_0(c) = false
     class Exact(val ch) extends RegExp() with
       ()
       fun canBeEmpty() = false
@@ -92,55 +71,6 @@ module StagedRegExp with
           else false
       fun normalize() = this
       fun startsWith(c) = ==(ch, c)
-      private fun canBeEmpty_Exact_sp_0() = false
-      private fun canBeEmpty_Exact_sp_1() = false
-      private fun canBeEmpty_Exact_sp_2() = false
-      private fun canBeEmpty_Exact_sp_3() = false
-      private fun canBeEmpty_Exact_sp_4() = false
-      private fun derive_Exact_sp_0(c) =
-        let {scrut2}
-        scrut2 = startsWith(c)
-        if scrut2 is
-          true then new Empty()
-          else new Nothing()
-      private fun derive_Exact_sp_1(c) =
-        let {scrut2}
-        scrut2 = startsWith(c)
-        if scrut2 is
-          true then new Empty()
-          else new Nothing()
-      private fun derive_Exact_sp_2(c) =
-        let {scrut2}
-        scrut2 = startsWith(c)
-        if scrut2 is
-          true then new Empty()
-          else new Nothing()
-      private fun derive_Exact_sp_3(c) =
-        let {scrut2}
-        scrut2 = startsWith(c)
-        if scrut2 is
-          true then new Empty()
-          else new Nothing()
-      private fun derive_Exact_sp_4(c) =
-        let {scrut2}
-        scrut2 = startsWith(c)
-        if scrut2 is
-          true then new Empty()
-          else new Nothing()
-      private fun normalize_Exact_sp_0() = this
-      private fun normalize_Exact_sp_1() = this
-      private fun normalize_Exact_sp_2() = this
-      private fun normalize_Exact_sp_3() = this
-      private fun normalize_Exact_sp_4() = this
-      private fun normalize_Exact_sp_5() = this
-      private fun normalize_Exact_sp_6() = this
-      private fun normalize_Exact_sp_7() = this
-      private fun normalize_Exact_sp_8() = this
-      private fun startsWith_Exact_sp_0(c) = ==("@", c)
-      private fun startsWith_Exact_sp_1(c) = ==(":", c)
-      private fun startsWith_Exact_sp_2(c) = ==("2", c)
-      private fun startsWith_Exact_sp_3(c) = ==("1", c)
-      private fun startsWith_Exact_sp_4(c) = ==(".", c)
     class Any() extends RegExp() with
       ()
       fun canBeEmpty() = false
@@ -176,19 +106,6 @@ module StagedRegExp with
         let {tmp5}
         tmp5 = has(chars, c)
         not tmp5
-      private fun canBeEmpty_Not_sp_0() = false
-      private fun derive_Not_sp_0(c) =
-        let {scrut3}
-        scrut3 = startsWith(c)
-        if scrut3 is
-          true then new Empty()
-          else new Nothing()
-      private fun normalize_Not_sp_0() = this
-      private fun normalize_Not_sp_1() = this
-      private fun startsWith_Not_sp_0(c) =
-        let {tmp5}
-        tmp5 = has_StagedRegExp_sp_2(chars, c)
-        not tmp5
     class Union(val p1, val p2) extends RegExp() with
       ()
       fun canBeEmpty() =
@@ -202,7 +119,7 @@ module StagedRegExp with
         tmp6 = p1.derive(c)
         tmp7 = p2.derive(c)
         tmp8 = new Union.class(tmp6, tmp7)
-        tmp8.normalize_Union_sp_0()
+        normalize_Union_sp_0(tmp8)
       fun eq(other) =
         let {n, tmp23, tmp24, tmp25}
         n = other.normalize()
@@ -210,7 +127,7 @@ module StagedRegExp with
           Union then
             tmp23 = normalize()
             tmp24 = tmp23.flat()
-            tmp25 = n.flat_Union_sp_0()
+            tmp25 = flat_Union_sp_0(n)
             setEq(tmp24, tmp25)
           else false
       fun flat() =
@@ -247,13 +164,13 @@ module StagedRegExp with
         p2__1 = p2.normalize()
         if p1__1 is
           Union then
-            tmp16 = p1__1.flat_Union_sp_0()
+            tmp16 = flat_Union_sp_0(p1__1)
           else
             tmp16 = [p1__1]
         arr11 = tmp16
         if p2__1 is
           Union then
-            tmp17 = p2__1.flat_Union_sp_0()
+            tmp17 = flat_Union_sp_0(p2__1)
           else
             tmp17 = [p2__1]
         arr2 = tmp17
@@ -269,419 +186,6 @@ module StagedRegExp with
         tmp26 = p1.startsWith(c)
         if tmp26 is
           false then p2.startsWith(c)
-          else true
-      private fun canBeEmpty_Union_sp_0() = false
-      private fun canBeEmpty_Union_sp_1() = false
-      private fun canBeEmpty_Union_sp_2() = true
-      private fun canBeEmpty_Union_sp_3() = true
-      private fun derive_Union_sp_0(c) =
-        let {tmp6, tmp7, tmp8}
-        tmp6 = p1.derive_Concat_sp_17(c)
-        tmp7 = p2.derive_Union_sp_1(c)
-        tmp8 = new Union.class(tmp6, tmp7)
-        tmp8.normalize_Union_sp_12()
-      private fun derive_Union_sp_1(c) =
-        let {tmp6, tmp7, tmp8}
-        tmp6 = p1.derive_Concat_sp_18(c)
-        tmp7 = p2.derive_Concat_sp_19(c)
-        tmp8 = new Union.class(tmp6, tmp7)
-        tmp8.normalize_Union_sp_11()
-      private fun derive_Union_sp_2(c) =
-        let {tmp6, tmp7, tmp8}
-        tmp6 = p1.derive_Exact_sp_3(c)
-        tmp7 = p2.derive_Empty_sp_0(c)
-        tmp8 = new Union.class(tmp6, tmp7)
-        tmp8.normalize_Union_sp_7()
-      private fun derive_Union_sp_3(c) =
-        let {tmp6, tmp7, tmp8}
-        tmp6 = p1.derive_In_sp_2(c)
-        tmp7 = p2.derive_Empty_sp_0(c)
-        tmp8 = new Union.class(tmp6, tmp7)
-        tmp8.normalize_Union_sp_7()
-      private fun flat_Union_sp_0() =
-        let {p1__, scrut4, p2__, scrut5, tmp10, tmp11}
-        scrut4 = p1
-        if scrut4 is
-          Union then
-            tmp10 = p1.flat()
-          else
-            tmp10 = [p1]
-        p1__ = tmp10
-        scrut5 = p2
-        if scrut5 is
-          Union then
-            tmp11 = p2.flat()
-          else
-            tmp11 = [p2]
-        p2__ = tmp11
-        concat(p1__, p2__)
-      private fun normalize_Union_sp_0() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize()
-        p2__1 = p2.normalize()
-        if p1__1 is
-          Union then
-            tmp16 = p1__1.flat_Union_sp_0()
-          else
-            tmp16 = [p1__1]
-        arr11 = tmp16
-        if p2__1 is
-          Union then
-            tmp17 = p2__1.flat_Union_sp_0()
-          else
-            tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len(arr2)
-        tmp20 = len(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_1() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_0()
-        p2__1 = p2.normalize()
-        if p1__1 is
-          Union then
-            tmp16 = p1__1.flat_Union_sp_0()
-          else
-            tmp16 = [p1__1]
-        arr11 = tmp16
-        if p2__1 is
-          Union then
-            tmp17 = p2__1.flat_Union_sp_0()
-          else
-            tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len(arr2)
-        tmp20 = len(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_10() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_In_sp_5()
-        p2__1 = p2.normalize_Empty_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = 1
-        tmp20 = 1
-        s2 = iter(tmp18, arr2, 1, 1)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_11() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        if p1 is
-          Concat then
-            p1__1 = p1.normalize_Concat_sp_33()
-          Nothing then
-            p1__1 = p1.normalize_Nothing_sp_0()
-        p2__1 = p2.normalize()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        if p2__1 is
-          Union then
-            tmp17 = p2__1.flat_Union_sp_0()
-          else
-            tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len(arr2)
-        tmp20 = len(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_12() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        if p1 is
-          Concat then
-            p1__1 = p1.normalize_Concat_sp_31()
-          Nothing then
-            p1__1 = p1.normalize_Nothing_sp_0()
-        p2__1 = p2.normalize()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        if p2__1 is
-          Union then
-            tmp17 = p2__1.flat_Union_sp_0()
-          else
-            tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len(arr2)
-        tmp20 = len(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_13() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_41()
-        p2__1 = p2.normalize_Union_sp_14()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        if p2__1 is
-          Union then
-            tmp17 = p2__1.flat_Union_sp_0()
-          else
-            tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len(arr2)
-        tmp20 = len(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_14() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_42()
-        p2__1 = p2.normalize_Concat_sp_43()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len_StagedRegExp_sp_6(arr2)
-        tmp20 = len_StagedRegExp_sp_6(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_15() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Exact_sp_8()
-        p2__1 = p2.normalize_Empty_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = 1
-        tmp20 = 1
-        s2 = iter(tmp18, arr2, 1, 1)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_16() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_37()
-        if p2 is
-          Empty then
-            p2__1 = p2.normalize_Empty_sp_0()
-          Nothing then
-            p2__1 = p2.normalize_Nothing_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len_StagedRegExp_sp_5(arr2)
-        tmp20 = len_StagedRegExp_sp_5(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_17() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_47()
-        if p2 is
-          Nothing then
-            p2__1 = p2.normalize_Nothing_sp_0()
-          Exact then
-            p2__1 = p2.normalize_Exact_sp_1()
-          Nothing then
-            p2__1 = p2.normalize_Nothing_sp_1()
-          Concat then
-            p2__1 = p2.normalize_Concat_sp_37()
-          Concat then
-            p2__1 = p2.normalize_Concat_sp_50()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len_StagedRegExp_sp_7(arr2)
-        tmp20 = len_StagedRegExp_sp_7(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_2() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_3()
-        if p2 is
-          Concat then
-            p2__1 = p2.normalize_Concat_sp_5()
-          Nothing then
-            p2__1 = p2.normalize_Nothing_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len_StagedRegExp_sp_0(arr2)
-        tmp20 = len_StagedRegExp_sp_0(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_3() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_20()
-        p2__1 = p2.normalize_Empty_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = 1
-        tmp20 = 1
-        s2 = iter(tmp18, arr2, 1, 1)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_4() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_21()
-        p2__1 = p2.normalize_Empty_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = 1
-        tmp20 = 1
-        s2 = iter(tmp18, arr2, 1, 1)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_5() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_10()
-        if p2 is
-          Concat then
-            p2__1 = p2.normalize_Concat_sp_12()
-          Nothing then
-            p2__1 = p2.normalize_Nothing_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len_StagedRegExp_sp_2(arr2)
-        tmp20 = len_StagedRegExp_sp_2(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_6() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_23()
-        if p2 is
-          Nothing then
-            p2__1 = p2.normalize_Nothing_sp_0()
-          Concat then
-            p2__1 = p2.normalize_Concat_sp_29()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len_StagedRegExp_sp_3(arr2)
-        tmp20 = len_StagedRegExp_sp_3(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_7() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        if p1 is
-          Empty then
-            p1__1 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__1 = p1.normalize_Nothing_sp_0()
-        p2__1 = p2.normalize_Nothing_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = 1
-        tmp20 = 1
-        s2 = iter(tmp18, arr2, 1, 1)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_8() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_34()
-        if p2 is
-          Empty then
-            p2__1 = p2.normalize_Empty_sp_0()
-          Nothing then
-            p2__1 = p2.normalize_Nothing_sp_0()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len_StagedRegExp_sp_5(arr2)
-        tmp20 = len_StagedRegExp_sp_5(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun normalize_Union_sp_9() =
-        let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-        p1__1 = p1.normalize_Concat_sp_35()
-        p2__1 = p2.normalize()
-        tmp16 = [p1__1]
-        arr11 = tmp16
-        if p2__1 is
-          Union then
-            tmp17 = p2__1.flat_Union_sp_0()
-          else
-            tmp17 = [p2__1]
-        arr2 = tmp17
-        tmp18 = new DedupSet(arr11)
-        tmp19 = len(arr2)
-        tmp20 = len(arr2)
-        s2 = iter(tmp18, arr2, tmp19, tmp20)
-        tmp21 = len(s2.arr)
-        tmp22 = len(s2.arr)
-        mkUnion(s2.arr, tmp21, tmp22)
-      private fun startsWith_Union_sp_0(c) =
-        let {tmp26}
-        tmp26 = p1.startsWith_Concat_sp_17(c)
-        if tmp26 is
-          false then p2.startsWith_Union_sp_1(c)
-          else true
-      private fun startsWith_Union_sp_1(c) =
-        let {tmp26}
-        tmp26 = p1.startsWith_Concat_sp_18(c)
-        if tmp26 is
-          false then p2.startsWith_Concat_sp_19(c)
-          else true
-      private fun startsWith_Union_sp_2(c) =
-        let {tmp26}
-        tmp26 = p1.startsWith_Exact_sp_3(c)
-        if tmp26 is
-          false then p2.startsWith_Empty_sp_0(c)
-          else true
-      private fun startsWith_Union_sp_3(c) =
-        let {tmp26}
-        tmp26 = p1.startsWith_In_sp_2(c)
-        if tmp26 is
-          false then p2.startsWith_Empty_sp_0(c)
           else true
     class In(val chars) extends RegExp() with
       ()
@@ -702,36 +206,6 @@ module StagedRegExp with
           else false
       fun normalize() = this
       fun startsWith(c) = has(chars, c)
-      private fun canBeEmpty_In_sp_0() = false
-      private fun canBeEmpty_In_sp_1() = false
-      private fun canBeEmpty_In_sp_2() = false
-      private fun derive_In_sp_0(c) =
-        let {scrut7}
-        scrut7 = startsWith(c)
-        if scrut7 is
-          true then new Empty()
-          else new Nothing()
-      private fun derive_In_sp_1(c) =
-        let {scrut7}
-        scrut7 = startsWith(c)
-        if scrut7 is
-          true then new Empty()
-          else new Nothing()
-      private fun derive_In_sp_2(c) =
-        let {scrut7}
-        scrut7 = startsWith(c)
-        if scrut7 is
-          true then new Empty()
-          else new Nothing()
-      private fun normalize_In_sp_0() = this
-      private fun normalize_In_sp_1() = this
-      private fun normalize_In_sp_2() = this
-      private fun normalize_In_sp_3() = this
-      private fun normalize_In_sp_4() = this
-      private fun normalize_In_sp_5() = this
-      private fun startsWith_In_sp_0(c) = has_StagedRegExp_sp_0(chars, c)
-      private fun startsWith_In_sp_1(c) = has_StagedRegExp_sp_1(chars, c)
-      private fun startsWith_In_sp_2(c) = has_StagedRegExp_sp_3(chars, c)
     class Concat(val p1, val p2) extends RegExp() with
       ()
       fun canBeEmpty() =
@@ -753,10 +227,10 @@ module StagedRegExp with
             tmp27 = new Concat.class(p1__2, p2)
             tmp28 = p2.derive(c)
             tmp29 = new Union(tmp27, tmp28)
-            tmp29.normalize_Union_sp_1()
+            normalize_Union_sp_1(tmp29)
           else
             tmp30 = new Concat.class(p1__2, p2)
-            tmp30.normalize_Concat_sp_0()
+            normalize_Concat_sp_0(tmp30)
       fun eq(other) =
         let {p2__2, p1__4, scrut11, scrut12, arg_Concat_0_, arg_Concat_1_}
         if other is
@@ -797,997 +271,6 @@ module StagedRegExp with
                   else false
               else false
           else true
-      private fun canBeEmpty_Concat_sp_0() = false
-      private fun canBeEmpty_Concat_sp_1() = false
-      private fun canBeEmpty_Concat_sp_10() = false
-      private fun canBeEmpty_Concat_sp_11() = false
-      private fun canBeEmpty_Concat_sp_12() = false
-      private fun canBeEmpty_Concat_sp_13() = false
-      private fun canBeEmpty_Concat_sp_14() = false
-      private fun canBeEmpty_Concat_sp_15() = false
-      private fun canBeEmpty_Concat_sp_16() = false
-      private fun canBeEmpty_Concat_sp_17() = false
-      private fun canBeEmpty_Concat_sp_18() = false
-      private fun canBeEmpty_Concat_sp_19() = false
-      private fun canBeEmpty_Concat_sp_2() = false
-      private fun canBeEmpty_Concat_sp_20() = false
-      private fun canBeEmpty_Concat_sp_21() = false
-      private fun canBeEmpty_Concat_sp_22() = false
-      private fun canBeEmpty_Concat_sp_23() = false
-      private fun canBeEmpty_Concat_sp_24() = false
-      private fun canBeEmpty_Concat_sp_25() = false
-      private fun canBeEmpty_Concat_sp_26() = false
-      private fun canBeEmpty_Concat_sp_3() = false
-      private fun canBeEmpty_Concat_sp_4() = false
-      private fun canBeEmpty_Concat_sp_5() = false
-      private fun canBeEmpty_Concat_sp_6() = false
-      private fun canBeEmpty_Concat_sp_7() = false
-      private fun canBeEmpty_Concat_sp_8() = false
-      private fun canBeEmpty_Concat_sp_9() = false
-      private fun derive_Concat_sp_0(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_1(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_1()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_3()
-      private fun derive_Concat_sp_1(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_In_sp_0(c)
-        scrut8 = p1.canBeEmpty_In_sp_0()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_2()
-      private fun derive_Concat_sp_10(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_11(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_11()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_27()
-      private fun derive_Concat_sp_11(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_12(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_12()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_26()
-      private fun derive_Concat_sp_12(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Not_sp_0(c)
-        scrut8 = p1.canBeEmpty_Not_sp_0()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_25()
-      private fun derive_Concat_sp_13(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive(c)
-        scrut8 = p1.canBeEmpty()
-        if scrut8 is
-          true then
-            tmp27 = new Concat.class(p1__2, p2)
-            tmp28 = p2.derive_Concat_sp_10(c)
-            tmp29 = new Union(tmp27, tmp28)
-            tmp29.normalize_Union_sp_6()
-          else
-            tmp30 = new Concat.class(p1__2, p2)
-            tmp30.normalize_Concat_sp_23()
-      private fun derive_Concat_sp_14(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_15(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_15()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_44()
-      private fun derive_Concat_sp_15(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_16(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_16()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_38()
-      private fun derive_Concat_sp_16(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Union_sp_0(c)
-        scrut8 = p1.canBeEmpty_Union_sp_0()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_37()
-      private fun derive_Concat_sp_17(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Exact_sp_2(c)
-        scrut8 = p1.canBeEmpty_Exact_sp_2()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_30()
-      private fun derive_Concat_sp_18(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Exact_sp_2(c)
-        scrut8 = p1.canBeEmpty_Exact_sp_2()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_32()
-      private fun derive_Concat_sp_19(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Union_sp_2(c)
-        scrut8 = p1.canBeEmpty_Union_sp_2()
-        tmp27 = new Concat.class(p1__2, p2)
-        tmp28 = p2.derive_Concat_sp_20(c)
-        tmp29 = new Union(tmp27, tmp28)
-        tmp29.normalize_Union_sp_9()
-      private fun derive_Concat_sp_2(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Star_sp_0(c)
-        scrut8 = p1.canBeEmpty_Star_sp_0()
-        tmp27 = new Concat.class(p1__2, p2)
-        tmp28 = p2.derive_Concat_sp_3(c)
-        tmp29 = new Union(tmp27, tmp28)
-        tmp29.normalize_Union_sp_2()
-      private fun derive_Concat_sp_20(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Union_sp_3(c)
-        scrut8 = p1.canBeEmpty_Union_sp_3()
-        tmp27 = new Concat.class(p1__2, p2)
-        tmp28 = p2.derive_In_sp_2(c)
-        tmp29 = new Union(tmp27, tmp28)
-        tmp29.normalize_Union_sp_8()
-      private fun derive_Concat_sp_21(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_22(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_22()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_49()
-      private fun derive_Concat_sp_22(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        if p1 is
-          Exact then
-            p1__2 = p1.derive_Exact_sp_4(c)
-          Concat then
-            p1__2 = p1.derive_Concat_sp_23(c)
-        if p1 is
-          Exact then
-            scrut8 = p1.canBeEmpty_Exact_sp_4()
-          Concat then
-            scrut8 = p1.canBeEmpty_Concat_sp_23()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_47()
-      private fun derive_Concat_sp_23(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive(c)
-        scrut8 = p1.canBeEmpty()
-        if scrut8 is
-          true then
-            tmp27 = new Concat.class(p1__2, p2)
-            tmp28 = p2.derive_Exact_sp_4(c)
-            tmp29 = new Union(tmp27, tmp28)
-            tmp29.normalize_Union_sp_16()
-          else
-            tmp30 = new Concat.class(p1__2, p2)
-            tmp30.normalize_Concat_sp_37()
-      private fun derive_Concat_sp_24(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        if p1 is
-          Concat then
-            p1__2 = p1.derive_Concat_sp_25(c)
-          Concat then
-            p1__2 = p1.derive_Concat_sp_26(c)
-        if p1 is
-          Concat then
-            scrut8 = p1.canBeEmpty_Concat_sp_25()
-          Concat then
-            scrut8 = p1.canBeEmpty_Concat_sp_26()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_0()
-      private fun derive_Concat_sp_25(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        if p1 is
-          Exact then
-            p1__2 = p1.derive_Exact_sp_4(c)
-          Concat then
-            p1__2 = p1.derive_Concat_sp_23(c)
-        if p1 is
-          Exact then
-            scrut8 = p1.canBeEmpty_Exact_sp_4()
-          Concat then
-            scrut8 = p1.canBeEmpty_Concat_sp_23()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_50()
-      private fun derive_Concat_sp_26(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive(c)
-        scrut8 = p1.canBeEmpty()
-        if scrut8 is
-          true then
-            tmp27 = new Concat.class(p1__2, p2)
-            if p2 is
-              Nothing then
-                tmp28 = p2.derive_Nothing_sp_0(c)
-              Nothing then
-                tmp28 = p2.derive_Nothing_sp_0(c)
-              Concat then
-                tmp28 = p2.derive_Concat_sp_25(c)
-            tmp29 = new Union(tmp27, tmp28)
-            tmp29.normalize_Union_sp_17()
-          else
-            tmp30 = new Concat.class(p1__2, p2)
-            tmp30.normalize_Concat_sp_47()
-      private fun derive_Concat_sp_3(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Exact_sp_0(c)
-        scrut8 = p1.canBeEmpty_Exact_sp_0()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_8()
-      private fun derive_Concat_sp_4(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_5(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_5()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_13()
-      private fun derive_Concat_sp_5(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_6(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_6()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_10()
-      private fun derive_Concat_sp_6(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_In_sp_1(c)
-        scrut8 = p1.canBeEmpty_In_sp_1()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_9()
-      private fun derive_Concat_sp_7(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Concat_sp_8(c)
-        scrut8 = p1.canBeEmpty_Concat_sp_8()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_23()
-      private fun derive_Concat_sp_8(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Star_sp_1(c)
-        scrut8 = p1.canBeEmpty_Star_sp_1()
-        tmp27 = new Concat.class(p1__2, p2)
-        tmp28 = p2.derive_Concat_sp_9(c)
-        tmp29 = new Union(tmp27, tmp28)
-        tmp29.normalize_Union_sp_5()
-      private fun derive_Concat_sp_9(c) =
-        let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-        p1__2 = p1.derive_Exact_sp_1(c)
-        scrut8 = p1.canBeEmpty_Exact_sp_1()
-        tmp30 = new Concat.class(p1__2, p2)
-        tmp30.normalize_Concat_sp_22()
-      private fun normalize_Concat_sp_0() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then p2.normalize()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_1() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then p2.normalize_Star_sp_0()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Star_sp_0()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_10() =
-        let {p1__3, tmp31}
-        if p1 is
-          Star then
-            p1__3 = p1.normalize_Star_sp_2()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_11()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_11() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_2()
-        tmp31 = p2.normalize_Concat_sp_12()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_12() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_3()
-        tmp31 = p2.normalize_Exact_sp_3()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_13() =
-        let {p1__3, tmp31}
-        if p1 is
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_14()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_15()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_14() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Star_sp_2()
-        tmp31 = p2.normalize_Concat_sp_11()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_15() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Concat_sp_16()
-        tmp31 = p2.normalize_Concat_sp_19()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_16() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Concat_sp_17()
-        tmp31 = p2.normalize_Concat_sp_18()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_17() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Not_sp_0()
-        tmp31 = p2.normalize_Star_sp_3()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_18() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Not_sp_1()
-        tmp31 = p2.normalize_Star_sp_4()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_19() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Union_sp_3()
-        if p1__3 is
-          Empty then p2.normalize_Union_sp_4()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Union_sp_4()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_2() =
-        let {p1__3, tmp31}
-        if p1 is
-          Empty then
-            p1__3 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Empty then p2.normalize_Star_sp_1()
-          Nothing then p1__3
-      private fun normalize_Concat_sp_20() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_4()
-        tmp31 = p2.normalize_Star_sp_5()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_21() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_5()
-        tmp31 = p2.normalize_Star_sp_5()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_22() =
-        let {p1__3, tmp31}
-        if p1 is
-          Empty then
-            p1__3 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Empty then p2.normalize_Concat_sp_12()
-          Nothing then p1__3
-      private fun normalize_Concat_sp_23() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then p2.normalize_Concat_sp_24()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_24()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_24() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Concat_sp_16()
-        tmp31 = p2.normalize()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_25() =
-        let {p1__3, tmp31}
-        if p1 is
-          Empty then
-            p1__3 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Empty then p2.normalize_Star_sp_3()
-          Nothing then p1__3
-      private fun normalize_Concat_sp_26() =
-        let {p1__3, tmp31}
-        if p1 is
-          Star then
-            p1__3 = p1.normalize_Star_sp_3()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_18()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_27() =
-        let {p1__3, tmp31}
-        if p1 is
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_28()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_28() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Star_sp_3()
-        tmp31 = p2.normalize_Concat_sp_18()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_29() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Concat_sp_28()
-        tmp31 = p2.normalize()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_3() =
-        let {p1__3, tmp31}
-        if p1 is
-          Star then
-            p1__3 = p1.normalize_Star_sp_1()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_4()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_30() =
-        let {p1__3, tmp31}
-        if p1 is
-          Empty then
-            p1__3 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Empty then p2.normalize_Concat_sp_31()
-          Nothing then p1__3
-      private fun normalize_Concat_sp_31() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_6()
-        tmp31 = p2.normalize_In_sp_3()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_32() =
-        let {p1__3, tmp31}
-        if p1 is
-          Empty then
-            p1__3 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Empty then p2.normalize_Concat_sp_33()
-          Nothing then p1__3
-      private fun normalize_Concat_sp_33() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_In_sp_4()
-        tmp31 = p2.normalize_In_sp_5()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_34() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then p2.normalize_In_sp_5()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_In_sp_5()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_35() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then p2.normalize_Concat_sp_36()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_36()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_36() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Union_sp_10()
-        if p1__3 is
-          Empty then p2.normalize_In_sp_5()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_In_sp_5()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_37() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then p2.normalize_Exact_sp_1()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Exact_sp_1()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_38() =
-        let {p1__3, tmp31}
-        if p1 is
-          Exact then
-            p1__3 = p1.normalize_Exact_sp_1()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_37()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_39()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_39() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Concat_sp_40()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_40()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_4() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_0()
-        tmp31 = p2.normalize_Concat_sp_5()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_40() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Union_sp_13()
-        if p1__3 is
-          Empty then p2.normalize_Exact_sp_1()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Exact_sp_1()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_41() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_7()
-        tmp31 = p2.normalize_Concat_sp_31()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_42() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_7()
-        tmp31 = p2.normalize_Concat_sp_33()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_43() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Union_sp_15()
-        if p1__3 is
-          Empty then p2.normalize_Concat_sp_36()
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Concat_sp_36()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_44() =
-        let {p1__3, tmp31}
-        if p1 is
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_45()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize_Union_sp_13()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_45() =
-        let {p1__3, tmp31}
-        if p1 is
-          Exact then
-            p1__3 = p1.normalize_Exact_sp_1()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_37()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            if p2 is
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Concat then
-                tmp31 = p2.normalize_Concat_sp_46()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_46() =
-        let {p1__3, tmp31}
-        if p1 is
-          Exact then
-            p1__3 = p1.normalize_Exact_sp_1()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_37()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            if p2 is
-              Exact then
-                tmp31 = p2.normalize_Exact_sp_1()
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Concat then
-                tmp31 = p2.normalize_Concat_sp_37()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_47() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then
-            if p2 is
-              Nothing then p2.normalize_Nothing_sp_0()
-              Nothing then p2.normalize_Nothing_sp_0()
-              Concat then p2.normalize_Concat_sp_48()
-          Nothing then p1__3
-          else
-            if p2 is
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Concat then
-                tmp31 = p2.normalize_Concat_sp_48()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_48() =
-        let {p1__3, tmp31}
-        if p1 is
-          Exact then
-            p1__3 = p1.normalize_Exact_sp_1()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_37()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            if p2 is
-              Exact then
-                tmp31 = p2.normalize_Exact_sp_1()
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Concat then
-                tmp31 = p2.normalize_Concat_sp_37()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_49() =
-        let {p1__3, tmp31}
-        if p1 is
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_48()
-          Concat then
-            p1__3 = p1.normalize_Concat_sp_47()
-        if p1__3 is
-          Nothing then p1__3
-          else
-            tmp31 = p2.normalize()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_5() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Concat_sp_6()
-        tmp31 = p2.normalize_Concat_sp_7()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_50() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize()
-        if p1__3 is
-          Empty then
-            if p2 is
-              Exact then p2.normalize_Exact_sp_1()
-              Nothing then p2.normalize_Nothing_sp_0()
-              Nothing then p2.normalize_Nothing_sp_0()
-              Concat then p2.normalize_Concat_sp_37()
-          Nothing then p1__3
-          else
-            if p2 is
-              Exact then
-                tmp31 = p2.normalize_Exact_sp_1()
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Nothing then
-                tmp31 = p2.normalize_Nothing_sp_0()
-              Concat then
-                tmp31 = p2.normalize_Concat_sp_37()
-            new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_6() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_In_sp_0()
-        tmp31 = p2.normalize_Star_sp_1()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_7() =
-        let {p1__3, tmp31}
-        p1__3 = p1.normalize_Exact_sp_1()
-        tmp31 = p2.normalize_Concat_sp_6()
-        new Concat.class(p1__3, tmp31)
-      private fun normalize_Concat_sp_8() =
-        let {p1__3, tmp31}
-        if p1 is
-          Empty then
-            p1__3 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Empty then p2.normalize_Concat_sp_5()
-          Nothing then p1__3
-      private fun normalize_Concat_sp_9() =
-        let {p1__3, tmp31}
-        if p1 is
-          Empty then
-            p1__3 = p1.normalize_Empty_sp_0()
-          Nothing then
-            p1__3 = p1.normalize_Nothing_sp_0()
-        if p1__3 is
-          Empty then p2.normalize_Star_sp_2()
-          Nothing then p1__3
-      private fun startsWith_Concat_sp_0(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_1(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_1()
-            false
-          else true
-      private fun startsWith_Concat_sp_1(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_In_sp_0(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_In_sp_0()
-            false
-          else true
-      private fun startsWith_Concat_sp_10(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_11(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_11()
-            false
-          else true
-      private fun startsWith_Concat_sp_11(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_12(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_12()
-            false
-          else true
-      private fun startsWith_Concat_sp_12(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Not_sp_0(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Not_sp_0()
-            false
-          else true
-      private fun startsWith_Concat_sp_13(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty()
-            if scrut13 is
-              true then
-                scrut14 = p2.startsWith_Concat_sp_10(c)
-                if scrut14 is
-                  true then true
-                  else false
-              else false
-          else true
-      private fun startsWith_Concat_sp_14(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_15(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_15()
-            false
-          else true
-      private fun startsWith_Concat_sp_15(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_16(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_16()
-            false
-          else true
-      private fun startsWith_Concat_sp_16(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Union_sp_0(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Union_sp_0()
-            false
-          else true
-      private fun startsWith_Concat_sp_17(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Exact_sp_2(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Exact_sp_2()
-            false
-          else true
-      private fun startsWith_Concat_sp_18(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Exact_sp_2(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Exact_sp_2()
-            false
-          else true
-      private fun startsWith_Concat_sp_19(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Union_sp_2(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Union_sp_2()
-            scrut14 = p2.startsWith_Concat_sp_20(c)
-            if scrut14 is
-              true then true
-              else false
-          else true
-      private fun startsWith_Concat_sp_2(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Star_sp_0(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Star_sp_0()
-            scrut14 = p2.startsWith_Concat_sp_3(c)
-            if scrut14 is
-              true then true
-              else false
-          else true
-      private fun startsWith_Concat_sp_20(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Union_sp_3(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Union_sp_3()
-            scrut14 = p2.startsWith_In_sp_2(c)
-            if scrut14 is
-              true then true
-              else false
-          else true
-      private fun startsWith_Concat_sp_21(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_22(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_22()
-            false
-          else true
-      private fun startsWith_Concat_sp_22(c) =
-        let {scrut13, scrut14, tmp32}
-        if p1 is
-          Exact then
-            tmp32 = p1.startsWith_Exact_sp_4(c)
-          Concat then
-            tmp32 = p1.startsWith_Concat_sp_23(c)
-        if tmp32 is
-          false then
-            if p1 is
-              Exact then
-                scrut13 = p1.canBeEmpty_Exact_sp_4()
-              Concat then
-                scrut13 = p1.canBeEmpty_Concat_sp_23()
-            false
-          else true
-      private fun startsWith_Concat_sp_23(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty()
-            if scrut13 is
-              true then
-                scrut14 = p2.startsWith_Exact_sp_4(c)
-                if scrut14 is
-                  true then true
-                  else false
-              else false
-          else true
-      private fun startsWith_Concat_sp_24(c) =
-        let {scrut13, scrut14, tmp32}
-        if p1 is
-          Concat then
-            tmp32 = p1.startsWith_Concat_sp_25(c)
-          Concat then
-            tmp32 = p1.startsWith_Concat_sp_26(c)
-        if tmp32 is
-          false then
-            if p1 is
-              Concat then
-                scrut13 = p1.canBeEmpty_Concat_sp_25()
-              Concat then
-                scrut13 = p1.canBeEmpty_Concat_sp_26()
-            false
-          else true
-      private fun startsWith_Concat_sp_25(c) =
-        let {scrut13, scrut14, tmp32}
-        if p1 is
-          Exact then
-            tmp32 = p1.startsWith_Exact_sp_4(c)
-          Concat then
-            tmp32 = p1.startsWith_Concat_sp_23(c)
-        if tmp32 is
-          false then
-            if p1 is
-              Exact then
-                scrut13 = p1.canBeEmpty_Exact_sp_4()
-              Concat then
-                scrut13 = p1.canBeEmpty_Concat_sp_23()
-            false
-          else true
-      private fun startsWith_Concat_sp_26(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty()
-            if scrut13 is
-              true then
-                if p2 is
-                  Nothing then
-                    scrut14 = p2.startsWith_Nothing_sp_0(c)
-                  Nothing then
-                    scrut14 = p2.startsWith_Nothing_sp_0(c)
-                  Concat then
-                    scrut14 = p2.startsWith_Concat_sp_25(c)
-                if scrut14 is
-                  true then true
-                  else false
-              else false
-          else true
-      private fun startsWith_Concat_sp_3(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Exact_sp_0(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Exact_sp_0()
-            false
-          else true
-      private fun startsWith_Concat_sp_4(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_5(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_5()
-            false
-          else true
-      private fun startsWith_Concat_sp_5(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_6(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_6()
-            false
-          else true
-      private fun startsWith_Concat_sp_6(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_In_sp_1(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_In_sp_1()
-            false
-          else true
-      private fun startsWith_Concat_sp_7(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Concat_sp_8(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Concat_sp_8()
-            false
-          else true
-      private fun startsWith_Concat_sp_8(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Star_sp_1(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Star_sp_1()
-            scrut14 = p2.startsWith_Concat_sp_9(c)
-            if scrut14 is
-              true then true
-              else false
-          else true
-      private fun startsWith_Concat_sp_9(c) =
-        let {scrut13, scrut14, tmp32}
-        tmp32 = p1.startsWith_Exact_sp_1(c)
-        if tmp32 is
-          false then
-            scrut13 = p1.canBeEmpty_Exact_sp_1()
-            false
-          else true
     class Star(val p) extends RegExp() with
       ()
       fun canBeEmpty() = true
@@ -1796,7 +279,7 @@ module StagedRegExp with
         tmp33 = p.derive(c)
         tmp34 = new Star.class(p)
         tmp35 = new Concat(tmp33, tmp34)
-        tmp35.normalize_Concat_sp_1()
+        normalize_Concat_sp_1(tmp35)
       fun eq(other) =
         let {p__, arg_Star_0_}
         if other is
@@ -1810,46 +293,6 @@ module StagedRegExp with
         tmp36 = p.normalize()
         new Star.class(tmp36)
       fun startsWith(c) = p.startsWith(c)
-      private fun canBeEmpty_Star_sp_0() = true
-      private fun canBeEmpty_Star_sp_1() = true
-      private fun derive_Star_sp_0(c) =
-        let {tmp33, tmp34, tmp35}
-        tmp33 = p.derive_In_sp_0(c)
-        tmp34 = new Star.class(p)
-        tmp35 = new Concat(tmp33, tmp34)
-        tmp35.normalize_Concat_sp_2()
-      private fun derive_Star_sp_1(c) =
-        let {tmp33, tmp34, tmp35}
-        tmp33 = p.derive_In_sp_1(c)
-        tmp34 = new Star.class(p)
-        tmp35 = new Concat(tmp33, tmp34)
-        tmp35.normalize_Concat_sp_9()
-      private fun normalize_Star_sp_0() =
-        let {tmp36}
-        tmp36 = p.normalize()
-        new Star.class(tmp36)
-      private fun normalize_Star_sp_1() =
-        let {tmp36}
-        tmp36 = p.normalize_In_sp_0()
-        new Star.class(tmp36)
-      private fun normalize_Star_sp_2() =
-        let {tmp36}
-        tmp36 = p.normalize_In_sp_1()
-        new Star.class(tmp36)
-      private fun normalize_Star_sp_3() =
-        let {tmp36}
-        tmp36 = p.normalize_Not_sp_0()
-        new Star.class(tmp36)
-      private fun normalize_Star_sp_4() =
-        let {tmp36}
-        tmp36 = p.normalize_Not_sp_1()
-        new Star.class(tmp36)
-      private fun normalize_Star_sp_5() =
-        let {tmp36}
-        tmp36 = p.normalize_In_sp_2()
-        new Star.class(tmp36)
-      private fun startsWith_Star_sp_0(c) = p.startsWith_In_sp_0(c)
-      private fun startsWith_Star_sp_1(c) = p.startsWith_In_sp_1(c)
     fun arrEq(arr1, arr2) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".eq(arr1, arr2)
     fun concat(lhs, rhs) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".concat(lhs, rhs)
     fun digits() =
@@ -2210,585 +653,2143 @@ module StagedRegExp with
       tup_6 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
       tmp49 = tup_6
       new In(tmp49)
-    private fun has_StagedRegExp_sp_0(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
-    private fun has_StagedRegExp_sp_1(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
-    private fun has_StagedRegExp_sp_2(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
-    private fun has_StagedRegExp_sp_3(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
-    private fun len_StagedRegExp_sp_0(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
-    private fun len_StagedRegExp_sp_1(s) = 1
-    private fun len_StagedRegExp_sp_2(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
-    private fun len_StagedRegExp_sp_3(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
-    private fun len_StagedRegExp_sp_4(s) = 1
-    private fun len_StagedRegExp_sp_5(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
-    private fun len_StagedRegExp_sp_6(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
-    private fun len_StagedRegExp_sp_7(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
-    private fun matchAllImpl_StagedRegExp_sp_0(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
-      tmp59 = len(s)
-      scrut22 = ==(tmp59, 0)
-      if scrut22 is
-        true then res
-        else
-          scrut23 = match(p, s)
-          if scrut23 is
-            Some then
-              arg_Some_0_ = scrut23.x
-              ss = arg_Some_0_
-              tmp60 = len(ss)
-              scrut24 = >(tmp60, 0)
-              if scrut24 is
-                true then
-                  tmp61 = len(ss)
-                  tmp62 = s.slice(tmp61)
-                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl(p, tmp62, tmp63)
-                else
-                  tmp64 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_0(p, tmp64, res)
+open StagedRegExp
+fun has_StagedRegExp_sp_0(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
+fun has_StagedRegExp_sp_1(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
+fun has_StagedRegExp_sp_2(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
+fun has_StagedRegExp_sp_3(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
+fun len_StagedRegExp_sp_0(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
+fun len_StagedRegExp_sp_1(s) = 1
+fun len_StagedRegExp_sp_2(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
+fun len_StagedRegExp_sp_3(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
+fun len_StagedRegExp_sp_4(s) = 1
+fun len_StagedRegExp_sp_5(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
+fun len_StagedRegExp_sp_6(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
+fun len_StagedRegExp_sp_7(s) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".len(s)
+fun matchAllImpl_StagedRegExp_sp_0(p, s, res) =
+  let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+  tmp59 = len(s)
+  scrut22 = ==(tmp59, 0)
+  if scrut22 is
+    true then res
+    else
+      scrut23 = match(p, s)
+      if scrut23 is
+        Some then
+          arg_Some_0_ = scrut23.x
+          ss = arg_Some_0_
+          tmp60 = len(ss)
+          scrut24 = >(tmp60, 0)
+          if scrut24 is
+            true then
+              tmp61 = len(ss)
+              tmp62 = s.slice(tmp61)
+              tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl(p, tmp62, tmp63)
             else
-              tmp65 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_0(p, tmp65, res)
-    private fun matchAllImpl_StagedRegExp_sp_1(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
-      tmp59 = len(s)
-      scrut22 = ==(tmp59, 0)
-      if scrut22 is
-        true then res
+              tmp64 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_0(p, tmp64, res)
         else
-          scrut23 = match_StagedRegExp_sp_0(p, s)
-          if scrut23 is
-            Some then
-              arg_Some_0_ = scrut23.x
-              ss = arg_Some_0_
-              tmp60 = len(ss)
-              scrut24 = >(tmp60, 0)
-              if scrut24 is
-                true then
-                  tmp61 = len(ss)
-                  tmp62 = s.slice(tmp61)
-                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_2(p, tmp62, tmp63)
-                else
-                  tmp64 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_1(p, tmp64, res)
+          tmp65 = s.slice(1)
+          matchAllImpl_StagedRegExp_sp_0(p, tmp65, res)
+fun matchAllImpl_StagedRegExp_sp_1(p, s, res) =
+  let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+  tmp59 = len(s)
+  scrut22 = ==(tmp59, 0)
+  if scrut22 is
+    true then res
+    else
+      scrut23 = match_StagedRegExp_sp_0(p, s)
+      if scrut23 is
+        Some then
+          arg_Some_0_ = scrut23.x
+          ss = arg_Some_0_
+          tmp60 = len(ss)
+          scrut24 = >(tmp60, 0)
+          if scrut24 is
+            true then
+              tmp61 = len(ss)
+              tmp62 = s.slice(tmp61)
+              tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_2(p, tmp62, tmp63)
             else
-              tmp65 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_1(p, tmp65, res)
-    private fun matchAllImpl_StagedRegExp_sp_2(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
-      tmp59 = len(s)
-      scrut22 = ==(tmp59, 0)
-      if scrut22 is
-        true then res
+              tmp64 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_1(p, tmp64, res)
         else
-          scrut23 = match_StagedRegExp_sp_0(p, s)
-          if scrut23 is
-            Some then
-              arg_Some_0_ = scrut23.x
-              ss = arg_Some_0_
-              tmp60 = len(ss)
-              scrut24 = >(tmp60, 0)
-              if scrut24 is
-                true then
-                  tmp61 = len(ss)
-                  tmp62 = s.slice(tmp61)
-                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_2(p, tmp62, tmp63)
-                else
-                  tmp64 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_2(p, tmp64, res)
+          tmp65 = s.slice(1)
+          matchAllImpl_StagedRegExp_sp_1(p, tmp65, res)
+fun matchAllImpl_StagedRegExp_sp_2(p, s, res) =
+  let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+  tmp59 = len(s)
+  scrut22 = ==(tmp59, 0)
+  if scrut22 is
+    true then res
+    else
+      scrut23 = match_StagedRegExp_sp_0(p, s)
+      if scrut23 is
+        Some then
+          arg_Some_0_ = scrut23.x
+          ss = arg_Some_0_
+          tmp60 = len(ss)
+          scrut24 = >(tmp60, 0)
+          if scrut24 is
+            true then
+              tmp61 = len(ss)
+              tmp62 = s.slice(tmp61)
+              tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_2(p, tmp62, tmp63)
             else
-              tmp65 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_2(p, tmp65, res)
-    private fun matchAllImpl_StagedRegExp_sp_3(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
-      tmp59 = len(s)
-      scrut22 = ==(tmp59, 0)
-      if scrut22 is
-        true then res
+              tmp64 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_2(p, tmp64, res)
         else
-          scrut23 = match_StagedRegExp_sp_1(p, s)
-          if scrut23 is
-            Some then
-              arg_Some_0_ = scrut23.x
-              ss = arg_Some_0_
-              tmp60 = len(ss)
-              scrut24 = >(tmp60, 0)
-              if scrut24 is
-                true then
-                  tmp61 = len(ss)
-                  tmp62 = s.slice(tmp61)
-                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_4(p, tmp62, tmp63)
-                else
-                  tmp64 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_3(p, tmp64, res)
+          tmp65 = s.slice(1)
+          matchAllImpl_StagedRegExp_sp_2(p, tmp65, res)
+fun matchAllImpl_StagedRegExp_sp_3(p, s, res) =
+  let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+  tmp59 = len(s)
+  scrut22 = ==(tmp59, 0)
+  if scrut22 is
+    true then res
+    else
+      scrut23 = match_StagedRegExp_sp_1(p, s)
+      if scrut23 is
+        Some then
+          arg_Some_0_ = scrut23.x
+          ss = arg_Some_0_
+          tmp60 = len(ss)
+          scrut24 = >(tmp60, 0)
+          if scrut24 is
+            true then
+              tmp61 = len(ss)
+              tmp62 = s.slice(tmp61)
+              tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_4(p, tmp62, tmp63)
             else
-              tmp65 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_3(p, tmp65, res)
-    private fun matchAllImpl_StagedRegExp_sp_4(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
-      tmp59 = len(s)
-      scrut22 = ==(tmp59, 0)
-      if scrut22 is
-        true then res
+              tmp64 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_3(p, tmp64, res)
         else
-          scrut23 = match_StagedRegExp_sp_1(p, s)
-          if scrut23 is
-            Some then
-              arg_Some_0_ = scrut23.x
-              ss = arg_Some_0_
-              tmp60 = len(ss)
-              scrut24 = >(tmp60, 0)
-              if scrut24 is
-                true then
-                  tmp61 = len(ss)
-                  tmp62 = s.slice(tmp61)
-                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_4(p, tmp62, tmp63)
-                else
-                  tmp64 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_4(p, tmp64, res)
+          tmp65 = s.slice(1)
+          matchAllImpl_StagedRegExp_sp_3(p, tmp65, res)
+fun matchAllImpl_StagedRegExp_sp_4(p, s, res) =
+  let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+  tmp59 = len(s)
+  scrut22 = ==(tmp59, 0)
+  if scrut22 is
+    true then res
+    else
+      scrut23 = match_StagedRegExp_sp_1(p, s)
+      if scrut23 is
+        Some then
+          arg_Some_0_ = scrut23.x
+          ss = arg_Some_0_
+          tmp60 = len(ss)
+          scrut24 = >(tmp60, 0)
+          if scrut24 is
+            true then
+              tmp61 = len(ss)
+              tmp62 = s.slice(tmp61)
+              tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_4(p, tmp62, tmp63)
             else
-              tmp65 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_4(p, tmp65, res)
-    private fun matchAllImpl_StagedRegExp_sp_5(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
-      tmp59 = len(s)
-      scrut22 = ==(tmp59, 0)
-      if scrut22 is
-        true then res
+              tmp64 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_4(p, tmp64, res)
         else
-          scrut23 = match_StagedRegExp_sp_2(p, s)
-          if scrut23 is
-            Some then
-              arg_Some_0_ = scrut23.x
-              ss = arg_Some_0_
-              tmp60 = len(ss)
-              scrut24 = >(tmp60, 0)
-              if scrut24 is
-                true then
-                  tmp61 = len(ss)
-                  tmp62 = s.slice(tmp61)
-                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_6(p, tmp62, tmp63)
-                else
-                  tmp64 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_5(p, tmp64, res)
+          tmp65 = s.slice(1)
+          matchAllImpl_StagedRegExp_sp_4(p, tmp65, res)
+fun matchAllImpl_StagedRegExp_sp_5(p, s, res) =
+  let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+  tmp59 = len(s)
+  scrut22 = ==(tmp59, 0)
+  if scrut22 is
+    true then res
+    else
+      scrut23 = match_StagedRegExp_sp_2(p, s)
+      if scrut23 is
+        Some then
+          arg_Some_0_ = scrut23.x
+          ss = arg_Some_0_
+          tmp60 = len(ss)
+          scrut24 = >(tmp60, 0)
+          if scrut24 is
+            true then
+              tmp61 = len(ss)
+              tmp62 = s.slice(tmp61)
+              tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_6(p, tmp62, tmp63)
             else
-              tmp65 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_5(p, tmp65, res)
-    private fun matchAllImpl_StagedRegExp_sp_6(p, s, res) =
-      let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
-      tmp59 = len(s)
-      scrut22 = ==(tmp59, 0)
-      if scrut22 is
-        true then res
+              tmp64 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_5(p, tmp64, res)
         else
-          scrut23 = match_StagedRegExp_sp_2(p, s)
-          if scrut23 is
-            Some then
-              arg_Some_0_ = scrut23.x
-              ss = arg_Some_0_
-              tmp60 = len(ss)
-              scrut24 = >(tmp60, 0)
-              if scrut24 is
-                true then
-                  tmp61 = len(ss)
-                  tmp62 = s.slice(tmp61)
-                  tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl_StagedRegExp_sp_6(p, tmp62, tmp63)
-                else
-                  tmp64 = s.slice(1)
-                  matchAllImpl_StagedRegExp_sp_6(p, tmp64, res)
+          tmp65 = s.slice(1)
+          matchAllImpl_StagedRegExp_sp_5(p, tmp65, res)
+fun matchAllImpl_StagedRegExp_sp_6(p, s, res) =
+  let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
+  tmp59 = len(s)
+  scrut22 = ==(tmp59, 0)
+  if scrut22 is
+    true then res
+    else
+      scrut23 = match_StagedRegExp_sp_2(p, s)
+      if scrut23 is
+        Some then
+          arg_Some_0_ = scrut23.x
+          ss = arg_Some_0_
+          tmp60 = len(ss)
+          scrut24 = >(tmp60, 0)
+          if scrut24 is
+            true then
+              tmp61 = len(ss)
+              tmp62 = s.slice(tmp61)
+              tmp63 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_6(p, tmp62, tmp63)
             else
-              tmp65 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_6(p, tmp65, res)
-    private fun matchAll_StagedRegExp_sp_0(p, s) =
-      let {tmp66}
-      tmp66 = []
-      matchAllImpl_StagedRegExp_sp_1(p, s, tmp66)
-    private fun matchAll_StagedRegExp_sp_1(p, s) =
-      let {tmp66}
-      tmp66 = []
-      matchAllImpl_StagedRegExp_sp_3(p, s, tmp66)
-    private fun matchAll_StagedRegExp_sp_2(p, s) =
-      let {tmp66}
-      tmp66 = []
-      matchAllImpl_StagedRegExp_sp_5(p, s, tmp66)
-    private fun matchImpl_StagedRegExp_sp_0(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
-        true then
-          scrut19 = p.canBeEmpty()
-          if scrut19 is
-            true then new Some(acc)
-            else new None()
+              tmp64 = s.slice(1)
+              matchAllImpl_StagedRegExp_sp_6(p, tmp64, res)
         else
-          if p is
-            Nothing then new None()
-            else
-              c18 = s.0
-              scrut20 = p.startsWith(c18)
-              if scrut20 is
-                true then
-                  tmp56 = p.derive(c18)
-                  tmp57 = s.slice(1)
-                  tmp58 = "" + c18
-                  matchImpl(tmp56, tmp57, tmp58)
-                else
-                  scrut21 = p.canBeEmpty()
-                  if scrut21 is
-                    true then new Some(acc)
-                    else new None()
-    private fun matchImpl_StagedRegExp_sp_1(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
-        true then
-          scrut19 = p.canBeEmpty_Concat_sp_0()
-          new None()
+          tmp65 = s.slice(1)
+          matchAllImpl_StagedRegExp_sp_6(p, tmp65, res)
+fun matchAll_StagedRegExp_sp_0(p, s) =
+  let {tmp66}
+  tmp66 = []
+  matchAllImpl_StagedRegExp_sp_1(p, s, tmp66)
+fun matchAll_StagedRegExp_sp_1(p, s) =
+  let {tmp66}
+  tmp66 = []
+  matchAllImpl_StagedRegExp_sp_3(p, s, tmp66)
+fun matchAll_StagedRegExp_sp_2(p, s) =
+  let {tmp66}
+  tmp66 = []
+  matchAllImpl_StagedRegExp_sp_5(p, s, tmp66)
+fun matchImpl_StagedRegExp_sp_0(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      scrut19 = p.canBeEmpty()
+      if scrut19 is
+        true then new Some(acc)
+        else new None()
+    else
+      if p is
+        Nothing then new None()
         else
           c18 = s.0
-          scrut20 = p.startsWith_Concat_sp_0(c18)
+          scrut20 = p.startsWith(c18)
           if scrut20 is
             true then
-              tmp56 = p.derive_Concat_sp_0(c18)
+              tmp56 = p.derive(c18)
               tmp57 = s.slice(1)
               tmp58 = "" + c18
-              matchImpl_StagedRegExp_sp_2(tmp56, tmp57, tmp58)
+              matchImpl(tmp56, tmp57, tmp58)
             else
-              scrut21 = p.canBeEmpty_Concat_sp_0()
-              new None()
-    private fun matchImpl_StagedRegExp_sp_2(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
+              scrut21 = p.canBeEmpty()
+              if scrut21 is
+                true then new Some(acc)
+                else new None()
+fun matchImpl_StagedRegExp_sp_1(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      scrut19 = canBeEmpty_Concat_sp_0(p)
+      new None()
+    else
+      c18 = s.0
+      scrut20 = startsWith_Concat_sp_0(p, c18)
+      if scrut20 is
         true then
-          if p is
-            Nothing then
-              scrut19 = p.canBeEmpty_Nothing_sp_0()
-            Concat then
-              scrut19 = p.canBeEmpty_Concat_sp_2()
-          new None()
+          tmp56 = derive_Concat_sp_0(p, c18)
+          tmp57 = s.slice(1)
+          tmp58 = "" + c18
+          matchImpl_StagedRegExp_sp_2(tmp56, tmp57, tmp58)
         else
-          if p is
-            Nothing then new None()
-            else
-              c18 = s.0
-              scrut20 = p.startsWith_Concat_sp_2(c18)
-              if scrut20 is
-                true then
-                  tmp56 = p.derive_Concat_sp_2(c18)
-                  tmp57 = s.slice(1)
-                  tmp58 = acc + c18
-                  matchImpl(tmp56, tmp57, tmp58)
-                else
-                  scrut21 = p.canBeEmpty_Concat_sp_2()
-                  new None()
-    private fun matchImpl_StagedRegExp_sp_3(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
-        true then
-          scrut19 = p.canBeEmpty_Concat_sp_4()
+          scrut21 = canBeEmpty_Concat_sp_0(p)
           new None()
+fun matchImpl_StagedRegExp_sp_2(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      if p is
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
+        Concat then
+          scrut19 = canBeEmpty_Concat_sp_2(p)
+      new None()
+    else
+      if p is
+        Nothing then new None()
         else
           c18 = s.0
-          scrut20 = p.startsWith_Concat_sp_4(c18)
+          scrut20 = startsWith_Concat_sp_2(p, c18)
           if scrut20 is
             true then
-              tmp56 = p.derive_Concat_sp_4(c18)
+              tmp56 = derive_Concat_sp_2(p, c18)
               tmp57 = s.slice(1)
-              tmp58 = "" + c18
-              matchImpl_StagedRegExp_sp_4(tmp56, tmp57, tmp58)
+              tmp58 = acc + c18
+              matchImpl(tmp56, tmp57, tmp58)
             else
-              scrut21 = p.canBeEmpty_Concat_sp_4()
+              scrut21 = canBeEmpty_Concat_sp_2(p)
               new None()
-    private fun matchImpl_StagedRegExp_sp_4(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
+fun matchImpl_StagedRegExp_sp_3(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      scrut19 = canBeEmpty_Concat_sp_4(p)
+      new None()
+    else
+      c18 = s.0
+      scrut20 = startsWith_Concat_sp_4(p, c18)
+      if scrut20 is
         true then
-          if p is
-            Nothing then
-              scrut19 = p.canBeEmpty_Nothing_sp_0()
-            Concat then
-              scrut19 = p.canBeEmpty_Concat_sp_7()
-          new None()
+          tmp56 = derive_Concat_sp_4(p, c18)
+          tmp57 = s.slice(1)
+          tmp58 = "" + c18
+          matchImpl_StagedRegExp_sp_4(tmp56, tmp57, tmp58)
         else
-          if p is
-            Nothing then new None()
-            else
-              c18 = s.0
-              scrut20 = p.startsWith_Concat_sp_7(c18)
-              if scrut20 is
-                true then
-                  tmp56 = p.derive_Concat_sp_7(c18)
-                  tmp57 = s.slice(1)
-                  tmp58 = acc + c18
-                  matchImpl_StagedRegExp_sp_5(tmp56, tmp57, tmp58)
-                else
-                  scrut21 = p.canBeEmpty_Concat_sp_7()
-                  new None()
-    private fun matchImpl_StagedRegExp_sp_5(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
-        true then
-          if p is
-            Concat then
-              scrut19 = p.canBeEmpty_Concat_sp_10()
-            Nothing then
-              scrut19 = p.canBeEmpty_Nothing_sp_0()
-            Concat then
-              scrut19 = p.canBeEmpty_Concat_sp_13()
+          scrut21 = canBeEmpty_Concat_sp_4(p)
           new None()
+fun matchImpl_StagedRegExp_sp_4(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      if p is
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
+        Concat then
+          scrut19 = canBeEmpty_Concat_sp_7(p)
+      new None()
+    else
+      if p is
+        Nothing then new None()
         else
-          if p is
-            Nothing then new None()
+          c18 = s.0
+          scrut20 = startsWith_Concat_sp_7(p, c18)
+          if scrut20 is
+            true then
+              tmp56 = derive_Concat_sp_7(p, c18)
+              tmp57 = s.slice(1)
+              tmp58 = acc + c18
+              matchImpl_StagedRegExp_sp_5(tmp56, tmp57, tmp58)
             else
-              c18 = s.0
+              scrut21 = canBeEmpty_Concat_sp_7(p)
+              new None()
+fun matchImpl_StagedRegExp_sp_5(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      if p is
+        Concat then
+          scrut19 = canBeEmpty_Concat_sp_10(p)
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
+        Concat then
+          scrut19 = canBeEmpty_Concat_sp_13(p)
+      new None()
+    else
+      if p is
+        Nothing then new None()
+        else
+          c18 = s.0
+          if p is
+            Concat then
+              scrut20 = startsWith_Concat_sp_10(p, c18)
+            Concat then
+              scrut20 = startsWith_Concat_sp_13(p, c18)
+          if scrut20 is
+            true then
               if p is
                 Concat then
-                  scrut20 = p.startsWith_Concat_sp_10(c18)
+                  tmp56 = derive_Concat_sp_10(p, c18)
                 Concat then
-                  scrut20 = p.startsWith_Concat_sp_13(c18)
-              if scrut20 is
-                true then
-                  if p is
-                    Concat then
-                      tmp56 = p.derive_Concat_sp_10(c18)
-                    Concat then
-                      tmp56 = p.derive_Concat_sp_13(c18)
-                  tmp57 = s.slice(1)
-                  tmp58 = acc + c18
-                  matchImpl(tmp56, tmp57, tmp58)
-                else
-                  if p is
-                    Concat then
-                      scrut21 = p.canBeEmpty_Concat_sp_10()
-                    Concat then
-                      scrut21 = p.canBeEmpty_Concat_sp_13()
-                  new None()
-    private fun matchImpl_StagedRegExp_sp_6(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
+                  tmp56 = derive_Concat_sp_13(p, c18)
+              tmp57 = s.slice(1)
+              tmp58 = acc + c18
+              matchImpl(tmp56, tmp57, tmp58)
+            else
+              if p is
+                Concat then
+                  scrut21 = canBeEmpty_Concat_sp_10(p)
+                Concat then
+                  scrut21 = canBeEmpty_Concat_sp_13(p)
+              new None()
+fun matchImpl_StagedRegExp_sp_6(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      scrut19 = canBeEmpty_Concat_sp_14(p)
+      new None()
+    else
+      c18 = s.0
+      scrut20 = startsWith_Concat_sp_14(p, c18)
+      if scrut20 is
         true then
-          scrut19 = p.canBeEmpty_Concat_sp_14()
+          tmp56 = derive_Concat_sp_14(p, c18)
+          tmp57 = s.slice(1)
+          tmp58 = "" + c18
+          matchImpl_StagedRegExp_sp_7(tmp56, tmp57, tmp58)
+        else
+          scrut21 = canBeEmpty_Concat_sp_14(p)
           new None()
+fun matchImpl_StagedRegExp_sp_7(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      if p is
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
+        Concat then
+          scrut19 = canBeEmpty_Concat_sp_21(p)
+      new None()
+    else
+      if p is
+        Nothing then new None()
         else
           c18 = s.0
-          scrut20 = p.startsWith_Concat_sp_14(c18)
+          scrut20 = startsWith_Concat_sp_21(p, c18)
           if scrut20 is
             true then
-              tmp56 = p.derive_Concat_sp_14(c18)
+              tmp56 = derive_Concat_sp_21(p, c18)
               tmp57 = s.slice(1)
-              tmp58 = "" + c18
-              matchImpl_StagedRegExp_sp_7(tmp56, tmp57, tmp58)
+              tmp58 = acc + c18
+              matchImpl_StagedRegExp_sp_8(tmp56, tmp57, tmp58)
             else
-              scrut21 = p.canBeEmpty_Concat_sp_14()
+              scrut21 = canBeEmpty_Concat_sp_21(p)
               new None()
-    private fun matchImpl_StagedRegExp_sp_7(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
-        true then
-          if p is
-            Nothing then
-              scrut19 = p.canBeEmpty_Nothing_sp_0()
-            Nothing then
-              scrut19 = p.canBeEmpty_Nothing_sp_0()
-            Concat then
-              scrut19 = p.canBeEmpty_Concat_sp_21()
-          new None()
+fun matchImpl_StagedRegExp_sp_8(p, s, acc) =
+  let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
+  tmp55 = len(s)
+  scrut18 = ==(tmp55, 0)
+  if scrut18 is
+    true then
+      if p is
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
+        Concat then
+          scrut19 = canBeEmpty_Concat_sp_24(p)
+      new None()
+    else
+      if p is
+        Nothing then new None()
         else
-          if p is
-            Nothing then new None()
+          c18 = s.0
+          scrut20 = startsWith_Concat_sp_24(p, c18)
+          if scrut20 is
+            true then
+              tmp56 = derive_Concat_sp_24(p, c18)
+              tmp57 = s.slice(1)
+              tmp58 = acc + c18
+              matchImpl(tmp56, tmp57, tmp58)
             else
-              c18 = s.0
-              scrut20 = p.startsWith_Concat_sp_21(c18)
-              if scrut20 is
-                true then
-                  tmp56 = p.derive_Concat_sp_21(c18)
-                  tmp57 = s.slice(1)
-                  tmp58 = acc + c18
-                  matchImpl_StagedRegExp_sp_8(tmp56, tmp57, tmp58)
-                else
-                  scrut21 = p.canBeEmpty_Concat_sp_21()
-                  new None()
-    private fun matchImpl_StagedRegExp_sp_8(p, s, acc) =
-      let {scrut18, scrut19, c18, scrut20, scrut21, tmp55, tmp56, tmp57, tmp58}
-      tmp55 = len(s)
-      scrut18 = ==(tmp55, 0)
-      if scrut18 is
+              scrut21 = canBeEmpty_Concat_sp_24(p)
+              new None()
+fun match_StagedRegExp_sp_0(p, s) = matchImpl_StagedRegExp_sp_1(p, s, "")
+fun match_StagedRegExp_sp_1(p, s) = matchImpl_StagedRegExp_sp_3(p, s, "")
+fun match_StagedRegExp_sp_2(p, s) = matchImpl_StagedRegExp_sp_6(p, s, "")
+fun nTimes_StagedRegExp_sp_0(r, i) =
+  let {scrut17, tmp52, tmp53, obj_100, obj_101, tup_102, obj_103, obj_104, obj_105, obj_106, tup_107, obj_108, tup_109, obj_110, obj_111, obj_112, obj_113, obj_114, obj_115, tup_116, obj_117, obj_118, obj_119, tup_120, obj_121, obj_122, obj_123, obj_124, obj_125, obj_126, obj_127, obj_128, obj_129, tup_130, obj_131, obj_132, obj_133, obj_134, tup_135, obj_136, tup_137, obj_138, obj_139, obj_140, obj_141, obj_142, obj_143, tup_144, obj_145, obj_146, obj_147, tup_148, obj_149, obj_150, obj_151, obj_152, obj_153, obj_154, obj_155, obj_156}
+  scrut17 = false
+  tmp52 = 2
+  obj_100 = new Exact("2")
+  obj_101 = new Exact("5")
+  tup_102 = ["0", "1", "2", "3", "4", "5"]
+  obj_103 = new In(tup_102)
+  obj_104 = new Concat(obj_101, obj_103)
+  obj_105 = new Concat(obj_100, obj_104)
+  obj_106 = new Exact("2")
+  tup_107 = ["0", "1", "2", "3", "4"]
+  obj_108 = new In(tup_107)
+  tup_109 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_110 = new In(tup_109)
+  obj_111 = new Concat(obj_108, obj_110)
+  obj_112 = new Concat(obj_106, obj_111)
+  obj_113 = new Exact("1")
+  obj_114 = new Empty()
+  obj_115 = new Union(obj_113, obj_114)
+  tup_116 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_117 = new In(tup_116)
+  obj_118 = new Empty()
+  obj_119 = new Union(obj_117, obj_118)
+  tup_120 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_121 = new In(tup_120)
+  obj_122 = new Concat(obj_119, obj_121)
+  obj_123 = new Concat(obj_115, obj_122)
+  obj_124 = new Union(obj_112, obj_123)
+  obj_125 = new Union(obj_105, obj_124)
+  obj_126 = new Exact(".")
+  obj_127 = new Concat(obj_125, obj_126)
+  obj_128 = new Exact("2")
+  obj_129 = new Exact("5")
+  tup_130 = ["0", "1", "2", "3", "4", "5"]
+  obj_131 = new In(tup_130)
+  obj_132 = new Concat(obj_129, obj_131)
+  obj_133 = new Concat(obj_128, obj_132)
+  obj_134 = new Exact("2")
+  tup_135 = ["0", "1", "2", "3", "4"]
+  obj_136 = new In(tup_135)
+  tup_137 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_138 = new In(tup_137)
+  obj_139 = new Concat(obj_136, obj_138)
+  obj_140 = new Concat(obj_134, obj_139)
+  obj_141 = new Exact("1")
+  obj_142 = new Empty()
+  obj_143 = new Union(obj_141, obj_142)
+  tup_144 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_145 = new In(tup_144)
+  obj_146 = new Empty()
+  obj_147 = new Union(obj_145, obj_146)
+  tup_148 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_149 = new In(tup_148)
+  obj_150 = new Concat(obj_147, obj_149)
+  obj_151 = new Concat(obj_143, obj_150)
+  obj_152 = new Union(obj_140, obj_151)
+  obj_153 = new Union(obj_133, obj_152)
+  obj_154 = new Exact(".")
+  obj_155 = new Concat(obj_153, obj_154)
+  obj_156 = new Concat(obj_127, obj_155)
+  tmp53 = obj_156
+  new Concat(r, tmp53)
+fun nTimes_StagedRegExp_sp_1(r, i) =
+  let {scrut17, tmp52, tmp53, obj_72, obj_73, tup_74, obj_75, obj_76, obj_77, obj_78, tup_79, obj_80, tup_81, obj_82, obj_83, obj_84, obj_85, obj_86, obj_87, tup_88, obj_89, obj_90, obj_91, tup_92, obj_93, obj_94, obj_95, obj_96, obj_97, obj_98, obj_99}
+  scrut17 = false
+  tmp52 = 1
+  obj_72 = new Exact("2")
+  obj_73 = new Exact("5")
+  tup_74 = ["0", "1", "2", "3", "4", "5"]
+  obj_75 = new In(tup_74)
+  obj_76 = new Concat(obj_73, obj_75)
+  obj_77 = new Concat(obj_72, obj_76)
+  obj_78 = new Exact("2")
+  tup_79 = ["0", "1", "2", "3", "4"]
+  obj_80 = new In(tup_79)
+  tup_81 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_82 = new In(tup_81)
+  obj_83 = new Concat(obj_80, obj_82)
+  obj_84 = new Concat(obj_78, obj_83)
+  obj_85 = new Exact("1")
+  obj_86 = new Empty()
+  obj_87 = new Union(obj_85, obj_86)
+  tup_88 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_89 = new In(tup_88)
+  obj_90 = new Empty()
+  obj_91 = new Union(obj_89, obj_90)
+  tup_92 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  obj_93 = new In(tup_92)
+  obj_94 = new Concat(obj_91, obj_93)
+  obj_95 = new Concat(obj_87, obj_94)
+  obj_96 = new Union(obj_84, obj_95)
+  obj_97 = new Union(obj_77, obj_96)
+  obj_98 = new Exact(".")
+  obj_99 = new Concat(obj_97, obj_98)
+  tmp53 = obj_99
+  new Concat(r, tmp53)
+fun nTimes_StagedRegExp_sp_2(r, i) =
+  let {scrut17, tmp52, tmp53}
+  scrut17 = true
+  r
+fun plus_StagedRegExp_sp_0(r) =
+  let {tmp54}
+  tmp54 = new Star(r)
+  new Concat(r, tmp54)
+fun plus_StagedRegExp_sp_1(r) =
+  let {tmp54}
+  tmp54 = new Star(r)
+  new Concat(r, tmp54)
+fun plus_StagedRegExp_sp_2(r) =
+  let {tmp54}
+  tmp54 = new Star(r)
+  new Concat(r, tmp54)
+fun plus_StagedRegExp_sp_3(r) =
+  let {tmp54}
+  tmp54 = new Star(r)
+  new Concat(r, tmp54)
+fun question_StagedRegExp_sp_0(r) =
+  let {tmp48}
+  tmp48 = new Empty()
+  new Union(r, tmp48)
+fun question_StagedRegExp_sp_1(r) =
+  let {tmp48}
+  tmp48 = new Empty()
+  new Union(r, tmp48)
+fun question_StagedRegExp_sp_2(r) =
+  let {tmp48}
+  tmp48 = new Empty()
+  new Union(r, tmp48)
+fun question_StagedRegExp_sp_3(r) =
+  let {tmp48}
+  tmp48 = new Empty()
+  new Union(r, tmp48)
+fun canBeEmpty_Nothing_sp_0(self) = false
+fun derive_Nothing_sp_0(self, c) =
+  let {obj_244}
+  obj_244 = new Nothing()
+  obj_244
+fun normalize_Nothing_sp_0(self) =
+  let {obj_18}
+  obj_18 = new Nothing()
+  obj_18
+fun normalize_Nothing_sp_1(self) = self
+fun startsWith_Nothing_sp_0(self, c) = false
+fun canBeEmpty_Empty_sp_0(self) = true
+fun derive_Empty_sp_0(self, c) =
+  let {obj_243}
+  obj_243 = new Nothing()
+  obj_243
+fun normalize_Empty_sp_0(self) =
+  let {obj_17}
+  obj_17 = new Empty()
+  obj_17
+fun startsWith_Empty_sp_0(self, c) = false
+fun canBeEmpty_Exact_sp_0(self) = false
+fun canBeEmpty_Exact_sp_1(self) = false
+fun canBeEmpty_Exact_sp_2(self) = false
+fun canBeEmpty_Exact_sp_3(self) = false
+fun canBeEmpty_Exact_sp_4(self) = false
+fun derive_Exact_sp_0(self, c) =
+  let {scrut2}
+  scrut2 = self.startsWith(c)
+  if scrut2 is
+    true then new Empty()
+    else new Nothing()
+fun derive_Exact_sp_1(self, c) =
+  let {scrut2}
+  scrut2 = self.startsWith(c)
+  if scrut2 is
+    true then new Empty()
+    else new Nothing()
+fun derive_Exact_sp_2(self, c) =
+  let {scrut2}
+  scrut2 = self.startsWith(c)
+  if scrut2 is
+    true then new Empty()
+    else new Nothing()
+fun derive_Exact_sp_3(self, c) =
+  let {scrut2}
+  scrut2 = self.startsWith(c)
+  if scrut2 is
+    true then new Empty()
+    else new Nothing()
+fun derive_Exact_sp_4(self, c) =
+  let {scrut2}
+  scrut2 = self.startsWith(c)
+  if scrut2 is
+    true then new Empty()
+    else new Nothing()
+fun normalize_Exact_sp_0(self) = self
+fun normalize_Exact_sp_1(self) = self
+fun normalize_Exact_sp_2(self) = self
+fun normalize_Exact_sp_3(self) = self
+fun normalize_Exact_sp_4(self) = self
+fun normalize_Exact_sp_5(self) = self
+fun normalize_Exact_sp_6(self) = self
+fun normalize_Exact_sp_7(self) = self
+fun normalize_Exact_sp_8(self) = self
+fun startsWith_Exact_sp_0(self, c) = ==("@", c)
+fun startsWith_Exact_sp_1(self, c) = ==(":", c)
+fun startsWith_Exact_sp_2(self, c) = ==("2", c)
+fun startsWith_Exact_sp_3(self, c) = ==("1", c)
+fun startsWith_Exact_sp_4(self, c) = ==(".", c)
+fun canBeEmpty_Not_sp_0(self) = false
+fun derive_Not_sp_0(self, c) =
+  let {scrut3}
+  scrut3 = self.startsWith(c)
+  if scrut3 is
+    true then new Empty()
+    else new Nothing()
+fun normalize_Not_sp_0(self) = self
+fun normalize_Not_sp_1(self) = self
+fun startsWith_Not_sp_0(self, c) =
+  let {tmp5}
+  tmp5 = has_StagedRegExp_sp_2(self.chars, c)
+  not tmp5
+fun canBeEmpty_Union_sp_0(self) = false
+fun canBeEmpty_Union_sp_1(self) = false
+fun canBeEmpty_Union_sp_2(self) = true
+fun canBeEmpty_Union_sp_3(self) = true
+fun derive_Union_sp_0(self, c) =
+  let {tmp6, tmp7, tmp8}
+  tmp6 = derive_Concat_sp_17(self.p1, c)
+  tmp7 = derive_Union_sp_1(self.p2, c)
+  tmp8 = new Union.class(tmp6, tmp7)
+  normalize_Union_sp_12(tmp8)
+fun derive_Union_sp_1(self, c) =
+  let {tmp6, tmp7, tmp8}
+  tmp6 = derive_Concat_sp_18(self.p1, c)
+  tmp7 = derive_Concat_sp_19(self.p2, c)
+  tmp8 = new Union.class(tmp6, tmp7)
+  normalize_Union_sp_11(tmp8)
+fun derive_Union_sp_2(self, c) =
+  let {tmp6, tmp7, tmp8}
+  tmp6 = derive_Exact_sp_3(self.p1, c)
+  tmp7 = derive_Empty_sp_0(self.p2, c)
+  tmp8 = new Union.class(tmp6, tmp7)
+  normalize_Union_sp_7(tmp8)
+fun derive_Union_sp_3(self, c) =
+  let {tmp6, tmp7, tmp8}
+  tmp6 = derive_In_sp_2(self.p1, c)
+  tmp7 = derive_Empty_sp_0(self.p2, c)
+  tmp8 = new Union.class(tmp6, tmp7)
+  normalize_Union_sp_7(tmp8)
+fun flat_Union_sp_0(self) =
+  let {p1__, scrut4, p2__, scrut5, tmp10, tmp11}
+  scrut4 = self.p1
+  if scrut4 is
+    Union then
+      tmp10 = self.p1.flat()
+    else
+      tmp10 = [self.p1]
+  p1__ = tmp10
+  scrut5 = self.p2
+  if scrut5 is
+    Union then
+      tmp11 = self.p2.flat()
+    else
+      tmp11 = [self.p2]
+  p2__ = tmp11
+  concat(p1__, p2__)
+fun normalize_Union_sp_0(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = self.p1.normalize()
+  p2__1 = self.p2.normalize()
+  if p1__1 is
+    Union then
+      tmp16 = flat_Union_sp_0(p1__1)
+    else
+      tmp16 = [p1__1]
+  arr11 = tmp16
+  if p2__1 is
+    Union then
+      tmp17 = flat_Union_sp_0(p2__1)
+    else
+      tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len(arr2)
+  tmp20 = len(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_1(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_0(self.p1)
+  p2__1 = self.p2.normalize()
+  if p1__1 is
+    Union then
+      tmp16 = flat_Union_sp_0(p1__1)
+    else
+      tmp16 = [p1__1]
+  arr11 = tmp16
+  if p2__1 is
+    Union then
+      tmp17 = flat_Union_sp_0(p2__1)
+    else
+      tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len(arr2)
+  tmp20 = len(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_10(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_In_sp_5(self.p1)
+  p2__1 = normalize_Empty_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = 1
+  tmp20 = 1
+  s2 = self.iter(tmp18, arr2, 1, 1)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_11(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  if self.p1 is
+    Concat then
+      p1__1 = normalize_Concat_sp_33(self.p1)
+    Nothing then
+      p1__1 = normalize_Nothing_sp_0(self.p1)
+  p2__1 = self.p2.normalize()
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  if p2__1 is
+    Union then
+      tmp17 = flat_Union_sp_0(p2__1)
+    else
+      tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len(arr2)
+  tmp20 = len(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_12(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  if self.p1 is
+    Concat then
+      p1__1 = normalize_Concat_sp_31(self.p1)
+    Nothing then
+      p1__1 = normalize_Nothing_sp_0(self.p1)
+  p2__1 = self.p2.normalize()
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  if p2__1 is
+    Union then
+      tmp17 = flat_Union_sp_0(p2__1)
+    else
+      tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len(arr2)
+  tmp20 = len(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_13(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_41(self.p1)
+  p2__1 = normalize_Union_sp_14(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  if p2__1 is
+    Union then
+      tmp17 = flat_Union_sp_0(p2__1)
+    else
+      tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len(arr2)
+  tmp20 = len(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_14(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_42(self.p1)
+  p2__1 = normalize_Concat_sp_43(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len_StagedRegExp_sp_6(arr2)
+  tmp20 = len_StagedRegExp_sp_6(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_15(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Exact_sp_8(self.p1)
+  p2__1 = normalize_Empty_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = 1
+  tmp20 = 1
+  s2 = self.iter(tmp18, arr2, 1, 1)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_16(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_37(self.p1)
+  if self.p2 is
+    Empty then
+      p2__1 = normalize_Empty_sp_0(self.p2)
+    Nothing then
+      p2__1 = normalize_Nothing_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len_StagedRegExp_sp_5(arr2)
+  tmp20 = len_StagedRegExp_sp_5(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_17(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_47(self.p1)
+  if self.p2 is
+    Nothing then
+      p2__1 = normalize_Nothing_sp_0(self.p2)
+    Exact then
+      p2__1 = normalize_Exact_sp_1(self.p2)
+    Nothing then
+      p2__1 = normalize_Nothing_sp_1(self.p2)
+    Concat then
+      p2__1 = normalize_Concat_sp_37(self.p2)
+    Concat then
+      p2__1 = normalize_Concat_sp_50(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len_StagedRegExp_sp_7(arr2)
+  tmp20 = len_StagedRegExp_sp_7(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_2(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_3(self.p1)
+  if self.p2 is
+    Concat then
+      p2__1 = normalize_Concat_sp_5(self.p2)
+    Nothing then
+      p2__1 = normalize_Nothing_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len_StagedRegExp_sp_0(arr2)
+  tmp20 = len_StagedRegExp_sp_0(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_3(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_20(self.p1)
+  p2__1 = normalize_Empty_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = 1
+  tmp20 = 1
+  s2 = self.iter(tmp18, arr2, 1, 1)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_4(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_21(self.p1)
+  p2__1 = normalize_Empty_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = 1
+  tmp20 = 1
+  s2 = self.iter(tmp18, arr2, 1, 1)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_5(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_10(self.p1)
+  if self.p2 is
+    Concat then
+      p2__1 = normalize_Concat_sp_12(self.p2)
+    Nothing then
+      p2__1 = normalize_Nothing_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len_StagedRegExp_sp_2(arr2)
+  tmp20 = len_StagedRegExp_sp_2(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_6(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_23(self.p1)
+  if self.p2 is
+    Nothing then
+      p2__1 = normalize_Nothing_sp_0(self.p2)
+    Concat then
+      p2__1 = normalize_Concat_sp_29(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len_StagedRegExp_sp_3(arr2)
+  tmp20 = len_StagedRegExp_sp_3(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_7(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  if self.p1 is
+    Empty then
+      p1__1 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__1 = normalize_Nothing_sp_0(self.p1)
+  p2__1 = normalize_Nothing_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = 1
+  tmp20 = 1
+  s2 = self.iter(tmp18, arr2, 1, 1)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_8(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_34(self.p1)
+  if self.p2 is
+    Empty then
+      p2__1 = normalize_Empty_sp_0(self.p2)
+    Nothing then
+      p2__1 = normalize_Nothing_sp_0(self.p2)
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len_StagedRegExp_sp_5(arr2)
+  tmp20 = len_StagedRegExp_sp_5(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Union_sp_9(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  p1__1 = normalize_Concat_sp_35(self.p1)
+  p2__1 = self.p2.normalize()
+  tmp16 = [p1__1]
+  arr11 = tmp16
+  if p2__1 is
+    Union then
+      tmp17 = flat_Union_sp_0(p2__1)
+    else
+      tmp17 = [p2__1]
+  arr2 = tmp17
+  tmp18 = new DedupSet(arr11)
+  tmp19 = len(arr2)
+  tmp20 = len(arr2)
+  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
+  tmp21 = len(s2.arr)
+  tmp22 = len(s2.arr)
+  mkUnion(s2.arr, tmp21, tmp22)
+fun startsWith_Union_sp_0(self, c) =
+  let {tmp26}
+  tmp26 = startsWith_Concat_sp_17(self.p1, c)
+  if tmp26 is
+    false then startsWith_Union_sp_1(self.p2, c)
+    else true
+fun startsWith_Union_sp_1(self, c) =
+  let {tmp26}
+  tmp26 = startsWith_Concat_sp_18(self.p1, c)
+  if tmp26 is
+    false then startsWith_Concat_sp_19(self.p2, c)
+    else true
+fun startsWith_Union_sp_2(self, c) =
+  let {tmp26}
+  tmp26 = startsWith_Exact_sp_3(self.p1, c)
+  if tmp26 is
+    false then startsWith_Empty_sp_0(self.p2, c)
+    else true
+fun startsWith_Union_sp_3(self, c) =
+  let {tmp26}
+  tmp26 = startsWith_In_sp_2(self.p1, c)
+  if tmp26 is
+    false then startsWith_Empty_sp_0(self.p2, c)
+    else true
+fun canBeEmpty_In_sp_0(self) = false
+fun canBeEmpty_In_sp_1(self) = false
+fun canBeEmpty_In_sp_2(self) = false
+fun derive_In_sp_0(self, c) =
+  let {scrut7}
+  scrut7 = self.startsWith(c)
+  if scrut7 is
+    true then new Empty()
+    else new Nothing()
+fun derive_In_sp_1(self, c) =
+  let {scrut7}
+  scrut7 = self.startsWith(c)
+  if scrut7 is
+    true then new Empty()
+    else new Nothing()
+fun derive_In_sp_2(self, c) =
+  let {scrut7}
+  scrut7 = self.startsWith(c)
+  if scrut7 is
+    true then new Empty()
+    else new Nothing()
+fun normalize_In_sp_0(self) = self
+fun normalize_In_sp_1(self) = self
+fun normalize_In_sp_2(self) = self
+fun normalize_In_sp_3(self) = self
+fun normalize_In_sp_4(self) = self
+fun normalize_In_sp_5(self) = self
+fun startsWith_In_sp_0(self, c) = has_StagedRegExp_sp_0(self.chars, c)
+fun startsWith_In_sp_1(self, c) = has_StagedRegExp_sp_1(self.chars, c)
+fun startsWith_In_sp_2(self, c) = has_StagedRegExp_sp_3(self.chars, c)
+fun canBeEmpty_Concat_sp_0(self) = false
+fun canBeEmpty_Concat_sp_1(self) = false
+fun canBeEmpty_Concat_sp_10(self) = false
+fun canBeEmpty_Concat_sp_11(self) = false
+fun canBeEmpty_Concat_sp_12(self) = false
+fun canBeEmpty_Concat_sp_13(self) = false
+fun canBeEmpty_Concat_sp_14(self) = false
+fun canBeEmpty_Concat_sp_15(self) = false
+fun canBeEmpty_Concat_sp_16(self) = false
+fun canBeEmpty_Concat_sp_17(self) = false
+fun canBeEmpty_Concat_sp_18(self) = false
+fun canBeEmpty_Concat_sp_19(self) = false
+fun canBeEmpty_Concat_sp_2(self) = false
+fun canBeEmpty_Concat_sp_20(self) = false
+fun canBeEmpty_Concat_sp_21(self) = false
+fun canBeEmpty_Concat_sp_22(self) = false
+fun canBeEmpty_Concat_sp_23(self) = false
+fun canBeEmpty_Concat_sp_24(self) = false
+fun canBeEmpty_Concat_sp_25(self) = false
+fun canBeEmpty_Concat_sp_26(self) = false
+fun canBeEmpty_Concat_sp_3(self) = false
+fun canBeEmpty_Concat_sp_4(self) = false
+fun canBeEmpty_Concat_sp_5(self) = false
+fun canBeEmpty_Concat_sp_6(self) = false
+fun canBeEmpty_Concat_sp_7(self) = false
+fun canBeEmpty_Concat_sp_8(self) = false
+fun canBeEmpty_Concat_sp_9(self) = false
+fun derive_Concat_sp_0(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_1(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_1(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_3(tmp30)
+fun derive_Concat_sp_1(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_In_sp_0(self.p1, c)
+  scrut8 = canBeEmpty_In_sp_0(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_2(tmp30)
+fun derive_Concat_sp_10(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_11(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_11(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_27(tmp30)
+fun derive_Concat_sp_11(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_12(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_12(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_26(tmp30)
+fun derive_Concat_sp_12(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Not_sp_0(self.p1, c)
+  scrut8 = canBeEmpty_Not_sp_0(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_25(tmp30)
+fun derive_Concat_sp_13(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = self.p1.derive(c)
+  scrut8 = self.p1.canBeEmpty()
+  if scrut8 is
+    true then
+      tmp27 = new Concat.class(p1__2, self.p2)
+      tmp28 = derive_Concat_sp_10(self.p2, c)
+      tmp29 = new Union(tmp27, tmp28)
+      normalize_Union_sp_6(tmp29)
+    else
+      tmp30 = new Concat.class(p1__2, self.p2)
+      normalize_Concat_sp_23(tmp30)
+fun derive_Concat_sp_14(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_15(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_15(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_44(tmp30)
+fun derive_Concat_sp_15(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_16(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_16(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_38(tmp30)
+fun derive_Concat_sp_16(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Union_sp_0(self.p1, c)
+  scrut8 = canBeEmpty_Union_sp_0(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_37(tmp30)
+fun derive_Concat_sp_17(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Exact_sp_2(self.p1, c)
+  scrut8 = canBeEmpty_Exact_sp_2(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_30(tmp30)
+fun derive_Concat_sp_18(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Exact_sp_2(self.p1, c)
+  scrut8 = canBeEmpty_Exact_sp_2(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_32(tmp30)
+fun derive_Concat_sp_19(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Union_sp_2(self.p1, c)
+  scrut8 = canBeEmpty_Union_sp_2(self.p1)
+  tmp27 = new Concat.class(p1__2, self.p2)
+  tmp28 = derive_Concat_sp_20(self.p2, c)
+  tmp29 = new Union(tmp27, tmp28)
+  normalize_Union_sp_9(tmp29)
+fun derive_Concat_sp_2(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Star_sp_0(self.p1, c)
+  scrut8 = canBeEmpty_Star_sp_0(self.p1)
+  tmp27 = new Concat.class(p1__2, self.p2)
+  tmp28 = derive_Concat_sp_3(self.p2, c)
+  tmp29 = new Union(tmp27, tmp28)
+  normalize_Union_sp_2(tmp29)
+fun derive_Concat_sp_20(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Union_sp_3(self.p1, c)
+  scrut8 = canBeEmpty_Union_sp_3(self.p1)
+  tmp27 = new Concat.class(p1__2, self.p2)
+  tmp28 = derive_In_sp_2(self.p2, c)
+  tmp29 = new Union(tmp27, tmp28)
+  normalize_Union_sp_8(tmp29)
+fun derive_Concat_sp_21(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_22(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_22(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_49(tmp30)
+fun derive_Concat_sp_22(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  if self.p1 is
+    Exact then
+      p1__2 = derive_Exact_sp_4(self.p1, c)
+    Concat then
+      p1__2 = derive_Concat_sp_23(self.p1, c)
+  if self.p1 is
+    Exact then
+      scrut8 = canBeEmpty_Exact_sp_4(self.p1)
+    Concat then
+      scrut8 = canBeEmpty_Concat_sp_23(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_47(tmp30)
+fun derive_Concat_sp_23(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = self.p1.derive(c)
+  scrut8 = self.p1.canBeEmpty()
+  if scrut8 is
+    true then
+      tmp27 = new Concat.class(p1__2, self.p2)
+      tmp28 = derive_Exact_sp_4(self.p2, c)
+      tmp29 = new Union(tmp27, tmp28)
+      normalize_Union_sp_16(tmp29)
+    else
+      tmp30 = new Concat.class(p1__2, self.p2)
+      normalize_Concat_sp_37(tmp30)
+fun derive_Concat_sp_24(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  if self.p1 is
+    Concat then
+      p1__2 = derive_Concat_sp_25(self.p1, c)
+    Concat then
+      p1__2 = derive_Concat_sp_26(self.p1, c)
+  if self.p1 is
+    Concat then
+      scrut8 = canBeEmpty_Concat_sp_25(self.p1)
+    Concat then
+      scrut8 = canBeEmpty_Concat_sp_26(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_0(tmp30)
+fun derive_Concat_sp_25(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  if self.p1 is
+    Exact then
+      p1__2 = derive_Exact_sp_4(self.p1, c)
+    Concat then
+      p1__2 = derive_Concat_sp_23(self.p1, c)
+  if self.p1 is
+    Exact then
+      scrut8 = canBeEmpty_Exact_sp_4(self.p1)
+    Concat then
+      scrut8 = canBeEmpty_Concat_sp_23(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_50(tmp30)
+fun derive_Concat_sp_26(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = self.p1.derive(c)
+  scrut8 = self.p1.canBeEmpty()
+  if scrut8 is
+    true then
+      tmp27 = new Concat.class(p1__2, self.p2)
+      if self.p2 is
+        Nothing then
+          tmp28 = derive_Nothing_sp_0(self.p2, c)
+        Nothing then
+          tmp28 = derive_Nothing_sp_0(self.p2, c)
+        Concat then
+          tmp28 = derive_Concat_sp_25(self.p2, c)
+      tmp29 = new Union(tmp27, tmp28)
+      normalize_Union_sp_17(tmp29)
+    else
+      tmp30 = new Concat.class(p1__2, self.p2)
+      normalize_Concat_sp_47(tmp30)
+fun derive_Concat_sp_3(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Exact_sp_0(self.p1, c)
+  scrut8 = canBeEmpty_Exact_sp_0(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_8(tmp30)
+fun derive_Concat_sp_4(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_5(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_5(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_13(tmp30)
+fun derive_Concat_sp_5(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_6(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_6(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_10(tmp30)
+fun derive_Concat_sp_6(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_In_sp_1(self.p1, c)
+  scrut8 = canBeEmpty_In_sp_1(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_9(tmp30)
+fun derive_Concat_sp_7(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Concat_sp_8(self.p1, c)
+  scrut8 = canBeEmpty_Concat_sp_8(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_23(tmp30)
+fun derive_Concat_sp_8(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Star_sp_1(self.p1, c)
+  scrut8 = canBeEmpty_Star_sp_1(self.p1)
+  tmp27 = new Concat.class(p1__2, self.p2)
+  tmp28 = derive_Concat_sp_9(self.p2, c)
+  tmp29 = new Union(tmp27, tmp28)
+  normalize_Union_sp_5(tmp29)
+fun derive_Concat_sp_9(self, c) =
+  let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
+  p1__2 = derive_Exact_sp_1(self.p1, c)
+  scrut8 = canBeEmpty_Exact_sp_1(self.p1)
+  tmp30 = new Concat.class(p1__2, self.p2)
+  normalize_Concat_sp_22(tmp30)
+fun normalize_Concat_sp_0(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then self.p2.normalize()
+    Nothing then p1__3
+    else
+      tmp31 = self.p2.normalize()
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_1(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then normalize_Star_sp_0(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Star_sp_0(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_10(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Star then
+      p1__3 = normalize_Star_sp_2(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_11(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_11(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_2(self.p1)
+  tmp31 = normalize_Concat_sp_12(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_12(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_3(self.p1)
+  tmp31 = normalize_Exact_sp_3(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_13(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_14(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_15(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_14(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Star_sp_2(self.p1)
+  tmp31 = normalize_Concat_sp_11(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_15(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Concat_sp_16(self.p1)
+  tmp31 = normalize_Concat_sp_19(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_16(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Concat_sp_17(self.p1)
+  tmp31 = normalize_Concat_sp_18(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_17(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Not_sp_0(self.p1)
+  tmp31 = normalize_Star_sp_3(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_18(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Not_sp_1(self.p1)
+  tmp31 = normalize_Star_sp_4(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_19(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Union_sp_3(self.p1)
+  if p1__3 is
+    Empty then normalize_Union_sp_4(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Union_sp_4(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_2(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Empty then
+      p1__3 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Empty then normalize_Star_sp_1(self.p2)
+    Nothing then p1__3
+fun normalize_Concat_sp_20(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_4(self.p1)
+  tmp31 = normalize_Star_sp_5(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_21(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_5(self.p1)
+  tmp31 = normalize_Star_sp_5(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_22(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Empty then
+      p1__3 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Empty then normalize_Concat_sp_12(self.p2)
+    Nothing then p1__3
+fun normalize_Concat_sp_23(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then normalize_Concat_sp_24(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_24(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_24(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Concat_sp_16(self.p1)
+  tmp31 = self.p2.normalize()
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_25(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Empty then
+      p1__3 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Empty then normalize_Star_sp_3(self.p2)
+    Nothing then p1__3
+fun normalize_Concat_sp_26(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Star then
+      p1__3 = normalize_Star_sp_3(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_18(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_27(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_28(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = self.p2.normalize()
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_28(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Star_sp_3(self.p1)
+  tmp31 = normalize_Concat_sp_18(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_29(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Concat_sp_28(self.p1)
+  tmp31 = self.p2.normalize()
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_3(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Star then
+      p1__3 = normalize_Star_sp_1(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_4(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_30(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Empty then
+      p1__3 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Empty then normalize_Concat_sp_31(self.p2)
+    Nothing then p1__3
+fun normalize_Concat_sp_31(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_6(self.p1)
+  tmp31 = normalize_In_sp_3(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_32(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Empty then
+      p1__3 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Empty then normalize_Concat_sp_33(self.p2)
+    Nothing then p1__3
+fun normalize_Concat_sp_33(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_In_sp_4(self.p1)
+  tmp31 = normalize_In_sp_5(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_34(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then normalize_In_sp_5(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_In_sp_5(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_35(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then normalize_Concat_sp_36(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_36(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_36(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Union_sp_10(self.p1)
+  if p1__3 is
+    Empty then normalize_In_sp_5(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_In_sp_5(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_37(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then normalize_Exact_sp_1(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Exact_sp_1(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_38(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Exact then
+      p1__3 = normalize_Exact_sp_1(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_37(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_39(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_39(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Concat_sp_40(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_40(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_4(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_0(self.p1)
+  tmp31 = normalize_Concat_sp_5(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_40(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Union_sp_13(self.p1)
+  if p1__3 is
+    Empty then normalize_Exact_sp_1(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Exact_sp_1(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_41(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_7(self.p1)
+  tmp31 = normalize_Concat_sp_31(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_42(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_7(self.p1)
+  tmp31 = normalize_Concat_sp_33(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_43(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Union_sp_15(self.p1)
+  if p1__3 is
+    Empty then normalize_Concat_sp_36(self.p2)
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Concat_sp_36(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_44(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_45(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = normalize_Union_sp_13(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_45(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Exact then
+      p1__3 = normalize_Exact_sp_1(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_37(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      if self.p2 is
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Concat then
+          tmp31 = normalize_Concat_sp_46(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_46(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Exact then
+      p1__3 = normalize_Exact_sp_1(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_37(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      if self.p2 is
+        Exact then
+          tmp31 = normalize_Exact_sp_1(self.p2)
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Concat then
+          tmp31 = normalize_Concat_sp_37(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_47(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then
+      if self.p2 is
+        Nothing then normalize_Nothing_sp_0(self.p2)
+        Nothing then normalize_Nothing_sp_0(self.p2)
+        Concat then normalize_Concat_sp_48(self.p2)
+    Nothing then p1__3
+    else
+      if self.p2 is
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Concat then
+          tmp31 = normalize_Concat_sp_48(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_48(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Exact then
+      p1__3 = normalize_Exact_sp_1(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_37(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      if self.p2 is
+        Exact then
+          tmp31 = normalize_Exact_sp_1(self.p2)
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Concat then
+          tmp31 = normalize_Concat_sp_37(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_49(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_48(self.p1)
+    Concat then
+      p1__3 = normalize_Concat_sp_47(self.p1)
+  if p1__3 is
+    Nothing then p1__3
+    else
+      tmp31 = self.p2.normalize()
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_5(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Concat_sp_6(self.p1)
+  tmp31 = normalize_Concat_sp_7(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_50(self) =
+  let {p1__3, tmp31}
+  p1__3 = self.p1.normalize()
+  if p1__3 is
+    Empty then
+      if self.p2 is
+        Exact then normalize_Exact_sp_1(self.p2)
+        Nothing then normalize_Nothing_sp_0(self.p2)
+        Nothing then normalize_Nothing_sp_0(self.p2)
+        Concat then normalize_Concat_sp_37(self.p2)
+    Nothing then p1__3
+    else
+      if self.p2 is
+        Exact then
+          tmp31 = normalize_Exact_sp_1(self.p2)
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Nothing then
+          tmp31 = normalize_Nothing_sp_0(self.p2)
+        Concat then
+          tmp31 = normalize_Concat_sp_37(self.p2)
+      new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_6(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_In_sp_0(self.p1)
+  tmp31 = normalize_Star_sp_1(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_7(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Exact_sp_1(self.p1)
+  tmp31 = normalize_Concat_sp_6(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_8(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Empty then
+      p1__3 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Empty then normalize_Concat_sp_5(self.p2)
+    Nothing then p1__3
+fun normalize_Concat_sp_9(self) =
+  let {p1__3, tmp31}
+  if self.p1 is
+    Empty then
+      p1__3 = normalize_Empty_sp_0(self.p1)
+    Nothing then
+      p1__3 = normalize_Nothing_sp_0(self.p1)
+  if p1__3 is
+    Empty then normalize_Star_sp_2(self.p2)
+    Nothing then p1__3
+fun startsWith_Concat_sp_0(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_1(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_1(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_1(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_In_sp_0(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_In_sp_0(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_10(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_11(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_11(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_11(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_12(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_12(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_12(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Not_sp_0(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Not_sp_0(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_13(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = self.p1.startsWith(c)
+  if tmp32 is
+    false then
+      scrut13 = self.p1.canBeEmpty()
+      if scrut13 is
         true then
-          if p is
+          scrut14 = startsWith_Concat_sp_10(self.p2, c)
+          if scrut14 is
+            true then true
+            else false
+        else false
+    else true
+fun startsWith_Concat_sp_14(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_15(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_15(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_15(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_16(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_16(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_16(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Union_sp_0(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Union_sp_0(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_17(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Exact_sp_2(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Exact_sp_2(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_18(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Exact_sp_2(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Exact_sp_2(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_19(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Union_sp_2(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Union_sp_2(self.p1)
+      scrut14 = startsWith_Concat_sp_20(self.p2, c)
+      if scrut14 is
+        true then true
+        else false
+    else true
+fun startsWith_Concat_sp_2(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Star_sp_0(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Star_sp_0(self.p1)
+      scrut14 = startsWith_Concat_sp_3(self.p2, c)
+      if scrut14 is
+        true then true
+        else false
+    else true
+fun startsWith_Concat_sp_20(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Union_sp_3(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Union_sp_3(self.p1)
+      scrut14 = startsWith_In_sp_2(self.p2, c)
+      if scrut14 is
+        true then true
+        else false
+    else true
+fun startsWith_Concat_sp_21(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_22(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_22(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_22(self, c) =
+  let {scrut13, scrut14, tmp32}
+  if self.p1 is
+    Exact then
+      tmp32 = startsWith_Exact_sp_4(self.p1, c)
+    Concat then
+      tmp32 = startsWith_Concat_sp_23(self.p1, c)
+  if tmp32 is
+    false then
+      if self.p1 is
+        Exact then
+          scrut13 = canBeEmpty_Exact_sp_4(self.p1)
+        Concat then
+          scrut13 = canBeEmpty_Concat_sp_23(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_23(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = self.p1.startsWith(c)
+  if tmp32 is
+    false then
+      scrut13 = self.p1.canBeEmpty()
+      if scrut13 is
+        true then
+          scrut14 = startsWith_Exact_sp_4(self.p2, c)
+          if scrut14 is
+            true then true
+            else false
+        else false
+    else true
+fun startsWith_Concat_sp_24(self, c) =
+  let {scrut13, scrut14, tmp32}
+  if self.p1 is
+    Concat then
+      tmp32 = startsWith_Concat_sp_25(self.p1, c)
+    Concat then
+      tmp32 = startsWith_Concat_sp_26(self.p1, c)
+  if tmp32 is
+    false then
+      if self.p1 is
+        Concat then
+          scrut13 = canBeEmpty_Concat_sp_25(self.p1)
+        Concat then
+          scrut13 = canBeEmpty_Concat_sp_26(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_25(self, c) =
+  let {scrut13, scrut14, tmp32}
+  if self.p1 is
+    Exact then
+      tmp32 = startsWith_Exact_sp_4(self.p1, c)
+    Concat then
+      tmp32 = startsWith_Concat_sp_23(self.p1, c)
+  if tmp32 is
+    false then
+      if self.p1 is
+        Exact then
+          scrut13 = canBeEmpty_Exact_sp_4(self.p1)
+        Concat then
+          scrut13 = canBeEmpty_Concat_sp_23(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_26(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = self.p1.startsWith(c)
+  if tmp32 is
+    false then
+      scrut13 = self.p1.canBeEmpty()
+      if scrut13 is
+        true then
+          if self.p2 is
             Nothing then
-              scrut19 = p.canBeEmpty_Nothing_sp_0()
+              scrut14 = startsWith_Nothing_sp_0(self.p2, c)
             Nothing then
-              scrut19 = p.canBeEmpty_Nothing_sp_0()
+              scrut14 = startsWith_Nothing_sp_0(self.p2, c)
             Concat then
-              scrut19 = p.canBeEmpty_Concat_sp_24()
-          new None()
-        else
-          if p is
-            Nothing then new None()
-            else
-              c18 = s.0
-              scrut20 = p.startsWith_Concat_sp_24(c18)
-              if scrut20 is
-                true then
-                  tmp56 = p.derive_Concat_sp_24(c18)
-                  tmp57 = s.slice(1)
-                  tmp58 = acc + c18
-                  matchImpl(tmp56, tmp57, tmp58)
-                else
-                  scrut21 = p.canBeEmpty_Concat_sp_24()
-                  new None()
-    private fun match_StagedRegExp_sp_0(p, s) = matchImpl_StagedRegExp_sp_1(p, s, "")
-    private fun match_StagedRegExp_sp_1(p, s) = matchImpl_StagedRegExp_sp_3(p, s, "")
-    private fun match_StagedRegExp_sp_2(p, s) = matchImpl_StagedRegExp_sp_6(p, s, "")
-    private fun nTimes_StagedRegExp_sp_0(r, i) =
-      let {scrut17, tmp52, tmp53, obj_100, obj_101, tup_102, obj_103, obj_104, obj_105, obj_106, tup_107, obj_108, tup_109, obj_110, obj_111, obj_112, obj_113, obj_114, obj_115, tup_116, obj_117, obj_118, obj_119, tup_120, obj_121, obj_122, obj_123, obj_124, obj_125, obj_126, obj_127, obj_128, obj_129, tup_130, obj_131, obj_132, obj_133, obj_134, tup_135, obj_136, tup_137, obj_138, obj_139, obj_140, obj_141, obj_142, obj_143, tup_144, obj_145, obj_146, obj_147, tup_148, obj_149, obj_150, obj_151, obj_152, obj_153, obj_154, obj_155, obj_156}
-      scrut17 = false
-      tmp52 = 2
-      obj_100 = new Exact("2")
-      obj_101 = new Exact("5")
-      tup_102 = ["0", "1", "2", "3", "4", "5"]
-      obj_103 = new In(tup_102)
-      obj_104 = new Concat(obj_101, obj_103)
-      obj_105 = new Concat(obj_100, obj_104)
-      obj_106 = new Exact("2")
-      tup_107 = ["0", "1", "2", "3", "4"]
-      obj_108 = new In(tup_107)
-      tup_109 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_110 = new In(tup_109)
-      obj_111 = new Concat(obj_108, obj_110)
-      obj_112 = new Concat(obj_106, obj_111)
-      obj_113 = new Exact("1")
-      obj_114 = new Empty()
-      obj_115 = new Union(obj_113, obj_114)
-      tup_116 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_117 = new In(tup_116)
-      obj_118 = new Empty()
-      obj_119 = new Union(obj_117, obj_118)
-      tup_120 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_121 = new In(tup_120)
-      obj_122 = new Concat(obj_119, obj_121)
-      obj_123 = new Concat(obj_115, obj_122)
-      obj_124 = new Union(obj_112, obj_123)
-      obj_125 = new Union(obj_105, obj_124)
-      obj_126 = new Exact(".")
-      obj_127 = new Concat(obj_125, obj_126)
-      obj_128 = new Exact("2")
-      obj_129 = new Exact("5")
-      tup_130 = ["0", "1", "2", "3", "4", "5"]
-      obj_131 = new In(tup_130)
-      obj_132 = new Concat(obj_129, obj_131)
-      obj_133 = new Concat(obj_128, obj_132)
-      obj_134 = new Exact("2")
-      tup_135 = ["0", "1", "2", "3", "4"]
-      obj_136 = new In(tup_135)
-      tup_137 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_138 = new In(tup_137)
-      obj_139 = new Concat(obj_136, obj_138)
-      obj_140 = new Concat(obj_134, obj_139)
-      obj_141 = new Exact("1")
-      obj_142 = new Empty()
-      obj_143 = new Union(obj_141, obj_142)
-      tup_144 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_145 = new In(tup_144)
-      obj_146 = new Empty()
-      obj_147 = new Union(obj_145, obj_146)
-      tup_148 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_149 = new In(tup_148)
-      obj_150 = new Concat(obj_147, obj_149)
-      obj_151 = new Concat(obj_143, obj_150)
-      obj_152 = new Union(obj_140, obj_151)
-      obj_153 = new Union(obj_133, obj_152)
-      obj_154 = new Exact(".")
-      obj_155 = new Concat(obj_153, obj_154)
-      obj_156 = new Concat(obj_127, obj_155)
-      tmp53 = obj_156
-      new Concat(r, tmp53)
-    private fun nTimes_StagedRegExp_sp_1(r, i) =
-      let {scrut17, tmp52, tmp53, obj_72, obj_73, tup_74, obj_75, obj_76, obj_77, obj_78, tup_79, obj_80, tup_81, obj_82, obj_83, obj_84, obj_85, obj_86, obj_87, tup_88, obj_89, obj_90, obj_91, tup_92, obj_93, obj_94, obj_95, obj_96, obj_97, obj_98, obj_99}
-      scrut17 = false
-      tmp52 = 1
-      obj_72 = new Exact("2")
-      obj_73 = new Exact("5")
-      tup_74 = ["0", "1", "2", "3", "4", "5"]
-      obj_75 = new In(tup_74)
-      obj_76 = new Concat(obj_73, obj_75)
-      obj_77 = new Concat(obj_72, obj_76)
-      obj_78 = new Exact("2")
-      tup_79 = ["0", "1", "2", "3", "4"]
-      obj_80 = new In(tup_79)
-      tup_81 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_82 = new In(tup_81)
-      obj_83 = new Concat(obj_80, obj_82)
-      obj_84 = new Concat(obj_78, obj_83)
-      obj_85 = new Exact("1")
-      obj_86 = new Empty()
-      obj_87 = new Union(obj_85, obj_86)
-      tup_88 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_89 = new In(tup_88)
-      obj_90 = new Empty()
-      obj_91 = new Union(obj_89, obj_90)
-      tup_92 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      obj_93 = new In(tup_92)
-      obj_94 = new Concat(obj_91, obj_93)
-      obj_95 = new Concat(obj_87, obj_94)
-      obj_96 = new Union(obj_84, obj_95)
-      obj_97 = new Union(obj_77, obj_96)
-      obj_98 = new Exact(".")
-      obj_99 = new Concat(obj_97, obj_98)
-      tmp53 = obj_99
-      new Concat(r, tmp53)
-    private fun nTimes_StagedRegExp_sp_2(r, i) =
-      let {scrut17, tmp52, tmp53}
-      scrut17 = true
-      r
-    private fun plus_StagedRegExp_sp_0(r) =
-      let {tmp54}
-      tmp54 = new Star(r)
-      new Concat(r, tmp54)
-    private fun plus_StagedRegExp_sp_1(r) =
-      let {tmp54}
-      tmp54 = new Star(r)
-      new Concat(r, tmp54)
-    private fun plus_StagedRegExp_sp_2(r) =
-      let {tmp54}
-      tmp54 = new Star(r)
-      new Concat(r, tmp54)
-    private fun plus_StagedRegExp_sp_3(r) =
-      let {tmp54}
-      tmp54 = new Star(r)
-      new Concat(r, tmp54)
-    private fun question_StagedRegExp_sp_0(r) =
-      let {tmp48}
-      tmp48 = new Empty()
-      new Union(r, tmp48)
-    private fun question_StagedRegExp_sp_1(r) =
-      let {tmp48}
-      tmp48 = new Empty()
-      new Union(r, tmp48)
-    private fun question_StagedRegExp_sp_2(r) =
-      let {tmp48}
-      tmp48 = new Empty()
-      new Union(r, tmp48)
-    private fun question_StagedRegExp_sp_3(r) =
-      let {tmp48}
-      tmp48 = new Empty()
-      new Union(r, tmp48)
+              scrut14 = startsWith_Concat_sp_25(self.p2, c)
+          if scrut14 is
+            true then true
+            else false
+        else false
+    else true
+fun startsWith_Concat_sp_3(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Exact_sp_0(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Exact_sp_0(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_4(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_5(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_5(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_5(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_6(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_6(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_6(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_In_sp_1(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_In_sp_1(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_7(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Concat_sp_8(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Concat_sp_8(self.p1)
+      false
+    else true
+fun startsWith_Concat_sp_8(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Star_sp_1(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Star_sp_1(self.p1)
+      scrut14 = startsWith_Concat_sp_9(self.p2, c)
+      if scrut14 is
+        true then true
+        else false
+    else true
+fun startsWith_Concat_sp_9(self, c) =
+  let {scrut13, scrut14, tmp32}
+  tmp32 = startsWith_Exact_sp_1(self.p1, c)
+  if tmp32 is
+    false then
+      scrut13 = canBeEmpty_Exact_sp_1(self.p1)
+      false
+    else true
+fun canBeEmpty_Star_sp_0(self) = true
+fun canBeEmpty_Star_sp_1(self) = true
+fun derive_Star_sp_0(self, c) =
+  let {tmp33, tmp34, tmp35}
+  tmp33 = derive_In_sp_0(self.p, c)
+  tmp34 = new Star.class(self.p)
+  tmp35 = new Concat(tmp33, tmp34)
+  normalize_Concat_sp_2(tmp35)
+fun derive_Star_sp_1(self, c) =
+  let {tmp33, tmp34, tmp35}
+  tmp33 = derive_In_sp_1(self.p, c)
+  tmp34 = new Star.class(self.p)
+  tmp35 = new Concat(tmp33, tmp34)
+  normalize_Concat_sp_9(tmp35)
+fun normalize_Star_sp_0(self) =
+  let {tmp36}
+  tmp36 = self.p.normalize()
+  new Star.class(tmp36)
+fun normalize_Star_sp_1(self) =
+  let {tmp36}
+  tmp36 = normalize_In_sp_0(self.p)
+  new Star.class(tmp36)
+fun normalize_Star_sp_2(self) =
+  let {tmp36}
+  tmp36 = normalize_In_sp_1(self.p)
+  new Star.class(tmp36)
+fun normalize_Star_sp_3(self) =
+  let {tmp36}
+  tmp36 = normalize_Not_sp_0(self.p)
+  new Star.class(tmp36)
+fun normalize_Star_sp_4(self) =
+  let {tmp36}
+  tmp36 = normalize_Not_sp_1(self.p)
+  new Star.class(tmp36)
+fun normalize_Star_sp_5(self) =
+  let {tmp36}
+  tmp36 = normalize_In_sp_2(self.p)
+  new Star.class(tmp36)
+fun startsWith_Star_sp_0(self, c) = startsWith_In_sp_0(self.p, c)
+fun startsWith_Star_sp_1(self, c) = startsWith_In_sp_1(self.p, c)

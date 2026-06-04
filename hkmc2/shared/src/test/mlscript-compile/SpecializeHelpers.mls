@@ -116,8 +116,7 @@ class FunCache(
         idx += 1
         name = prefix + idx
     reserveName(name)
-  fun toString() =
-    let p = printer // FIXME: figure out why we need this p
+  fun printDefinitions() =
     let decl = if owner is
       ConcreteClassSymbol then "class "
       ModuleSymbol then "module "
@@ -125,6 +124,7 @@ class FunCache(
       ConcreteClassSymbol(_, _, Some, _, _) then owner.value.class
       else owner.value
     
+    let p = printer
     let paramText = if owner is
       ConcreteClassSymbol and owner.paramsOpt is
         Some(ps) then printer.showCtorParams(ps) + owner.auxParams.map(pl => p.showParams(pl)).join("")
@@ -180,14 +180,16 @@ class FunCache(
     let params = new Set(ctor.params.flat().map(_.sym))
     let ctorBody = removeExtraValDefn(params, ctor.body)
     let methodDefns = cache.values().map(e =>
-      if e.isPrivate then printer.showPrivateDefn(e.defn) else printer.showDefn(e.defn)
-    ).toArray().sort().join("\n")
+      if not e.isPrivate then printer.showDefn(e.defn) else ""
+    ).toArray().filter(_ != "").sort().join("\n")
     
     decl + owner.name + paramText
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
       + (if methodDefns == "" then "" else indent("\n" + methodDefns))
+  fun toString() =
+    [printDefinitions(), printCachedPrivateCode(this)].filter(_ != "").join("\n")
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map(), new Set())
 
@@ -432,7 +434,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args) =
       let ret = f_gen(ss_i)(...argShapes)
       let retSym = ret.0
       let retShape = ret.1
-      let callRes = Call(Select(p, Symbol(retSym)), args)
+      let callRes = Call(ValueSimpleRef(Symbol(retSym)), [Arg(p), ...args])
       isRet then
         [Return(callRes), retShape]
       else
@@ -447,7 +449,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args) =
         let retData = f_gen(ss_i)(...argShapes)
         let retSym = retData.0
         let retShape = retData.1
-        let callRes = Call(Select(p, Symbol(retSym)), args)
+        let callRes = Call(ValueSimpleRef(Symbol(retSym)), [Arg(p), ...args])
         if isRet then
           [Arm(Cls(C_i, p), Return(callRes)), retShape]
         else

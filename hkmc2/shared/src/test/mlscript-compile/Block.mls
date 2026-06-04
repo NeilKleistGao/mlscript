@@ -162,6 +162,9 @@ class Printer(val owner: Opt[Symbol]) with
       ConcreteClassSymbol(_, value, _, _, _) then isStagedClass(value)
       else false
 
+  fun showGeneratedStagedClassCache(cache): Str =
+    cache.printDefinitions()
+
   fun showSymbol(s: Symbol) =
     if s.redirect and owner is
       Some(owner) and owner is
@@ -250,6 +253,61 @@ class Printer(val owner: Opt[Symbol]) with
   fun showParamList(ps: Array[ParamList]) =
     ps.map(showParams(_)).join("")
 
+  fun collectSymbolName(names: Set[String], sym: Symbol) =
+    if not sym is NoSymbol do names.add(showSymbol(sym))
+
+  fun collectParamNames(names: Set[String], ps: Array[ParamList]) =
+    let printer = this
+    ps.forEach(pl => pl.forEach(p => printer.collectSymbolName(names, p.sym)))
+
+  fun collectDefnSymbolNames(names: Set[String], d: Defn) =
+    let printer = this
+    if d is
+      FunDefn(_, ps, body) then
+        printer.collectParamNames(names, ps)
+        printer.collectBlockSymbolNames(names, body)
+      ClsLikeDefn(sym, methods, _) then
+        printer.collectSymbolName(names, sym)
+        methods.forEach(m => printer.collectDefnSymbolNames(names, m))
+      ValDefn(_, sym, _) then printer.collectSymbolName(names, sym)
+
+  fun collectBlockSymbolNames(names: Set[String], b: Block) =
+    let printer = this
+    if b is
+      Assign(lhs, _, rest) then
+        printer.collectSymbolName(names, lhs)
+        printer.collectBlockSymbolNames(names, rest)
+      Define(d, rest) then
+        printer.collectDefnSymbolNames(names, d)
+        printer.collectBlockSymbolNames(names, rest)
+      Match(_, arms, dflt, rest) then
+        arms.forEach(a => printer.collectBlockSymbolNames(names, a.body))
+        if dflt is Some(db) do printer.collectBlockSymbolNames(names, db)
+        printer.collectBlockSymbolNames(names, rest)
+      Scoped(symbols, rest) then
+        symbols.forEach(s => printer.collectSymbolName(names, s))
+        printer.collectBlockSymbolNames(names, rest)
+      Return | End then ()
+
+  fun freshSelfSymbol(ps: Array[ParamList], body: Block) =
+    let names = new Set()
+    collectParamNames(names, ps)
+    collectBlockSymbolNames(names, body)
+    let
+      base = "self"
+      idx = 0
+      name = base
+    while names.has(name) do
+      set
+        idx += 1
+        name = base + idx
+    Symbol(name)
+
+  fun prependParam(ps: Array[ParamList], p: Param) =
+    if ps is
+      [] then [[p]]
+      [first, ...rest] then [[p, ...first], ...rest]
+
   fun showFunDefn(prefix: Str, sym: Symbol, ps: Array[ParamList], body: Block): Str =
     prefix + "fun " + showDefnSymbol(sym) + showParamList(ps) + " =" +
     (if body is Return | End then " " else "\n  ") + indent(showBlock(body))
@@ -259,7 +317,7 @@ class Printer(val owner: Opt[Symbol]) with
       FunDefn(sym, ps, body) then
         showFunDefn("", sym, ps, body)
       ClsLikeDefn(sym, methods, _) and sym is ConcreteClassSymbol(_, v, _, _, _) and
-        isGeneratedStagedClass(sym) then getClassCache(v)
+        isGeneratedStagedClass(sym) then getClassCache(v).printDefinitions()
         else 
           "class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
             + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
@@ -270,8 +328,34 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showPrivateDefn(d: Defn): Str =
     if d is
-      FunDefn(sym, ps, body) then showFunDefn("private ", sym, ps, body)
+      FunDefn(sym, ps, body) then showFunDefn("", sym, ps, body)
       else showDefn(d)
+
+  fun showPrivateMethodDefn(d: Defn): Str =
+    if d is
+      FunDefn(sym, ps, body) then
+        let selfSym = freshSelfSymbol(ps, body)
+        let psWithSelf = prependParam(ps, Param(None, selfSym))
+        // substitute `this` with `self`
+        class SelfPrinter(val selfSym: Symbol) extends Printer(owner) with
+          fun showPath(p: Path): Str =
+            if p is
+              Select(qual, name) and
+                qual is
+                  // avoids needing to import the runtime module
+                  ValueMemberRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit, _) then "()"
+                  ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym) + "." + this.showSymbol(name)
+                  ValueThis then this.showSymbol(name)
+                  ValueMemberRef(sym) and owner is Some(owner) and sym === owner and owner is ConcreteClassSymbol then this.showSymbol(selfSym) + "." + this.showSymbol(name)
+                  ValueMemberRef(sym) and owner is Some(owner) and sym === owner then this.showSymbol(name)
+                else showPath(qual) + "." + this.showSymbol(name)
+              DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
+              DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
+              ValueSimpleRef(l) | ValueMemberRef(l) then this.showSymbol(l)
+              ValueLit(lit) then this.showLiteral(lit)
+              ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym)
+        SelfPrinter(selfSym).showFunDefn("", sym, psWithSelf, body)
+      else showPrivateDefn(d)
 
   fun showBlock(b) =
     if b is
@@ -326,9 +410,45 @@ let configs =
 fun mkImport(source, name) = 
   "import \"" + source + "\" as " + legacyName(name)
 
+fun printPrivateMember(cache) =
+  let printer = Printer(Some(cache.owner))
+  cache.cache.values().map(e =>
+    if e.isPrivate then
+      if cache.owner is ConcreteClassSymbol then printer.showPrivateMethodDefn(e.defn)
+      else printer.showPrivateDefn(e.defn)
+    else ""
+  ).toArray().filter(_ != "").sort().join("\n")
+
+fun collectClassInModule(block) =
+  if block is
+    Define(ClsLikeDefn(sym, _, _), rest) and sym is ConcreteClassSymbol(_, value, _, _, _) and isStagedClass(value) then
+      [printCachedPrivateCode(getClassCache(value)), collectClassInModule(rest)].filter(_ != "").join("\n")
+    Define(_, rest) then collectClassInModule(rest)
+    else ""
+
+fun checkCtor(cache) =
+  if cache.owner is ModuleSymbol then
+    let runtimeClass = cache.owner.value
+    let ctor = runtimeClass."ctor$_instr"()
+    assert ctor is FunDefn
+    collectClassInModule(ctor.body)
+  else ""
+
+// collect and print private functions & methods in the given cache
+fun printCachedPrivateCode(cache) =
+  [printPrivateMember(cache), checkCtor(cache)].filter(_ != "").join("\n")
+
+fun printPrivateCodeIn(name, cache, usedStagedClasses) =
+  let usedCaches = usedStagedClasses.map(getClassCache(_))
+  let privateText = [...usedCaches.map(printCachedPrivateCode), printCachedPrivateCode(cache)].filter(_ != "").join("\n")
+  if privateText == "" then "" else "open " + name + "\n" + privateText
+
 fun toCode(name, cache, usedStagedClasses) =
-  let prefix = usedStagedClasses.map(getClassCache(_).toString() + "\n")
-  prefix + indent(cache.toString())
+  let usedCaches = usedStagedClasses.map(getClassCache(_))
+  let prefix = usedCaches.map(_.printDefinitions() + "\n").join("")
+  let publicText = prefix + indent(cache.printDefinitions())
+  let privateText = printPrivateCodeIn(name, cache, usedStagedClasses)
+  publicText + if privateText == "" then "" else "\n" + privateText
 
 fun codegen(name, cache, source, file, usedStagedClasses) =
   let fullpath = path.join of process.cwd(), file
@@ -346,12 +466,34 @@ fun generateAll(name, file, ...modules) =
   if not fs.existsSync(fullpath) do
     fs.mkdirSync(path.dirname(fullpath), recursive: true)
     fs.writeFileSync(fullpath, "", "utf8")
+  fun splitCodeText(text) =
+    if text.split("\nopen ") is
+      [publicText] then [publicText, "", ""]
+      [publicText, ...privatePieces] then
+        let privateText = "open " + privatePieces.join("\nopen ")
+        let privateLines = privateText.split("\n")
+        [
+          publicText,
+          privateLines.filter(_.startsWith("open ")).join("\n"),
+          privateLines.filter(l => not l.startsWith("open ")).join("\n"),
+        ]
   let code = fold((res, p) => if p is
-    [mod, name, source] then
+    [mod, modName, source] then
       mod.propagate()
-      [res.0 + mkImport(source, name) + "\n", res.1 + mod.toCode() + "\n"]
-  )(["", ""], ...modules)
+      let parts = splitCodeText(mod.toCode())
+      [
+        res.0 + mkImport(source, modName) + "\n",
+        res.1 + parts.0 + "\n",
+        res.2 + parts.1 + "\n",
+        res.3 + parts.2 + "\n",
+      ]
+  )(["", "", "", ""], ...modules)
   let originData = fs.readFileSync(fullpath, "utf8")
-  let newData = configs + code.0 + "\n" + "module " + name + " with" + indent("\n" + code.1)
+  let publicText = code.1.trim()
+  let openText = code.2.trim()
+  let privateText = code.3.trim()
+  let opens = ["open " + name, openText].filter(_ != "").join("\n")
+  let privateSuffix = if privateText == "" then "" else "\n" + opens + "\n" + privateText
+  let newData = configs + code.0 + "\n" + "module " + name + " with" + indent("\n" + publicText) + privateSuffix
   if newData != originData do
     fs.writeFileSync(fullpath, newData, "utf8")
