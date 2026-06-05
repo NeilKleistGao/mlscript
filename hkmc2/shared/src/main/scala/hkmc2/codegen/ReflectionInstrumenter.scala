@@ -585,7 +585,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         val sym = BlockMemberSymbol(name, Nil)
 
         // reconstructs the Path from the top-level to the current symbol
-        def reconstruct(s: DefinitionSymbol[? <: ModuleOrObjectDef | ClassDef]): Path =
+        def reconstruct(s: DefinitionSymbol[? <: ModuleOrObjectDef | ClassDef] & InnerSymbol): Path =
           s.defn.orElse(defnMap.get(key)) match
             case S(defn) =>
               val owner: Option[InnerSymbol] = defn match
@@ -597,8 +597,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
               case N => defn match
                 case l: (ModuleOrObjectDef | ClassDef) => Value.MemberRef(l.bsym, s)
                 case l: ClsLikeDefn => Value.MemberRef(l.sym, s)
-            case N => Value.Ref(s)
-
+            case N =>
+              // TODO: get this case to trigger, where the symbol has no definition and isn't collected in defnMap
+              raise(ErrorReport(msg"Cannot recover definition from symbol" -> s.toLoc :: Nil))
+              Value.This(s)
         (tsym, sym, reconstruct(key))
       )
 
