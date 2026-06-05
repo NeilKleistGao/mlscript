@@ -29,11 +29,22 @@ fun showCtxPath(p) = if p is
   ValueLit(lit) then "Lit(" + lit.toString() + ")"
   ValueThis then "this"
 
+fun staticCallKey(f, argShapes) =
+  showCtxPath(f) + "(" + argShapes.map(_.hash()).join(",") + ")"
+
+class StaticCallEntry(
+  val block: Block.Block,
+  val path: Path,
+  val shape: ShapeSet,
+)
+
 class Ctx(
   // ctx tracks shapes of variables
   val ctx: Map[String, ShapeSet], 
   // valDefnCtx tracks fields defined by ValDefn during shape prop of constructor
-  val valDefnCtx: Map[String, ShapeSet]
+  val valDefnCtx: Map[String, ShapeSet],
+  // staticCallCtx tracks results of non-staged calls with static arguments
+  val staticCallCtx: Map[String, StaticCallEntry],
   // allocs tracks the new variables allocated
   val allocs: Array[Block.Symbol],
   // thisShape stores the shapeset of this, e.g., C1(1) U C1(2)
@@ -44,11 +55,16 @@ class Ctx(
     if ctx.has(ps) then Some(ctx.get(ps)) else None
   fun getValDefn(name) =
     if valDefnCtx.has(name) then Some(valDefnCtx.get(name)) else None
-  fun clone = Ctx(new Map(ctx), new Map(valDefnCtx), allocs, thisShape)
-  // For propagation of instantiation of derived class, 
+  fun getStaticCall(key) =
+    if staticCallCtx.has(key) then Some(staticCallCtx.get(key)) else None
+  fun addStaticCall(key, entry) =
+    staticCallCtx.set(key, entry)
+    this
+  fun clone = Ctx(new Map(ctx), new Map(valDefnCtx), new Map(staticCallCtx), allocs, thisShape)
+  // For propagation of instantiation of derived class,
   // we need to keep track of fields defined in parent class,
   // which is stored in valDefnCtx
-  fun clearCtx = Ctx(new Map(), valDefnCtx, allocs, thisShape)
+  fun clearCtx = Ctx(new Map(), valDefnCtx, new Map(staticCallCtx), allocs, thisShape)
   fun sub(other: Ctx) =
     let res = new Map()
     fun otherIsBot(ps) =
@@ -65,12 +81,15 @@ class Ctx(
     else
       ctx.set(ps, ss)
     this
+  fun refine(path: Path, ss: ShapeSet) =
+    ctx.set(showCtxPath(path), ss)
+    this
   // Later ValDefn (in derived class) shadows earlier ValDefn (in base class)
   fun addValDefn(ps: String, ss: ShapeSet) =
     valDefnCtx.set(ps, ss)
     this
 module Ctx with
-  fun empty() = Ctx(new Map(), new Map(), mut [], None)
+  fun empty() = Ctx(new Map(), new Map(), new Map(), mut [], None)
 
 class FunEntry(
   val defn: FunDefn,
@@ -100,8 +119,7 @@ class FunCache(
         idx += 1
         name = prefix + idx
     reserveName(name)
-  fun toString() =
-    let p = printer // FIXME: figure out why we need this p
+  fun printDefinitions() =
     let decl = if owner is
       ConcreteClassSymbol then "class "
       ModuleSymbol then "module "
@@ -109,6 +127,7 @@ class FunCache(
       ConcreteClassSymbol(_, _, Some, _, _) then owner.value.class
       else owner.value
     
+    let p = printer
     let paramText = if owner is
       ConcreteClassSymbol and owner.paramsOpt is
         Some(ps) then printer.showCtorParams(ps) + owner.auxParams.map(pl => p.showParams(pl)).join("")
@@ -164,14 +183,16 @@ class FunCache(
     let params = new Set(ctor.params.flat().map(_.sym))
     let ctorBody = removeExtraValDefn(params, ctor.body)
     let methodDefns = cache.values().map(e =>
-      if e.isPrivate then printer.showPrivateDefn(e.defn) else printer.showDefn(e.defn)
-    ).toArray().sort().join("\n")
+      if not e.isPrivate then printer.showDefn(e.defn) else ""
+    ).toArray().filter(_ != "").sort().join("\n")
     
     decl + owner.name + paramText
       + if extendsClause == "" then "" else (" extends " + extendsClause)
       + if cache.length == 0 then "" else " with"
       + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
       + (if methodDefns == "" then "" else indent("\n" + methodDefns))
+  fun toString() =
+    [printDefinitions(), printCachedPrivateCode(this)].filter(_ != "").join("\n")
 module FunCache with
   fun empty(owner) = FunCache(owner, new Map(), new Set())
 
@@ -235,7 +256,7 @@ fun subLitPath(ctx, p) = if p is
   Select(qual, name) then Select(subLitPath(ctx, qual), name)
   ValueSimpleRef | ValueMemberRef and
     let s = sop(ctx, p)
-    staticSet(s) and shapeset2path(s, ctx.allocs) is [End(), res] then res
+    s.values() is [Lit(lit)] then ValueLit(lit)
   else p
 
 
@@ -295,6 +316,26 @@ fun sorBuiltinOp(ctx, r, f, name, args) = if args is
     let newArgs = evaledArgs.map(e => Arg(if e.1 is Path then e.1 else throw Error("expected path")))
     [fullBlk, Call(f, newArgs), mkDyn()]
 
+fun sorUnknownCall(ctx, f, args) =
+  let evaledArgs = args.map(a => sor(ctx, a.value))
+  let fullBlk = foldl((acc, e) => concat(acc, e.0))(End(), ...evaledArgs)
+  let newArgs = evaledArgs.map(e => Arg(if e.1 is Path then e.1 else throw Error("expected path")))
+  [fullBlk, Call(f, newArgs), mkDyn()]
+
+fun sorStaticModuleCall(ctx, f, value, fld, args, argShapes) =
+  let key = staticCallKey(f, argShapes)
+  if ctx.getStaticCall(key) is
+    Some(entry) then [End(), entry.path, entry.shape]
+    None then
+      let fimp = value.(fld)
+      let evaluated = fimp(...argShapes.map(valOfSet))
+      let inferredShape = sov(evaluated)
+      if staticSet(inferredShape) then
+        let evaluatedPath = shapeset2path(inferredShape, ctx.allocs)
+        let entry = StaticCallEntry(evaluatedPath.0, evaluatedPath.1, inferredShape)
+        ctx.addStaticCall(key, entry)
+        [entry.block, entry.path, entry.shape]
+
 fun sorCall(ctx, r, f, args, argShapes) = if f is
   Select(Select(ValueMemberRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")) // runtime.Tuple.get is generated by the compiler in the IR
     and args is [Arg(scrut), Arg(litArg)] then
@@ -321,58 +362,33 @@ fun sorCall(ctx, r, f, args, argShapes) = if f is
     let genMap = value.(mapPropName)
     not (genMap is undefined) and
       let f_gen = genMap.get(fld)
-      not (f_gen is Runtime.Unit) and  // staged function
+      not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
-        staticSet(res.1) then
-          let v2p = shapeset2path(res.1, ctx.allocs)
-          [v2p.0, v2p.1, res.1]
-        else
-          [End(), Call(Select(ValueThis(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
+        [End(), Call(Select(ValueThis(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
       else
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
-    argShapes.every(staticSet) and // non staged function and params known
-      let fimp = value.(fld)
-      let evaluated = fimp(...argShapes.map(valOfSet))
-      let inferredShape = sov(evaluated)
-      staticSet(inferredShape) then // shape can be inferred from runtime value
-        let evaluatedPath = shapeset2path(inferredShape, ctx.allocs)
-        [evaluatedPath.0, evaluatedPath.1, inferredShape]
   Select(ValueMemberRef(ModuleSymbol(name, value, redir)), Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
-    let cachePropName = getCacheName(name, false)
     let genMap = value.(mapPropName)
     not (genMap is undefined) and
-      let f_gen = genMap.get(fld) 
-      not (f_gen is Runtime.Unit) and  // staged function
+      let f_gen = genMap.get(fld)
+      not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
-        staticSet(res.1) then
-          let v2p = shapeset2path(res.1, ctx.allocs)
-          [v2p.0, v2p.1, res.1]
-        else
-          [End(), Call(Select(ValueMemberRef(ModuleSymbol(name, value, redir)), Symbol(res.0)), args), res.1]
+        let callPath = if res.0 == fld then Select(ValueMemberRef(ModuleSymbol(name, value, redir)), Symbol(res.0)) else ValueSimpleRef(Symbol(res.0))
+        [End(), Call(callPath, args), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
-    argShapes.every(staticSet) and // non staged function and params known
-      let fimp = value.(fld)
-      let evaluated = fimp(...argShapes.map(valOfSet))
-      let inferredShape = sov(evaluated)
-      staticSet(inferredShape) then // shape can be inferred from runtime value
-        let evaluatedPath = shapeset2path(inferredShape, ctx.allocs)
-        [evaluatedPath.0, evaluatedPath.1, inferredShape]
-  else
-    let evaledArgs = args.map(a => sor(ctx, a.value))
-    let fullBlk = foldl((acc, e) => concat(acc, e.0))(End(), ...evaledArgs)
-    let newArgs = evaledArgs.map(e => Arg(if e.1 is Path then e.1 else throw Error("expected path")))
-    [fullBlk, Call(f, newArgs), mkDyn()] // non staged function and some params unknown
+    argShapes.every(staticSet) then // non staged function and params known
+      sorStaticModuleCall(ctx, f, value, fld, args, argShapes)
+  else sorUnknownCall(ctx, f, args) // non staged function and some params unknown
   // else throw Error("unknown call in sor: " + r.toString())
 
 // shape of result: return [blk, res, s] 
 // where blk is the block needed to construct the result res (End() if not needed) and s is the shape
 fun sor(ctx, r) = if r is 
-  Path and
+  Path then
     let s = sop(ctx, r)
-    staticSet(s) and shapeset2path(s, ctx.allocs) is [blk, res] then [blk, res, s]
-    else [End(), subLitPath(ctx, r), s]
+    [End(), subLitPath(ctx, r), s]
   Instantiate(cls, args) then sorInstantiate(ctx, r, cls, args)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args) then sorCall(ctx, r, f, args, args.map((a, _, _) => sop(ctx, a.value)))
@@ -409,7 +425,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args) =
       let ret = f_gen(ss_i)(...argShapes)
       let retSym = ret.0
       let retShape = ret.1
-      let callRes = Call(Select(p, Symbol(retSym)), args)
+      let callRes = Call(ValueSimpleRef(Symbol(retSym)), [Arg(p), ...args])
       isRet then
         [Return(callRes), retShape]
       else
@@ -424,7 +440,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args) =
         let retData = f_gen(ss_i)(...argShapes)
         let retSym = retData.0
         let retShape = retData.1
-        let callRes = Call(Select(p, Symbol(retSym)), args)
+        let callRes = Call(ValueSimpleRef(Symbol(retSym)), [Arg(p), ...args])
         if isRet then
           [Arm(Cls(C_i, p), Return(callRes)), retShape]
         else
@@ -462,7 +478,7 @@ fun prop(ctx, b) = if b is
     Scoped(symbols, rest) then
       symbols.forEach(x => ctx.add(ValueSimpleRef(x), mkBot()))
       let newAllocs = mut []
-      let newCtx = Ctx(new Map(ctx.ctx), ctx.valDefnCtx, newAllocs, ctx.thisShape)
+      let newCtx = Ctx(new Map(ctx.ctx), ctx.valDefnCtx, new Map(ctx.staticCallCtx), newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
     Assign(x, Call(Select(p, Symbol(f)), args), restBlock) and p is // TODO Can we deduplicate this?
@@ -498,7 +514,7 @@ fun prop(ctx, b) = if b is
         )
       fun propBranch(body, branchShape) =
         let branchCtx = ctx.clone
-        if not p is ValueLit do branchCtx.add(p, branchShape)
+        if not p is ValueLit do branchCtx.refine(p, branchShape)
         let res = prop(branchCtx, body)
         [...res, branchCtx.sub(ctx)]
       let filteredArms = foldl((r, arm) =>
@@ -543,10 +559,10 @@ fun buildShapeName(s: Shape): Str = if s is
   Dyn then "Dyn"
   Lit(lit) and lit is Str then "Str" + lit
   Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
-  Arr(shapes) then "Arr_" + shapes.map(buildShapeName).join("_") + "_end"
+  Arr(shapes) then "Arr_" + shapes.map(buildShapeSetName).join("_") + "_end"
   Class(sym, params) and params.length is
     0 then sym.name
-    else sym.name + "_" + params.map(buildShapeName).join("_")
+    else sym.name + "_" + params.map(buildShapeSetName).join("_")
   else throw Error("unknown shape when building shape name" + s.toString())
 
 fun buildShapeSetName(ss: ShapeSet): Str =
@@ -576,6 +592,18 @@ fun specializeName(cache, funName, isMethod, ps, shapes) =
   if mappedShapes.every(_.every(_.isDyn())) then funName
   else cache.freshName(funName)
 
+fun isStaticShapePath(s: Shape) = if s is
+  Lit(_) then true
+  // Arr(shapes) then shapes.every(x => x is Lit)
+  // Class(_, fields) then fields.every(x => x is Lit)
+  else false
+
+fun isStaticSetPath(ss: ShapeSet) =
+  staticSet(ss) and ss.values().every(isStaticShapePath)
+
+fun isStaticPath(ss: ShapeSet) =
+  isStaticSetPath(ss)
+
 fun specialize(cache: FunCache, funName, dflt, shapes) =
   // FIXME
   // right now the function name depends on the parameter constraints
@@ -594,7 +622,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 
         let ctx = if isMethod then
           let clsSymb = cache.owner
-          Ctx(new Map(), new Map(), mut [], Some(shapes.(0).(0)))
+          Ctx(new Map(), new Map(), new Map(), mut [], Some(shapes.(0).(0)))
         else Ctx.empty()
 
         ps.forEach((p, i, _) => p.forEach((p2, j, _) =>
@@ -612,7 +640,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         
         let actualRetShape = res.1
 
-        let finalBody = if staticSet(actualRetShape) then
+        let finalBody = if isStaticPath(actualRetShape) then
           let allocs = mut []
           let v2p = shapeset2path(actualRetShape, allocs)
           wrapScoped(allocs, concat(v2p.0, Return(v2p.1)))
