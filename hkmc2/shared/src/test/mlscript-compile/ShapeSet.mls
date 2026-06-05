@@ -34,27 +34,27 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 module ShapeSet with
   fun empty = ShapeSet(new Map)
 
-fun makeShapeSet(entries) =
+fun mkShapeSet(entries) =
   let shapeMap = new Map(entries)
   let dyn = Dyn()
   if shapeMap.has(dyn.hash()) then ShapeSet(new Map([[dyn.hash(), dyn]]))
   else ShapeSet(shapeMap)
 
-fun lift(s: Shape) = makeShapeSet([[s.hash(), s]])
+fun lift(s: Shape) = mkShapeSet([[s.hash(), s]])
 
 fun liftMany(arr: Array[Shape]) = 
-  makeShapeSet(arr.map(s => [s.hash(), s]))
+  mkShapeSet(arr.map(s => [s.hash(), s]))
 
 fun union2(s1: ShapeSet, s2: ShapeSet) = 
   if s1.isDyn() then s1
   else if s2.isDyn() then s2
-  else makeShapeSet([...s1.shapeset, ...s2.shapeset])
+  else mkShapeSet([...s1.shapeset, ...s2.shapeset])
 
 fun union(...s) =
   if s.length is 0 then ShapeSet.empty
   else s.reduce((acc, next) => union2(acc, next))
 
-fun flat(arr: Array[ShapeSet]) = makeShapeSet(arr.map(_.shapeset.entries().toArray()).flat())
+fun flat(arr: Array[ShapeSet]) = mkShapeSet(arr.map(_.shapeset.entries().toArray()).flat())
 
 fun prod(xs) = xs.reduce((a, b) => a.flatMap(d => b.map(e => [...d, e])), [[]])
 

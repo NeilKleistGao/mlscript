@@ -171,19 +171,15 @@ module SimpleRegExp with
 
   fun plus(r) = new Concat(r, new Star(r))
 
-  fun matchImpl(p, s, acc) =
-    if len(s) == 0 then
-      if p.canBeEmpty() then new Some(acc)
+  fun matchImpl(p, s, acc) = if
+    len(s) == 0 and
+      p.canBeEmpty() then new Some(acc)
       else new None
-    else
-      if p is
-        Nothing then new None
-        else
-          let c = s.0
-          if p.startsWith(c) then
-            matchImpl(p.derive(c), s.slice(1), acc + c)
-          else
-            if p.canBeEmpty() then new Some(acc) else new None
+    p is Nothing then new None
+    let c = s.0
+    p.startsWith(c) then matchImpl(p.derive(c), s.slice(1), acc + c)
+    p.canBeEmpty() then new Some(acc)
+    else new None
   fun match(p, s) =
     matchImpl(p, s, "")
 

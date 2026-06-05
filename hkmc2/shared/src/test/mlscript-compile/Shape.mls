@@ -50,14 +50,8 @@ fun static(s: Shape) =
   if s is
     Dyn then false
     Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
-    Class(_, params) then params.every(field =>
-      let values = field.values()
-      values.length is 1 and static(values.0)
-    )
-    Arr(shapes) then shapes.every(field =>
-      let values = field.values()
-      values.length is 1 and static(values.0)
-    )
+    Class(_, params) then params.every(_.values() is [v] and static(v))
+    Arr(shapes) then shapes.every(_.values() is [v] and static(v))    
 
 open Block { Case }
 
