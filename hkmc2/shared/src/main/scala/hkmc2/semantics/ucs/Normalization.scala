@@ -2,7 +2,7 @@ package hkmc2
 package semantics
 package ucs
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import syntax.{Literal, Tree, Keyword}, utils.*
 import Message.MessageContext
 import Elaborator.{Ctx, State, ctx}
@@ -341,7 +341,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State, C
               // Normalization should reject cases where the user provides
               // more sub-patterns than there are actual class parameters.
               assert(argsOpt.isEmpty || args.length <= clsParams.length, (argsOpt, clsParams))
-              def mkArgs(args: Ls[TermSymbol -> BlockLocalSymbol])(using LoweringCtx): Case -> Block = args match
+              def mkArgs(args: Ls[TermSymbol -> LocalVarSymbol])(using LoweringCtx): Case -> Block = args match
                 case Nil =>
                   Case.Cls(ctorSym, st) -> lowerSplit(tail, cont)
                 case (param, arg) :: args =>
@@ -405,7 +405,7 @@ class Normalization(lowering: Lowering)(using tl: TL)(using Raise, Ctx, State, C
         val exitCont: Result => Block = r => Assign(tmp, r, Break(exitLabel))
         val bodyBlock = lowerSplit(sym.body, exitCont)
         val tailBlock = lowerSplit(tail, exitCont)
-        Label(exitLabel, false, Label(joinLabel, false, tailBlock, bodyBlock), cont(Value.SimpleRef(tmp)))
+        Label(exitLabel, false, Label(joinLabel, false, tailBlock, bodyBlock), cont(tmp.asSimpleRef))
     case Split.UseSplit(sym) =>
       sym.label match
         case S(label) => Break(label)
@@ -619,9 +619,9 @@ object Normalization:
         case N => false)
     go(child, Set.empty)
 
-  final case class VarSet(declared: Set[BlockLocalSymbol]):
-    def +(nme: BlockLocalSymbol): VarSet = copy(declared + nme)
-    infix def has(nme: BlockLocalSymbol): Bool = declared.contains(nme)
+  final case class VarSet(declared: Set[LocalVarSymbol]):
+    def +(nme: LocalVarSymbol): VarSet = copy(declared + nme)
+    infix def has(nme: LocalVarSymbol): Bool = declared.contains(nme)
     def showDbg: Str = declared.iterator.mkString("{", ", ", "}")
 
   object VarSet:

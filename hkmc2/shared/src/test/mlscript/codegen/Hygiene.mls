@@ -10,7 +10,6 @@ object Test with
     print(Test)
     Test.x
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let Test1;
 //│ (class Test {
 //│   static {
@@ -25,13 +24,7 @@ object Test with
 //│     globalThis.Object.freeze(this);
 //│   }
 //│   foo() {
-//│     let xs, callPrefix, tmp;
-//│     xs = [
-//│       Test1
-//│     ];
-//│     callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp = runtime.safeCall(callPrefix(...xs));
-//│     runtime.safeCall(globalThis.console.log(...tmp));
+//│     Predef.print(Test1);
 //│     return Test1.x
 //│   }
 //│   toString() { return runtime.render(this); }
@@ -84,10 +77,10 @@ module Test with
   val x = 1
   let x = 2
 //│ ╔══[COMPILATION ERROR] Name 'x' is already used
-//│ ║  l.85: 	  let x = 2
+//│ ║  l.78: 	  let x = 2
 //│ ║        	      ^^^^^
 //│ ╟── by a member declared in the same block
-//│ ║  l.84: 	  val x = 1
+//│ ║  l.77: 	  val x = 1
 //│ ╙──      	  ^^^^^^^^^
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
 //│ let Test4;
@@ -132,17 +125,10 @@ data class Cls(x) with
 //│     Cls1.class = this
 //│   }
 //│   constructor(x2) {
-//│     let xs1, callPrefix1, tmp1;
 //│     this.x = x2;
 //│     this.#x = this.x + 1;
 //│     this.#x1 = this.#x * 2;
-//│     xs1 = [
-//│       this.x,
-//│       this.#x1
-//│     ];
-//│     callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp1 = runtime.safeCall(callPrefix1(...xs1));
-//│     runtime.safeCall(globalThis.console.log(...tmp1));
+//│     Predef.print(this.x, this.#x1);
 //│   }
 //│   #x;
 //│   #x1;
@@ -237,7 +223,7 @@ Whoops.Whoops.g()
 :e
 Runtime
 //│ ╔══[COMPILATION ERROR] Name not found: Runtime
-//│ ║  l.238: 	Runtime
+//│ ║  l.224: 	Runtime
 //│ ╙──       	^^^^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 

@@ -29,30 +29,7 @@ false && loudTrue
 :sjs
 print(1 && loudTrue)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ if (1 === true) {
-//│   let xs, callPrefix, tmp, xs1, callPrefix1, tmp1;
-//│   xs = [
-//│     true
-//│   ];
-//│   callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp = runtime.safeCall(callPrefix(...xs));
-//│   runtime.safeCall(globalThis.console.log(...tmp));
-//│   xs1 = [
-//│     true
-//│   ];
-//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp1 = runtime.safeCall(callPrefix1(...xs1));
-//│   return runtime.safeCall(globalThis.console.log(...tmp1))
-//│ }
-//│ {
-//│   let xs, callPrefix, tmp;
-//│   xs = [
-//│     false
-//│   ];
-//│   callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp = runtime.safeCall(callPrefix(...xs));
-//│   return runtime.safeCall(globalThis.console.log(...tmp));
-//│ }
+//│ if (1 === true) { Predef.print(true); return Predef.print(true) } return Predef.print(false);
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > false
 
@@ -95,7 +72,7 @@ fold(||)(0, false, 42, 123)
 //│   }
 //│   return true;
 //│ });
-//│ callPrefix = runtime.safeCall(Rendering.fold(lambda));
+//│ callPrefix = runtime.safeCall(Predef.fold(lambda));
 //│ return runtime.safeCall(callPrefix(0, false, 42, 123))
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = true

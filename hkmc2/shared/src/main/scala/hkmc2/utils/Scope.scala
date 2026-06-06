@@ -4,7 +4,7 @@ package utils
 import scala.collection.mutable.{Map => MutMap, Set => MutSet}
 import sourcecode.{Name, Line, FileName}
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import utils.*
 
 import hkmc2.Message.MessageContext
@@ -54,7 +54,7 @@ case class Scope
   private def thisError(thisSym: InnerSymbol)(using Raise): Str =
     raise:
       InternalError(msg"`this` not in scope: ${thisSym.toString}" -> N :: Nil,
-        extraInfo = Some(this),
+        extraInfo = Some(this, thisSym),
         source = Diagnostic.Source.Compilation)
     "‹MISSING_THIS›"
   
@@ -233,4 +233,3 @@ object Scope:
       .mkString
   
 end Scope
-

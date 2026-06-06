@@ -6,7 +6,7 @@ import scala.annotation.tailrec
 import os.{Path as AbsPath, RelPath}
 import sourcecode.Line
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import utils.*
 
 import hkmc2.Message.MessageContext
@@ -141,29 +141,18 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   def unit: Path =
     Select(State.runtimeSymbol.asSimpleRef, Tree.Ident("Unit"))(S(State.unitSymbol))
   
-  private def collectScopedLocal(sym: LocalSymbol)(using LoweringCtx): Unit = sym match
-    case sym: ScopedSymbol => loweringCtx.collectScopedSym(sym)
-    case sym: TermSymbol if sym.owner.isDefined => ()
-    case sym => lastWords(s"tried to collect non-scoped local symbol ${sym.showDbg}")
-
-  
   // type Rcd = (mut: Bool, args: List[RcdArg]) // * Better, but Scala's patmat exhaustiveness chokes on it
   type Rcd = (Bool, List[RcdArg])
   
   def returnedTerm(t: st)(using LoweringCtx): Block = term(t)(Ret)(using LoweringCtx.nestFunc)
   
-  def parentConstructor(cls: Term, args: Ls[Term])(using LoweringCtx) = 
-    if args.length > 1 then 
-      raise:
-        ErrorReport(
-          msg"Extending a class with multiple parameter lists is not supported" -> Loc(cls :: args) :: Nil,
-          source = Diagnostic.Source.Compilation
-        )
+  def parentConstructor(parentClsPath: Path, cls: Term, args: Ls[Term])(using LoweringCtx) =
     lowerSuperCtorCall(
+      parentClsPath,
       State.builtinOpsMap("super").asSimpleRef,
       isMlsFun = true,
       isTailCall = false,
-      args.headOption,
+      args,
       N, // TODO: location?
     )(c => Assign(State.noSymbol, c, End()))
   
@@ -216,7 +205,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
               blockImpl(stats, L((mut, RcdArg(S(l), r) :: flds)))
       case (decl @ LetDecl(sym, annotations)) :: stats =>
         reportAnnotations(decl, annotations)
-        if sym.asTrm.forall(_.owner.isEmpty) then collectScopedLocal(sym)
+        if sym.asTrm.forall(_.owner.isEmpty) then
+          sym match
+          case sym: ScopedSymbol => loweringCtx.collectScopedSym(sym)
+          case sym => lastWords(s"tried to collect non-scoped local symbol ${sym.showDbg}")
         blockImpl(stats, res)
       case DefineVar(sym, rhs) :: stats =>
         term(rhs): r =>
@@ -256,14 +248,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
                 case Annot.Config(modify) => modify(config)
               Define(FunDefn(td.owner, td.sym, td.tsym, paramLists, bodyBlock)(cfgOverride, td.annotations),
                 blockImpl(stats, res))
-            case syntax.Ins =>
-              // Implicit instances are not parameterized for now.
-              assert(td.params.isEmpty)
-              val cfgOverride = td.extraAnnotations.collectFirst:
-                case Annot.Config(modify) => modify(config)
-              subTerm(bod)(r =>
-                Define(ValDefn(td.tsym, td.sym, r)(cfgOverride, td.annotations),
-                  blockImpl(stats, res)))
             case syntax.LetBind | syntax.HandlerBind => fail:
               ErrorReport(
                 msg"Unexpected declaration kind '${td.k.str}' in lowering" -> td.toLoc :: Nil,
@@ -286,9 +270,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
               mod.classCompanion match
               case S(comp) => comp.defn.getOrElse(wat("Module companion without definition", mod.companion))
               case N =>
-                val stagedAnnots = mod.annotations.collect { 
+                val stagedAnnots = mod.annotations.collect: 
                   case Annot.Modifier(Keyword.`staged`) => Annot.Modifier(Keyword.`staged`) 
-                }
                 ClassDef.Plain(mod.owner, syntax.Cls, new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id),
                   mod.bsym,
                   Nil,
@@ -382,7 +365,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
             val cfgOverride = defn.extraAnnotations.collectFirst:
               case Annot.Config(modify) => modify(config)
             subTerm(ext.cls): clsp =>
-              val pctor = inScopedBlock(parentConstructor(ext.cls, ext.args))
+              val pctor = inScopedBlock(parentConstructor(clsp, ext.cls, ext.args))
               Define(
                 ClsLikeDefn(
                   defn.owner, defn.sym, defn.bsym, defn.ctorSym, defn.kind, defn.paramsOpt, defn.auxParams, S(clsp),
@@ -395,12 +378,40 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     
     blockImpl(imps ::: funs ::: rest, res)
   
-  // * Lowers the `super(...)` call we get from the `extends C(...)` syntax
-  def lowerSuperCtorCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, arg: Opt[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
-    arg match
-    case S(arg) =>
-      lowerArgs(arg)(as => k(Call(fr, as ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc)))
-    case N =>
+  def getCtorParamLists(cls: Path): Ls[ParamList] =
+    cls.targetSymbol.flatMap: sym =>
+      sym.asClsOrMod.flatMap(_.defn) orElse
+      sym.asTrm.flatMap(_.owner).flatMap(_.asDefnSym.defn)
+    .fold(Nil: Ls[ParamList]): clsDef =>
+      clsDef.paramsOpt.toList ::: clsDef.auxParams
+  
+  // * Lowers the `super(...)(...)` call we get from the `extends C(...)(...)` syntax
+  def lowerSuperCtorCall(parentClsPth: Path, fr: Path, isMlsFun: Bool, isTailCall: Bool, args: List[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
+    val ctorParamLists = getCtorParamLists(parentClsPth)
+    args match
+    case _ :: _ =>
+      def zipArgs(remainingParamss: Ls[ParamList], args: Ls[Term], acc: Ls[Ls[Arg]]): Block = (remainingParamss, args) match
+        case (_ :: remainingParamss2, arg :: remainingArgs) => lowerArgs(arg): as =>
+          zipArgs(remainingParamss2, remainingArgs, as ne_:: acc)
+        case (Nil, arg :: remainingArgs) =>
+          if remainingArgs.isEmpty then
+            raise(ErrorReport(
+              msg"Too many parameter lists for parent class" -> loc :: Nil,
+              source = Diagnostic.Source.Compilation))
+          lowerArgs(arg): as =>
+            zipArgs(Nil, remainingArgs, as ne_:: acc)
+        case (remainingParamss2, Nil) =>
+          if !remainingParamss2.isEmpty then
+            raise(ErrorReport(
+              msg"Extending a partially applied class is not supported" -> loc :: Nil,
+              source = Diagnostic.Source.Compilation))
+          k(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc))
+      zipArgs(ctorParamLists, args, Nil)
+    case Nil =>
+      if !ctorParamLists.isEmpty then
+        raise(ErrorReport(
+          msg"Extending a partially applied class is not supported" -> loc :: Nil,
+          source = Diagnostic.Source.Compilation))
       // * No arguments to a super ctor means a nullary call, e.g., `extends C` means `extends C()`
       k(Call(fr, Nil ne_:: Nil)(isMlsFun, true, isTailCall).withLoc(loc))
   
@@ -408,28 +419,28 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     * trying to group as many as possible into a single one
     * when they correspond to parameter lists of the same callee. */
   def lowerMultiCall(fr: Path, isMlsFun: Bool, isTailCall: Bool, args: Ls[Term], loc: Opt[Loc])(k: Result => Block)(using LoweringCtx): Block =
-    def zipArgs(remainingParamss: Ls[ParamList], remainingArgss: Ls[Term], acc: Ls[Ls[Arg]]): Block =
+    def zipArgs(remainingParamss: Ls[ParamList], remainingArgss: Ls[Term], acc: Ls[Ls[Arg]], mayRaiseEffects: Bool): Block =
       (remainingParamss, remainingArgss) match
       case (ps :: remainingParams, args :: remainingArgs) =>
-        lowerArgs(args)(as => zipArgs(remainingParams, remainingArgs, as :: acc))
+        lowerArgs(args)(as => zipArgs(remainingParams, remainingArgs, as :: acc, mayRaiseEffects))
       case (Nil, Nil) =>
-        k(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc))
+        k(Call(fr, acc.reverse.ne_!)(isMlsFun, mayRaiseEffects, isTailCall).withLoc(loc))
       case (Nil, args :: remainingArgss) =>
         acc.reverse match
         case Nil => lowerRemainingCalls(fr, args, remainingArgss, isTailCall, loc)(k)
         case acc: NELs[Ls[Arg]] =>
           val tmp = loweringCtx.registerTempSymbol(N, "baseCall")
-          val call = Call(fr, acc)(isMlsFun, true, isTailCall).withLoc(loc)
+          val call = Call(fr, acc)(isMlsFun, mayRaiseEffects, isTailCall).withLoc(loc)
           Assign(tmp, call, lowerRemainingCalls(tmp.asSimpleRef, args, remainingArgss, isTailCall, loc)(k))
       case (_ :: _, Nil) =>
-        k(Call(fr, acc.reverse.ne_!)(isMlsFun, true, isTailCall).withLoc(loc))
+        k(Call(fr, acc.reverse.ne_!)(isMlsFun, mayRaiseEffects, isTailCall).withLoc(loc))
     fr.targetSymbol match
     case S(fs: TermSymbol) =>
       fs.defn match
       case S(td: TermDefinition) =>
-        zipArgs(td.params, args, Nil)
-      case _ => zipArgs(Nil, args, Nil)
-    case _ => zipArgs(Nil, args, Nil)
+        zipArgs(td.params, args, Nil, fs.mayRaiseEffects)
+      case _ => zipArgs(Nil, args, Nil, fs.mayRaiseEffects)
+    case _ => zipArgs(Nil, args, Nil, true)
   
   def lowerRemainingCalls(base: Path, args: Term, remainingArgss: Ls[Term], isTailCall: Bool, loc: Opt[Loc])
         (k: Result => Block)(using LoweringCtx): Block =
@@ -484,12 +495,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     // * so we also look up the owner InnerSymbol via TermDefinition#owner.
     // * Note: apparently, this can also be accessed through TermDefinition#companionClass
     // * (what Copilot initially used), which is weird.
-    val ctorParamLists: Ls[ParamList] =
-      cls.targetSymbol.flatMap: sym =>
-        sym.asClsOrMod.flatMap(_.defn) orElse
-        sym.asTrm.flatMap(_.owner).flatMap(_.asDefnSym.defn)
-      .fold(Nil: Ls[ParamList]): clsDef =>
-        clsDef.paramsOpt.toList ::: clsDef.auxParams
+    val ctorParamLists = getCtorParamLists(cls)
     if ctorParamLists.isEmpty then
       // * Need to specially handle no-param classes
       args match
@@ -526,59 +532,34 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     raise:
       WarningReport(msg"Pure expression in statement position" -> loc :: Nil, extraInfo,
         source = Diagnostic.Source.Compilation)
-  
-  private def privateFieldSelfSelection(sym: TermSymbol)(using LoweringCtx): Opt[Select] =
-    sym.owner.collect:
-      case owner if sym.isPrivate =>
-        Select(owner.asThis, sym.id)(S(sym))
 
-  private def assignSymbol(sym: Symbol, rhs: Result, rest: Block)(using LoweringCtx): Block =
+  private def assignSymbol(sym: Symbol, rhs: Result, rest: Block, loco: Opt[Loc])(using LoweringCtx): Block =
+    def nope = fail:
+      ErrorReport(
+        msg"Cannot assign to ${sym match
+            case sym: BlockMemberSymbol => sym.describe
+            case sym => "symbol"
+          } '${sym.nme}'" -> loco
+          :: sym.toLoc.match
+            case s @ S(_) => msg"Defined here:" -> s :: Nil
+            case N => Nil,
+        source = Diagnostic.Source.Compilation,
+        extraInfo = S(sym.getClass))
     sym match
     case sym: TermSymbol if (sym.k is MutVal) || (sym.k is LetBind) =>
       sym.owner match
       case S(owner) => AssignField(owner.asThis, sym.id, rhs, rest)(S(sym))
-      case N => fail:
-        ErrorReport(
-          msg"Mutable value '${sym.nme}' is missing an owner" -> sym.toLoc :: Nil,
-          source = Diagnostic.Source.Compilation)
-    case sym: TermSymbol => fail:
-      ErrorReport(
-        msg"Cannot assign to ${sym.k.desc} '${sym.nme}'" -> sym.toLoc :: Nil,
-        source = Diagnostic.Source.Compilation)
-    case sym: LocalVarSymbol =>
-      Assign(sym, rhs, rest)
-    case sym: BlockMemberSymbol =>
-      sym.tsym match
-      case S(tsym) if (tsym.k is MutVal) || (tsym.k is LetBind) =>
-        tsym.owner match
-        case S(owner) => AssignField(owner.asThis, tsym.id, rhs, rest)(S(tsym))
-        case N => fail:
-          ErrorReport(
-            msg"Mutable value '${sym.nme}' is missing an owner" -> sym.toLoc :: Nil,
-            source = Diagnostic.Source.Compilation)
-      case _ =>
-        val desc = sym.tsym.fold(sym.describe)(_.k.desc)
-        fail:
-          ErrorReport(
-            msg"Cannot assign to $desc '${sym.nme}'" -> sym.toLoc :: Nil,
-            source = Diagnostic.Source.Compilation)
-    case sym: NoSymbol =>
-      Assign(sym, rhs, rest)
-    case sym =>
-      lastWords(s"tried to assign to non-variable symbol ${sym.showDbg}")
+      case N => nope
+    case sym: LocalVarSymbol => Assign(sym, rhs, rest)
+    case sym => nope
   
   private def defineSymbol(sym: Symbol, rhs: Result, rest: Block)(using LoweringCtx): Block =
     sym match
     case sym: TermSymbol =>
       sym.owner match
       case S(owner) => AssignField(owner.asThis, sym.id, rhs, rest)(S(sym))
-      case N => fail:
-        ErrorReport(
-          msg"Term definition '${sym.nme}' is missing an owner" -> sym.toLoc :: Nil,
-          source = Diagnostic.Source.Compilation)
+      case N => lastWords(s"tried to define top-level symbol ${sym.showDbg} in a local scope")
     case sym: LocalVarSymbol =>
-      Assign(sym, rhs, rest)
-    case sym: NoSymbol =>
       Assign(sym, rhs, rest)
     case sym =>
       lastWords(s"tried to define non-variable symbol ${sym.showDbg}")
@@ -657,7 +638,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           return k(Call(
               bs.asMemberRef(disamb.get).withLocOf(ref), Nil ne_:: Nil
             )(isMlsFun = true, true, annots.contains(Annot.TailCall)))
-      case S(td: TermDefinition) if (td.k is syntax.MutVal) || (td.k is syntax.LetBind) =>
+      case S(td: TermDefinition) =>
         td.tsym.owner match
         case S(owner) =>
           return k(Select(owner.asThis, td.tsym.id)(S(td.tsym)).withLocOf(ref))
@@ -665,11 +646,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       case S(_) => ()
       case N => () // TODO panic here; can only lower refs to elab'd symbols
     case sym: TermSymbol =>
-      privateFieldSelfSelection(sym) match
-        case S(sel) =>
-          warnStmt
-          return k(sel.withLocOf(ref))
-        case N => ()
+      sym.owner match
+      case S(owner) =>
+        warnStmt
+        val sel = Select(owner.asThis, sym.id)(S(sym))
+        return k(sel.withLocOf(ref))
+      case N => ()
     case _ => ()
     warnStmt
     (sym, disamb) match
@@ -919,7 +901,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
             val (paramLists, bodyBlock) = setupFunctionDef(td.params, bod, S(td.sym.nme))      
             S(Handler(td.sym, resumeSym, paramLists, bodyBlock))
       }.collect{ case Some(v) => v }
-      collectScopedLocal(lhs)
+      loweringCtx.collectScopedSym(lhs)
       val resSym = loweringCtx.registerTempSymbol(S(t))
       subTerm(rhs): par =>
         subTerms(as): asr =>
@@ -931,7 +913,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       lhs match
       case Ref(sym) =>
         subTerm(rhs): r =>
-          assignSymbol(sym, r, k(unit))
+          assignSymbol(sym, r, k(unit), trm.toLoc)
       case sel @ SynthSel(prefix, nme) =>
         subTerm(prefix): p =>
           subTerm_nonTail(rhs): r =>
@@ -1008,7 +990,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           val sym = new BlockMemberSymbol(isym.name, Nil)
           loweringCtx.collectScopedSym(sym)
           val (mtds, publicFlds, privateFlds, ctor) = gatherMembers(rft)
-          val pctor = parentConstructor(cls, as)
+          val pctor = parentConstructor(sr, cls, as)
           val clsDef = ClsLikeDefn(N, isym, sym, N, syntax.Cls, N, Nil, S(sr),
             mtds, privateFlds, publicFlds, pctor, ctor, N, N)(N, Nil)
           val inner = new New(sym.ref().resolved(isym), Nil, N)(N)
@@ -1029,6 +1011,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       setupSelection(prefix, proj, N)(k)
     case Resolved(sp @ SelProj(prefix, _, proj), sym) =>
       setupSelection(prefix, proj, S(sym))(k)
+    case Resolved(inner, sym) => TODO(s"lowering for Resolved($inner)")
     case Region(reg, body) =>
       loweringCtx.collectScopedSym(reg)
       Assign(reg, Instantiate(mut = true, Select(State.globalThisSymbol.asThis, Tree.Ident("Region"))(N), Nil :: Nil),
@@ -1058,7 +1041,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         msg"Cannot compile ${t.describe} term that was not elaborated (maybe elaboration was one in 'lightweight' mode?)" ->
           t.toLoc :: Nil,
         source = Diagnostic.Source.Compilation)
-    case _: CompType | _: Neg | _: Term.FunTy | _: Term.Forall | _: Term.WildcardTy | _: Term.Unquoted | _: LeadingDotSel
+    case _: CompType | _: Neg | _: Term.FunTy | _: Term.Forall | _: Term.WildcardTy | _: Term.Unquoted | _: LeadingDotSel | _: Term.Constrained | _: Term.Annotated
     => fail:
       ErrorReport(
         msg"Unexpected term form in expression position (${t.describe})" ->
@@ -1106,8 +1089,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         .chain(b => quote(term)(r2 => Assign(l2, r2, b)))
         .chain(b => quoteSplit(tail, splitTmps)(r3 => Assign(l3, r3, b)))
         .rest(setupTerm("Let", (l1 :: l2 :: l3 :: Nil).map(s => s.asSimpleRef))(k))
-    case Split.Let(sym, _, _) =>
-      lastWords(s"tried to quote split let with non-variable symbol ${sym.nme}")
     case Split.Else(default) => quote(default): r =>
       val l = loweringCtx.registerTempSymbol(N)
       Assign(l, r, setupTerm("Else", l.asSimpleRef :: Nil)(k))
@@ -1118,11 +1099,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       setupSymbol(tmp): r1 =>
         val l1, l2, l3 = loweringCtx.registerTempSymbol(N)
         blockBuilder.assign(l1, r1)
-          .chain(b => Assign(tmp, Value.Ref(l1), b))
+          .chain(b => Assign(tmp, l1.asSimpleRef, b))
           .chain(b => quoteSplit(sym.body, splitTmps2)(r2 => Assign(l2, r2, b)))
           .chain(b => quoteSplit(tail, splitTmps2)(r3 => Assign(l3, r3, b)))
-          .rest(setupTerm("LetSplit", (l1 :: l2 :: l3 :: Nil).map(s => Value.Ref(s)))(k))
-    case Split.UseSplit(sym) => setupTerm("UseSplit", Value.SimpleRef(splitTmps(sym)) :: Nil)(k)
+          .rest(setupTerm("LetSplit", (l1 :: l2 :: l3 :: Nil).map(s => s.asSimpleRef))(k))
+    case Split.UseSplit(sym) => setupTerm("UseSplit", splitTmps(sym).asSimpleRef :: Nil)(k)
 
   lazy val setupFilename: Path =
     val state = summon[State]
@@ -1210,7 +1191,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       rec(rhs, Nil)(k)
     case Blk(LetDecl(sym: LocalVarSymbol, _) :: DefineVar(sym2, rhs) :: Nil, res) => // Let bindings
       require(sym2 is sym)
-      collectScopedLocal(sym)
+      loweringCtx.collectScopedSym(sym)
       setupSymbol(sym){r1 =>
         val l1, l2, l3, l4, l5 = loweringCtx.registerTempSymbol(N)
         val arrSym = loweringCtx.registerTempSymbol(N, "arr")
@@ -1430,14 +1411,13 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           case Annot.TailRec => "@tailrec"
           case Annot.Inline => "@inline"
           case Annot.NoInline => "@noInline"
-        
         target match
           case TermDefinition(body = S(bod), k = syntax.Fun) => ()
           case TermDefinition(k = syntax.Fun) => warn(a, S(msg"Only functions with a body may be marked as $annot."))
           case _ => warn(a)
-        
       case Annot.Modifier(syntax.Keyword.`public` | syntax.Keyword.`private` | syntax.Keyword.`virtual`) => ()
       case Annot.Modifier(syntax.Keyword("staged")) => ()
+      case Annot.MayNotRaiseEffects => ()
       case _: Annot.Config => () // Config annotations are handled during FunDefn creation
       case annot => warn(annot)
 
@@ -1496,7 +1476,7 @@ trait LoweringTraceLog(instrument: Bool)(using TL, Raise, State)
       path.foldLeft[Path](State.globalThisSymbol.asThis):
         (qual, name) => Select(qual, Tree.Ident(name))(N)
     
-  private def assignStmts(stmts: (AssignableSymbol, Result)*)(rest: Block) =
+  private def assignStmts(stmts: (Assignable, Result)*)(rest: Block) =
     stmts.foldRight(rest):
       case ((sym, res), acc) => Assign(sym, res, acc)
   

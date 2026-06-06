@@ -3,7 +3,7 @@ package semantics
 
 import scala.collection.mutable.{Buffer, Set as MutSet}
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import syntax.*
 import hkmc2.utils.Scope
 import hkmc2.utils.Scope.scope
@@ -28,9 +28,19 @@ enum Annot extends AutoLocated:
   case TailCall
   case Inline
   case NoInline
+  // Whether the function is guaranteed to not raise effects.
+  case MayNotRaiseEffects
   case Config(modify: hkmc2.Config => hkmc2.Config)
-  // marks if a function or lambda is affine, i.e. called at most once.
-  // for functions with multiple parameter lists, `whichParamList` is the zero-based parameter-list index.
+  // Marks if a function or lambda is one-shot, i.e. called at most once.
+  // Functions with multiple parameter lists are considered here as a chain of
+  // function values. `whichParamList` is the zero-based index of the parameter
+  // list whose corresponding function value is one-shot.
+  // For example, on `fun f(a)(b)`,
+  // - its list of annotations containing `Affine(0)` says that `f` is one-shot;
+  // - its list of annotations containing `Affine(1)` says that
+  //   each function value produced by `f(a)` is one-shot;
+  // - its list of annotations containing both `Affine(0)` and `Affine(1)` says that
+  //   `f` is one-shot and each function value produced by `f(a)` is also one-shot.
   case Affine(whichParamList: Int)
   
   def symbol: Opt[Symbol] = this match
@@ -39,19 +49,24 @@ enum Annot extends AutoLocated:
   
   def subTerms: Vector[Term] = this match
     case Trm(trm) => Vector.single(trm)
-    case _: Modifier | Untyped | TailRec | TailCall | Inline | NoInline | _: Config => Vector.empty
+    case _: Modifier | Untyped | TailRec | TailCall | Inline | NoInline
+      | MayNotRaiseEffects | _: Config | _: Affine => Vector.empty
   
   def children: Vector[Located] = this match
     case Trm(trm) => Vector.single(trm)
-    case _: Modifier | Untyped | TailRec | TailCall | Inline | NoInline | _: Config => Vector.empty
+    // case Modifier(kw) => Vector.single(kw) // TODO: make `kw` a `Keywrd`
+    case _: Modifier | Untyped | TailRec | TailCall | Inline | NoInline
+      | MayNotRaiseEffects | _: Config | _: Affine => Vector.empty
   
   def show(using Scope, ShowCfg, Raise): Document = this match
     case Untyped => doc"@untyped"
     case Inline => doc"@inline"
     case NoInline => doc"@noInline"
     case TailRec => doc"@tailrec"
+    case TailCall => doc"@tailcall"
     case Affine(n) => doc"@affine($n)"
     case Modifier(mod) => doc"@${mod.name}"
+    case MayNotRaiseEffects => doc"@mayNotRaiseEffects"
     case Trm(trm) => doc"@${trm.show}"
     case Config(_) => doc"@config(...)"
   
@@ -63,7 +78,9 @@ enum Annot extends AutoLocated:
     case TailCall => TailCall
     case Inline => Inline
     case NoInline => NoInline
+    case MayNotRaiseEffects => MayNotRaiseEffects
     case c: Config => c
+    case a: Affine => a
 
 object Annot:
   
@@ -130,6 +147,7 @@ sealed trait ResolvableImpl:
       case t: Term.Sel => t.copy()(S(sym), t.resSym, t.typ, t.originalCtx)
       case t: Term.SynthSel => t.copy()(S(sym), t.resSym, t.typ, t.originalCtx)
       case t: Term.SelProj => t.copy()(S(sym), t.resSym, t.typ, t.originalCtx)
+      case _ => lastWords(s"withSym called on non-selection term: $this")
     .withLocOf(this)
     .asInstanceOf
   
@@ -475,6 +493,7 @@ enum Term extends Statement:
       case term @ TyApp(lhs, targs) => TyApp(lhs.mkClone, targs.map(_.mkClone))(term.typ)
       case term @ Sel(prefix, nme) => Sel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.resSym, term.typ, term.originalCtx)
       case term @ SynthSel(prefix, nme) => SynthSel(prefix.mkClone, Tree.Ident(nme.name))(term.sym, term.resSym, term.typ, term.originalCtx)
+      case term @ LeadingDotSel(nme) => LeadingDotSel(Tree.Ident(nme.name))(term.originalCtx)
       case DynSel(prefix, fld, arrayIdx) => DynSel(prefix.mkClone, fld.mkClone, arrayIdx)
       case term @ Tup(fields) => Tup(fields.map {
         case f: Fld => f.copy(term = f.term.mkClone, asc = f.asc.map(_.mkClone))
@@ -927,13 +946,14 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       s"type ${sym}${tparams.mkStringOr(", ", "[", "]")} = ${rhs.fold("")(x => x.showDbg)}"
     case Missing => "missing"
     case LeadingDotSel(nme) => s"_?_.${nme.name}"
+    case SetConfig(_) => "#config(...)"
 
-final case class LetDecl(sym: LocalSymbol, annotations: Ls[Annot]) extends Statement
+final case class LetDecl(sym: LocalVarSymbol | TermSymbol, annotations: Ls[Annot]) extends Statement
 
 final case class RcdField(field: Term, rhs: Term) extends Statement
 final case class RcdSpread(rcd: Term) extends Statement
 
-final case class DefineVar(sym: LocalSymbol, rhs: Term) extends Statement
+final case class DefineVar(sym: LocalSymbol | TermSymbol, rhs: Term) extends Statement
 
 /** A global configuration change directive (`#config(...)`).
   * Records a function that modifies the current compiler configuration. */
@@ -1005,10 +1025,15 @@ final case class TermDefinition(
   require(k is tsym.k)
   def bsym: BlockMemberSymbol = sym
   val owner = tsym.owner
-  def visibility: Visibility = annotations.collectFirst:
-    case Annot.Modifier(Keyword.`private`) => Visibility.Private
-    case Annot.Modifier(Keyword.`public`) => Visibility.Public
-  .getOrElse(Visibility.Public)
+  def visibility: Visibility = annotations
+    .collectFirst:
+      case Annot.Modifier(Keyword.`private`) => Visibility.Private
+      case Annot.Modifier(Keyword.`public`) => Visibility.Public
+    .getOrElse(Visibility.Public)
+  lazy val mayRaiseEffects: Bool =
+    annotations.forall:
+      case Annot.MayNotRaiseEffects => false
+      case _ => true
   def extraAnnotations: Ls[Annot] = annotations.filter:
     case Annot.Modifier(Keyword.`declare` | Keyword.`abstract`) => false
     case _ => true
@@ -1064,11 +1089,13 @@ case class ObjBody(blk: Term.Blk):
 end ObjBody
 
 
-/** `sym` is a `MemberSymbol` when the import is made by the user and can be referred to by name,
+/** `sym` is a `BlockMemberSymbol` or a `VarSymbol` when the import is made by the user
+  * and can be referred to by name (it's either the BMS of the imported module
+  * or the VarSymbol of the alias, in an aliased import `import "..." as alias`),
   * in which case it is a `BlockMemberSymbol` when importing files explicitly
   * and a `TermSymbol` when the import is made implicitly by the compiler (eg, importing "Predef").
   * Note that the `file` Path may not represent a real file; eg when importing "fs". */
-case class Import(sym: TempSymbol | MemberSymbol, str: Str, file: io.Path) extends Statement
+case class Import(sym: ImportSymbol, str: Str, file: io.Path) extends Statement
 
 
 sealed abstract class Declaration:
@@ -1424,5 +1451,4 @@ trait BlkImpl:
     (stats ::: (res match
       case Lit(Tree.UnitLit(false)) => Nil
       case res => res :: Nil)).map(_.show).mkDocument(doc", # ")
-
 

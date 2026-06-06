@@ -46,17 +46,10 @@ case 0 then true
 case
   0 do print(1)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let lambda4;
 //│ lambda4 = (undefined, function (caseScrut) {
 //│   if (caseScrut === 0) {
-//│     let xs, callPrefix, tmp;
-//│     xs = [
-//│       1
-//│     ];
-//│     callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp = runtime.safeCall(callPrefix(...xs));
-//│     runtime.safeCall(globalThis.console.log(...tmp));
+//│     Predef.print(1);
 //│     return runtime.Unit
 //│   }
 //│   return runtime.Unit;
@@ -84,10 +77,10 @@ case
 :todo // TODO: support this braceless syntax?
 case [x] then x, [] then 0
 //│ ╔══[COMPILATION ERROR] Unexpected infix use of keyword 'then' here
-//│ ║  l.85: 	case [x] then x, [] then 0
+//│ ║  l.78: 	case [x] then x, [] then 0
 //│ ╙──      	                 ^^^^^^^^^
 //│ ╔══[WARNING] Pure expression in statement position
-//│ ║  l.85: 	case [x] then x, [] then 0
+//│ ║  l.78: 	case [x] then x, [] then 0
 //│ ╙──      	^^^^^^^^^^^^^^^
 //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
@@ -96,12 +89,12 @@ case
   0 then true
   _ then false
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let lambda5;
-//│ lambda5 = (undefined, function (caseScrut) {
+//│ let lambda10;
+//│ lambda10 = (undefined, function (caseScrut) {
 //│   if (caseScrut === 0) { return true }
 //│   return false;
 //│ });
-//│ return lambda5
+//│ return lambda10
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun
 
@@ -113,8 +106,8 @@ val isDefined = case
   Some then true
   None then false
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let isDefined, lambda6;
-//│ lambda6 = (undefined, function (caseScrut) {
+//│ let isDefined, lambda11;
+//│ lambda11 = (undefined, function (caseScrut) {
 //│   if (caseScrut instanceof Some1.class) {
 //│     return true
 //│   } else if (caseScrut instanceof None1.class) {
@@ -122,7 +115,7 @@ val isDefined = case
 //│   }
 //│   throw globalThis.Object.freeze(new globalThis.Error("match error"));
 //│ });
-//│ isDefined = lambda6;
+//│ isDefined = lambda11;
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ isDefined = fun
 

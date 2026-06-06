@@ -15,20 +15,21 @@ else
   print('hi)
 hide of hide of hide of hide of hide of x // big expression so it's not folded into the `else`
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x⁰, y⁰;
+//│ let x⁰, y⁰, scrut, tmp, tmp1, tmp2, tmp3;
 //│ set y⁰ = 1;
-//│ match false
+//│ set scrut = Predef⁰.hide⁰(false);
+//│ match scrut
 //│   true =>
 //│     set x⁰ = 2;
-//│     return 2
+//│     end
 //│   else
-//│     let xs, callPrefix, tmp;
-//│     set xs = mut ["hi"];
-//│     set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│     set tmp = callPrefix(...xs);
-//│     do globalThis⁰.console⁰.log⁰(...tmp);
-//│     return 2
-//│ end
+//│     do Predef⁰.print⁰("hi");
+//│     end
+//│ set tmp = Predef⁰.hide⁰(2);
+//│ set tmp1 = Predef⁰.hide⁰(tmp);
+//│ set tmp2 = Predef⁰.hide⁰(tmp1);
+//│ set tmp3 = Predef⁰.hide⁰(tmp2);
+//│ return Predef⁰.hide⁰(tmp3)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 //│ = 2
@@ -45,18 +46,15 @@ else
   print('hi)
 x // folded into the `else`; no longer observe the value `2`
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x¹, y¹;
+//│ let x¹, y¹, scrut;
 //│ set y¹ = 1;
-//│ match false
+//│ set scrut = Predef⁰.hide⁰(false);
+//│ match scrut
 //│   true =>
 //│     set x¹ = 2;
 //│     return 2
 //│   else
-//│     let xs, callPrefix, tmp;
-//│     set xs = mut ["hi"];
-//│     set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│     set tmp = callPrefix(...xs);
-//│     do globalThis⁰.console⁰.log⁰(...tmp);
+//│     do Predef⁰.print⁰("hi");
 //│     return undefined
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -71,11 +69,7 @@ x // folded into the `else`; no longer observe the value `2`
 let x
 print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x², xs⁰, callPrefix, tmp;
-//│ set xs⁰ = mut [undefined];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp = callPrefix(...xs⁰);
-//│ return globalThis⁰.console⁰.log⁰(...tmp)
+//│ let x²; return Predef⁰.print⁰(undefined)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > undefined
 //│ x = undefined

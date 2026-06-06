@@ -1,7 +1,7 @@
 package hkmc2
 package semantics
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import utils.TraceLogger
 
 import syntax.Tree
@@ -16,6 +16,7 @@ import semantics.ucs.FlatPattern
 
 import Message.MessageContext
 import scala.annotation.tailrec
+import scala.util.boundary, boundary.break
 
 object Resolver:
   
@@ -422,14 +423,15 @@ class Resolver(tl: TraceLogger)
     defn match
     
     // Case: instance definition. Add the instance to the context.
-    case defn @ TermDefinition(k = Ins, sym = sym, flags = TermDefFlags(isMethod), sign = sign) =>
+    case defn @ TermDefinition(k = Ins, sym = sym, tsym = tsym, flags = TermDefFlags(isMethod), sign = sign) =>
+      softAssert(defn.owner.isEmpty)
       log(s"Resolving instance definition ${defn.showDbg}")
       traverseTermDef(defn)
       sign match
         case N =>
           // By the syntax of instance defintiion, the type signature should be present.
           lastWords(s"No type signature for instance definition ${defn.showDbg} at ${defn.toLoc}")
-        case S(sign) => 
+        case S(sign) =>
           ictx + (resolveSign(sign, expect = Any), sym)
     
     // Case: Fun/Val definition. 
@@ -940,6 +942,7 @@ class Resolver(tl: TraceLogger)
         case _: Class => bms.asCls
         case _: Selectable => bms.asModOrObj orElse bms.asTrm
         case _: (Any.type | NonModule) => bms.asPrincipal
+        case _: PatternConstructor => TODO("disambSym for PatternConstructor")
       
       t match
       case Term.New(cls, _, N) => cls.resolvedSym match
@@ -958,7 +961,7 @@ class Resolver(tl: TraceLogger)
             disambBms match
             case S(disambBms) => disambBms.defn
             case N => bms.asPrincipal.flatMap(_.defn)
-          case S(bls: BlockLocalSymbol) => bls.decl
+          case S(bls: LocalVarSymbol) => bls.decl
           case S(ds: DefinitionSymbol[?]) => ds.defn
           case _ => N
         log(s"Declaration: ${decl}")
@@ -1035,70 +1038,70 @@ class Resolver(tl: TraceLogger)
    * @param expect the expectation on the type. See [[Expect]] for
    * details.
    */
-  def traverseSign(t: Term, expect: Expect, inAppPrefix: Bool = false)(using ictx: ICtx): Unit =
-  trace(s"Traversing type ${t}, expecting ${expect}"):
-    
-    // * Traverse through the sub-terms.
-    t match
-    case Term.Ref(_) =>
-    case Term.Lit(_) =>
-    case Term.Tup(_) => t.subTerms.foreach(traverse(_, expect = NonModule(N)))
-    case Term.UnitVal() =>
-    // Literals with operators. e.g., -42
-    case Term.App(Term.Ref(_: BuiltinSymbol), Term.Tup(Fld(term = Term.Lit(_)) :: Nil)) =>
-    
-    // Selection. The prefix should be a term, rather than a type, that
-    // can be selected from. This should not be a selection projection.
-    case AnySel(base, _, N) =>
-      base.subTerms.foreach(traverse(_, expect = Any))
-    
-    // Type Application. Traverse the type constructor and arguments,
-    // respectively.
-    case Term.TyApp(con, targs) => 
-      traverseSign(con, expect = expect, inAppPrefix = true)
-      targs.foreach(traverseSign(_, expect = Expect.NonModule(S("Type arguments should be non-moduleful types."))))
-    
-    // Complex type: Function type, Wildcard type, Composed type,
-    // Negation type, Forall type, 
-    case t: (Term.FunTy | Term.WildcardTy | Term.CompType | Term.Neg | Term.Forall | Term.Constrained | Term.Tup) =>
-      t.subTerms.foreach(traverseSign(_, expect = Expect.NonModule(N)))
-    
-    // t is not a type.
-    case _ => 
-      raise(ErrorReport(msg"Expected a type, got ${t.describe}" -> t.toLoc :: Nil))
-      return
-    
-    
-    
-    // * Resolve the symbol and type of the term.
-    val typ = t match
-      case t: Resolvable =>
-        resolveSymbol(t, prefer = expect, sign = true)
-        val typ = resolveSign(t, expect = expect)
-        t.expandedResolvableIn(_.withTyp(typ))
-        typ
-      case _ =>
-        val typ = resolveSign(t, expect = expect)
-        typ
-    
-    // * Check if the term satisfies the expectation.
-    // * Check the arity of type params/args.
-    typ match 
-      case Type.Ref(sym: TypeSymbol, targs) if !inAppPrefix =>
-        sym.defn.flatMap(CallableDefinition.fromDefn(_)).foreach: 
-          case CallableDefinition(tparams = tparams) =>
-            val tparamsNum = tparams.map(_.length)
-            val targsNum = targs.length
-            if tparamsNum.getOrElse(0) =/= targsNum then
-              val tparamsMsg = tparamsNum.getOrElse("no").toString
-              val targsMsg = if targsNum === 0 then "none" else targsNum.toString
-              raise:
-                ErrorReport:
-                  msg"Expected ${tparamsMsg} type arguments, "
-                  + msg"got ${targsMsg}" -> t.toLoc :: Nil
-      case Type.Ref(sym: VarSymbol, targs) if !inAppPrefix =>
-        // TODO: check arity?
-      case _ =>
+  def traverseSign(t: Term, expect: Expect, inAppPrefix: Bool = false)(using ictx: ICtx): Unit = boundary:
+    trace(s"Traversing type ${t}, expecting ${expect}"):
+      
+      // * Traverse through the sub-terms.
+      t match
+      case Term.Ref(_) =>
+      case Term.Lit(_) =>
+      case Term.Tup(_) => t.subTerms.foreach(traverse(_, expect = NonModule(N)))
+      case Term.UnitVal() =>
+      // Literals with operators. e.g., -42
+      case Term.App(Term.Ref(_: BuiltinSymbol), Term.Tup(Fld(term = Term.Lit(_)) :: Nil)) =>
+      
+      // Selection. The prefix should be a term, rather than a type, that
+      // can be selected from. This should not be a selection projection.
+      case AnySel(base, _, N) =>
+        base.subTerms.foreach(traverse(_, expect = Any))
+      
+      // Type Application. Traverse the type constructor and arguments,
+      // respectively.
+      case Term.TyApp(con, targs) => 
+        traverseSign(con, expect = expect, inAppPrefix = true)
+        targs.foreach(traverseSign(_, expect = Expect.NonModule(S("Type arguments should be non-moduleful types."))))
+      
+      // Complex type: Function type, Wildcard type, Composed type,
+      // Negation type, Forall type, 
+      case t: (Term.FunTy | Term.WildcardTy | Term.CompType | Term.Neg | Term.Forall | Term.Constrained | Term.Tup) =>
+        t.subTerms.foreach(traverseSign(_, expect = Expect.NonModule(N)))
+      
+      // t is not a type.
+      case _ => 
+        raise(ErrorReport(msg"Expected a type, got ${t.describe}" -> t.toLoc :: Nil))
+        break()
+      
+      
+      
+      // * Resolve the symbol and type of the term.
+      val typ = t match
+        case t: Resolvable =>
+          resolveSymbol(t, prefer = expect, sign = true)
+          val typ = resolveSign(t, expect = expect)
+          t.expandedResolvableIn(_.withTyp(typ))
+          typ
+        case _ =>
+          val typ = resolveSign(t, expect = expect)
+          typ
+      
+      // * Check if the term satisfies the expectation.
+      // * Check the arity of type params/args.
+      typ match 
+        case Type.Ref(sym: TypeSymbol, targs) if !inAppPrefix =>
+          sym.defn.flatMap(CallableDefinition.fromDefn(_)).foreach: 
+            case CallableDefinition(tparams = tparams) =>
+              val tparamsNum = tparams.map(_.length)
+              val targsNum = targs.length
+              if tparamsNum.getOrElse(0) =/= targsNum then
+                val tparamsMsg = tparamsNum.getOrElse("no").toString
+                val targsMsg = if targsNum === 0 then "none" else targsNum.toString
+                raise:
+                  ErrorReport:
+                    msg"Expected ${tparamsMsg} type arguments, "
+                    + msg"got ${targsMsg}" -> t.toLoc :: Nil
+        case Type.Ref(sym: VarSymbol, targs) if !inAppPrefix =>
+          // TODO: check arity?
+        case _ =>
   
   /**
    * Given a symbol-resolved term that represents a type, resolve the
@@ -1210,7 +1213,7 @@ object ModuleChecker:
     
     def checkSym(sym: Symbol): Bool = sym match
       case sym: BuiltinSymbol => false
-      case sym: BlockLocalSymbol => sym.decl.exists(checkDecl)
+      case sym: LocalVarSymbol => sym.decl.exists(checkDecl)
       case sym: MemberSymbol => prefer match
         case Expect.Module(_) => sym.existsModuleful
         case _ => !sym.existsNonModuleful
@@ -1228,4 +1231,3 @@ object ModuleChecker:
   def isStaticClass(t: Term): Bool = t.resolvedSym.exists(_.asCls.isDefined)
 
 end ModuleChecker
-

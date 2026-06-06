@@ -2,7 +2,7 @@ package hkmc2
 package codegen
 package js
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import utils.*
 import document.*
 import document.Document.{braced, bracketed}
@@ -58,7 +58,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
   
   def mkErr(errMsg: Message)(using Raise, Scope): Document =
     doc"throw globalThis.Error(${result(Value.Lit(syntax.Tree.StrLit(errMsg.show)))})"
-
+  
   def errExpr(errMsg: Message)(using Raise, Scope): Document =
     raise(ErrorReport(errMsg -> N :: Nil,
       source = Diagnostic.Source.Compilation))
@@ -83,7 +83,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       case owner if ts.isPrivate =>
         if scope.inScopeOwners(owner)
         then doc".#${owner.privatesScope.lookup_!(ts, loc)}"
-        else doc"[${scope.allocateOrGetName(getPrivateAccessorSymbol(ts))}]"
+        else doc"[${scope.lookup_!(getPrivateAccessorSymbol(ts), loc)}]"
 
   private def withPrivateAccessorDecls(doc: Document)(using Raise, Scope): Document =
     val accessors = (
@@ -94,7 +94,8 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     if accessors.isEmpty then doc else doc :/: accessors
 
   private def allocatePrivateAccessorNames()(using Raise, Scope): Unit =
-    privateAccessorSymbols.valuesIterator.foreach(scope.allocateOrGetName(_))
+    privateAccessorSymbols.iterator.toList.sortBy(_._1.uid).foreach: (_, sym) =>
+      scope.allocateOrGetName(sym)
 
   private def collectExternalPrivateAccessors(p: Program)(using State): Unit =
     privateAccessorSymbols.clear()
@@ -143,7 +144,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
           applyBlock(body.ctor)
           body.methods.foreach(applyDefn)
     collector.applyBlock(p.main)
-  
+
   private def modulePrivateExportName(sym: BlockMemberSymbol): Str =
     val encodedName = sym.nme.iterator.map:
       case c if c <= '\u007f' && (c.isLetterOrDigit || c === '_') => c.toString
@@ -209,7 +210,8 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     (new ImportDependencyTraverser:
       override def applySymbol(sym: Symbol): Unit = sym match
         case sym: TempSymbol => note(sym)
-        case sym: MemberSymbol => note(sym)
+        case sym: VarSymbol => note(sym)
+        case sym: BlockMemberSymbol => note(sym)
         case _ =>
     ).applyBlock(p.main)
     externalSymbols.toList.sortBy(_.uid)
@@ -226,7 +228,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       .toList
       .sortBy(_.uid)
     case _ => Nil
-
+  
   def runtimeVar(using Raise, Scope): Document = scope.lookup_!(State.runtimeSymbol, N)
   
   def argument(a: Arg)(using Raise, Scope): Document =
@@ -268,10 +270,6 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     case Value.SimpleRef(l: BuiltinSymbol) =>
       if l.nullary then l.nme
       else errExpr(msg"Illegal reference to builtin symbol '${l.nme}'")
-    case Value.SimpleRef(l: semantics.TermSymbol) =>
-      l.owner match
-      case S(owner) => lastWords(s"Unexpected SimpleRef of TermSymbol with owner: `$l` (owner: `$owner`)")
-      case N => scope.lookup_!(l, r.toLoc)
     case Value.SimpleRef(l) => scope.lookup_!(l, r.toLoc)
     case Call(Value.SimpleRef(l: BuiltinSymbol), (lhs :: rhs :: Nil) :: Nil) if !l.functionLike =>
       if l.binary then
@@ -428,13 +426,11 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
   def returningTerm(t: Block, endSemi: Bool)(using Raise, Scope): Document =
     def mkSemi = if endSemi then ";" else ""
     t match
-    case Assign(_: NoSymbol, r, rst) =>
+    case Assign(l: NoSymbol, r, rst) =>
       doc" # ${result(r)};${returningTerm(rst, endSemi)}"
-    case Assign(l, r, rst) =>
+    case Assign(l: (LocalVarSymbol | TermSymbol), r, rst) =>
       doc" # ${
-          l match
-          case sym: InnerSymbol => lastWords(s"Inner symbol should not be used as the target of an assignment: $sym")
-          case l: ValueSymbol => result(l.asPath.withLoc(N)) // TODO: improve location
+          result(l.asPath.withLoc(N)) // TODO: improve location
         } = ${result(r)};${returningTerm(rst, endSemi)}"
     case assign @ AssignField(p, n, r, rst) =>
       val field = assign.symbol match
@@ -448,7 +444,6 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
         result(sym.asThis)
       val resJS = defn match
       case ValDefn(tsym, sym, p) =>
-        val sym = defn.sym
         // * Currently we allow `val` outside of object/module scopes,
         // * in which case it has no owner and is just a glorified local variable rather than a field.
         tsym.owner match
@@ -760,8 +755,8 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     case Match(scrut, arms @ hd :: tl, els, rest) =>
       val sd = result(scrut)
       // * Parenthesize the scrutinee for property access when it's a numeric literal,
-      // * since `12.length` is invalid JS (the `.` is parsed as a decimal point).
-      val sdProp = scrut match
+      // * since things like `12.length` are invalid JS (the `.` is parsed as a decimal point).
+      def sdProp = scrut match
         case Value.Lit(Tree.IntLit(_) | Tree.DecLit(_)) => doc"($sd)"
         case _ => sd
       def cond(cse: Case) = cse match
@@ -775,7 +770,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
           case Elaborator.ctx.builtins.Bool => doc"typeof $sd === 'boolean'"
           case Elaborator.ctx.builtins.Int => doc"globalThis.Number.isInteger($sd)"
           case Elaborator.ctx.builtins.BigInt => doc"typeof $sd === 'bigint'"
-          case Elaborator.ctx.builtins.Symbol.module => doc"typeof $sd === 'symbol'"
+          case Elaborator.ctx.builtins.Symbol => doc"typeof $sd === 'symbol'"
           case Elaborator.ctx.builtins.TypedArray =>
             doc"globalThis.ArrayBuffer.isView($sd) && !($sd instanceof globalThis.DataView)"
           case _: ModuleOrObjectSymbol => doc"$sd instanceof ${result(pth)}.class"
@@ -929,7 +924,8 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     :: (if privateExports.isEmpty then doc"" else doc" # " :: privateExports.mkDocument(doc" # "))
     :: locally:
       exprt match
-      case S(sym) => doc"\nlet ${sym.nme} = ${scope.lookup_!(sym, sym.toLoc)}; export default ${sym.nme};\n"
+      case S(sym) =>
+        doc"\nlet ${sym.nme} = ${scope.lookup_!(sym, sym.toLoc)}; export default ${sym.nme};\n"
       case N => doc""
   
   def worksheet(p: Program)(using Raise, Scope): (Document, Document) =

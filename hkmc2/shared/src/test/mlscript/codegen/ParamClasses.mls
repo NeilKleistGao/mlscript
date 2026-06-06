@@ -4,6 +4,7 @@
 :sjs
 
 
+:sir
 data class Foo()
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo1;
@@ -17,11 +18,17 @@ data class Foo()
 //│   toString() { return runtime.render(this); }
 //│   static [definitionMetadata] = ["class", "Foo", []];
 //│ });
+//│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
+//│ let Foo⁰; @data define Foo⁰ as class Foo² { constructor Foo¹ }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
+// * Notice that `Foo¹` correctly refers to the ClassCtorSymbol of `Foo` shown above
+:sir
 Foo
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ return Foo1
+//│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
+//│ return Foo¹
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun Foo { class: class Foo }
 
@@ -151,21 +158,7 @@ f.b
 
 Foo(print(1), print(2))
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
-//│ let xs, inlinedVal, xs1, inlinedVal1, callPrefix, tmp1, callPrefix1, tmp2;
-//│ xs = [
-//│   1
-//│ ];
-//│ callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│ tmp2 = runtime.safeCall(callPrefix1(...xs));
-//│ inlinedVal = runtime.safeCall(globalThis.console.log(...tmp2));
-//│ xs1 = [
-//│   2
-//│ ];
-//│ callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│ tmp1 = runtime.safeCall(callPrefix(...xs1));
-//│ inlinedVal1 = runtime.safeCall(globalThis.console.log(...tmp1));
-//│ return Foo5(inlinedVal, inlinedVal1)
+//│ let tmp1, tmp2; tmp1 = Predef.print(1); tmp2 = Predef.print(2); return Foo5(tmp1, tmp2)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ > 2
@@ -185,14 +178,8 @@ data class Inner(c) with
 //│     Inner1.class = this
 //│   }
 //│   constructor(c) {
-//│     let xs2, callPrefix2, tmp3;
 //│     this.c = c;
-//│     xs2 = [
-//│       this.c
-//│     ];
-//│     callPrefix2 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp3 = runtime.safeCall(callPrefix2(...xs2));
-//│     runtime.safeCall(globalThis.console.log(...tmp3));
+//│     Predef.print(this.c);
 //│   }
 //│   i1(d) {
 //│     return this.c + d
@@ -235,47 +222,22 @@ class Foo(x, val y, z, val z, z) with
 //│     Foo7.class = this
 //│   }
 //│   constructor(x, y, z, z1, z2) {
-//│     let tmp3, tmp4, tmp5, tmp6, tmp7, xs2, xs3, xs4, xs5, xs6, callPrefix2, tmp8, callPrefix3, tmp9, callPrefix4, tmp10, callPrefix5, tmp11, callPrefix6, tmp12;
+//│     let tmp3, tmp4, tmp5, tmp6, tmp7;
 //│     this.y = y;
 //│     this.z = z1;
 //│     this.#z = z2;
 //│     this.#x = 1;
 //│     this.#y = this.y + 1;
 //│     tmp3 = "x = " + this.#x;
-//│     xs2 = [
-//│       tmp3
-//│     ];
-//│     callPrefix6 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp12 = runtime.safeCall(callPrefix6(...xs2));
-//│     runtime.safeCall(globalThis.console.log(...tmp12));
+//│     Predef.print(tmp3);
 //│     tmp4 = "y = " + this.#y;
-//│     xs3 = [
-//│       tmp4
-//│     ];
-//│     callPrefix5 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp11 = runtime.safeCall(callPrefix5(...xs3));
-//│     runtime.safeCall(globalThis.console.log(...tmp11));
+//│     Predef.print(tmp4);
 //│     tmp5 = "this.y = " + this.y;
-//│     xs4 = [
-//│       tmp5
-//│     ];
-//│     callPrefix4 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp10 = runtime.safeCall(callPrefix4(...xs4));
-//│     runtime.safeCall(globalThis.console.log(...tmp10));
+//│     Predef.print(tmp5);
 //│     tmp6 = "z = " + this.#z;
-//│     xs5 = [
-//│       tmp6
-//│     ];
-//│     callPrefix3 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp9 = runtime.safeCall(callPrefix3(...xs5));
-//│     runtime.safeCall(globalThis.console.log(...tmp9));
+//│     Predef.print(tmp6);
 //│     tmp7 = "this.z = " + this.z;
-//│     xs6 = [
-//│       tmp7
-//│     ];
-//│     callPrefix2 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp8 = runtime.safeCall(callPrefix2(...xs6));
-//│     runtime.safeCall(globalThis.console.log(...tmp8));
+//│     Predef.print(tmp7);
 //│   }
 //│   #z;
 //│   #x;
@@ -301,10 +263,10 @@ Foo(10, 20, 30, 40, 50)
 class Foo(val z, val z)
 //│ ╔══[COMPILATION ERROR] Duplicate definition of member named 'z'.
 //│ ╟── Defined at: 
-//│ ║  l.301: 	class Foo(val z, val z)
+//│ ║  l.263: 	class Foo(val z, val z)
 //│ ║         	              ^
 //│ ╟── Defined at: 
-//│ ║  l.301: 	class Foo(val z, val z)
+//│ ║  l.263: 	class Foo(val z, val z)
 //│ ╙──       	                     ^
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let Foo9;

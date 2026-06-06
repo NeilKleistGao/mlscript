@@ -4,7 +4,7 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 import collection.mutable.Map as MutMap
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import hkmc2.utils.*
 import hkmc2.Message.MessageContext
 import hkmc2.io
@@ -174,7 +174,8 @@ class CompilerCtx(
           val lowered = low.program(blk)
           val compilationUnitSymbols = collectCompilationUnitSymbols(lowered)
           var optimized = lowered
-          val symbolsToPreserve: Set[Symbol] = compilationUnitSymbols ++ exportedSymbol
+          val symbolsToPreserve: Set[codegen.BoundSymbol] =
+            compilationUnitSymbols.toSet[codegen.BoundSymbol] ++ exportedSymbol.toSet
           optimized =
             val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
             optimized = codegen.WorkerWrapper(symbolsToPreserve, dtl, printer)(optimized)
@@ -240,6 +241,5 @@ trait CompilerCache:
       .get // * above, we always returns Some
   
 end CompilerCache
-
 
 

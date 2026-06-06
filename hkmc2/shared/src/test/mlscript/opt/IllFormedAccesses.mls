@@ -31,15 +31,7 @@ let x in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let xs⁰, xs¹, callPrefix, tmp, callPrefix1, tmp1;
-//│ set xs⁰ = mut ["don't inline cont."];
-//│ set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp1 = callPrefix1(...xs⁰);
-//│ do globalThis⁰.console⁰.log⁰(...tmp1);
-//│ set xs¹ = mut [1];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp = callPrefix(...xs¹);
-//│ return globalThis⁰.console⁰.log⁰(...tmp)
+//│ do Predef⁰.hide⁰(false); do Predef⁰.print⁰("don't inline cont."); return Predef⁰.print⁰(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > don't inline cont.
 //│ > 1
@@ -52,20 +44,15 @@ let x = undefined in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x¹, xs², xs³, callPrefix, tmp, callPrefix1, tmp1;
+//│ let x¹, scrut;
 //│ set x¹ = undefined;
-//│ match false
+//│ set scrut = Predef⁰.hide⁰(false);
+//│ match scrut
 //│   true =>
 //│     set x¹ = 1;
 //│     end
-//│ set xs² = mut ["don't inline cont."];
-//│ set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp1 = callPrefix1(...xs²);
-//│ do globalThis⁰.console⁰.log⁰(...tmp1);
-//│ set xs³ = mut [x¹];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp = callPrefix(...xs³);
-//│ return globalThis⁰.console⁰.log⁰(...tmp)
+//│ do Predef⁰.print⁰("don't inline cont.");
+//│ return Predef⁰.print⁰(x¹)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > don't inline cont.
 //│ > undefined

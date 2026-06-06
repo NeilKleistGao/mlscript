@@ -1,7 +1,7 @@
 package hkmc2
 package codegen
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import utils.*
 
 import hkmc2.Message.MessageContext
@@ -39,6 +39,31 @@ case class Program(
   imports: Ls[ImportSymbol -> Str],
   main: Block,
 )
+
+
+/** Symbol that can be used in a `SimpleRef`. */
+type SimpleSymbol = LocalVarSymbol | BuiltinSymbol
+
+/** Symbol that can be used as the left-hand side of an `Assign`. */
+type Assignable = LocalVarSymbol | NoSymbol
+
+/** Symbols that `Scoped` introduces as block-local bindings.
+  * This deliberately excludes things like `TermSymbol`s, which never need to be scoped.
+  */
+type ScopedSymbol = LocalVarSymbol | BlockMemberSymbol
+
+/** A "catch-all" symbol for value-like things.
+  * Slightly better than just `Symbol`, but we should still try migrating away to more specific symbol types.
+  */
+type ValueSymbol = SimpleSymbol | TermSymbol | BlockMemberSymbol | InnerSymbol
+
+/** Symbols that may be bound by MIR binding forms such as `Scoped`.
+  */
+type BoundSymbol = ScopedSymbol | TermSymbol
+
+/** Symbols that may occur in MIR free-variable sets.
+  */
+type FreeSymbol = SimpleSymbol | BlockMemberSymbol | LabelSymbol
 
 
 sealed abstract class Block extends Product:
@@ -93,6 +118,11 @@ sealed abstract class Block extends Product:
     case Define(defn, rest) =>
       s"""|Define(${defn.showDbg})
           |${rest.showDbg}""".stripMargin
+    case Throw(exc) => s"Throw(${exc.showDbg})"
+    case Scoped(syms, body) =>
+      s"""|Scoped(${syms.toList.map(_.showDbg).sorted.mkString(", ")}) {
+          |${body.showDbg}
+          |}""".stripMargin
   
   lazy val isAbortive: Bool = this match
     case _: End => false
@@ -117,8 +147,8 @@ sealed abstract class Block extends Product:
   lazy val definedVars: Set[BoundSymbol] = this match
     case _: Return | _: Throw | _: Unreachable => Set.empty
     case Begin(sub, rst) => sub.definedVars ++ rst.definedVars
-    case Assign(_: (TermSymbol | NoSymbol), r, rst) => rst.definedVars
-    case Assign(l: BlockLocalSymbol, r, rst) => rst.definedVars + l
+    case Assign(_: NoSymbol, r, rst) => rst.definedVars
+    case Assign(l: LocalVarSymbol, r, rst) => rst.definedVars + l
     case AssignField(l, n, r, rst) => rst.definedVars
     case AssignDynField(l, n, ai, r, rst) => rst.definedVars
     case Match(scrut, arms, dflt, rst) =>
@@ -171,7 +201,7 @@ sealed abstract class Block extends Product:
     case Begin(sub, rest) => sub.freeVars ++ rest.freeVars
     case TryBlock(sub, finallyDo, rest) => sub.freeVars ++ finallyDo.freeVars ++ rest.freeVars
     case Assign(_: NoSymbol, rhs, rest) => rhs.freeVars ++ rest.freeVars
-    case Assign(lhs: FreeSymbol, rhs, rest) => Set.single(lhs) ++ rhs.freeVars ++ rest.freeVars
+    case Assign(lhs: LocalVarSymbol, rhs, rest) => Set.single(lhs) ++ rhs.freeVars ++ rest.freeVars
     case AssignField(lhs, nme, rhs, rest) => lhs.freeVars ++ rhs.freeVars ++ rest.freeVars
     case AssignDynField(lhs, fld, arrayIdx, rhs, rest) => lhs.freeVars ++ fld.freeVars ++ rhs.freeVars ++ rest.freeVars
     case Define(defn, rest) => defn.freeVars ++ rest.freeVars
@@ -357,8 +387,7 @@ case class Begin(sub: Block, rest: Block) extends Block with ProductWithTail wit
 
 case class TryBlock(sub: Block, finallyDo: Block, rest: Block) extends Block with ProductWithTail with NonBlockTail
 
-case class Assign(lhs: AssignableSymbol, rhs: Result, rest: Block) extends Block with ProductWithTail with NonBlockTail
-// case class Assign(lhs: Path, rhs: Result, rest: Block) extends Block with ProductWithTail
+case class Assign(lhs: Assignable, rhs: Result, rest: Block) extends Block with ProductWithTail with NonBlockTail
 
 case class AssignField(lhs: Path, nme: Tree.Ident, rhs: Result, rest: Block)(val symbol: Opt[MemberSymbol])
   extends Block with ProductWithTail with NonBlockTail
@@ -399,7 +428,7 @@ object TryBlock:
       case Scoped(syms, innerRest) => Scoped(syms, TryBlock(body, finallyDo, innerRest))
       case _ => new TryBlock(body, finallyDo, rest)
 object Assign:
-  def apply(lhs: AssignableSymbol, rhs: Result, rest: Block): Block = rest match
+  def apply(lhs: Assignable, rhs: Result, rest: Block): Block = rest match
     case _: Unreachable =>
       if rhs.isPure then rest else new Assign(lhs, rhs, rest)
     case Scoped(syms, body) => Scoped(syms, Assign(lhs, rhs, body))
@@ -589,12 +618,14 @@ sealed abstract class Defn:
   
   // * Note that `privateFields` abd `publicFields` can't possibly be free since they are never
   // * referred to directly (they are only accessed through selections).
-  // * At some point we'll want to make this more specific than `Symbol` to express this
-  // * in the type system.
   lazy val freeVars: Set[FreeSymbol] = this match
     case FunDefn(own, sym, dSym, params, body) =>
       body.freeVars -- params.flatMap(_.paramSyms) ++ sym.optionIf(own.isEmpty)
-    case ValDefn(tsym, sym, rhs) => rhs.freeVars ++ sym.optionIf(tsym.owner.isEmpty)
+    case vd @ ValDefn(tsym, sym, rhs) =>
+      rhs.freeVars ++
+        // * Value definitions without an owner are similar to local variables;
+        // * they need to be declared with `let` in JS, which is why we add them here.
+        vd.sym.optionIf(tsym.owner.isEmpty)
     case ClsLikeDefn(own, isym, sym, ctorSym, k, paramsOpt, auxParams, parentSym, 
         methods, privateFields, publicFields, preCtor, ctor, stat, bufferable) =>
       preCtor.freeVars
@@ -880,8 +911,8 @@ sealed abstract class Result extends AutoLocated:
     case Tuple(mut, elems) => elems.flatMap(_.value.freeVars).toSet
     case Record(mut, args) =>
       args.flatMap(arg => arg.idx.fold(Set.empty[FreeSymbol])(_.freeVars) ++ arg.value.freeVars).toSet
-    case Value.SimpleRef(l) => Set(l)
-    case Value.MemberRef(bms, _) => Set(bms)
+    case Value.SimpleRef(l) => Set.single(l)
+    case Value.MemberRef(bms, disamb) => Set.single(bms)
     case Value.This(sym) => Set.empty
     case Value.Lit(lit) => Set.empty
     case DynSelect(qual, fld, arrayIdx) => qual.freeVars ++ fld.freeVars
@@ -897,10 +928,6 @@ sealed abstract class Result extends AutoLocated:
     case Value.Lit(l: Tree.StrLit) => l.value.length / 4
     case Value.Lit(lit) => 0
     case DynSelect(qual, fld, arrayIdx) => qual.size + fld.size
-
-// * TODO: refine this very loose type
-// type Local = LocalSymbol
-type Local = Symbol
 
 /* mayRaiseEffects indicates whether this call may raise effect (algebraic effect),
  * regardless of whether the check for effect is inserted or not.
@@ -960,6 +987,8 @@ enum Value extends Path with ProductWithExtraInfo:
 object Value:
   /** A value-level reference. */
   type RefLike = SimpleRef | MemberRef | This
+  object RefLike:
+    def unapply(v: Value.RefLike): S[ValueSymbol] = S(v.symbol)
 
   /** Value-level references that are not [[`Value.This`]]. */
   type Ref = SimpleRef | MemberRef
@@ -967,17 +996,15 @@ object Value:
   extension (r: RefLike)
     def symbol: ValueSymbol = r match
       case SimpleRef(l) => l
-      case MemberRef(bms, _) => bms
+      case MemberRef(bms, disamb) => bms
       case This(sym) => sym
-
-  object RefLike:
-    def unapply(v: Value.RefLike): S[ValueSymbol] = S(v.symbol)
 
   @deprecated("Use Value.SimpleRef, Value.MemberRef, or Value.This instead.")
   object Ref:
     def apply(l: ValueSymbol | NoSymbol, disamb: Opt[DefinitionSymbol[?]]): Value.RefLike =
       l match
         case l: SimpleSymbol => l.asSimpleRef
+        case l: TermSymbol => l.asPath
         case bms: BlockMemberSymbol => bms.asMemberRef:
           disamb.getOrElse:
             lastWords(s"Cannot disambiguate overloaded member symbol ${bms.nme}: no disambiguation provided")
@@ -1013,8 +1040,8 @@ extension (k: Block => Block)
   def rest(b: Block): Block = k(b)
   def transform(f: (Block => Block) => (Block => Block)) = f(k)
   
-  def assign(l: AssignableSymbol, r: Result) = k.chain(Assign(l, r, _))
-  def assignScoped(l: BlockLocalSymbol, r: Result) = k.scopedVars(Set.single(l)).assign(l, r)
+  def assign(l: Assignable, r: Result) = k.chain(Assign(l, r, _))
+  def assignScoped(l: LocalVarSymbol, r: Result) = k.scopedVars(Set.single(l)).assign(l, r)
   def assignFieldN(lhs: Path, nme: Tree.Ident, rhs: Result) = k.chain(AssignField(lhs, nme, rhs, _)(N))
   def break(l: LabelSymbol): Block = k.rest(Break(l))
   def continue(l: LabelSymbol): Block = k.rest(Continue(l))
@@ -1043,10 +1070,13 @@ extension (l: ValueSymbol)
   // TODO(Derppening): Inline `Value.Ref.apply` into this function once that function is removed
   @annotation.nowarn("cat=deprecation")
   def asPath: Value.RefLike =
-    Value.Ref(l, l match
-      case bms: BlockMemberSymbol => S(bms.asPrincipal.getOrElse:
-        lastWords(s"Cannot resolve overloaded member symbol ${bms.nme}: no principal disambiguation found")
-      )
-      case _ => N
-    )
-
+    l match
+      case tsym: TermSymbol =>
+        lastWords(s"Cannot make a direct path for non-local term symbol ${tsym.nme}")
+      case bms: BlockMemberSymbol =>
+        bms.asPrincipal.getOrElse:
+          lastWords(s"Cannot resolve overloaded member symbol ${bms.nme}: no principal disambiguation found")
+        match
+          case disamb =>
+            Value.Ref(bms, S(disamb))
+      case _ => Value.Ref(l, N)

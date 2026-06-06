@@ -92,13 +92,7 @@ print(x)
 //│ set x² = tmp;
 //│ return Predef⁰.print⁰(x²)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x², xs⁰, callPrefix, tmp;
-//│ do Predef⁰.maybe⁰;
-//│ set x² = 1;
-//│ set xs⁰ = mut [1];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp = callPrefix(...xs⁰);
-//│ return globalThis⁰.console⁰.log⁰(...tmp)
+//│ let x²; do Predef⁰.maybe⁰; set x² = 1; return Predef⁰.print⁰(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ x = 1
@@ -108,12 +102,14 @@ print(x)
 let x = if maybe then 1 else 1
 in print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let xs¹, callPrefix, tmp;
-//│ do Predef⁰.maybe⁰;
-//│ set xs¹ = mut [1];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp = callPrefix(...xs¹);
-//│ return globalThis⁰.console⁰.log⁰(...tmp)
+//│ let scrut;
+//│ set scrut = Predef⁰.maybe⁰;
+//│ match scrut
+//│   true =>
+//│     return Predef⁰.print⁰(1)
+//│   else
+//│     return Predef⁰.print⁰(1)
+//│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 
@@ -122,7 +118,7 @@ in print(x)
 let x = if maybe then 1 else 2
 print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x³, scrut, tmp, xs², callPrefix, tmp1;
+//│ let x³, scrut, tmp;
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
@@ -132,10 +128,7 @@ print(x)
 //│     set tmp = 2;
 //│     end
 //│ set x³ = tmp;
-//│ set xs² = mut [tmp];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp1 = callPrefix(...xs²);
-//│ return globalThis⁰.console⁰.log⁰(...tmp1)
+//│ return Predef⁰.print⁰(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ x = 1
@@ -145,19 +138,14 @@ print(x)
 let x = if maybe then 1 else 2
 in print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let scrut, tmp, xs³, callPrefix, tmp1;
+//│ let scrut;
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
-//│     set tmp = 1;
-//│     end
+//│     return Predef⁰.print⁰(1)
 //│   else
-//│     set tmp = 2;
-//│     end
-//│ set xs³ = mut [tmp];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp1 = callPrefix(...xs³);
-//│ return globalThis⁰.console⁰.log⁰(...tmp1)
+//│     return Predef⁰.print⁰(2)
+//│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 
@@ -173,13 +161,7 @@ let x = if maybe
     z
 print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x⁴, xs⁴, callPrefix, tmp;
-//│ do Predef⁰.maybe⁰;
-//│ set x⁴ = 1;
-//│ set xs⁴ = mut [1];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp = callPrefix(...xs⁴);
-//│ return globalThis⁰.console⁰.log⁰(...tmp)
+//│ let x⁴; do Predef⁰.maybe⁰; set x⁴ = 1; return Predef⁰.print⁰(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ x = 1
@@ -195,7 +177,7 @@ let x = if maybe
     z
 print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x⁵, scrut, tmp, xs⁵, callPrefix, tmp1;
+//│ let x⁵, scrut, tmp;
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
@@ -205,10 +187,7 @@ print(x)
 //│     set tmp = 2;
 //│     end
 //│ set x⁵ = tmp;
-//│ set xs⁵ = mut [tmp];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp1 = callPrefix(...xs⁵);
-//│ return globalThis⁰.console⁰.log⁰(...tmp1)
+//│ return Predef⁰.print⁰(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ x = 1
@@ -250,11 +229,7 @@ main
 //│     set scrut = >⁰(x, 0);
 //│     match scrut
 //│       true =>
-//│         let xs, callPrefix, tmp1;
-//│         set xs = mut [x];
-//│         set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│         set tmp1 = callPrefix(...xs);
-//│         do globalThis⁰.console⁰.log⁰(...tmp1);
+//│         do Predef⁰.print⁰(x);
 //│         set tmp = -⁰(x, 1);
 //│         set x = tmp;
 //│         continue lbl
@@ -329,7 +304,7 @@ let res = if maybe
 // hide of hide of hide of hide of print(res)
 print(res)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let res⁰, scrut, tmp, xs⁶, callPrefix, tmp1;
+//│ let res⁰, scrut, tmp;
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
@@ -339,10 +314,7 @@ print(res)
 //│     set tmp = Predef⁰.notImplementedError⁰;
 //│     end
 //│ set res⁰ = tmp;
-//│ set xs⁶ = mut [tmp];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp1 = callPrefix(...xs⁶);
-//│ return globalThis⁰.console⁰.log⁰(...tmp1)
+//│ return Predef⁰.print⁰(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ res = 1
@@ -379,19 +351,13 @@ print(res)
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
-//│     let xs, callPrefix, tmp;
-//│     set res¹ = 1;
-//│     set xs = mut [1];
-//│     set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│     set tmp = callPrefix(...xs);
-//│     return globalThis⁰.console⁰.log⁰(...tmp)
+//│     let y;
+//│     set y = Predef⁰.hide⁰(1);
+//│     set res¹ = y;
+//│     return Predef⁰.print⁰(y)
 //│   else
-//│     let xs, callPrefix, tmp;
 //│     do Predef⁰.notImplementedError⁰;
-//│     set xs = mut [undefined];
-//│     set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│     set tmp = callPrefix(...xs);
-//│     return globalThis⁰.console⁰.log⁰(...tmp)
+//│     return Predef⁰.print⁰(undefined)
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
@@ -420,33 +386,31 @@ hide of print(res)
 //│ set tmp = Predef⁰.print⁰(res²);
 //│ return Predef⁰.hide⁰(tmp)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let res², scrut, xs⁷, callPrefix, tmp;
+//│ let res², scrut, tmp;
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
-//│     set res² = 1;
+//│     let y;
+//│     set y = Predef⁰.hide⁰(1);
+//│     set res² = y;
 //│     end
 //│   else
 //│     do Predef⁰.notImplementedError⁰;
 //│     end
-//│ set xs⁷ = mut [1];
-//│ set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│ set tmp = callPrefix(...xs⁷);
-//│ return globalThis⁰.console⁰.log⁰(...tmp)
+//│ set tmp = Predef⁰.print⁰(res²);
+//│ return Predef⁰.hide⁰(tmp)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ let res2, scrut5, xs7, callPrefix7, tmp11;
-//│ scrut5 = Predef.maybe;
-//│ if (scrut5 === true) {
-//│   res2 = 1;
+//│ let res2, scrut6, tmp3;
+//│ scrut6 = Predef.maybe;
+//│ if (scrut6 === true) {
+//│   let y3;
+//│   y3 = runtime.checkCall(Predef.hide(1));
+//│   res2 = y3;
 //│ } else {
 //│   Predef.notImplementedError;
 //│ }
-//│ xs7 = [
-//│   1
-//│ ];
-//│ callPrefix7 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│ tmp11 = runtime.safeCall(callPrefix7(...xs7));
-//│ block$res22 = runtime.safeCall(globalThis.console.log(...tmp11));
+//│ tmp3 = runtime.checkCall(Predef.print(res2));
+//│ block$res22 = runtime.checkCall(Predef.hide(tmp3));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ res = 1
@@ -518,4 +482,5 @@ in y + 1
 //│ return 2
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 2
+
 

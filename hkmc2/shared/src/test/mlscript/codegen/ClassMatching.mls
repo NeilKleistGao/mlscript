@@ -152,7 +152,6 @@ fun f(x) = if x is
   None then "ok"
   else print("oops")
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let f4;
 //│ f4 = function f(x2) {
 //│   let scrut1, arg$Some$0$1;
@@ -162,27 +161,9 @@ fun f(x) = if x is
 //│     if (scrut1 === true) {
 //│       return 42
 //│     }
-//│     {
-//│       let xs, callPrefix, tmp4;
-//│       xs = [
-//│         "oops"
-//│       ];
-//│       callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│       tmp4 = runtime.safeCall(callPrefix(...xs));
-//│       return runtime.safeCall(globalThis.console.log(...tmp4));
-//│     }
-//│   } else if (x2 instanceof None1.class) {
-//│     return "ok"
-//│   }
-//│   {
-//│     let xs, callPrefix, tmp4;
-//│     xs = [
-//│       "oops"
-//│     ];
-//│     callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp4 = runtime.safeCall(callPrefix(...xs));
-//│     return runtime.safeCall(globalThis.console.log(...tmp4));
-//│   }
+//│     return Predef.print("oops");
+//│   } else if (x2 instanceof None1.class) { return "ok" }
+//│   return Predef.print("oops");
 //│ };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
@@ -237,41 +218,17 @@ fun f(x) = print of if x is
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
 //│ let f6;
 //│ f6 = function f(x2) {
-//│   let arg$Some$0$1, tmp8;
+//│   let arg$Some$0$1;
 //│   if (x2 instanceof Some1.class) {
-//│     let xs, callPrefix, tmp9;
 //│     arg$Some$0$1 = x2.value;
 //│     if (arg$Some$0$1 === 0) {
-//│       tmp8 = "0";
-//│     } else {
-//│       tmp8 = "oops";
+//│       return Predef.print("0")
 //│     }
-//│     xs = [
-//│       tmp8
-//│     ];
-//│     callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp9 = runtime.safeCall(callPrefix(...xs));
-//│     return runtime.safeCall(globalThis.console.log(...tmp9))
+//│     return Predef.print("oops");
 //│   } else if (x2 instanceof None1.class) {
-//│     let xs, callPrefix, tmp9;
-//│     tmp8 = "ok";
-//│     xs = [
-//│       "ok"
-//│     ];
-//│     callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp9 = runtime.safeCall(callPrefix(...xs));
-//│     return runtime.safeCall(globalThis.console.log(...tmp9))
+//│     return Predef.print("ok")
 //│   }
-//│   {
-//│     let xs, callPrefix, tmp9;
-//│     tmp8 = "oops";
-//│     xs = [
-//│       "oops"
-//│     ];
-//│     callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│     tmp9 = runtime.safeCall(callPrefix(...xs));
-//│     return runtime.safeCall(globalThis.console.log(...tmp9));
-//│   }
+//│   return Predef.print("oops");
 //│ };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 

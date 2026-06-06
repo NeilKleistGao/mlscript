@@ -2,7 +2,7 @@ package hkmc2.codegen
 
 import scala.collection.mutable.{Map => MutMap}
 
-import mlscript.utils._, shorthands._
+import hkmc2.utils.*, shorthands.*
 
 import hkmc2._
 import hkmc2.Message.MessageContext
@@ -58,10 +58,10 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
       doc"try #{  # ${print(sub)} #}  # finally #{  # ${print(finallyDo)}; #  #} ${print(rest)}"
     case Assign(_: NoSymbol, rhs, rest) =>
       doc"do ${print(rhs)}; # ${print(rest)}"
-    case Assign(lhs, rhs, rest) =>
+    case Assign(lhs: (LocalVarSymbol | TermSymbol), rhs, rest) =>
       doc"set ${print(lhs)} = ${print(rhs)}; # ${print(rest)}"
-    case AssignField(lhs, nme, rhs, rest) =>
-      doc"set ${print(lhs)}.${nme.name} = ${print(rhs)}; # ${print(rest)}"
+    case asf @ AssignField(lhs, nme, rhs, rest) =>
+      doc"set ${print(lhs)}.${showMemberSymbol(nme.name, asf.symbol)} = ${print(rhs)}; # ${print(rest)}"
     case AssignDynField(lhs, fld, arrayIdx, rhs, rest) =>
       doc"set ${print(lhs)}${if arrayIdx then "." else "!"}${print(fld)} = ${print(rhs)}; # ${print(rest)}"
     case Define(defn, rest) =>
@@ -74,7 +74,6 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
     case End(msg) if msg.nonEmpty && config.commentGeneratedCode => doc"end /* ${msg} */"
     case End(_) => doc"end"
     case Unreachable(msg) => doc"unreachable /* ${msg} */"
-    case _ => TODO(blk)
   
   def printFlags(defn: Defn)(using Scope): Document =
     // val overrides = defn match
@@ -106,7 +105,10 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
       case Some(value) => print(value) :: doc"; # "
       case None => doc""
     val docCtor = ctor match
-      case End(_) => doc""
+      case End(_) =>
+        ctorSym match
+        case S(ctorSym) => doc" # constructor ${print(ctorSym)}"
+        case N => doc""
       case _ => doc" # constructor${ctorSym.fold(doc"")(doc" " :: print(_))}${printParamLists(auxParams)} ${
         bracedbk(docPreCtor :: print(ctor))}"
     val mtds = methods.map(m => doc"method ${print(m.sym)} = " :: print(m)).mkDocument(sep = doc" # ")
@@ -116,6 +118,7 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
     && methods.isEmpty
     && preCtor.forall(_.isEmpty)
     && ctor.isEmpty
+    && ctorSym.isEmpty
     then doc""
     else doc" " :: braced(doc"${docPrivFlds}${docPubFlds}${docCtor}${docMethods}")
   
@@ -153,7 +156,7 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
         case None => doc""
       doc"${docCls}${docModule}"
   
-  private def showSymbol(name: Str, sym: Opt[DefinitionSymbol[?]]): Document =
+  private def showMemberSymbol(name: Str, sym: Opt[MemberSymbol]): Document =
     sym.fold(doc"${name}﹖")(sym =>
       if summon[ShowCfg].debug then doc"‹${sym.toString}›" else summon[SymbolPrinter].printSymbol(sym))
   
@@ -165,15 +168,15 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
   
   def print(value: Value)(using Scope): Document = value match
     case Value.SimpleRef(l) => print(l)
-    case Value.MemberRef(bms, disamb) => showSymbol(bms.nme, S(disamb))
-    case Value.This(sym) if sym === State.globalThisSymbol => showSymbol(sym.nme, S(sym.asDefnSym))
+    case Value.MemberRef(bms, disamb) => showMemberSymbol(bms.nme, S(disamb))
+    case Value.This(sym) if sym === State.globalThisSymbol => showMemberSymbol(sym.nme, S(sym.asDefnSym))
     case Value.This(sym) => doc"${print(sym)}.this"
     case Value.Lit(lit) => doc"${lit.idStr}"
   
   def print(path: Path)(using Scope): Document = path match
     case sel @ Select(qual, name) =>
       val docQual = print(qual)
-      doc"${docQual}.${showSymbol(name.name, sel.symbol)}"
+      doc"${docQual}.${showMemberSymbol(name.name, sel.symbol)}"
     case DynSelect(qual, fld, arrayIdx) =>
       doc"${print(qual)}${if arrayIdx then "." else "!"}${print(fld)}"
     case x: Value => print(x)

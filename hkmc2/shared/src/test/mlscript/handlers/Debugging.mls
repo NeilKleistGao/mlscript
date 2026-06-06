@@ -18,7 +18,6 @@ fun f() =
     print of raiseUnhandledEffect()
   j / i
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
 //│ let f, f$debugInfo;
 //│ runtime.resetEffects();
 //│ f$debugInfo = globalThis.Object.freeze([
@@ -31,7 +30,7 @@ fun f() =
 //│   "k"
 //│ ]);
 //│ f = function f() {
-//│   let i, j, k, scrut, tmp, pc;
+//│   let i, j, k, scrut, tmp1, pc;
 //│   if (runtime.resumePc === -1) {
 //│     pc = 0;
 //│   } else {
@@ -46,7 +45,7 @@ fun f() =
 //│     saveOffset = saveOffset + 1;
 //│     scrut = runtime.resumeArr.at(saveOffset);
 //│     saveOffset = saveOffset + 1;
-//│     tmp = runtime.resumeArr.at(saveOffset);
+//│     tmp1 = runtime.resumeArr.at(saveOffset);
 //│     runtime.resumePc = -1;
 //│   }
 //│   main: while (true) {
@@ -59,40 +58,29 @@ fun f() =
 //│         if (runtime.curEffect === null) {
 //│           pc = 5;
 //│         } else {
-//│           return runtime.unwind(f, 5, "Debugging.mls:17:6", f$debugInfo, null, 1, 0, 5, 0, 100, 2000, scrut, tmp)
+//│           return runtime.unwind(f, 5, "Debugging.mls:17:6", f$debugInfo, null, 1, 0, 5, 0, 100, 2000, scrut, tmp1)
 //│         }
 //│       case 5:
 //│         scrut = runtime.resumeValue;
 //│         if (scrut === true) {
-//│           let inlinedVal1;
-//│           inlinedVal1 = runtime.safeCall(Runtime.mkEffect(Runtime.FatalEffect, null));
-//│           runtime.resumeValue = inlinedVal1;
+//│           runtime.resumeValue = Predef.raiseUnhandledEffect();
 //│           if (runtime.curEffect === null) {
 //│             pc = 4;
 //│             continue main
 //│           }
-//│           return runtime.unwind(f, 4, "Debugging.mls:18:14", f$debugInfo, null, 1, 0, 5, i, j, k, scrut, tmp);
+//│           return runtime.unwind(f, 4, "Debugging.mls:18:14", f$debugInfo, null, 1, 0, 5, i, j, k, scrut, tmp1);
 //│         }
 //│         pc = 1;
 //│         continue main;
 //│       case 4:
-//│         tmp = runtime.resumeValue;
+//│         tmp1 = runtime.resumeValue;
 //│         pc = 3;
 //│       case 3:
-//│         {
-//│           let xs, inlinedVal1, callPrefix, tmp1;
-//│           xs = [
-//│             tmp
-//│           ];
-//│           callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│           tmp1 = runtime.safeCall(callPrefix(...xs));
-//│           inlinedVal1 = runtime.safeCall(globalThis.console.log(...tmp1));
-//│           runtime.resumeValue = inlinedVal1;
-//│           if (runtime.curEffect === null) {
-//│             pc = 2;
-//│           } else {
-//│             return runtime.unwind(f, 2, "Debugging.mls:18:5", f$debugInfo, null, 1, 0, 5, i, j, k, scrut, tmp)
-//│           }
+//│         runtime.resumeValue = Predef.print(tmp1);
+//│         if (runtime.curEffect === null) {
+//│           pc = 2;
+//│         } else {
+//│           return runtime.unwind(f, 2, "Debugging.mls:18:5", f$debugInfo, null, 1, 0, 5, i, j, k, scrut, tmp1)
 //│         }
 //│       case 2:
 //│         runtime.resumeValue;
@@ -118,8 +106,8 @@ lambda_test(() =>
   raiseUnhandledEffect()
   100)
 //│ ═══[RUNTIME ERROR] Error: Unhandled effect FatalEffect
-//│ 	at lambda (Debugging.mls:118:3)
-//│ 	at lambda_test (Debugging.mls:115:3)
+//│ 	at lambda (Debugging.mls:106:3)
+//│ 	at lambda_test (Debugging.mls:103:3)
 
 
 import "../../mlscript-compile/Runtime.mls"
@@ -159,6 +147,8 @@ module Test with
   fun main()(using Debugger) =
     test(12) + test(34)
 
+// :rt
+// :lot
 let res =
   handle h = Debugger with
     fun break(payload)(resume) = resume
@@ -169,16 +159,16 @@ let res =
 :re
 res.raise()
 //│ ═══[RUNTIME ERROR] Error: Unhandled effect Handler$h$
-//│ 	at Test.test (Debugging.mls:157:15)
-//│ 	at Test.main (Debugging.mls:160:5)
+//│ 	at Test.test (Debugging.mls:145:15)
+//│ 	at Test.main (Debugging.mls:148:5)
 
 set res = res.resumeWith(42)
 
 :re
 res.raise()
 //│ ═══[RUNTIME ERROR] Error: Unhandled effect Handler$h$
-//│ 	at Test.test (Debugging.mls:157:15)
-//│ 	at Test.main (Debugging.mls:160:16)
+//│ 	at Test.test (Debugging.mls:145:15)
+//│ 	at Test.main (Debugging.mls:148:16)
 
 :expect 0.33676533676533676
 res.resumeWith(666)
@@ -198,8 +188,8 @@ fun f() =
 
 f()
 //│ > Stack Trace:
-//│ > 	at f (Debugging.mls:192:3) with locals: j=200
+//│ > 	at f (Debugging.mls:182:3) with locals: j=200
 //│ > Stack Trace:
-//│ > 	at f (Debugging.mls:194:3)
+//│ > 	at f (Debugging.mls:184:3)
 //│ > Stack Trace:
 //│ > 	at tail position

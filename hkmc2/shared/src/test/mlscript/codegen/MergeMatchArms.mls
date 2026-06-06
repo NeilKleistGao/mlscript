@@ -100,8 +100,7 @@ let x = if a is
     print("done")
 print(x)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ import Rendering from "./../../mlscript-compile/Rendering.mjs";
-//│ let x, tmp, xs, callPrefix, tmp1;
+//│ let x, tmp;
 //│ if (a instanceof A1.class) {
 //│   tmp = 1;
 //│ } else if (a instanceof B1.class) {
@@ -109,36 +108,17 @@ print(x)
 //│ } else if (a instanceof C1.class) {
 //│   tmp = 3;
 //│ } else if (a instanceof D1.class) {
-//│   let xs1, inlinedVal, callPrefix1, tmp2;
 //│   if (a instanceof A1.class) {} else if (a instanceof B1.class) {} else {
 //│     throw globalThis.Object.freeze(new globalThis.Error("match error"))
 //│   }
-//│   xs1 = [
-//│     "done"
-//│   ];
-//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp2 = runtime.safeCall(callPrefix1(...xs1));
-//│   inlinedVal = runtime.safeCall(globalThis.console.log(...tmp2));
-//│   tmp = inlinedVal;
+//│   tmp = Predef.print("done");
 //│ } else if (a instanceof E1.class) {
-//│   let xs1, inlinedVal, callPrefix1, tmp2;
-//│   xs1 = [
-//│     "done"
-//│   ];
-//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp2 = runtime.safeCall(callPrefix1(...xs1));
-//│   inlinedVal = runtime.safeCall(globalThis.console.log(...tmp2));
-//│   tmp = inlinedVal;
+//│   tmp = Predef.print("done");
 //│ } else {
 //│   throw globalThis.Object.freeze(new globalThis.Error("match error"))
 //│ }
 //│ x = tmp;
-//│ xs = [
-//│   tmp
-//│ ];
-//│ callPrefix = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│ tmp1 = runtime.safeCall(callPrefix(...xs));
-//│ return runtime.safeCall(globalThis.console.log(...tmp1))
+//│ return Predef.print(tmp)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ x = 1
@@ -177,19 +157,11 @@ if a is
 //│ if (a instanceof A1.class) {
 //│   return 1
 //│ }
-//│ {
-//│   let xs1, callPrefix1, tmp2;
-//│   xs1 = [
-//│     3
-//│   ];
-//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp2 = runtime.safeCall(callPrefix1(...xs1));
-//│   runtime.safeCall(globalThis.console.log(...tmp2));
-//│   if (a instanceof B1.class) {
-//│     return 5
-//│   }
-//│   throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│ Predef.print(3);
+//│ if (a instanceof B1.class) {
+//│   return 5
 //│ }
+//│ throw globalThis.Object.freeze(new globalThis.Error("match error"));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 1
 
@@ -208,21 +180,9 @@ if a is
 //│ if (a instanceof A1.class) {
 //│   return 1
 //│ } else if (a instanceof B1.class) {
-//│   let xs1, callPrefix1, tmp2;
-//│   xs1 = [
-//│     2
-//│   ];
-//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp2 = runtime.safeCall(callPrefix1(...xs1));
-//│   return runtime.safeCall(globalThis.console.log(...tmp2))
+//│   return Predef.print(2)
 //│ } else if (a instanceof C1.class) {
-//│   let xs1, callPrefix1, tmp2;
-//│   xs1 = [
-//│     3
-//│   ];
-//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp2 = runtime.safeCall(callPrefix1(...xs1));
-//│   return runtime.safeCall(globalThis.console.log(...tmp2))
+//│   return Predef.print(3)
 //│ }
 //│ throw globalThis.Object.freeze(new globalThis.Error("match error"));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -243,40 +203,22 @@ if a is
     print(x + 1)
     print(x + 2)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp2, tmp3, tmp4;
+//│ let tmp1, tmp2, tmp3;
 //│ if (a instanceof B1.class) {
 //│   return 1
 //│ }
-//│ {
-//│   let xs1, xs2, xs3, callPrefix1, tmp5, callPrefix2, tmp6, callPrefix3, tmp7;
-//│   if (a instanceof A1.class) {
-//│     tmp2 = 2;
-//│   } else if (a instanceof C1.class) {
-//│     tmp2 = 3;
-//│   } else {
-//│     throw globalThis.Object.freeze(new globalThis.Error("match error"))
-//│   }
-//│   xs1 = [
-//│     tmp2
-//│   ];
-//│   callPrefix3 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp7 = runtime.safeCall(callPrefix3(...xs1));
-//│   runtime.safeCall(globalThis.console.log(...tmp7));
-//│   tmp3 = tmp2 + 1;
-//│   xs2 = [
-//│     tmp3
-//│   ];
-//│   callPrefix2 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp6 = runtime.safeCall(callPrefix2(...xs2));
-//│   runtime.safeCall(globalThis.console.log(...tmp6));
-//│   tmp4 = tmp2 + 2;
-//│   xs3 = [
-//│     tmp4
-//│   ];
-//│   callPrefix1 = runtime.safeCall(Rendering.map(Predef.renderAsStr));
-//│   tmp5 = runtime.safeCall(callPrefix1(...xs3));
-//│   return runtime.safeCall(globalThis.console.log(...tmp5));
+//│ if (a instanceof A1.class) {
+//│   tmp1 = 2;
+//│ } else if (a instanceof C1.class) {
+//│   tmp1 = 3;
+//│ } else {
+//│   throw globalThis.Object.freeze(new globalThis.Error("match error"))
 //│ }
+//│ Predef.print(tmp1);
+//│ tmp2 = tmp1 + 1;
+//│ Predef.print(tmp2);
+//│ tmp3 = tmp1 + 2;
+//│ return Predef.print(tmp3);
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 2
 //│ > 3
@@ -301,26 +243,12 @@ fun f(x) =
 //│     5 =>
 //│       return ""
 //│     8 =>
-//│       let xs, callPrefix, tmp, xs1, callPrefix1, tmp1;
-//│       set xs = mut ["8"];
-//│       set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│       set tmp = callPrefix(...xs);
-//│       do globalThis⁰.console⁰.log⁰(...tmp);
-//│       set xs1 = mut ["hi"];
-//│       set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│       set tmp1 = callPrefix1(...xs1);
-//│       do globalThis⁰.console⁰.log⁰(...tmp1);
+//│       do Predef⁰.print⁰("8");
+//│       do Predef⁰.print⁰("hi");
 //│       return ""
 //│     else
-//│       let xs, callPrefix, tmp, xs1, callPrefix1, tmp1;
-//│       set xs = mut ["?"];
-//│       set callPrefix = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│       set tmp = callPrefix(...xs);
-//│       do globalThis⁰.console⁰.log⁰(...tmp);
-//│       set xs1 = mut ["hi"];
-//│       set callPrefix1 = Rendering⁰.map﹖(Predef⁰.renderAsStr⁰);
-//│       set tmp1 = callPrefix1(...xs1);
-//│       do globalThis⁰.console⁰.log⁰(...tmp1);
+//│       do Predef⁰.print⁰("?");
+//│       do Predef⁰.print⁰("hi");
 //│       return ""
 //│   end
 //│ };

@@ -3,13 +3,14 @@ package codegen
 package wasm
 package text
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import hkmc2.utils.*
 
 import document.*
 import document.Document
 import semantics.{
-  BlockMemberSymbol, Elaborator, InnerSymbol, LabelSymbol, ModuleOrObjectSymbol, ParamList, ValueSymbol, TempSymbol,
+  BlockMemberSymbol, Elaborator,
+  InnerSymbol, LabelSymbol, ModuleOrObjectSymbol, ParamList, TempSymbol,
 },
   Elaborator.State
 import text.Param as WasmParam
@@ -158,10 +159,11 @@ final case class CompiledWasmModule(
   *   The session bindings accumulated while compiling the current module.
   */
 final class SessionExportCtx(
-    val symbolsToExport: Set[ValueSymbol],
+    val symbolsToExport: Set[BoundSymbol],
     val collectedBindings: ArrayBuf[SessionBinding],
 ):
-  def shouldExport(sym: ValueSymbol): Bool = symbolsToExport(sym)
+  def shouldExport(sym: ValueSymbol): Bool = sym matches:
+    case sym: BoundSymbol => symbolsToExport(sym)
 
   def emit(binding: SessionBinding): Unit =
     collectedBindings += binding

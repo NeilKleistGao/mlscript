@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import sourcecode.Line
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import hkmc2.utils.*
 
 import hkmc2.Message.MessageContext
@@ -226,6 +226,7 @@ enum Tree extends AutoLocated:
     case SplitPoint() => "split point"
     case OpSplit(lhs, ops_rhss) => "operator split"
     case OpenIn(opened, body) => "open-in"
+    case Assert(_, _, _, _) => "assertion"
     
   def deparenthesized: Tree = this match
     case Bra(BracketKind.Round, inner) => inner.deparenthesized
@@ -500,7 +501,7 @@ case object MutVal extends Val("mut val", "mutable value")
 case object LetBind extends ValLike("let", "let binding")
 case object HandlerBind extends TermDefKind("handler", "handler binding")
 case object Fun extends TermDefKind("fun", "function")
-case object Ins extends TermDefKind("using", "implicit instance")
+case object Ins extends Val("using", "implicit instance")
 sealed abstract class TypeDefKind(str: Str, desc: Str)(using Line) extends DeclKind(str, desc)
 sealed trait ObjDefKind
 sealed trait ClsLikeKind extends ObjDefKind:
@@ -646,4 +647,3 @@ trait TypeDefImpl(using State) extends TypeOrTermDef:
     
   lazy val allSymbols = definedSymbols ++
     clsParams.iterator.flatMap(_.iterator.map(s => s.nme -> s)).toMap
-

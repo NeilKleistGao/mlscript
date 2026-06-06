@@ -4,7 +4,7 @@ package semantics
 import scala.collection.mutable
 import scala.collection.mutable.{Set => MutSet}
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import syntax.*
 import hkmc2.utils.*
 
@@ -13,16 +13,21 @@ import Tree.Ident
 import hkmc2.utils.SymbolSubst
 
 
-abstract class Symbol(using State) extends Located:
+sealed abstract class MaybeSymbol:
   
   def nme: Str
+  
+  def showDbg(using DebugPrinter): Str =
+    this.showAsPlain
+
+end MaybeSymbol
+
+
+abstract class Symbol(using State) extends MaybeSymbol with Located:
   
   def getState: State = summon
   
   val uid: Uid[Symbol] = State.suid.nextUid
-  
-  def showDbg(using DebugPrinter): Str =
-    this.showAsPlain
   
   def showPlainName(using scp: Scope): hkmc2.document.Document =
     import hkmc2.document.*
@@ -47,7 +52,6 @@ abstract class Symbol(using State) extends Located:
     prefix + nme + State.dbgUid(uid)
   
   val directRefs: mutable.Buffer[Term.Ref] = mutable.Buffer.empty
-
   def ref(id: Tree.Ident =
     Tree.Ident("") // FIXME hack
   ): Term.Ref =
@@ -150,13 +154,20 @@ end Symbol
 
 
 // * Used, eg, as the Assign receiver of intermediate computations whose result is not used
-final class NoSymbol(using State) extends Symbol:
+final class NoSymbol(using State) extends MaybeSymbol:
   def nme: Str = "‹no symbol›"
-  def toLoc: Option[Loc] = N
-  def subst(using s: SymbolSubst): NoSymbol = this
+  override def toString: Str = nme
 
 
-class FlowSymbol(label: Str)(using State) extends Symbol:
+/** Symbols bound by `Program.imports`.
+  *
+  * User-facing imports bind variable or member symbols, while compiler-generated imports
+  * such as prelude/runtime imports may bind temporary term values directly.
+  */
+type ImportSymbol = TempSymbol | VarSymbol | BlockMemberSymbol
+
+
+abstract class FlowSymbol(label: Str)(using State) extends Symbol:
   def nme: Str = label
   def toLoc: Option[Loc] = N // TODO track source trees of flows
   import flow.*
@@ -165,9 +176,11 @@ class FlowSymbol(label: Str)(using State) extends Symbol:
   val producers: mutable.Buffer[ConcreteProd] = mutable.Buffer.empty
   def showDbg: Str =
     label + s"‹$uid›"
-  def subst(using s: SymbolSubst): FlowSymbol = s.mapFlowSym(this)
 
 object FlowSymbol:
+  
+  def apply(label: Str)(using State): FlowSymbol =
+    ConcreteFlowSymbol(label)
   
   def app()(using State) =
     // FlowSymbol("‹app-res›")
@@ -186,12 +199,11 @@ object FlowSymbol:
   
 end FlowSymbol
 
-type SimpleSymbol = LocalVarSymbol | BuiltinSymbol
-type AssignableSymbol = LocalVarSymbol | NoSymbol
+class ConcreteFlowSymbol(label: Str)(using State) extends FlowSymbol(label):
+  def subst(using s: SymbolSubst): FlowSymbol = s.mapFlowSym(this)
 
-sealed trait LocalVarSymbol extends LocalSymbol
-sealed trait LocalSymbol extends Symbol/* :
-  def subst(using s: SymbolSubst): LocalSymbol */
+
+sealed trait LocalSymbol extends Symbol
 sealed trait NamedSymbol extends Symbol:
   def name: Str
   def id: Ident
@@ -213,11 +225,12 @@ class SplitSymbol(val body: Split, name: Str = "split")(using State) extends Loc
   def toLoc = body.toLoc
   override def prefix: Str = "split:"
 
-sealed abstract class BlockLocalSymbol(name: Str)(using State) extends FlowSymbol(name) with LocalVarSymbol:
+sealed abstract class LocalVarSymbol(name: Str)(using State) extends FlowSymbol(name) with LocalSymbol:
   self: LocalSymbol => // * using `with LocalSymbol` in the `extends` clause makes Scala think there's a bad override
   var decl: Opt[Declaration] = N
+  def subst(using s: SymbolSubst): LocalVarSymbol
 
-class TempSymbol(val trm: Opt[Term], dbgNme: Str = "tmp")(using State) extends BlockLocalSymbol(dbgNme):
+class TempSymbol(val trm: Opt[Term], dbgNme: Str = "tmp")(using State) extends LocalVarSymbol(dbgNme):
   // val nameHints: MutSet[Str] = MutSet.empty // * May be useful later?
   override def toLoc: Option[Loc] = trm.flatMap(_.toLoc)
   override def prefix: Str = "tmp:"
@@ -233,7 +246,7 @@ class InstSymbol(val origin: Symbol)(using State) extends LocalSymbol:
   def subst(using sub: SymbolSubst): InstSymbol = sub.mapInstSym(this)
 
 
-class VarSymbol(val id: Ident)(using State) extends BlockLocalSymbol(id.name) with NamedSymbol:
+class VarSymbol(val id: Ident)(using State) extends LocalVarSymbol(id.name) with NamedSymbol:
   val name: Str = id.name
   override def toLoc: Opt[Loc] = id.toLoc
   // override def toString: Str = s"$name@$uid"
@@ -277,13 +290,17 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
   
   // * This is a hack for that `TermDef` currently doesn't have a symbol. 
   var tsym: Opt[TermSymbol] = N
-
+  
   def toLoc: Option[Loc] = Loc(trees)
   
   def describe: Str =
-    trees match
-    case td :: Nil => td.describe
-    case _ => trees.iterator.map(_.describe).mkString("overloaded ", ", ", "symbol")
+    val symbols = tsym.toList ::: trees.collect:
+      case t: Tree.TypeDef => t.symbol
+    symbols match
+    case Nil => s"symbol"
+    case sym :: Nil => s"${sym.describeKind}"
+    case sym1 :: sym2 :: Nil => s"overloaded ${sym1.describeKind} and ${sym2.describeKind}"
+    case _ => s"overloaded ${enumerate(symbols.map(_.describeKind).ne_!, "and")}"
   
   def clsTree: Opt[Tree.TypeDef] = trees.collectFirst:
     case t: Tree.TypeDef if t.k is Cls => t
@@ -313,57 +330,6 @@ class BlockMemberSymbol(val nme: Str, val trees: Ls[TypeOrTermDef], val nameIsMe
 end BlockMemberSymbol
 
 
-/** Symbols that `Scoped` introduces as block-local bindings.
-  *
-  * This deliberately excludes source/private fields (`TermSymbol`s with owners):
-  * those are stored on the owning class/module/object and must be accessed
-  * through `Select`/`AssignField`, not by binding a local variable in the IR.
-  */
-type ScopedSymbol = BlockLocalSymbol | BlockMemberSymbol
-
-/** Symbols bound by `Program.imports`.
-  *
-  * User-facing imports bind member symbols, while compiler-generated imports
-  * such as prelude/runtime imports may bind temporary term values directly.
-  */
-type ImportSymbol = TempSymbol | MemberSymbol
-
-/** Symbols that can be represented as a value-level IR path without a qualifier.
-  *
-  * `SimpleSymbol`s become `Value.SimpleRef`, overloaded block members become
-  * `Value.MemberRef`, and `InnerSymbol`s become `Value.This`. Field-backed
-  * terms are intentionally not singled out here: they are still symbols, but
-  * owner-sensitive lowering/lifting must choose `Select`/`AssignField` when a
-  * direct value reference would be wrong.
-  */
-type ValueSymbol = SimpleSymbol | BlockMemberSymbol | InnerSymbol
-
-/** Symbols that may be bound by MIR binding forms such as `Scoped` or direct
-  * local assignments. This excludes private/source fields and `NoSymbol`.
-  */
-type BoundSymbol = ScopedSymbol
-
-/** Symbols that may occur in MIR free-variable sets.
-  *
-  * This includes value-level references and label targets. It deliberately
-  * excludes `NoSymbol`, which is only a discard sink for assignments.
-  */
-type FreeSymbol = ValueSymbol | LabelSymbol
-
-/** Symbols that may be introduced by a scoped source object and later tracked
-  * by the lifter/used-variable analysis.
-  */
-type ScopeLocalSymbol = ScopedSymbol | InnerSymbol
-
-/** Symbols that can appear as a direct local-like `LocalPath.Sym` in the lifter.
-  *
-  * More structured references, such as block members, `this`, and fields, have
-  * their own `LocalPath` cases so lifting cannot accidentally treat them as
-  * assignable block-local variables.
-  */
-type LocalPathSymbol = BlockLocalSymbol | BuiltinSymbol | NoSymbol
-
-
 sealed abstract class MemberSymbol(using State) extends Symbol:
   def nme: Str
   def subst(using SymbolSubst): MemberSymbol
@@ -372,7 +338,6 @@ sealed abstract class MemberSymbol(using State) extends Symbol:
 class TermSymbol(val k: TermDefKind, val owner: Opt[InnerSymbol], val id: Tree.Ident)(using State)
     extends MemberSymbol
     with DefinitionSymbol[TermDefinition]
-    with LocalVarSymbol
     with NamedSymbol:
   def nme: Str = id.name
   def name: Str = nme
@@ -384,6 +349,12 @@ class TermSymbol(val k: TermDefKind, val owner: Opt[InnerSymbol], val id: Tree.I
   def isPrivate: Bool = (k is LetBind) && owner.exists(!_.isInstanceOf[TopLevelSymbol])
   
   def subst(using sub: SymbolSubst): TermSymbol = sub.mapTermSym(this)
+  def mayRaiseEffects(using Config) =
+    defn.forall(_.mayRaiseEffects)
+
+object TermSymbol:
+  def fromFunBms(b: BlockMemberSymbol, owner: Opt[InnerSymbol])(using State) =
+    TermSymbol(syntax.Fun, owner, Tree.Ident(b.nme))
 
 
 class ClassCtorSymbol(
@@ -392,11 +363,8 @@ class ClassCtorSymbol(
   id: Tree.Ident
 )(using State) extends TermSymbol(k, owner, id):
   override def subst(using sub: SymbolSubst): ClassCtorSymbol = sub.mapClassCtorSym(this)
-
-
-object TermSymbol:
-  def fromFunBms(b: BlockMemberSymbol, owner: Opt[InnerSymbol])(using State) =
-    TermSymbol(syntax.Fun, owner, Tree.Ident(b.nme))
+  override def mayRaiseEffects(using Config) =
+    super.mayRaiseEffects || config.checkInstantiateEffect
 
 
 sealed trait CtorSymbol extends Symbol:
@@ -447,8 +415,7 @@ sealed trait ClassLikeSymbol extends IdentifiedSymbol:
  * overloaded definitions. In contrast, a `DefinitionSymbol` corresponds to only one specific
  * definition.
  */
-sealed trait DefinitionSymbol[Defn <: Definition] extends Symbol:
-  this: MemberSymbol =>
+sealed trait DefinitionSymbol[Defn <: Definition] extends MemberSymbol:
   
   var defn: Opt[Defn] = N
   var decl: Opt[Declaration] = N // NOTE: currently only assigned for class params and only used by deforestation; may want to just remove it once deforestation is improved
@@ -475,6 +442,15 @@ sealed trait DefinitionSymbol[Defn <: Definition] extends Symbol:
         case _ => false
   
   def subst(using sub: SymbolSubst): DefinitionSymbol[Defn]
+  
+  def describeKind: Str =
+    this match
+    case sym: ClassSymbol => s"class"
+    case sym: ModuleOrObjectSymbol => if sym.tree.k is Mod then "module" else "object"
+    case sym: TypeAliasSymbol => "type alias"
+    case sym: PatternSymbol => "pattern"
+    case sym: TermSymbol => sym.k.desc
+    case top: TopLevelSymbol => "top-level"
   
 end DefinitionSymbol
 

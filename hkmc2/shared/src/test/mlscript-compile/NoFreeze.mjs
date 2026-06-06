@@ -25,10 +25,10 @@ let NoFreeze1;
     return (new NoFreeze.Foo.class(0))
   }
   static bar() {
-    return runtime.safeCall(NoFreeze1["foo"]())
+    return runtime.safeCall(NoFreeze["foo"]())
   }
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "NoFreeze"];
 });
-export { NoFreeze1 as _$_modulePrivate_$_NoFreeze_$_92 };
+export { NoFreeze1 as _$_modulePrivate_$_NoFreeze_$_91 };
 let NoFreeze = NoFreeze1; export default NoFreeze;

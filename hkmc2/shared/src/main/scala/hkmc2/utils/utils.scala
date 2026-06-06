@@ -2,7 +2,7 @@ package hkmc2
 
 import scala.util.chaining.scalaUtilChainingOps
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 
 given utils.TraceLogger => DebugPrinter =
   summon[utils.TraceLogger].debugPrinter
@@ -197,5 +197,11 @@ extension (str: Str)
   /** Formats a number and a noun as a human-readable string. */
   infix def countBy(n: Int): Str =
     s"${n.spelled} ${if n === 1 then str else str.toLowerCase.pluralize}"
+
+def enumerate(strs: NELs[Str], connective: Str): Str =
+  strs match
+  case str :: Nil => str
+  case str1 :: str2 :: Nil => s"$str1, $connective $str2"
+  case str :: rest => s"$str, ${enumerate(rest.ne_!, connective)}"
 
 

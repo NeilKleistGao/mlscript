@@ -1,7 +1,7 @@
 package hkmc2
 package codegen
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import hkmc2.utils.*
 
 import semantics.*
@@ -117,7 +117,20 @@ class BlockTransformer(subst: SymbolSubst):
   def applyScopedBlock(b: Block): Block = b match
     case Scoped(s, bd) =>
       val nb = applySubBlock(bd)
-      if nb is bd then b else Scoped(s, nb)
+
+      // Set does not have .mapConserve
+      var hasDiff = false
+      val ns = s.map[ScopedSymbol]:
+        case s: LocalVarSymbol =>
+          val ns = s.subst
+          if ns isnt s then hasDiff = true
+          ns
+        case s: BlockMemberSymbol =>
+          val ns = s.subst
+          if ns isnt s then hasDiff = true
+          ns
+        
+      if (nb is bd) && !hasDiff then b else Scoped(ns, nb)
     case _ => applySubBlock(b)
   
   
@@ -179,10 +192,7 @@ class BlockTransformer(subst: SymbolSubst):
   
   def applyValue(v: Value)(k: Value => Block) = v match
     case Value.SimpleRef(l) =>
-      val l2 = applyLocal(l) match
-        case l: SimpleSymbol => l
-        case l2 =>
-          lastWords(s"Expected applyValue on `$l` (${l.getClass.getSimpleName}) to create a symbol of the same type, but got `$l2` (${l2.getClass.getSimpleName})")
+      val l2 = applySimpleSymbol(l)
       k(if (l2 is l) then v else l2.asSimpleRef.withLocOf(v))
     case Value.MemberRef(bms, disamb) =>
       val bms2 = bms.subst
@@ -193,12 +203,17 @@ class BlockTransformer(subst: SymbolSubst):
       k(if (sym2 is sym) then v else sym2.asThis.withLocOf(v))
     case Value.Lit(lit) => k(v)
   
-  def applyLocal(sym: Symbol): Symbol = sym.subst
+  def applySimpleSymbol(sym: SimpleSymbol): SimpleSymbol = sym match
+    case sym: LocalVarSymbol => sym.subst
+    case sym: BuiltinSymbol => sym.subst
+  
   def applyImportSymbol(sym: ImportSymbol): ImportSymbol = sym match
     case sym: TempSymbol => sym.subst
-    case sym: MemberSymbol => sym.subst
-  def applyAssignLhs(sym: AssignableSymbol): AssignableSymbol = sym match
-    case sym: NoSymbol => sym.subst
+    case sym: VarSymbol => sym.subst
+    case sym: BlockMemberSymbol => sym.subst
+  
+  def applyAssignLhs(sym: Assignable): Assignable = sym match
+    case sym: NoSymbol => sym
     case sym: TempSymbol => sym.subst
     case sym: VarSymbol => sym.subst
   

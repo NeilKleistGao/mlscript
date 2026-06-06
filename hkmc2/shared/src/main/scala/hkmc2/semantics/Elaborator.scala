@@ -6,7 +6,7 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import utils.TraceLogger
 
 import syntax.*
@@ -231,6 +231,7 @@ object Elaborator:
       val Object = assumeBuiltinCls("Object")
       val Array = assumeBuiltinCls("Array")
       val TypedArray = assumeBuiltinCls("TypedArray")
+      val Symbol = assumeBuiltinCls("Symbol")
       // println(s"Builtins: $Int, $Num, $Str, $untyped")
       class VirtualModule(val module: ModuleOrObjectSymbol):
         val bms = getBuiltin(module.nme) match
@@ -240,7 +241,7 @@ object Elaborator:
           module.tree.definedSymbols.get(nme).getOrElse:
             throw new NoSuchElementException(
               s"builtin module symbol source.$nme")
-      object Symbol extends VirtualModule(assumeBuiltinObj("Symbol")):
+      object SymbolModule extends VirtualModule(assumeBuiltinMod("Symbol")):
         val `for` = assumeObject("for")
         val iterator = assumeObject("iterator")
       object source extends VirtualModule(assumeBuiltinMod("source")):
@@ -279,47 +280,12 @@ object Elaborator:
         val compile = assumeObject("compile")
         val buffered = assumeObject("buffered")
         val bufferable = assumeObject("bufferable")
+        val mayNotRaiseEffects = assumeObject("mayNotRaiseEffects")
       object scope extends VirtualModule(assumeBuiltinMod("scope")):
         val locally = assumeObject("locally")
       object runtime extends VirtualModule(assumeBuiltinMod("runtime")):
         val suspend = assumeObject("suspend")
         val handle_suspension = assumeObject("handle_suspension")
-      /** Map source-level builtins to their counterparts in another prelude context.
-        *
-        * Imported IR is cached across worksheets, but each worksheet elaborates its own
-        * Prelude symbols. Rebinding these symbols keeps backend identity checks valid after
-        * inlining a cached body into a different worksheet. */
-      def symbolMappingTo(target: Ctx#MkBuiltins): Map[Symbol, Symbol] =
-        def moduleMapping(
-            from: VirtualModule,
-            toModule: ModuleOrObjectSymbol,
-            toBms: BlockMemberSymbol,
-        ): Map[Symbol, Symbol] =
-          Map(from.module -> toModule, from.bms -> toBms) ++
-            from.module.tree.definedSymbols.iterator.flatMap: (nme, sym) =>
-              toModule.tree.definedSymbols.get(nme).map(sym -> _)
-
-        Map[Symbol, Symbol](
-          Int -> target.Int,
-          Int31 -> target.Int31,
-          Num -> target.Num,
-          Str -> target.Str,
-          BigInt -> target.BigInt,
-          Function -> target.Function,
-          Error -> target.Error,
-          Bool -> target.Bool,
-          Object -> target.Object,
-          Array -> target.Array,
-          TypedArray -> target.TypedArray,
-        ) ++
-          moduleMapping(Symbol, target.Symbol.module, target.Symbol.bms) ++
-          moduleMapping(source, target.source.module, target.source.bms) ++
-          moduleMapping(js, target.js.module, target.js.bms) ++
-          moduleMapping(wasm, target.wasm.module, target.wasm.bms) ++
-          moduleMapping(debug, target.debug.module, target.debug.bms) ++
-          moduleMapping(annotations, target.annotations.module, target.annotations.bms) ++
-          moduleMapping(scope, target.scope.module, target.scope.bms) ++
-          moduleMapping(runtime, target.runtime.module, target.runtime.bms)
       def getBuiltinOp(op: Str): Opt[Str] =
         if getBuiltin(op).isDefined then builtinBinOps.get(op) else N
       object BuiltInOpIdent:
@@ -394,12 +360,12 @@ object Elaborator:
     /** Effective configuration of the imported compilation unit represented by this state.
       *
       * Root worksheet states intentionally leave this empty because their configuration can
-      * vary from block to block. */
+      * still be changed by the worksheet being compiled. */
     var compilationUnitConfig: Opt[Config] = N
-    /** Prelude context used while lowering an imported compilation unit.
+    /** Top-level context captured after elaborating an imported compilation unit.
       *
-      * Cached imported IR may later be copied into a worksheet lowered against a distinct
-      * prelude context. The inliner uses this to rebind builtin symbols while copying. */
+      * This is used only for cached imported artifacts, where later callers need to reuse
+      * the same symbols rather than reconstruct a similar-looking context in a fresh state. */
     var compilationUnitCtx: Opt[Ctx] = N
     val globalThisSymbol = TopLevelSymbol("globalThis")
     val unitSymbol = ModuleOrObjectSymbol(DummyTypeDef(syntax.Obj), Ident("Unit"))
@@ -429,13 +395,20 @@ object Elaborator:
       val id = new Ident("ret")
       BlockMemberSymbol(id.name, Nil, true)
     val unreachableSymbol = TermSymbol(syntax.ImmutVal, N, new Ident("unreachable"))
-    val tupleGetSymbol = createFunSymbolInMod("get", "xs" :: "i" :: Nil, tupleSymbol)
-    val tupleSliceSymbol = createFunSymbolInMod("slice", "xs" :: "i" :: "j" :: Nil, tupleSymbol)
-    val tupleLazySliceSymbol = createFunSymbolInMod("lazySlice", "xs" :: "i" :: "j" :: Nil, tupleSymbol)
-    val strStartsWithSymbol = createFunSymbolInMod("startsWith", "string" :: "prefix" :: Nil, strSymbol)
-    val strGetSymbol = createFunSymbolInMod("get", "string" :: "i" :: Nil, strSymbol)
-    val strTakeSymbol = createFunSymbolInMod("take", "string" :: "n" :: Nil, strSymbol)
-    val strLeaveSymbol = createFunSymbolInMod("leave", "string" :: "n" :: Nil, strSymbol)
+    val tupleGetSymbol =
+      createFunSymbolInMod("get", "xs" :: "i" :: Nil, tupleSymbol, mayRaiseEffects = false)
+    val tupleSliceSymbol =
+      createFunSymbolInMod("slice", "xs" :: "i" :: "j" :: Nil, tupleSymbol, mayRaiseEffects = false)
+    val tupleLazySliceSymbol =
+      createFunSymbolInMod("lazySlice", "xs" :: "i" :: "j" :: Nil, tupleSymbol)
+    val strStartsWithSymbol =
+      createFunSymbolInMod("startsWith", "string" :: "prefix" :: Nil, strSymbol)
+    val strGetSymbol =
+      createFunSymbolInMod("get", "string" :: "i" :: Nil, strSymbol)
+    val strTakeSymbol =
+      createFunSymbolInMod("take", "string" :: "n" :: Nil, strSymbol)
+    val strLeaveSymbol =
+      createFunSymbolInMod("leave", "string" :: "n" :: Nil, strSymbol)
     val (matchSuccessClsSymbol, matchSuccessTrmSymbol) =
       val id = new Ident("MatchSuccess")
       val td = TypeDef(syntax.Cls, App(id, Tup(Ident("output") :: Ident("bindings") :: Nil)), N)
@@ -477,41 +450,6 @@ object Elaborator:
       "globalThis" -> globalThisSymbol,
     ))
     val superSymbol = builtinOpsMap("super")
-    /** Ambient compiler symbols denote the same runtime concepts in every compilation unit.
-      *
-      * Imported compilation units are lowered in their own elaborator states. When their
-      * bodies are inlined into another unit, these symbols must resolve through the receiving
-      * unit's bindings. Import-backed symbols such as `termSymbol`, `blockSymbol`, `optionSymbol`,
-      * and `wasmSymbol` deliberately stay out of this mapping: their original import provenance
-      * is needed when an inlined body introduces a new module dependency. */
-    def ambientSymbolMappingTo(target: State, targetCtx: Ctx): Map[Symbol, Symbol] =
-      Map(
-        globalThisSymbol -> target.globalThisSymbol,
-        unitSymbol -> target.unitSymbol,
-        unitBlockMemberSymbol -> target.unitBlockMemberSymbol,
-        loopEndSymbol -> target.loopEndSymbol,
-        tupleSymbol -> target.tupleSymbol,
-        strSymbol -> target.strSymbol,
-        noSymbol -> target.noSymbol,
-        runtimeSymbol -> target.runtimeSymbol,
-        definitionMetadataSymbol -> target.definitionMetadataSymbol,
-        prettyPrintSymbol -> target.prettyPrintSymbol,
-        nonLocalRet -> target.nonLocalRet,
-        unreachableSymbol -> target.unreachableSymbol,
-        tupleGetSymbol -> target.tupleGetSymbol,
-        tupleSliceSymbol -> target.tupleSliceSymbol,
-        tupleLazySliceSymbol -> target.tupleLazySliceSymbol,
-        strStartsWithSymbol -> target.strStartsWithSymbol,
-        strGetSymbol -> target.strGetSymbol,
-        strTakeSymbol -> target.strTakeSymbol,
-        strLeaveSymbol -> target.strLeaveSymbol,
-        matchSuccessClsSymbol -> target.matchSuccessClsSymbol,
-        matchSuccessTrmSymbol -> target.matchSuccessTrmSymbol,
-        matchFailureClsSymbol -> target.matchFailureClsSymbol,
-        matchFailureTrmSymbol -> target.matchFailureTrmSymbol,
-      ) ++ builtinOpsMap.iterator.map: (nme, sym) =>
-        sym -> target.builtinOpsMap(nme)
-      ++ compilationUnitCtx.fold(Map.empty[Symbol, Symbol])(_.builtins.symbolMappingTo(targetCtx.builtins))
     def dbg: Bool = false
     def dbgRefNum(num: Int): Str =
       if dbg then s"#$num" else ""
@@ -519,12 +457,15 @@ object Elaborator:
       if dbg then s"‹$uid›" else ""
       // ^ we do not display the uid by default to avoid polluting diff-test outputs
     // Create a term symbol for a function defined in the given module
-    private def createFunSymbolInMod(name: Str, paramNames: List[Str], mod: ModuleOrObjectSymbol) =
+    private def createFunSymbolInMod
+        (name: Str, paramNames: List[Str], mod: ModuleOrObjectSymbol, mayRaiseEffects: Bool = true) =
       val sym = TermSymbol(syntax.Fun, N, Ident(name))
       val bsym = BlockMemberSymbol(name, Nil, true)
       val ps = PlainParamList(paramNames.map(s => Param.simple(VarSymbol(Ident(s)))))
       sym.defn = S(TermDefinition(syntax.Fun, bsym, sym, ps :: Nil, N, N, N,
-        TermDefFlags(true), Modulefulness(S(mod))(false), Nil, N))
+        TermDefFlags(true), Modulefulness(S(mod))(false),
+        if !mayRaiseEffects then Annot.MayNotRaiseEffects :: Nil else Nil,
+        N))
       sym
   transparent inline def State(using state: State): State = state
   
@@ -565,7 +506,7 @@ extends Importer with ucs.SplitElaborator:
     msg"Member names must start with a letter or underscore, followed by letters, digits, or underscores." -> N
     :: Nil
   
-  def mkLetBinding(kw: Tree.Keywrd[?], sym: LocalSymbol, rhs: Term, annotations: Ls[Annot]): Ls[Statement] =
+  def mkLetBinding(kw: Tree.Keywrd[?], sym: LocalVarSymbol | TermSymbol, rhs: Term, annotations: Ls[Annot]): Ls[Statement] =
     LetDecl(sym, annotations).mkLocWith(kw, sym) :: DefineVar(sym, rhs) :: Nil
   
   def resolveField(srcTree: Tree, base: Opt[Symbol], nme: Ident): Opt[MemberSymbol] =
@@ -612,6 +553,8 @@ extends Importer with ucs.SplitElaborator:
             return S(Annot.Inline)
           case ctx.builtins.annotations.noInline =>
             return S(Annot.NoInline)
+          case ctx.builtins.annotations.mayNotRaiseEffects =>
+            return S(Annot.MayNotRaiseEffects)
           case _ => ()
         case _ => ()
         S(Annot.Trm(trm))
@@ -789,6 +732,10 @@ extends Importer with ucs.SplitElaborator:
             Term.Assgn(lt, subterm(rhs)) :: Nil,
             subterm(bod),
         ), Term.Assgn(lt, sym.ref())))
+    case LetLike(Keywrd(Keyword.`set`), _, N, S(_)) =>
+      raise:
+        ErrorReport(msg"Expected a right-hand side for this assignment" -> tree.toLoc :: Nil)
+      Term.Error
     case (hd @ Hndl(id: Ident, c, Block(sts_), S(bod))) => ctx.nest(OuterCtx.LambdaOrHandlerBlock).givenIn:
       
       val sym = VarSymbol(id)
@@ -905,6 +852,7 @@ extends Importer with ucs.SplitElaborator:
         val constraints = tys.flatMap(maybeConstraint)
         val body = term(rhs)
         Term.Constrained(constraints, body)
+      case _ => lastWords(s"Unexpected lambda parameter shape: $lhs")
     case InfixApp(lhs, Keywrd(Keyword.`as`), rhs) =>
       Term.Asc(subterm(lhs), subterm(rhs))
     case InfixApp(lhs, Keywrd(Keyword.`:`), rhs) =>
@@ -1272,8 +1220,11 @@ extends Importer with ucs.SplitElaborator:
     case Constructor(delc) =>
       raise(ErrorReport(msg"Unsupported constructor in this position." -> tree.toLoc :: Nil))
       Term.Error
-    // case _ =>
-    //   ???
+    case Dummy | _: SplitPoint | _: LexicalNew | _: Region | _: Effectful =>
+      lastWords(s"Unexpected ${tree.describe} in subterm position: $tree")
+    case Dummy | _: SplitPoint | _: Pun | _: LetLike | _: TyTup | _: Directive =>
+      raise(ErrorReport(msg"Unsupported term in this position (${tree.describe})." -> tree.toLoc :: Nil))
+      Term.Error
   
   def arg(tree: Tree)(using UnderCtx): Ctxl[Term] = tree match
     case u: Under => subterm(tree) // Note: currently `f(a, _, c)` is treated the same as `f of a, _, c`
@@ -1550,7 +1501,13 @@ extends Importer with ucs.SplitElaborator:
           ctx.get(id.name) match
           case S(elem) =>
             elem.symbol match
-            case S(sym: LocalSymbol) => go(sts, Nil, DefineVar(sym, r) :: acc)
+            case S(sym: (LocalSymbol | TermSymbol)) => go(sts, Nil, DefineVar(sym, r) :: acc)
+            case S(sym) =>
+              raise(ErrorReport(msg"Symbol '${id.name}' is not a variable and cannot be reassigned" -> id.toLoc :: Nil))
+              go(sts, Nil, Term.Error :: acc)
+            case N =>
+              raise(ErrorReport(msg"Name not found: ${id.name}" -> id.toLoc :: Nil))
+              go(sts, Nil, Term.Error :: acc)
           case N =>
             // TODO lookup in members? inherited/refined stuff?
             raise(ErrorReport(msg"Name not found: ${id.name}" -> id.toLoc :: Nil))
@@ -1569,17 +1526,20 @@ extends Importer with ucs.SplitElaborator:
         td.name match
           case R(id) =>
             val sym = members.getOrElse(id.name, die)
-            val owner = ctx.outer.inner
+            val owner =
+              // * Instance declarations are not meant to be exported as externally-available members,
+              // * even when declared within some class or module.
+              if (k is Ins) then N else ctx.outer.inner
             if (k is MutVal) && owner.isEmpty then
               raise:
                 ErrorReport:
-                  msg"Mutable value definitions must have an owner" -> td.toLoc
+                  msg"Mutable 'val' definitions are only valid as members of a module, object, or class definition" -> td.toLoc
                   :: Nil
               return go(sts, Nil, acc)
             if owner.isDefined && !identifierPattern.matches(id.name) then
               raise:
                 ErrorReport:
-                  msg"Illegal member ${k.desc} name: '${id.name}'" -> nme.toLoc
+                  msg"Illegal ${k.desc} member name: '${id.name}'" -> nme.toLoc
                   :: illegalMemberNameTail
               return go(sts, Nil, acc)
             val isMethod = owner.exists(_.isInstanceOf[ClassSymbol])
@@ -1644,7 +1604,7 @@ extends Importer with ucs.SplitElaborator:
       case (td @ TypeDef(k, head, rhs)) :: sts =>
         val owner = ctx.outer.inner
         
-        assert((k is Als) || (k is Cls) || (k is Mod) || (k is Obj) || (k is Pat), k)
+        softTODO((k is Als) || (k is Cls) || (k is Mod) || (k is Obj) || (k is Pat), k.desc + " not yet supported")
         val body = td.withPart
         
         td.symbName match
@@ -1659,7 +1619,7 @@ extends Importer with ucs.SplitElaborator:
         if owner.isDefined && !identifierPattern.matches(nme.name) then
           raise:
             ErrorReport:
-              msg"Illegal member ${k.desc} name: '${nme.name}'" -> nme.toLoc
+              msg"Illegal ${k.desc} member name: '${nme.name}'" -> nme.toLoc
               :: illegalMemberNameTail
           return go(sts, Nil, acc)
         
@@ -1674,17 +1634,21 @@ extends Importer with ucs.SplitElaborator:
         val tps = td.typeParams match
           case S(ts) =>
             ts.tys.flatMap: targ =>
-              val (id, vce) = targ match
+              def mk(id: Ident, vce: Opt[Bool]): Ls[TyParam] =
+                val vs = VarSymbol(id)
+                val res = TyParam(FldFlags.empty, vce, vs)
+                vs.decl = S(res)
+                res :: Nil
+              targ match
                 case id: Ident =>
-                  (id, N)
+                  mk(id, N)
                 case Modified(Keywrd(Keyword.`in`), id: Ident) =>
-                  (id, S(false))
+                  mk(id, S(false))
                 case Modified(Keywrd(Keyword.`out`), id: Ident) =>
-                  (id, S(true))
-              val vs = VarSymbol(id)
-              val res = TyParam(FldFlags.empty, vce, vs)
-              vs.decl = S(res)
-              res :: Nil
+                  mk(id, S(true))
+                case _ =>
+                  raise(ErrorReport(msg"Unsupported type parameter ${targ.describe}" -> targ.toLoc :: Nil))
+                  Nil
           case N => Nil
         
         newCtx ++= tps.map(tp => tp.sym.name -> tp.sym) // TODO: correct ++?
@@ -1925,6 +1889,7 @@ extends Importer with ucs.SplitElaborator:
                 ClassDef(owner, Cls, clsSym, sym, tsym, tps, pss, newOf(td), ObjBody(bod), annotations, comp, auxCtorParams = auxCtorPss)
               clsSym.defn = S(cd)
               cd
+        case Trt | Mxn => lastWords(s"Unexpected type definition kind here: $k")
         go(sts, Nil, defn :: acc)
       case Annotated(annotation, target) :: sts =>
         go(target :: sts, annotations ++ annot(annotation), acc)
@@ -2017,7 +1982,7 @@ extends Importer with ucs.SplitElaborator:
       case "<:<" => SubDir.Sub
       case ">:>" => SubDir.Sup
     SubConstraint(l, r, dir)
- 
+  
   /** Elaborate a subtyping constraint that may be malformed. */
   def maybeConstraint(t: Tree): Ctxl[Option[SubConstraint]] =
     t match
@@ -2059,6 +2024,11 @@ extends Importer with ucs.SplitElaborator:
             case N => go(tl, p :: acc, newCtx, newFlags)
           case L(d) => raise(d); go(tl, acc, ctx, flags)
       go(ps, Nil, ctx, ParamListFlags.empty)
+    case _ =>
+      raise:
+        ErrorReport:
+          msg"Expected a parameter list (a tuple of parameters), but found ${t.describe}" -> t.toLoc :: Nil
+      (ParamList(ParamListFlags.empty, Nil, N).withLocOf(t), ctx)
   
   def ident(id: Ident)(using Ctx): Ctxl[Opt[Term]] = ctx.get(id.name) match
     case S(elem) => S(elem.ref(id))
@@ -2264,7 +2234,12 @@ extends Importer with ucs.SplitElaborator:
           raise(ErrorReport(msg"Unsupported type parameter ${t.describe}" -> t.toLoc :: Nil))
           Nil
       (vs, ctx ++ vs.map(p => p.sym.name -> p.sym))
-  
+    case _ =>
+      raise:
+        ErrorReport:
+          msg"Expected a type parameter list (a tuple of identifiers), but found ${t.describe}" -> t.toLoc :: Nil
+      (Nil, ctx)
+
   def importFrom(sts: Block): Ctxl[(Blk, Ctx)] =
     given UnderCtx = new UnderCtx(N)
     val (res, newCtx) = block(sts, hasResult = false)
@@ -2345,7 +2320,8 @@ extends Importer with ucs.SplitElaborator:
             if pol =/= S(false) && ty.isContravariant then
               changed = true
               ty.isContravariant = false
-          // case _ => ???
+          case S(decl) =>
+            lastWords(s"VarSymbol ${sym.name} has unexpected declaration: $decl")
           case N =>
             lastWords(s"VarSymbol ${sym.name} has no declaration")
       case _ => super.traverseType(pol)(trm)
@@ -2381,6 +2357,7 @@ extends Importer with ucs.SplitElaborator:
       case f: Fld =>
         traverseType(pol)(f.term)
         f.asc.foreach(traverseType(pol))
+      case _: Spd => TODO("variance traversal of spread elements")
     def traverseType(pol: Pol)(f: Param): Unit =
       f.sign.foreach(traverseType(pol))
 end Elaborator

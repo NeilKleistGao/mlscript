@@ -7,7 +7,7 @@ import hkmc2.Message.MessageContext
 import scala.collection.mutable.HashMap
 import scala.util.chaining.*
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 
 import semantics.*
 import semantics.Elaborator.{State, Ctx, ctx}
@@ -91,7 +91,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
   // transformation helpers
 
   // if sym is ClassSymbol, we may need pOpt to link to the path pointing to the value of the symbol
-  def transformSymbol(sym: Symbol, pOpt: Option[Path] = N, symName: Str = "sym")(k: Path => Block): Block = sym match
+  def transformSymbol(sym: MaybeSymbol, pOpt: Option[Path] = N, symName: Str = "sym")(k: Path => Block): Block = sym match
     case t: TermSymbol if t.defn.exists(_.sym.asClsOrMod.isDefined) =>
       transformSymbol(t.defn.get.sym.asClsOrMod.get, pOpt, symName)(k)
     // retain names to built-in functions or function definitions
@@ -100,19 +100,19 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
     case clsSym: ClassSymbol if ctx.builtins.virtualClasses(clsSym) =>
       blockCtor("VirtualClassSymbol", Ls(toValue(sym.nme)), symName)(k)
     case baseSym: BaseTypeSymbol =>
-      val name = scope.allocateOrGetName(sym)
+      val name = scope.allocateOrGetName(baseSym)
       val (owner, bsym, paramsOpt, auxParams) = (baseSym.defn, defnMap.get(baseSym)) match
         case (S(defn), _) => (defn.owner, defn.bsym, defn.paramsOpt, defn.auxParams)
         case (_, S(defn: ClsLikeDefn)) => (defn.owner, defn.sym, defn.paramsOpt, defn.auxParams)
         // FIXME: hack to patch in staging for returning the object Unit.
         case _ if baseSym == State.unitSymbol => (N, baseSym, N, Nil)
         case _ =>
-          raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> sym.toLoc :: Nil))
+          raise(ErrorReport(msg"Unable to infer parameters from symbol in staged module, which are necessary to reconstruct class instances: ${sym.toString()}" -> baseSym.toLoc :: Nil))
           return End()
 
       val path: ArgWrappable = pOpt.getOrElse(owner match
         case S(owner) => owner.asThis.selSN(sym.nme)
-        case N => bsym.asBlkMember.get.asMemberRef(sym.asClsOrMod.get))
+        case N => bsym.asBlkMember.get.asMemberRef(baseSym.asClsOrMod.get))
       baseSym match
         case _: ClassSymbol =>
           transformParamsOpt(paramsOpt): paramsOpt =>
@@ -123,7 +123,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(n
           blockCtor("ModuleSymbol", Ls(toValue(name), path), symName)(k)
     case _: NoSymbol =>
       blockCtor("NoSymbol", Nil, symName)(k)
-    case _: TempSymbol | _: VarSymbol =>
+    case sym: LocalVarSymbol =>
       val name = scope.allocateOrGetName(sym)
       blockCtor("Symbol", Ls(toValue(name)), symName)(k)
     // preserve names to builtin symbols
