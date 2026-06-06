@@ -1214,12 +1214,8 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         // Paramless class: lifter args go directly into the Instantiate constructor
         k(Instantiate(inst.mut, path, (formatArgs ::: argss.head) :: argss.tail).withLoc(inst.toLoc))
       else
-        // Parameterized class: insert lifted args after main params when present,
-        // otherwise prepend them before the first auxiliary constructor list.
-        val newArgss =
-          if cls.paramsOpt.isDefined then argss.head :: formatArgs :: argss.tail
-          else formatArgs :: argss
-        k(Instantiate(inst.mut, path, newArgss).withLoc(inst.toLoc))
+        // Parameterized class: use Instantiate with original args + lifter args inserted after the first list
+        k(Instantiate(inst.mut, path, argss.head :: formatArgs :: argss.tail).withLoc(inst.toLoc))
     
     def rewriteCall(c: Call, argss: NELs[List[Arg]])(k: Result => Block)(using ctx: LifterCtxNew): Block =
       if obj.isObj then lastWords("tried to rewrite instantiate for an object")
@@ -1242,11 +1238,8 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         // Paramless class: unreachable
         lastWords("Call to paramless class")
       else if argss.lengthCompare(clsParamLists.length) === 0 then
-        // Parameterized class: Same as Instantiate case.
-        val newArgss =
-          if cls.paramsOpt.isDefined then argss.head :: formatArgs :: argss.tail
-          else formatArgs :: argss
-        k(Instantiate(false, path, newArgss).withLoc(c.toLoc))
+        // Parameterized class: Same as Instantiate case
+        k(Instantiate(false, path, argss.head :: formatArgs :: argss.tail).withLoc(c.toLoc))
       else
         // Unsaturated constructor calls must remain ordinary curried calls to
         // the lifted wrapper; only saturated constructor applications may
