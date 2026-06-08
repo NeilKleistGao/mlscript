@@ -261,14 +261,17 @@ fun subLitPath(ctx, p) = if p is
 
 
 // split a shapeset of class symbols into known ones and unknown ones
-class SplitResult(val knownMap: Map[ConcreteClassSymbol, ShapeSet], val unkShape: ShapeSet)
+class SplitResult(val knownMap: Map[Class, [ConcreteClassSymbol, ShapeSet]], val unkShape: ShapeSet)
 
 fun fsplit(pss) = 
   let knownMap = new Map()
   let unkShape = foldl((acc, s) => if s is
     Class(sym, params) and isStagedClass(sym.value) then
-      if knownMap.has(sym) then do knownMap.set(sym, union2(knownMap.get(sym), lift(s)))
-      else do knownMap.set(sym, lift(s))
+      let key = getActualClass(sym.value)
+      if knownMap.has(key) then
+        let entry = knownMap.get(key)
+        knownMap.set(key, [entry.0, union2(entry.1, lift(s))])
+      else do knownMap.set(key, [sym, lift(s)])
       acc
     else union2(acc, mkDyn())
   )(mkBot(), ...pss.values())
@@ -420,8 +423,8 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args) =
         [Assign(x, dfltMatch, End()), mkDyn()]
     1 and unkShape.isEmpty() and
       // If the object is certainly a known class, generate the generated method call directly without pattern matching
-      let C_i = knownMapArr.0.0
-      let ss_i = knownMapArr.0.1
+      let C_i = knownMapArr.0.1.0
+      let ss_i = knownMapArr.0.1.1
       let genMap = getClassGenMap(C_i.value)
       let f_gen = genMap.get(f)
       let ret = f_gen(ss_i)(...argShapes)
@@ -435,8 +438,8 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args) =
         [Assign(x, callRes, End()), retShape]
     else
       let armsRet = knownMapArr.map(entry =>
-        let C_i = entry.0
-        let ss_i = entry.1
+        let C_i = entry.1.0
+        let ss_i = entry.1.1
         let genMap = getClassGenMap(C_i.value)
         let f_gen = genMap.get(f)
         let retData = f_gen(ss_i)(...argShapes)

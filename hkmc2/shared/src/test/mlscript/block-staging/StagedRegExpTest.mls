@@ -112,3 +112,45 @@ let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord()))
 matchAll(p, "To be or not to be, that is the question.")
 //│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
 
+
+matchAllEmail("foo@bar.baz")
+//│ = ["foo@bar.baz"]
+
+matchAllEmail("foo-foo@bar.baz")
+//│ = ["foo-foo@bar.baz"]
+
+matchAllEmail("a.b.c.d@e-f.g.h")
+//│ = ["a.b.c.d@e-f.g.h"]
+
+matchAllEmail("a-b.c.d@e-f.g.h")
+//│ = ["a-b.c.d@e-f.g.h"]
+
+matchAllEmail("foo@bar@baz")
+//│ = []
+
+matchAllEmail("f@a")
+//│ = []
+
+
+matchAllURI("http://foo.bar.com")
+//│ = ["http://foo.bar.com"]
+
+
+matchAllURI("http://foo.bar.com?xxx")
+//│ = ["http://foo.bar.com?xxx"]
+
+
+matchAllURI("http://foo.bar.com?xxx#42")
+//│ = ["http://foo.bar.com?xxx#42"]
+
+
+matchAllURI("http://foo.bar.com#42")
+//│ = ["http://foo.bar.com#42"]
+
+
+
+matchAllIPv4("8.8.8.8")
+//│ = ["8.8.8.8"]
+
+matchAllIPv4("192.168.1.1")
+//│ = ["192.168.1.1"]
