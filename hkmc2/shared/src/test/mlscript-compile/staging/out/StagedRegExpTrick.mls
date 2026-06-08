@@ -1,0 +1,551 @@
+#config(noFreeze: true, noModuleCheck: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+import "../StagedRegExpTrick.mls" as StagedRegExpTrick__Legacy
+module StagedRegExpTrick with
+    class Some(val x)
+    class None
+    class DedupSet(val arr) with
+      fun addImp(e, i) =
+        let {s, scrut, e__, scrut1, tmp, tmp1}
+        s = len(arr)
+        scrut = ==(i, s)
+        if scrut is
+          true then
+            tmp = push(arr, e)
+            new DedupSet.class(tmp)
+          else
+            e__ = arr.(i)
+            scrut1 = e.eq(e__)
+            if scrut1 is
+              true then this
+              else
+                tmp1 = i + 1
+                addImp(e, tmp1)
+      fun add(e) = addImp(e, 0)
+    class RegExp()
+    class Nothing() with
+      fun derive(c) = this
+      fun canBeEmpty() = false
+      fun normalize() = this
+      fun eq(other) =
+        if other is
+          Nothing then true
+          else false
+      fun first() = []
+    class Empty() with
+      fun derive(c) = new Nothing.class()
+      fun canBeEmpty() = true
+      fun normalize() = this
+      fun eq(other) =
+        if other is
+          Empty then true
+          else false
+      fun first() = []
+    class Exact(val ch) with
+      fun derive(c) =
+        let {scrut2}
+        scrut2 = ==(c, ch)
+        if scrut2 is
+          true then new Empty.class()
+          else new Nothing.class()
+      fun canBeEmpty() = false
+      fun normalize() = this
+      fun eq(other) =
+        let {ch__, arg_Exact_0_}
+        if other is
+          Exact then
+            arg_Exact_0_ = other.ch
+            ch__ = arg_Exact_0_
+            ==(ch, ch__)
+          else false
+      fun first() = [ch]
+    class Altern(val p1, val p2) with
+      fun derive(c) =
+        let {tmp2, tmp3, tmp4}
+        tmp2 = p1.derive(c)
+        tmp3 = p2.derive(c)
+        tmp4 = new Altern.class(tmp2, tmp3)
+        tmp4.normalize()
+      fun canBeEmpty() =
+        let {tmp5}
+        tmp5 = p1.canBeEmpty()
+        if tmp5 is
+          false then p2.canBeEmpty()
+          else true
+      fun flat() =
+        let {p1__, scrut3, p2__, scrut4, tmp6, tmp7}
+        scrut3 = p1
+        if scrut3 is
+          Altern then
+            tmp6 = p1.flat()
+          else
+            tmp6 = [p1]
+        p1__ = tmp6
+        scrut4 = p2
+        if scrut4 is
+          Altern then
+            tmp7 = p2.flat()
+          else
+            tmp7 = [p2]
+        p2__ = tmp7
+        concat(p1__, p2__)
+      fun iter(st, arr, i, s) =
+        let {scrut5, tmp8, tmp9}
+        scrut5 = ==(i, s)
+        if scrut5 is
+          true then st
+          else
+            tmp8 = st.add(arr.(i))
+            tmp9 = i + 1
+            iter(tmp8, arr, tmp9, s)
+      fun normalize() =
+        let {p1__1, p2__1, arr11, arr2, s2, tmp10, tmp11, tmp12, tmp13, tmp14}
+        p1__1 = p1.normalize()
+        p2__1 = p2.normalize()
+        if p1__1 is
+          Altern then
+            tmp10 = p1__1.flat()
+          else
+            tmp10 = [p1__1]
+        arr11 = tmp10
+        if p2__1 is
+          Altern then
+            tmp11 = p2__1.flat()
+          else
+            tmp11 = [p2__1]
+        arr2 = tmp11
+        tmp12 = new DedupSet.class(arr11)
+        tmp13 = len(arr2)
+        s2 = iter(tmp12, arr2, 0, tmp13)
+        tmp14 = len(s2.arr)
+        mkUnion(s2.arr, 0, tmp14)
+      fun eq(other) =
+        let {n, tmp15, tmp16, tmp17}
+        n = other.normalize()
+        if n is
+          Altern then
+            tmp15 = normalize()
+            tmp16 = tmp15.flat()
+            tmp17 = n.flat()
+            setEq(tmp16, tmp17)
+          else false
+      fun first() =
+        let {f, tmp18}
+        f = p1.first()
+        tmp18 = p2.first()
+        push(f, tmp18)
+    class In(val chars) with
+      fun derive(c) =
+        let {scrut6}
+        scrut6 = has(chars, c)
+        if scrut6 is
+          true then new Empty.class()
+          else new Nothing.class()
+      fun canBeEmpty() = false
+      fun normalize() = this
+      fun eq(other) =
+        let {chars__, arg_In_0_}
+        if other is
+          In then
+            arg_In_0_ = other.chars
+            chars__ = arg_In_0_
+            arrEq(chars, chars__)
+          else false
+      fun first() = chars
+    class Concat(val p1, val p2) with
+      fun derive(c) =
+        let {p1__2, scrut7, tmp19, tmp20, tmp21, tmp22}
+        p1__2 = p1.derive(c)
+        scrut7 = p1.canBeEmpty()
+        if scrut7 is
+          true then
+            tmp19 = new Concat.class(p1__2, p2)
+            tmp20 = p2.derive(c)
+            tmp21 = new Altern.class(tmp19, tmp20)
+            tmp21.normalize()
+          else
+            tmp22 = new Concat.class(p1__2, p2)
+            tmp22.normalize()
+      fun canBeEmpty() =
+        let {scrut8, scrut9}
+        scrut8 = p1.canBeEmpty()
+        if scrut8 is
+          true then
+            scrut9 = p2.canBeEmpty()
+            if scrut9 is
+              true then true
+              else false
+          else false
+      fun normalize() =
+        let {p1__3, tmp23}
+        p1__3 = p1.normalize()
+        if p1__3 is
+          Empty then p2.normalize()
+          Nothing then p1__3
+          else
+            tmp23 = p2.normalize()
+            new Concat.class(p1__3, tmp23)
+      fun eq(other) =
+        let {p2__2, p1__4, scrut10, scrut11, arg_Concat_0_, arg_Concat_1_}
+        if other is
+          Concat then
+            arg_Concat_0_ = other.p1
+            arg_Concat_1_ = other.p2
+            p2__2 = arg_Concat_1_
+            p1__4 = arg_Concat_0_
+            scrut10 = p1.eq(p1__4)
+            if scrut10 is
+              true then
+                scrut11 = p2.eq(p2__2)
+                if scrut11 is
+                  true then true
+                  else false
+              else false
+          else false
+      fun first() =
+        let {f1, scrut12, tmp24}
+        f1 = p1.first()
+        scrut12 = p1.canBeEmpty()
+        if scrut12 is
+          true then
+            tmp24 = p2.first()
+            push(f1, tmp24)
+          else f1
+    class Star(val p) with
+      fun derive(c) =
+        let {tmp25, tmp26, tmp27}
+        tmp25 = p.derive(c)
+        tmp26 = new Star.class(p)
+        tmp27 = new Concat.class(tmp25, tmp26)
+        tmp27.normalize()
+      fun canBeEmpty() = true
+      fun normalize() =
+        let {tmp28}
+        tmp28 = p.normalize()
+        new Star.class(tmp28)
+      fun eq(other) =
+        let {p__, arg_Star_0_}
+        if other is
+          Star then
+            arg_Star_0_ = other.p
+            p__ = arg_Star_0_
+            p.eq(p__)
+          else false
+      fun first() = p.first()
+    fun arrEq(arr1, arr2) = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".eq(arr1, arr2)
+    fun concat(lhs, rhs) = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".concat(lhs, rhs)
+    fun digits() =
+      let {tmp36, tup_3}
+      tup_3 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+      tmp36 = tup_3
+      new In(tmp36)
+    fun has(arr, ele) = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".has(arr, ele)
+    fun len(s) = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".len(s)
+    fun match(p, s) = matchImpl_StagedRegExpTrick_sp_0(p, s, "")
+    fun matchAll(p, s) =
+      let {tmp58}
+      tmp58 = []
+      matchAllImpl_StagedRegExpTrick_sp_0(p, s, tmp58)
+    fun matchAllEmail(s) =
+      let {p8, email, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tup_4, tup_5}
+      tup_4 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+      tmp59 = tup_4
+      tmp60 = ["-", "."]
+      tup_5 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "."]
+      tmp61 = tup_5
+      tmp62 = new In(tmp61)
+      p8 = plus_StagedRegExpTrick_sp_0(tmp62)
+      tmp63 = new Exact("@")
+      tmp64 = new Exact(".")
+      tmp65 = new Concat(tmp64, p8)
+      tmp66 = new Concat(p8, tmp65)
+      tmp67 = new Concat(tmp63, tmp66)
+      email = new Concat(p8, tmp67)
+      matchAll_StagedRegExpTrick_sp_0(email, s)
+    fun matchAllImpl(p, s, res) =
+      let {scrut21, scrut22, ss, scrut23, tmp51, arg_Some_0_, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57}
+      tmp51 = len(s)
+      scrut21 = ==(tmp51, 0)
+      if scrut21 is
+        true then res
+        else
+          scrut22 = match(p, s)
+          if scrut22 is
+            Some then
+              arg_Some_0_ = scrut22.x
+              ss = arg_Some_0_
+              tmp52 = len(ss)
+              scrut23 = >(tmp52, 0)
+              if scrut23 is
+                true then
+                  tmp53 = len(ss)
+                  tmp54 = s.slice(tmp53)
+                  tmp55 = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".push(res, ss)
+                  matchAllImpl(p, tmp54, tmp55)
+                else
+                  tmp56 = s.slice(1)
+                  matchAllImpl(p, tmp56, res)
+            else
+              tmp57 = s.slice(1)
+              matchAllImpl(p, tmp57, res)
+    fun matchImpl(p, s, acc) =
+      let {scrut19, scrut20, c8, chs, tmp49, tmp50}
+      tmp49 = len(s)
+      scrut19 = ==(tmp49, 0)
+      if scrut19 is
+        true then
+          scrut20 = p.canBeEmpty()
+          if scrut20 is
+            true then new Some(acc)
+            else new None()
+        else
+          if p is
+            Nothing then new None()
+            else
+              c8 = s.0
+              chs = p.first()
+              tmp50 = len(chs)
+              tryMatch(p, s, acc, c8, chs, tmp50)
+    fun mkUnion(arr, i, s) =
+      let {scrut13, scrut14, tmp29, tmp30, tmp31, tmp32}
+      tmp29 = s - 1
+      scrut13 = ==(i, tmp29)
+      if scrut13 is
+        true then arr.(i)
+        else
+          scrut14 = arr.(i)
+          if scrut14 is
+            Nothing then
+              tmp30 = i + 1
+              mkUnion(arr, tmp30, s)
+            else
+              tmp31 = i + 1
+              tmp32 = mkUnion(arr, tmp31, s)
+              new Altern(arr.(i), tmp32)
+    fun nTimes(r, i) =
+      let {scrut15, tmp37, tmp38}
+      scrut15 = ==(i, 1)
+      if scrut15 is
+        true then r
+        else
+          tmp37 = i - 1
+          tmp38 = nTimes(r, tmp37)
+          new Concat(r, tmp38)
+    fun plus(r) =
+      let {tmp39}
+      tmp39 = new Star(r)
+      new Concat(r, tmp39)
+    fun push(arr, ele) = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".push(arr, ele)
+    fun question(r) =
+      let {tmp33}
+      tmp33 = new Empty()
+      new Altern(r, tmp33)
+    fun setEq(s1, s2) = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".setEq(s1, s2)
+    fun spaces() =
+      let {tmp35, tup_2}
+      tup_2 = [" ", "\n", "\t", "\r"]
+      tmp35 = tup_2
+      new In(tmp35)
+    fun tryMatch(p, s, acc, c, ch, i) =
+      let {scrut16, scrut17, c__, scrut18, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48}
+      tmp40 = len(ch)
+      tmp41 = tmp40 - i
+      tmp42 = len(ch)
+      scrut16 = ==(tmp41, tmp42)
+      if scrut16 is
+        true then
+          scrut17 = p.canBeEmpty()
+          if scrut17 is
+            true then new Some(acc)
+            else new None()
+        else
+          tmp43 = len(ch)
+          tmp44 = tmp43 - i
+          c__ = ch.(tmp44)
+          scrut18 = ==(c, c__)
+          if scrut18 is
+            true then
+              tmp45 = p.derive(c__)
+              tmp46 = s.slice(1)
+              tmp47 = acc + c__
+              matchImpl(tmp45, tmp46, tmp47)
+            else
+              tmp48 = i - 1
+              tryMatch(p, s, acc, c, ch, tmp48)
+    fun words() =
+      let {tmp34, tup_1}
+      tup_1 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+      tmp34 = tup_1
+      new In(tmp34)
+open StagedRegExpTrick
+fun matchAllImpl_StagedRegExpTrick_sp_0(p, s, res) =
+  let {scrut21, scrut22, ss, scrut23, tmp51, arg_Some_0_, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57}
+  tmp51 = len(s)
+  scrut21 = ==(tmp51, 0)
+  if scrut21 is
+    true then res
+    else
+      scrut22 = match(p, s)
+      if scrut22 is
+        Some then
+          arg_Some_0_ = scrut22.x
+          ss = arg_Some_0_
+          tmp52 = len(ss)
+          scrut23 = >(tmp52, 0)
+          if scrut23 is
+            true then
+              tmp53 = len(ss)
+              tmp54 = s.slice(tmp53)
+              tmp55 = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".push(res, ss)
+              matchAllImpl(p, tmp54, tmp55)
+            else
+              tmp56 = s.slice(1)
+              matchAllImpl_StagedRegExpTrick_sp_0(p, tmp56, res)
+        else
+          tmp57 = s.slice(1)
+          matchAllImpl_StagedRegExpTrick_sp_0(p, tmp57, res)
+fun matchAllImpl_StagedRegExpTrick_sp_1(p, s, res) =
+  let {scrut21, scrut22, ss, scrut23, tmp51, arg_Some_0_, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57}
+  tmp51 = len(s)
+  scrut21 = ==(tmp51, 0)
+  if scrut21 is
+    true then res
+    else
+      scrut22 = match_StagedRegExpTrick_sp_0(p, s)
+      if scrut22 is
+        Some then
+          arg_Some_0_ = scrut22.x
+          ss = arg_Some_0_
+          tmp52 = len(ss)
+          scrut23 = >(tmp52, 0)
+          if scrut23 is
+            true then
+              tmp53 = len(ss)
+              tmp54 = s.slice(tmp53)
+              tmp55 = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".push(res, ss)
+              matchAllImpl_StagedRegExpTrick_sp_2(p, tmp54, tmp55)
+            else
+              tmp56 = s.slice(1)
+              matchAllImpl_StagedRegExpTrick_sp_1(p, tmp56, res)
+        else
+          tmp57 = s.slice(1)
+          matchAllImpl_StagedRegExpTrick_sp_1(p, tmp57, res)
+fun matchAllImpl_StagedRegExpTrick_sp_2(p, s, res) =
+  let {scrut21, scrut22, ss, scrut23, tmp51, arg_Some_0_, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57}
+  tmp51 = len(s)
+  scrut21 = ==(tmp51, 0)
+  if scrut21 is
+    true then res
+    else
+      scrut22 = match_StagedRegExpTrick_sp_0(p, s)
+      if scrut22 is
+        Some then
+          arg_Some_0_ = scrut22.x
+          ss = arg_Some_0_
+          tmp52 = len(ss)
+          scrut23 = >(tmp52, 0)
+          if scrut23 is
+            true then
+              tmp53 = len(ss)
+              tmp54 = s.slice(tmp53)
+              tmp55 = StagedRegExpTrick__Legacy."SeqHelper$StagedRegExpTrick".push(res, ss)
+              matchAllImpl_StagedRegExpTrick_sp_2(p, tmp54, tmp55)
+            else
+              tmp56 = s.slice(1)
+              matchAllImpl_StagedRegExpTrick_sp_2(p, tmp56, res)
+        else
+          tmp57 = s.slice(1)
+          matchAllImpl_StagedRegExpTrick_sp_2(p, tmp57, res)
+fun matchAll_StagedRegExpTrick_sp_0(p, s) =
+  let {tmp58}
+  tmp58 = []
+  matchAllImpl_StagedRegExpTrick_sp_1(p, s, tmp58)
+fun matchImpl_StagedRegExpTrick_sp_0(p, s, acc) =
+  let {scrut19, scrut20, c8, chs, tmp49, tmp50}
+  tmp49 = len(s)
+  scrut19 = ==(tmp49, 0)
+  if scrut19 is
+    true then
+      scrut20 = p.canBeEmpty()
+      if scrut20 is
+        true then new Some(acc)
+        else new None()
+    else
+      if p is
+        Nothing then new None()
+        else
+          c8 = s.0
+          chs = p.first()
+          tmp50 = len(chs)
+          tryMatch_StagedRegExpTrick_sp_0(p, s, acc, c8, chs, tmp50)
+fun matchImpl_StagedRegExpTrick_sp_1(p, s, acc) =
+  let {scrut19, scrut20, c8, chs, tmp49, tmp50}
+  tmp49 = len(s)
+  scrut19 = ==(tmp49, 0)
+  if scrut19 is
+    true then
+      scrut20 = p.canBeEmpty()
+      if scrut20 is
+        true then new Some(acc)
+        else new None()
+    else
+      c8 = s.0
+      chs = p.first()
+      tmp50 = len(chs)
+      tryMatch_StagedRegExpTrick_sp_1(p, s, acc, c8, chs, tmp50)
+fun match_StagedRegExpTrick_sp_0(p, s) = matchImpl_StagedRegExpTrick_sp_1(p, s, "")
+fun plus_StagedRegExpTrick_sp_0(r) =
+  let {tmp39}
+  tmp39 = new Star(r)
+  new Concat(r, tmp39)
+fun tryMatch_StagedRegExpTrick_sp_0(p, s, acc, c, ch, i) =
+  let {scrut16, scrut17, c__, scrut18, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48}
+  tmp40 = len(ch)
+  tmp41 = tmp40 - i
+  tmp42 = len(ch)
+  scrut16 = ==(tmp41, tmp42)
+  if scrut16 is
+    true then
+      scrut17 = p.canBeEmpty()
+      if scrut17 is
+        true then new Some(acc)
+        else new None()
+    else
+      tmp43 = len(ch)
+      tmp44 = tmp43 - i
+      c__ = ch.(tmp44)
+      scrut18 = ==(c, c__)
+      if scrut18 is
+        true then
+          tmp45 = p.derive(c__)
+          tmp46 = s.slice(1)
+          tmp47 = "" + c__
+          matchImpl(tmp45, tmp46, tmp47)
+        else
+          tmp48 = i - 1
+          tryMatch_StagedRegExpTrick_sp_0(p, s, acc, c, ch, tmp48)
+fun tryMatch_StagedRegExpTrick_sp_1(p, s, acc, c, ch, i) =
+  let {scrut16, scrut17, c__, scrut18, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48}
+  tmp40 = len(ch)
+  tmp41 = tmp40 - i
+  tmp42 = len(ch)
+  scrut16 = ==(tmp41, tmp42)
+  if scrut16 is
+    true then
+      scrut17 = p.canBeEmpty()
+      if scrut17 is
+        true then new Some(acc)
+        else new None()
+    else
+      tmp43 = len(ch)
+      tmp44 = tmp43 - i
+      c__ = ch.(tmp44)
+      scrut18 = ==(c, c__)
+      if scrut18 is
+        true then
+          tmp45 = p.derive(c__)
+          tmp46 = s.slice(1)
+          tmp47 = "" + c__
+          matchImpl(tmp45, tmp46, tmp47)
+        else
+          tmp48 = i - 1
+          tryMatch_StagedRegExpTrick_sp_1(p, s, acc, c, ch, tmp48)
