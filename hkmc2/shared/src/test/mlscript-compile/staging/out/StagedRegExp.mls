@@ -100,7 +100,7 @@ module StagedRegExp with
         let {tmp5}
         tmp5 = has(chars, c)
         not tmp5
-    class Union(val p1, val p2) extends RegExp() with
+    class Altern(val p1, val p2) extends RegExp() with
       ()
       fun canBeEmpty() =
         let {tmp9}
@@ -112,30 +112,30 @@ module StagedRegExp with
         let {tmp6, tmp7, tmp8}
         tmp6 = p1.derive(c)
         tmp7 = p2.derive(c)
-        tmp8 = new Union.class(tmp6, tmp7)
-        normalize_Union_sp_0(tmp8)
+        tmp8 = new Altern.class(tmp6, tmp7)
+        normalize_Altern_sp_0(tmp8)
       fun eq(other) =
         let {n, tmp23, tmp24, tmp25}
         n = other.normalize()
         if n is
-          Union then
+          Altern then
             tmp23 = normalize()
             tmp24 = tmp23.flat()
-            tmp25 = flat_Union_sp_0(n)
+            tmp25 = flat_Altern_sp_0(n)
             setEq(tmp24, tmp25)
           else false
       fun flat() =
         let {p1__, scrut4, p2__, scrut5, tmp10, tmp11}
         scrut4 = p1
         if scrut4 is
-          Union then
+          Altern then
             tmp10 = p1.flat()
           else
             tmp10 = [p1]
         p1__ = tmp10
         scrut5 = p2
         if scrut5 is
-          Union then
+          Altern then
             tmp11 = p2.flat()
           else
             tmp11 = [p2]
@@ -157,14 +157,14 @@ module StagedRegExp with
         p1__1 = p1.normalize()
         p2__1 = p2.normalize()
         if p1__1 is
-          Union then
-            tmp16 = flat_Union_sp_0(p1__1)
+          Altern then
+            tmp16 = flat_Altern_sp_0(p1__1)
           else
             tmp16 = [p1__1]
         arr11 = tmp16
         if p2__1 is
-          Union then
-            tmp17 = flat_Union_sp_0(p2__1)
+          Altern then
+            tmp17 = flat_Altern_sp_0(p2__1)
           else
             tmp17 = [p2__1]
         arr2 = tmp17
@@ -220,8 +220,8 @@ module StagedRegExp with
           true then
             tmp27 = new Concat.class(p1__2, p2)
             tmp28 = p2.derive(c)
-            tmp29 = new Union(tmp27, tmp28)
-            normalize_Union_sp_1(tmp29)
+            tmp29 = new Altern(tmp27, tmp28)
+            normalize_Altern_sp_1(tmp29)
           else
             tmp30 = new Concat.class(p1__2, p2)
             normalize_Concat_sp_0(tmp30)
@@ -338,8 +338,8 @@ module StagedRegExp with
       tmp116 = digits()
       tmp117 = new Concat(tmp115, tmp116)
       tmp118 = new Concat(tmp113, tmp117)
-      tmp119 = new Union(tmp111, tmp118)
-      segment = new Union(tmp107, tmp119)
+      tmp119 = new Altern(tmp111, tmp118)
+      segment = new Altern(tmp107, tmp119)
       tmp120 = new Exact(".")
       tmp121 = new Concat(segment, tmp120)
       tmp122 = nTimes_StagedRegExp_sp_0(tmp121, 3)
@@ -461,7 +461,7 @@ module StagedRegExp with
               tmp45 = s - i
               tmp46 = i - 1
               tmp47 = mkUnion(arr, tmp46, s)
-              new Union(arr.(tmp45), tmp47)
+              new Altern(arr.(tmp45), tmp47)
     fun nTimes(r, i) =
       let {scrut17, tmp52, tmp53}
       scrut17 = ==(i, 1)
@@ -494,7 +494,7 @@ module StagedRegExp with
     fun question(r) =
       let {tmp48}
       tmp48 = new Empty()
-      new Union(r, tmp48)
+      new Altern(r, tmp48)
     fun setEq(s1, s2) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".setEq(s1, s2)
     fun spaces() =
       let {tmp50, tup_5}
@@ -974,19 +974,19 @@ fun plus_StagedRegExp_sp_3(r) =
 fun question_StagedRegExp_sp_0(r) =
   let {tmp48}
   tmp48 = new Empty()
-  new Union(r, tmp48)
+  new Altern(r, tmp48)
 fun question_StagedRegExp_sp_1(r) =
   let {tmp48}
   tmp48 = new Empty()
-  new Union(r, tmp48)
+  new Altern(r, tmp48)
 fun question_StagedRegExp_sp_2(r) =
   let {tmp48}
   tmp48 = new Empty()
-  new Union(r, tmp48)
+  new Altern(r, tmp48)
 fun question_StagedRegExp_sp_3(r) =
   let {tmp48}
   tmp48 = new Empty()
-  new Union(r, tmp48)
+  new Altern(r, tmp48)
 fun canBeEmpty_Nothing_sp_0(self) = false
 fun canBeEmpty_Nothing_sp_1(self) = false
 fun canBeEmpty_Nothing_sp_2(self) = false
@@ -1063,64 +1063,64 @@ fun startsWith_Exact_sp_4(self, c) = ==("1", c)
 fun startsWith_Exact_sp_5(self, c) = ==(".", c)
 fun normalize_Not_sp_0(self) = self
 fun normalize_Not_sp_1(self) = self
-fun canBeEmpty_Union_sp_0(self) = false
-fun canBeEmpty_Union_sp_1(self) = false
-fun canBeEmpty_Union_sp_2(self) = true
-fun canBeEmpty_Union_sp_3(self) = true
-fun derive_Union_sp_0(self, c) =
+fun canBeEmpty_Altern_sp_0(self) = false
+fun canBeEmpty_Altern_sp_1(self) = false
+fun canBeEmpty_Altern_sp_2(self) = true
+fun canBeEmpty_Altern_sp_3(self) = true
+fun derive_Altern_sp_0(self, c) =
   let {tmp6, tmp7, tmp8}
   tmp6 = derive_Concat_sp_14(self.p1, c)
-  tmp7 = derive_Union_sp_1(self.p2, c)
-  tmp8 = new Union.class(tmp6, tmp7)
-  normalize_Union_sp_11(tmp8)
-fun derive_Union_sp_1(self, c) =
+  tmp7 = derive_Altern_sp_1(self.p2, c)
+  tmp8 = new Altern.class(tmp6, tmp7)
+  normalize_Altern_sp_11(tmp8)
+fun derive_Altern_sp_1(self, c) =
   let {tmp6, tmp7, tmp8}
   tmp6 = derive_Concat_sp_15(self.p1, c)
   tmp7 = derive_Concat_sp_16(self.p2, c)
-  tmp8 = new Union.class(tmp6, tmp7)
-  normalize_Union_sp_10(tmp8)
-fun derive_Union_sp_2(self, c) =
+  tmp8 = new Altern.class(tmp6, tmp7)
+  normalize_Altern_sp_10(tmp8)
+fun derive_Altern_sp_2(self, c) =
   let {tmp6, tmp7, tmp8}
   tmp6 = derive_Exact_sp_4(self.p1, c)
   tmp7 = derive_Empty_sp_0(self.p2, c)
-  tmp8 = new Union.class(tmp6, tmp7)
-  normalize_Union_sp_6(tmp8)
-fun derive_Union_sp_3(self, c) =
+  tmp8 = new Altern.class(tmp6, tmp7)
+  normalize_Altern_sp_6(tmp8)
+fun derive_Altern_sp_3(self, c) =
   let {tmp6, tmp7, tmp8}
   tmp6 = derive_In_sp_2(self.p1, c)
   tmp7 = derive_Empty_sp_0(self.p2, c)
-  tmp8 = new Union.class(tmp6, tmp7)
-  normalize_Union_sp_6(tmp8)
-fun flat_Union_sp_0(self) =
+  tmp8 = new Altern.class(tmp6, tmp7)
+  normalize_Altern_sp_6(tmp8)
+fun flat_Altern_sp_0(self) =
   let {p1__, scrut4, p2__, scrut5, tmp10, tmp11}
   scrut4 = self.p1
   if scrut4 is
-    Union then
+    Altern then
       tmp10 = self.p1.flat()
     else
       tmp10 = [self.p1]
   p1__ = tmp10
   scrut5 = self.p2
   if scrut5 is
-    Union then
+    Altern then
       tmp11 = self.p2.flat()
     else
       tmp11 = [self.p2]
   p2__ = tmp11
   concat(p1__, p2__)
-fun normalize_Union_sp_0(self) =
+fun normalize_Altern_sp_0(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = self.p1.normalize()
   p2__1 = self.p2.normalize()
   if p1__1 is
-    Union then
-      tmp16 = flat_Union_sp_0(p1__1)
+    Altern then
+      tmp16 = flat_Altern_sp_0(p1__1)
     else
       tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1131,19 +1131,19 @@ fun normalize_Union_sp_0(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_1(self) =
+fun normalize_Altern_sp_1(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_0(self.p1)
   p2__1 = self.p2.normalize()
   if p1__1 is
-    Union then
-      tmp16 = flat_Union_sp_0(p1__1)
+    Altern then
+      tmp16 = flat_Altern_sp_0(p1__1)
     else
       tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1154,7 +1154,7 @@ fun normalize_Union_sp_1(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_10(self) =
+fun normalize_Altern_sp_10(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   if self.p1 is
     Concat then
@@ -1165,8 +1165,8 @@ fun normalize_Union_sp_10(self) =
   tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1177,7 +1177,7 @@ fun normalize_Union_sp_10(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_11(self) =
+fun normalize_Altern_sp_11(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   if self.p1 is
     Concat then
@@ -1188,8 +1188,8 @@ fun normalize_Union_sp_11(self) =
   tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1200,15 +1200,15 @@ fun normalize_Union_sp_11(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_12(self) =
+fun normalize_Altern_sp_12(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_51(self.p1)
-  p2__1 = normalize_Union_sp_13(self.p2)
+  p2__1 = normalize_Altern_sp_13(self.p2)
   tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1219,7 +1219,7 @@ fun normalize_Union_sp_12(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_13(self) =
+fun normalize_Altern_sp_13(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_52(self.p1)
   p2__1 = normalize_Concat_sp_53(self.p2)
@@ -1234,7 +1234,7 @@ fun normalize_Union_sp_13(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_14(self) =
+fun normalize_Altern_sp_14(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Exact_sp_10(self.p1)
   p2__1 = normalize_Empty_sp_0(self.p2)
@@ -1249,7 +1249,7 @@ fun normalize_Union_sp_14(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_15(self) =
+fun normalize_Altern_sp_15(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_47(self.p1)
   if self.p2 is
@@ -1268,15 +1268,15 @@ fun normalize_Union_sp_15(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_16(self) =
+fun normalize_Altern_sp_16(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_62(self.p1)
   p2__1 = self.p2.normalize()
   tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1287,15 +1287,15 @@ fun normalize_Union_sp_16(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_17(self) =
+fun normalize_Altern_sp_17(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_63(self.p1)
   p2__1 = self.p2.normalize()
   tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1306,7 +1306,7 @@ fun normalize_Union_sp_17(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_2(self) =
+fun normalize_Altern_sp_2(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_13(self.p1)
   if self.p2 is
@@ -1325,7 +1325,7 @@ fun normalize_Union_sp_2(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_3(self) =
+fun normalize_Altern_sp_3(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_28(self.p1)
   p2__1 = normalize_Empty_sp_0(self.p2)
@@ -1340,7 +1340,7 @@ fun normalize_Union_sp_3(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_4(self) =
+fun normalize_Altern_sp_4(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_29(self.p1)
   p2__1 = normalize_Empty_sp_0(self.p2)
@@ -1355,7 +1355,7 @@ fun normalize_Union_sp_4(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_5(self) =
+fun normalize_Altern_sp_5(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_32(self.p1)
   if self.p2 is
@@ -1374,7 +1374,7 @@ fun normalize_Union_sp_5(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_6(self) =
+fun normalize_Altern_sp_6(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   if self.p1 is
     Empty then
@@ -1393,7 +1393,7 @@ fun normalize_Union_sp_6(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_7(self) =
+fun normalize_Altern_sp_7(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_42(self.p1)
   if self.p2 is
@@ -1412,15 +1412,15 @@ fun normalize_Union_sp_7(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_8(self) =
+fun normalize_Altern_sp_8(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_Concat_sp_43(self.p1)
   p2__1 = self.p2.normalize()
   tmp16 = [p1__1]
   arr11 = tmp16
   if p2__1 is
-    Union then
-      tmp17 = flat_Union_sp_0(p2__1)
+    Altern then
+      tmp17 = flat_Altern_sp_0(p2__1)
     else
       tmp17 = [p2__1]
   arr2 = tmp17
@@ -1431,7 +1431,7 @@ fun normalize_Union_sp_8(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun normalize_Union_sp_9(self) =
+fun normalize_Altern_sp_9(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
   p1__1 = normalize_In_sp_6(self.p1)
   p2__1 = normalize_Empty_sp_0(self.p2)
@@ -1446,25 +1446,25 @@ fun normalize_Union_sp_9(self) =
   tmp21 = len(s2.arr)
   tmp22 = len(s2.arr)
   mkUnion(s2.arr, tmp21, tmp22)
-fun startsWith_Union_sp_0(self, c) =
+fun startsWith_Altern_sp_0(self, c) =
   let {tmp26}
   tmp26 = startsWith_Concat_sp_14(self.p1, c)
   if tmp26 is
-    false then startsWith_Union_sp_1(self.p2, c)
+    false then startsWith_Altern_sp_1(self.p2, c)
     else true
-fun startsWith_Union_sp_1(self, c) =
+fun startsWith_Altern_sp_1(self, c) =
   let {tmp26}
   tmp26 = startsWith_Concat_sp_15(self.p1, c)
   if tmp26 is
     false then startsWith_Concat_sp_16(self.p2, c)
     else true
-fun startsWith_Union_sp_2(self, c) =
+fun startsWith_Altern_sp_2(self, c) =
   let {tmp26}
   tmp26 = startsWith_Exact_sp_4(self.p1, c)
   if tmp26 is
     false then startsWith_Empty_sp_0(self.p2, c)
     else true
-fun startsWith_Union_sp_3(self, c) =
+fun startsWith_Altern_sp_3(self, c) =
   let {tmp26}
   tmp26 = startsWith_In_sp_2(self.p1, c)
   if tmp26 is
@@ -1554,8 +1554,8 @@ fun derive_Concat_sp_10(self, c) =
     true then
       tmp27 = new Concat.class(p1__2, self.p2)
       tmp28 = self.p2.derive(c)
-      tmp29 = new Union(tmp27, tmp28)
-      normalize_Union_sp_1(tmp29)
+      tmp29 = new Altern(tmp27, tmp28)
+      normalize_Altern_sp_1(tmp29)
     else
       tmp30 = new Concat.class(p1__2, self.p2)
       normalize_Concat_sp_0(tmp30)
@@ -1573,8 +1573,8 @@ fun derive_Concat_sp_12(self, c) =
   normalize_Concat_sp_48(tmp30)
 fun derive_Concat_sp_13(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-  p1__2 = derive_Union_sp_0(self.p1, c)
-  scrut8 = canBeEmpty_Union_sp_0(self.p1)
+  p1__2 = derive_Altern_sp_0(self.p1, c)
+  scrut8 = canBeEmpty_Altern_sp_0(self.p1)
   tmp30 = new Concat.class(p1__2, self.p2)
   normalize_Concat_sp_47(tmp30)
 fun derive_Concat_sp_14(self, c) =
@@ -1591,20 +1591,20 @@ fun derive_Concat_sp_15(self, c) =
   normalize_Concat_sp_40(tmp30)
 fun derive_Concat_sp_16(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-  p1__2 = derive_Union_sp_2(self.p1, c)
-  scrut8 = canBeEmpty_Union_sp_2(self.p1)
+  p1__2 = derive_Altern_sp_2(self.p1, c)
+  scrut8 = canBeEmpty_Altern_sp_2(self.p1)
   tmp27 = new Concat.class(p1__2, self.p2)
   tmp28 = derive_Concat_sp_17(self.p2, c)
-  tmp29 = new Union(tmp27, tmp28)
-  normalize_Union_sp_8(tmp29)
+  tmp29 = new Altern(tmp27, tmp28)
+  normalize_Altern_sp_8(tmp29)
 fun derive_Concat_sp_17(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
-  p1__2 = derive_Union_sp_3(self.p1, c)
-  scrut8 = canBeEmpty_Union_sp_3(self.p1)
+  p1__2 = derive_Altern_sp_3(self.p1, c)
+  scrut8 = canBeEmpty_Altern_sp_3(self.p1)
   tmp27 = new Concat.class(p1__2, self.p2)
   tmp28 = derive_In_sp_2(self.p2, c)
-  tmp29 = new Union(tmp27, tmp28)
-  normalize_Union_sp_7(tmp29)
+  tmp29 = new Altern(tmp27, tmp28)
+  normalize_Altern_sp_7(tmp29)
 fun derive_Concat_sp_18(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
   p1__2 = derive_Concat_sp_19(self.p1, c)
@@ -1631,8 +1631,8 @@ fun derive_Concat_sp_2(self, c) =
   scrut8 = canBeEmpty_Star_sp_0(self.p1)
   tmp27 = new Concat.class(p1__2, self.p2)
   tmp28 = derive_Concat_sp_3(self.p2, c)
-  tmp29 = new Union(tmp27, tmp28)
-  normalize_Union_sp_2(tmp29)
+  tmp29 = new Altern(tmp27, tmp28)
+  normalize_Altern_sp_2(tmp29)
 fun derive_Concat_sp_20(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
   p1__2 = self.p1.derive(c)
@@ -1641,8 +1641,8 @@ fun derive_Concat_sp_20(self, c) =
     true then
       tmp27 = new Concat.class(p1__2, self.p2)
       tmp28 = derive_Exact_sp_5(self.p2, c)
-      tmp29 = new Union(tmp27, tmp28)
-      normalize_Union_sp_15(tmp29)
+      tmp29 = new Altern(tmp27, tmp28)
+      normalize_Altern_sp_15(tmp29)
     else
       tmp30 = new Concat.class(p1__2, self.p2)
       normalize_Concat_sp_47(tmp30)
@@ -1674,8 +1674,8 @@ fun derive_Concat_sp_22(self, c) =
           tmp28 = derive_Nothing_sp_0(self.p2, c)
         Concat then
           tmp28 = derive_Concat_sp_23(self.p2, c)
-      tmp29 = new Union(tmp27, tmp28)
-      normalize_Union_sp_17(tmp29)
+      tmp29 = new Altern(tmp27, tmp28)
+      normalize_Altern_sp_17(tmp29)
     else
       tmp30 = new Concat.class(p1__2, self.p2)
       normalize_Concat_sp_63(tmp30)
@@ -1693,8 +1693,8 @@ fun derive_Concat_sp_23(self, c) =
           tmp28 = derive_Nothing_sp_1(self.p2, c)
         Concat then
           tmp28 = derive_Concat_sp_20(self.p2, c)
-      tmp29 = new Union(tmp27, tmp28)
-      normalize_Union_sp_16(tmp29)
+      tmp29 = new Altern(tmp27, tmp28)
+      normalize_Altern_sp_16(tmp29)
     else
       tmp30 = new Concat.class(p1__2, self.p2)
       normalize_Concat_sp_62(tmp30)
@@ -1734,8 +1734,8 @@ fun derive_Concat_sp_8(self, c) =
   scrut8 = canBeEmpty_Star_sp_1(self.p1)
   tmp27 = new Concat.class(p1__2, self.p2)
   tmp28 = derive_Concat_sp_9(self.p2, c)
-  tmp29 = new Union(tmp27, tmp28)
-  normalize_Union_sp_5(tmp29)
+  tmp29 = new Altern(tmp27, tmp28)
+  normalize_Altern_sp_5(tmp29)
 fun derive_Concat_sp_9(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
   p1__2 = derive_Exact_sp_1(self.p1, c)
@@ -1883,12 +1883,12 @@ fun normalize_Concat_sp_26(self) =
   new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_27(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_Union_sp_3(self.p1)
+  p1__3 = normalize_Altern_sp_3(self.p1)
   if p1__3 is
-    Empty then normalize_Union_sp_4(self.p2)
+    Empty then normalize_Altern_sp_4(self.p2)
     Nothing then p1__3
     else
-      tmp31 = normalize_Union_sp_4(self.p2)
+      tmp31 = normalize_Altern_sp_4(self.p2)
       new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_28(self) =
   let {p1__3, tmp31}
@@ -2028,7 +2028,7 @@ fun normalize_Concat_sp_43(self) =
       new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_44(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_Union_sp_9(self.p1)
+  p1__3 = normalize_Altern_sp_9(self.p1)
   if p1__3 is
     Empty then normalize_In_sp_6(self.p2)
     Nothing then p1__3
@@ -2083,7 +2083,7 @@ fun normalize_Concat_sp_5(self) =
   new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_50(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_Union_sp_12(self.p1)
+  p1__3 = normalize_Altern_sp_12(self.p1)
   if p1__3 is
     Empty then normalize_Exact_sp_7(self.p2)
     Nothing then p1__3
@@ -2102,7 +2102,7 @@ fun normalize_Concat_sp_52(self) =
   new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_53(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_Union_sp_14(self.p1)
+  p1__3 = normalize_Altern_sp_14(self.p1)
   if p1__3 is
     Empty then normalize_Concat_sp_44(self.p2)
     Nothing then p1__3
@@ -2119,7 +2119,7 @@ fun normalize_Concat_sp_54(self) =
   if p1__3 is
     Nothing then p1__3
     else
-      tmp31 = normalize_Union_sp_12(self.p2)
+      tmp31 = normalize_Altern_sp_12(self.p2)
       new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_55(self) =
   let {p1__3, tmp31}
@@ -2374,10 +2374,10 @@ fun startsWith_Concat_sp_12(self, c) =
     else true
 fun startsWith_Concat_sp_13(self, c) =
   let {scrut13, scrut14, tmp32}
-  tmp32 = startsWith_Union_sp_0(self.p1, c)
+  tmp32 = startsWith_Altern_sp_0(self.p1, c)
   if tmp32 is
     false then
-      scrut13 = canBeEmpty_Union_sp_0(self.p1)
+      scrut13 = canBeEmpty_Altern_sp_0(self.p1)
       false
     else true
 fun startsWith_Concat_sp_14(self, c) =
@@ -2398,10 +2398,10 @@ fun startsWith_Concat_sp_15(self, c) =
     else true
 fun startsWith_Concat_sp_16(self, c) =
   let {scrut13, scrut14, tmp32}
-  tmp32 = startsWith_Union_sp_2(self.p1, c)
+  tmp32 = startsWith_Altern_sp_2(self.p1, c)
   if tmp32 is
     false then
-      scrut13 = canBeEmpty_Union_sp_2(self.p1)
+      scrut13 = canBeEmpty_Altern_sp_2(self.p1)
       scrut14 = startsWith_Concat_sp_17(self.p2, c)
       if scrut14 is
         true then true
@@ -2409,10 +2409,10 @@ fun startsWith_Concat_sp_16(self, c) =
     else true
 fun startsWith_Concat_sp_17(self, c) =
   let {scrut13, scrut14, tmp32}
-  tmp32 = startsWith_Union_sp_3(self.p1, c)
+  tmp32 = startsWith_Altern_sp_3(self.p1, c)
   if tmp32 is
     false then
-      scrut13 = canBeEmpty_Union_sp_3(self.p1)
+      scrut13 = canBeEmpty_Altern_sp_3(self.p1)
       scrut14 = startsWith_In_sp_2(self.p2, c)
       if scrut14 is
         true then true
