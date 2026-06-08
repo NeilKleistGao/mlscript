@@ -50,21 +50,21 @@ module SimpleRegExp with
     fun eq(other)
     fun startsWith(c)
 
-  class Nothing() extends RegExp with
+  class Nothing() extends RegExp() with
     fun derive(c) = this
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) = other is Nothing
     fun startsWith(c) = false
 
-  class Empty() extends RegExp with
+  class Empty() extends RegExp() with
     fun derive(c) = new Nothing()
     fun canBeEmpty() = true
     fun normalize() = this
     fun eq(other) = other is Empty
     fun startsWith(c) = false
 
-  class Exact(val ch) extends RegExp with
+  class Exact(val ch) extends RegExp() with
     fun derive(c) =
       if startsWith(c) then new Empty()
       else new Nothing()
@@ -74,14 +74,14 @@ module SimpleRegExp with
       if other is Exact(ch') then ch == ch' else false
     fun startsWith(c) = ch == c
 
-  class Any() extends RegExp with
+  class Any() extends RegExp() with
     fun derive(c) = new Empty()
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) = other is Any()
     fun startsWith(c) = true
 
-  class Not(val chars) extends RegExp with
+  class Not(val chars) extends RegExp() with
     fun derive(c) =
       if startsWith(c) then new Empty() else new Nothing()
     fun canBeEmpty() = false
@@ -101,7 +101,7 @@ module SimpleRegExp with
         Nothing() then mkUnion(arr, i + 1, s)
         else new Union(arr.(i), mkUnion(arr, i + 1, s))
 
-  class Union(val p1, val p2) extends RegExp with
+  class Union(val p1, val p2) extends RegExp() with
     fun derive(c) = (new Union(p1.derive(c), p2.derive(c))).normalize()
     fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
     fun flat() =
@@ -127,7 +127,7 @@ module SimpleRegExp with
 
   fun question(r) = new Union(r, new Empty())
 
-  class In(val chars) extends RegExp with
+  class In(val chars) extends RegExp() with
     fun derive(c) =
       if startsWith(c) then new Empty() else new Nothing()
     fun canBeEmpty() = false
@@ -140,7 +140,7 @@ module SimpleRegExp with
   fun spaces() = new In(CharSet.space())
   fun digits() = new In(CharSet.digit())
 
-  class Concat(val p1, val p2) extends RegExp with
+  class Concat(val p1, val p2) extends RegExp() with
     fun derive(c) =
       let p1' = p1.derive(c)
       if p1.canBeEmpty() then
@@ -161,7 +161,7 @@ module SimpleRegExp with
     if i == 1 then r
     else new Concat(r, nTimes(r, i - 1))
 
-  class Star(val p) extends RegExp with
+  class Star(val p) extends RegExp() with
     fun derive(c) = (new Concat(p.derive(c), new Star(p))).normalize()
     fun canBeEmpty() = true
     fun normalize() = new Star(p.normalize())
