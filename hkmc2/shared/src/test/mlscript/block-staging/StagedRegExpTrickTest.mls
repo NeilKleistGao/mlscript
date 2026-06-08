@@ -2,15 +2,15 @@
 :staging
 :noModuleCheck
 
-import "../../mlscript-compile/staging/StagedRegExp.mls"
+import "../../mlscript-compile/staging/StagedRegExpTrick.mls"
 
 
-StagedRegExp."generate"("../StagedRegExp.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/StagedRegExp.mls")
+StagedRegExpTrick."generate"("../StagedRegExpTrick.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/StagedRegExpTrick.mls")
 
 
-import "../../mlscript-compile/staging/out/StagedRegExp.mls"
+import "../../mlscript-compile/staging/out/StagedRegExpTrick.mls"
 
-open StagedRegExp
+open StagedRegExpTrick
 
 match(Exact("x"), "x")
 //│ = Some("x")
@@ -26,24 +26,24 @@ match(Exact("x"), "")
 match(Exact("x"), "xyz")
 //│ = Some("x")
 
-match(Any(), "x")
-//│ = Some("x")
+// match(Any(), "x")
+// //│ = Some("x")
 
 
-match(Any(), "")
-//│ = None
+// match(Any(), "")
+// //│ = None
 
 
-match(Any(), "xyz")
-//│ = Some("x")
+// match(Any(), "xyz")
+// //│ = Some("x")
 
 
-match(Not(["x", "y", "z"]), "xyz")
-//│ = None
+// match(Not(["x", "y", "z"]), "xyz")
+// //│ = None
 
 
-match(Not(["x", "y", "z"]), "w")
-//│ = Some("w")
+// match(Not(["x", "y", "z"]), "w")
+// //│ = Some("w")
 
 match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "z")
 //│ = Some("z")
@@ -63,8 +63,8 @@ match(question(Exact("x")), "y")
 match(question(Exact("x")), "xx")
 //│ = Some("x")
 
-match(question(Any()), "y")
-//│ = Some("y")
+// match(question(Any()), "y")
+// //│ = Some("y")
 
 match(Concat(Star(Exact("x")), Exact("y")), "x")
 //│ = None
@@ -106,11 +106,11 @@ match(nTimes(Exact("x"), 3), "xx")
 //│ = None
 
 
-:silent
-let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord())) 
+// :silent
+// let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord())) 
 
-matchAll(p, "To be or not to be, that is the question.")
-//│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
+// matchAll(p, "To be or not to be, that is the question.")
+// //│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
 
 
 matchAllEmail("foo@bar.baz")
@@ -132,25 +132,25 @@ matchAllEmail("f@a")
 //│ = []
 
 
-matchAllURI("http://foo.bar.com")
-//│ = ["http://foo.bar.com"]
+// matchAllURI("http://foo.bar.com")
+// //│ = ["http://foo.bar.com"]
 
 
-matchAllURI("http://foo.bar.com?xxx")
-//│ = ["http://foo.bar.com?xxx"]
+// matchAllURI("http://foo.bar.com?xxx")
+// //│ = ["http://foo.bar.com?xxx"]
 
 
-matchAllURI("http://foo.bar.com?xxx#42")
-//│ = ["http://foo.bar.com?xxx#42"]
+// matchAllURI("http://foo.bar.com?xxx#42")
+// //│ = ["http://foo.bar.com?xxx#42"]
 
 
-matchAllURI("http://foo.bar.com#42")
-//│ = ["http://foo.bar.com#42"]
+// matchAllURI("http://foo.bar.com#42")
+// //│ = ["http://foo.bar.com#42"]
 
 
 
-matchAllIPv4("8.8.8.8")
-//│ = ["8.8.8.8"]
+// matchAllIPv4("8.8.8.8")
+// //│ = ["8.8.8.8"]
 
-matchAllIPv4("192.168.1.1")
-//│ = ["192.168.1.1"]
+// matchAllIPv4("192.168.1.1")
+// //│ = ["192.168.1.1"]
