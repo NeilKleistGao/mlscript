@@ -931,44 +931,16 @@ class BlockSimplifier
         case N => super.applyResult(r)(k)
       
       // * Remove uses of the strange builtin comma operator
+      // * This is not implemented as a smart constructor (unlike usual constant folding)
+      // * because it needs to insert an Assign statement.
       case Call(Value.SimpleRef(sym: BuiltinSymbol), (arg1 :: arg2 :: Nil) :: Nil)
         if sym.nme === "," && arg1.spread.isEmpty && arg2.spread.isEmpty
         =>
           Assign.discard(arg1.value, k(arg2.value))
       
-      // * Partially evaluate calls to known builtins with literal arguments
-      case Call(Value.SimpleRef(sym: BuiltinSymbol), args :: Nil) if args.forall(_.value.isInstanceOf[Value]) =>
-        val argValues = args.map(_.value.asInstanceOf[Value])
-        args.foreach(a => assert(a.spread.isEmpty))
-        builtinEval.lift((sym.nme, argValues)) match
-        case S(v) =>
-          registerChange(s"Evaluating builtin ${sym.nme} with args ${argValues.map(_.showDbg).mkString(", ")} ~> ${v.showDbg}")
-          k(v)
-        case N => super.applyResult(r)(k)
-      
       case r =>
         super.applyResult(r)(k)
     
-    
-    // TODO: mv to smart ctor of Call
-    import syntax.Tree.*, Value.Lit
-    val builtinEval: PartialFunction[(Str, List[Value]), Value] =
-      case ("+", (lit @ Lit(IntLit(v1))) :: Nil) => lit
-      case ("+", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(IntLit(v1 + v2))
-      case ("-", Lit(IntLit(v1)) :: Nil) => Lit(IntLit(-v1))
-      case ("-", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(IntLit(v1 - v2))
-      case ("*", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(IntLit(v1 * v2))
-      // * For "/", should check for 0 and return a DecLit
-      case ("%", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(IntLit(v1 % v2))
-      case ("===", Lit(l1) :: Lit(l2) :: Nil) => Lit(BoolLit(l1 == l2))
-      case ("!==", Lit(l1) :: Lit(l2) :: Nil) => Lit(BoolLit(l1 != l2))
-      case ("<", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(BoolLit(v1 < v2))
-      case ("<=", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(BoolLit(v1 <= v2))
-      case (">", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(BoolLit(v1 > v2))
-      case (">=", Lit(IntLit(v1)) :: Lit(IntLit(v2)) :: Nil) => Lit(BoolLit(v1 >= v2))
-      case ("&&", Lit(BoolLit(v1)) :: Lit(BoolLit(v2)) :: Nil) => Lit(BoolLit(v1 && v2))
-      case ("||", Lit(BoolLit(v1)) :: Lit(BoolLit(v2)) :: Nil) => Lit(BoolLit(v1 || v2))
-      case ("!", Lit(BoolLit(v)) :: Nil) => Lit(BoolLit(!v))
     
   end DataFlowAnalysis
   

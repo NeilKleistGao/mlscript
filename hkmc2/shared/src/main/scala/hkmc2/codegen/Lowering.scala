@@ -1481,7 +1481,7 @@ trait LoweringTraceLog(instrument: Bool)(using TL, Raise, State)
     stmts.foldRight(rest):
       case ((sym, res), acc) => Assign(sym, res, acc)
   
-  private def pureCall(fn: Path, args: Ls[Arg]): Call =
+  private def pureCall(fn: Path, args: Ls[Arg]): Result =
     Call(fn, args ne_:: Nil)(true, false, false)
   
   extension (k: Block => Block)

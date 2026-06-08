@@ -941,6 +941,57 @@ case class Call(fun: Path, argss: NELs[Ls[Arg]])(val isMlsFun: Bool, val mayRais
         case _ => false
     case _ => false
 
+object Call:
+  
+  def raw(fun: Path, argss: NELs[Ls[Arg]])(isMlsFun: Bool, mayRaiseEffects: Bool, explicitTailCall: Bool): Call =
+    new Call(fun, argss)(isMlsFun, mayRaiseEffects, explicitTailCall)
+  
+  def apply(fun: Path, argss: NELs[Ls[Arg]])(isMlsFun: Bool, mayRaiseEffects: Bool, explicitTailCall: Bool): Result =
+    fun match
+    case Value.SimpleRef(sym: BuiltinSymbol) =>
+      argss match
+      case (Arg(N, arg1: Value) :: Arg(N, arg2: Value) :: Nil) :: Nil =>
+        evalBuiltin(sym, arg1, arg2)(return _)
+      case (Arg(N, arg1: Value) :: Nil) :: Nil =>
+        evalBuiltin(sym, arg1)(return _)
+      case _ =>
+    case _ =>
+    raw(fun, argss)(isMlsFun, mayRaiseEffects, explicitTailCall)
+  
+  private def literalArgValues(args: Ls[Arg]): Opt[Ls[Value]] =
+    args.foldRight[Opt[Ls[Value]]](S(Nil)):
+      case (Arg(N, value: Value), S(acc)) => S(value :: acc)
+      case _ => N
+  
+  import Value.Lit
+  
+  private inline def evalBuiltin(sym: BuiltinSymbol, arg1: Value, arg2: Value)(inline k: Value => Unit): Unit =
+    (sym.nme, arg1, arg2) match
+    case ("+", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) => k(Lit(Tree.IntLit(v1 + v2)))
+    case ("-", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) => k(Lit(Tree.IntLit(v1 - v2)))
+    case ("*", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) => k(Lit(Tree.IntLit(v1 * v2)))
+    // * For "/", should check for 0 and return a DecLit.
+    case ("%", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) if v2 =/= 0 => k(Lit(Tree.IntLit(v1 % v2)))
+    case ("===", Lit(l1), Lit(l2)) => k(Lit(Tree.BoolLit(l1 == l2)))
+    case ("!==", Lit(l1), Lit(l2)) => k(Lit(Tree.BoolLit(l1 != l2)))
+    case ("<", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) => k(Lit(Tree.BoolLit(v1 < v2)))
+    case ("<=", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) => k(Lit(Tree.BoolLit(v1 <= v2)))
+    case (">", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) => k(Lit(Tree.BoolLit(v1 > v2)))
+    case (">=", Lit(Tree.IntLit(v1)), Lit(Tree.IntLit(v2))) => k(Lit(Tree.BoolLit(v1 >= v2)))
+    case ("&&", Lit(Tree.BoolLit(v1)), Lit(Tree.BoolLit(v2))) => k(Lit(Tree.BoolLit(v1 && v2)))
+    case ("||", Lit(Tree.BoolLit(v1)), Lit(Tree.BoolLit(v2))) => k(Lit(Tree.BoolLit(v1 || v2)))
+    case _ =>
+    
+  private inline def evalBuiltin(sym: BuiltinSymbol, arg1: Value)(inline k: Value => Unit): Unit =
+    (sym.nme, arg1) match
+    case ("+", Lit(Tree.IntLit(v1))) => k(Lit(Tree.IntLit(v1)))
+    case ("-", Lit(Tree.IntLit(v1))) => k(Lit(Tree.IntLit(-v1)))
+    case ("!", Lit(Tree.BoolLit(v))) => k(Lit(Tree.BoolLit(!v)))
+    case _ =>
+  
+end Call
+
+
 case class Instantiate(mut: Bool, cls: Path, argss: Ls[Ls[Arg]]) extends Result
 
 case class Lambda(params: ParamList, body: Block)(val annot: Ls[Annot]) extends Result:

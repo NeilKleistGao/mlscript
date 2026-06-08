@@ -598,12 +598,12 @@ class HandlerLowering(paths: HandlerPaths, opt: EffectHandlers)(using TL, Raise,
         case _ => super.applyDefn(defn)(k)
     val b = preTransform.applyBlock(blk)
     if h.inCtor then
-      return translateIllegalEffectCtx(b, Call(paths.illegalEffectPath, (Value.Lit(Tree.StrLit("in a constructor")).asArg :: Nil) ne_:: Nil)(true, true, false))
+      return translateIllegalEffectCtx(b, Call.raw(paths.illegalEffectPath, (Value.Lit(Tree.StrLit("in a constructor")).asArg :: Nil) ne_:: Nil)(true, true, false))
     if h.inTopLevel then
-      return translateIllegalEffectCtx(b, Call(paths.topLevelEffectPath, (Value.Lit(Tree.BoolLit(opt.debug)).asArg :: Nil) ne_:: Nil)(true, false, false))
+      return translateIllegalEffectCtx(b, Call.raw(paths.topLevelEffectPath, (Value.Lit(Tree.BoolLit(opt.debug)).asArg :: Nil) ne_:: Nil)(true, false, false))
     val ctx = h.asInstanceOf[HandlerCtx.FunctionLike].ctx
     if ctx.inGetter then
-      return translateIllegalEffectCtx(b, Call(paths.illegalEffectPath, (Value.Lit(Tree.StrLit("in a getter")).asArg :: Nil) ne_:: Nil)(true, false, false))
+      return translateIllegalEffectCtx(b, Call.raw(paths.illegalEffectPath, (Value.Lit(Tree.StrLit("in a getter")).asArg :: Nil) ne_:: Nil)(true, false, false))
     given FunctionCtx = ctx
     val parts = partitionBlock(b)
     stackSafetyMap += ctx.resumeInfo.currentStackSafetySym ->

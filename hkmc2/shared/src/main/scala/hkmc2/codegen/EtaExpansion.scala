@@ -181,7 +181,7 @@ class EtaExpansionRewrite(val etaExpansionSolver: EtaExpansionSolver)(using Rais
         else
           lastWords("not the same shape?")
     
-    private def etaCall(base: Path): Call =
+    private def etaCall(base: Path): Result =
       Call(base, activeEtaArgss.ne_!)(isMlsFun = true, mayRaiseEffects = true, explicitTailCall = false)
     
     override def applyBlock(b: Block): Block = b match

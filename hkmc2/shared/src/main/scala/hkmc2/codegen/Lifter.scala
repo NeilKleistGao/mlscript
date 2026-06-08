@@ -1070,7 +1070,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
         if argss is c.argss then c
         else c.copy(argss = argss)(c.isMlsFun, c.mayRaiseEffects, c.explicitTailCall).withLocOf(c)
       else
-        Call(
+        Call.raw(
           mainSym.asMemberRef(mainDsym),
           (formatArgs ::: argss.head) ne_:: argss.tail
         )(
@@ -1082,7 +1082,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     def rewriteRef(using ctx: LifterCtxNew): Call =
       if isTrivial then lastWords("tried to rewrite a ref to a trivial function")
       aux.force // forces computation
-      Call(
+      Call.raw(
         auxSym.asMemberRef(auxDsym),
         formatArgs ne_:: Nil
       )(
@@ -1201,7 +1201,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
     def rewriteCtorRef: Call =
       if isTrivial then lastWords("tried to rewrite a ref to a trivial class ctor")
       flat.force
-      Call(
+      Call.raw(
         flattenedSym.asMemberRef(flattenedDSym),
         formatArgs ne_:: Nil
       )(
@@ -1239,7 +1239,7 @@ class Lifter(topLevelBlk: Block)(using State, Raise, Config):
       val clsParamLists = cls.paramsOpt.toList ::: cls.auxParams
       def callFlattenedCtor: Call =
         flat.force
-        Call(
+        Call.raw(
           flattenedSym.asMemberRef(flattenedDSym),
           (formatArgs :: argss).ne_!
         )(

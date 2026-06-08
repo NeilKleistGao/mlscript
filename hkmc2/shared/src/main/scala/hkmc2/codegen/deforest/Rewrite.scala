@@ -355,7 +355,7 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
       // compute new program body
       val newBody =
         
-        def mkCall(target: (BlockMemberSymbol, TermSymbol), args: Ls[ValueSymbol]): Call =
+        def mkCall(target: (BlockMemberSymbol, TermSymbol), args: Ls[ValueSymbol]): Result =
           Call(
             Value.MemberRef(target._1, target._2),
             args.map(a => Arg(N, a.asPath)) ne_:: Nil
