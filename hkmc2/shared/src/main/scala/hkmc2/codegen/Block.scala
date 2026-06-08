@@ -849,9 +849,9 @@ sealed abstract class Result extends AutoLocated:
 //   def extraInfo: Str = toLoc.toString
   
   def showDbg(using DebugPrinter): Str = this match
-    case Value.SimpleRef(l) => l.showAsPlain
-    case Value.MemberRef(l, disamb) => s"${l.showAsPlain}${s"‹${disamb.showAsPlain}›"}"
-    case Value.This(sym) => s"this[${sym.showAsPlain}]"
+    case Value.SimpleRef(l) => l.showDbg
+    case Value.MemberRef(l, disamb) => s"${l.showDbg}${s"‹${disamb.showDbg}›"}"
+    case Value.This(sym) => s"this[${sym.showDbg}]"
     case Value.Lit(lit) => lit.idStr
     case Select(q, n) => s"Select(${q.showDbg}, ${n.showDbg})"
     case DynSelect(q, fld, arrayIdx) => s"DynSelect(${q.showDbg}, ${fld.showDbg}, $arrayIdx)"
