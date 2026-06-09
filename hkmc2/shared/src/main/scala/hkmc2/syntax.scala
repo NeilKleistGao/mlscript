@@ -46,8 +46,10 @@ trait AutoLocated extends Located:
       val spanEnd =
         subLocs.map(_.spanEnd).maxOption.getOrElse(boundary.break(N))
       val origins = subLocs.map(_.origin).toList.distinct
-      assert(origins.size === 1, (origins, this))
-      val res = S(Loc(spanStart, spanEnd, origins.head))
+      val origin = origins match
+        case origin :: Nil => origin
+        case _ => boundary.break(N)
+      val res = S(Loc(spanStart, spanEnd, origin))
       val _ = withLoc(res)
       res
     else loc
@@ -69,4 +71,3 @@ trait TypeVarImpl extends Ordered[TypeVar] { self: TypeVar =>
   def compare(that: TypeVar): Int =
     (this.identifier.fold((_, ""), (0, _))) compare (that.identifier.fold((_, ""), (0, _)))
 }
-

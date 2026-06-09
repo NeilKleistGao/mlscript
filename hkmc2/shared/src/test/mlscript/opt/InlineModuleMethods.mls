@@ -8,7 +8,7 @@ module M with
 :soir
 M.f(42)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ return M⁰.f⁰(42)
+//│ return 43
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 43
 
@@ -43,11 +43,11 @@ module Outer with
 //│         module Inner² {
 //│           constructor {
 //│             let tmp3;
-//│             set tmp3 = Inner².this.f¹(1);
+//│             set tmp3 = Inner².this.f⁰(1);
 //│             do Predef⁰.print⁰(tmp3);
 //│             end
 //│           }
-//│           method f² = fun f¹(x) {
+//│           method f¹ = fun f⁰(x) {
 //│             let tmp3;
 //│             set tmp3 = Outer².this.g⁰(x);
 //│             return +⁰(tmp3, 1)
@@ -55,17 +55,17 @@ module Outer with
 //│         };
 //│         set tmp1 = Mid².this.h⁰(2);
 //│         do Predef⁰.print⁰(tmp1);
-//│         set tmp2 = Mid².this.Inner².f¹(3);
+//│         set tmp2 = Mid².this.Inner².f⁰(3);
 //│         do Predef⁰.print⁰(tmp2);
 //│         end
 //│       }
 //│       method h¹ = fun h⁰(x) {
 //│         let tmp1;
-//│         set tmp1 = Mid².this.Inner².f¹(x);
+//│         set tmp1 = Mid².this.Inner².f⁰(x);
 //│         return *⁰(tmp1, 2)
 //│       }
 //│     };
-//│     set tmp = Outer².this.Mid².Inner².f¹(4);
+//│     set tmp = Outer².this.Mid².Inner².f⁰(4);
 //│     do Predef⁰.print⁰(tmp);
 //│     end
 //│   }
@@ -82,7 +82,7 @@ module Outer with
 :soir
 Outer.Mid.Inner.f(42)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ return Outer².Mid².Inner².f¹(42)
+//│ return 85
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 85
 
@@ -90,7 +90,7 @@ Outer.Mid.Inner.f(42)
 :soir
 Outer.Mid.h(42)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ return Outer².Mid².h⁰(42)
+//│ return 170
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 170
 

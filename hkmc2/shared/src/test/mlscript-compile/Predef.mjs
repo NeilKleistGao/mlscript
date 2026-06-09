@@ -11,13 +11,16 @@ lambda$2 = (undefined, function (Predef2) {
   }
 });
 lambda2 = (undefined, function (Predef2, acc, x) {
-  let tmp;
+  let tmp, args;
   if (typeof x === 'string') {
     tmp = true;
   } else {
     tmp = false;
   }
-  Predef2.check(tmp);
+  args = [
+    tmp
+  ];
+  runtime.safeCall(Predef2.js_assert(...args));
   return acc + x
 });
 lambda$1 = (undefined, function (Predef2, b) {
@@ -353,10 +356,10 @@ lambda = (undefined, function (Predef2, a, b, field) {
   static [definitionMetadata] = ["class", "Predef"];
 });
 export { Predef1 as _$_modulePrivate_$_Predef_$_141 };
-export { lambda as _$_modulePrivate_$_lambda_$_511 };
-export { lambda1 as _$_modulePrivate_$_lambda_$_518 };
-export { lambda2 as _$_modulePrivate_$_lambda_$_535 };
-export { lambda$ as _$_modulePrivate_$_lambda$24$_$_574 };
-export { lambda$1 as _$_modulePrivate_$_lambda$24$_$_578 };
-export { lambda$2 as _$_modulePrivate_$_lambda$24$_$_620 };
+export { lambda as _$_modulePrivate_$_lambda_$_512 };
+export { lambda1 as _$_modulePrivate_$_lambda_$_519 };
+export { lambda2 as _$_modulePrivate_$_lambda_$_536 };
+export { lambda$ as _$_modulePrivate_$_lambda$24$_$_575 };
+export { lambda$1 as _$_modulePrivate_$_lambda$24$_$_579 };
+export { lambda$2 as _$_modulePrivate_$_lambda$24$_$_621 };
 let Predef = Predef1; export default Predef;

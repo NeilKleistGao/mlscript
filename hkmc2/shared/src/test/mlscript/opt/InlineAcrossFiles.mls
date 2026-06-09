@@ -9,9 +9,13 @@ import "../../mlscript-compile/FilePrivateFunctions.mls"
 :soir
 FilePrivateFunctions.accessibleFunction1() + "?"
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp; tmp = FilePrivateFunctions.accessibleFunction1(); return tmp + "?"
+//│ import { _$_modulePrivate_$_inaccessibleFunction_$_92 as inaccessibleFunction } from "./../../mlscript-compile/FilePrivateFunctions.mjs";
+//│ let tmp;
+//│ tmp = inaccessibleFunction();
+//│ Predef.print(tmp);
+//│ return "Okay?" + "?"
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let tmp; set tmp = FilePrivateFunctions⁰.accessibleFunction1⁰(); return +⁰(tmp, "?")
+//│ let tmp; set tmp = inaccessibleFunction⁰(); do Predef⁰.print⁰(tmp); return +⁰("Okay?", "?")
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > This is a large string to prevent inlining.  This is a large string to prevent inlining.  This is a large string to prevent inlining.  This is a large string to prevent inlining.
 //│ > It works.

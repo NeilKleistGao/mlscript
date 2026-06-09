@@ -15,7 +15,11 @@ fun f1(x) = f(x) + 1
 //│ f1 = function f(x) {
 //│   return x
 //│ };
-//│ const proxy$f = f1; f11 = function f1(x) { let tmp; tmp = proxy$f(x); return tmp + 1 };
+//│ const proxy$f = function (...args) { return f1.apply(this, args); }; f11 = function f1(x) {
+//│   let tmp;
+//│   tmp = proxy$f(x);
+//│   return tmp + 1
+//│ };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 :expect 42
@@ -44,7 +48,9 @@ fun g() =
 //│ };
 //│ g1 = function g() {
 //│   let ff11;
-//│   const proxy$ff = ff1; ff11 = function ff1(x) { return proxy$ff(x) };
+//│   const proxy$ff = function (...args) { return ff1.apply(this, args); }; ff11 = function ff1(x) {
+//│     return proxy$ff(x)
+//│   };
 //│   return ff11
 //│ };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

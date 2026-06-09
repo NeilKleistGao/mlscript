@@ -491,7 +491,8 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
               case S(otherSym: FreeSymbol) if (otherSym isnt sym) && bod.freeVars.contains(otherSym) => scope.nest.givenIn:
                 val externalName = scope.allocateName(otherSym, prefix = "proxy$", shadow = true)
                 val (params, bodyDoc) = setupFunction(displayName, ps, result, isLambda = false)
-                doc"const $externalName = $symName; ${
+                // The external binding may be assigned later in this scope; defer lookup until call time.
+                doc"const $externalName = function (...args) { return $symName.apply(this, args); }; ${
                   varName} = function $symName($params) ${ braced(bodyDoc) };"
               case _ =>
                 doc"${varName} = function ${sym.nme}($params) ${ braced(bodyDoc) };"

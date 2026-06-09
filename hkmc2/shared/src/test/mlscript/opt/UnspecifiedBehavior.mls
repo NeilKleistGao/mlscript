@@ -15,21 +15,16 @@ else
   print('hi)
 hide of hide of hide of hide of hide of x // big expression so it's not folded into the `else`
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x⁰, y⁰, scrut, tmp, tmp1, tmp2, tmp3;
+//│ let x⁰, y⁰;
 //│ set y⁰ = 1;
-//│ set scrut = Predef⁰.hide⁰(false);
-//│ match scrut
+//│ match false
 //│   true =>
 //│     set x⁰ = 2;
-//│     end
+//│     return 2
 //│   else
 //│     do Predef⁰.print⁰("hi");
-//│     end
-//│ set tmp = Predef⁰.hide⁰(2);
-//│ set tmp1 = Predef⁰.hide⁰(tmp);
-//│ set tmp2 = Predef⁰.hide⁰(tmp1);
-//│ set tmp3 = Predef⁰.hide⁰(tmp2);
-//│ return Predef⁰.hide⁰(tmp3)
+//│     return 2
+//│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > hi
 //│ = 2
@@ -46,10 +41,9 @@ else
   print('hi)
 x // folded into the `else`; no longer observe the value `2`
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x¹, y¹, scrut;
+//│ let x¹, y¹;
 //│ set y¹ = 1;
-//│ set scrut = Predef⁰.hide⁰(false);
-//│ match scrut
+//│ match false
 //│   true =>
 //│     set x¹ = 2;
 //│     return 2

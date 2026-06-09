@@ -31,7 +31,7 @@ let x in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ do Predef⁰.hide⁰(false); do Predef⁰.print⁰("don't inline cont."); return Predef⁰.print⁰(1)
+//│ do Predef⁰.print⁰("don't inline cont."); return Predef⁰.print⁰(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > don't inline cont.
 //│ > 1
@@ -44,10 +44,9 @@ let x = undefined in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x¹, scrut;
+//│ let x¹;
 //│ set x¹ = undefined;
-//│ set scrut = Predef⁰.hide⁰(false);
-//│ match scrut
+//│ match false
 //│   true =>
 //│     set x¹ = 1;
 //│     end

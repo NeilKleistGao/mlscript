@@ -39,18 +39,18 @@ class BlockSimplifier
     while changed do
       changed = false
       iteration += 1
-      
+
       if iteration > MaxIterations then
         log(s"⬤ Reached maximum number of iterations ($MaxIterations), stopping simplifications")
         return res
-      
+
       log(s"⬤ Simplif. iter. $iteration")
-      
+
       val dce = new DeadCodeElim()
       res = dce.apply(res)
       changed ||= dce.changed
       if dce.changed then log("▶ DCE:\n" + printRes)
-      
+
       val vp = new DataFlowAnalysis(LocalVars.analyze(res.main))
       res = vp.apply(res)
       changed ||= vp.changed
@@ -382,7 +382,7 @@ class BlockSimplifier
       /* 
       if !changed then cur =
         (new BlockTransformer(SymbolSubst.Id):
-          
+
           override def applyBlock(b: Block): Block =
             b match
             case ass @ Assign(lhs: LocalVar, rhs, rst)
@@ -396,10 +396,10 @@ class BlockSimplifier
               registerChange(s"rm id ${System.identityHashCode(this)}")
               Assign.discard(rhs, applyBlock(rst))
             case _ => super.applyBlock(b)
-          
+
         ).applyProgram(cur)
       */
-      
+
       cur
       
     end apply
@@ -635,6 +635,20 @@ class BlockSimplifier
     // trace[Block](s"Applying block: ${b.abbreviate} with map: ${assignedResults}", res => s"|= ${assignedResults}"):
       b match
       
+      // * Collapse immediately-invoked ANF path aliases without assuming that evaluating the
+      // * path is pure. Since there is no intervening statement and the local has no other use,
+      // * this preserves both the number and order of evaluations. This notably removes
+      // * forwarding temporaries introduced when inlining getters that return a JS selection.
+      case Assign(lhs: LocalVar, path: Path, Assign(nextLhs, call @ Call(Value.SimpleRef(fun: LocalVar), argss), rst))
+        if !inDryRun && (fun is lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs)
+          && !path.freeVars(lhs)
+          && !argss.iterator.flatten.exists(_.value.freeVars(lhs))
+          && !rst.freeVars(lhs)
+        =>
+          registerChange(s"immediate call prefix ${lhs.showDbg} ~> ${path.showDbg}")
+          val combined = Call(path, argss)(call.isMlsFun, call.mayRaiseEffects, call.explicitTailCall).withLocOf(call)
+          applyBlock(Assign(nextLhs, combined, rst))
+
       // * Discard local variables that are assigned just to be returned
       // * Note: the reason we do this here and not in DeadCodeElim is that we need to check `capturedVars`
       case Assign(lhs: LocalVar, rhs, Return(Value.SimpleRef(ret)))
@@ -645,7 +659,7 @@ class BlockSimplifier
       
       case ass @ Assign(lhs: LocalVar, rhs, rst) if !capturedVars(lhs) =>
         // log(s"Propagating ${lhs} := ${rhs} (${assignedResults.get(lhs)})")
-        
+
         val varAsst = rhs.match
           case r @ Value.SimpleRef(sym: LocalVar) =>
             if capturedVars(sym) then N
@@ -656,7 +670,7 @@ class BlockSimplifier
           case sym: LocalVar if !capturedVars(sym) =>
             sym -> assignedResults(sym)
         assignedResults += lhs -> Assigned(ass, varAsst, rhsRequirements.toSet)
-        
+
         super.applyBlock(b)
         
       case Assign(lhs, rhs, rst) =>
@@ -695,7 +709,7 @@ class BlockSimplifier
           // assignments and continues that may affect outer loop analysis.
           applyBlock(rest)
           b
-          
+
       case Continue(label) =>
         // log(s"Continue to ${label} with map: ${assignedResults}")
         // log(s"  atLabelBegin: ${atLabelBegin(label)}")
@@ -727,7 +741,7 @@ class BlockSimplifier
       case Match(scrut, arms, dflt, rest) =>
         
         applyPath(scrut): scrut2 =>
-          
+
           // * TODO: Support Tup and Field shapes; ModuleOrObjectSymbol
           // * TODO: Support class inheritance reasoning (using a tree of hierarchical shapes)
           // type Shape = Literal | ClassSymbol | ModuleOrObjectSymbol
@@ -789,7 +803,27 @@ class BlockSimplifier
           if !gaveUp then log(s"Initial shapes: ${shapes}")
           
           val oldAssigned = assignedResults
-          var curAssigned = oldAssigned
+          var branchAssigneds = List.empty[AssignedResults]
+          def recordBranch(newBody: Block): Unit =
+            if !newBody.isAbortive then
+              branchAssigneds ::= assignedResults
+            assignedResults = oldAssigned
+          def canEscapeBranch(info: AssignInfo): Bool = info match
+            case Unknown => false
+            case Uninitialized => true
+            case Assigned(asst, _, _) =>
+              asst.rhs.freeVars.forall:
+                case sym: LocalVar => oldAssigned.contains(sym)
+                case _ => true
+            case Merge(asst1, asst2) =>
+              canEscapeBranch(asst1) && canEscapeBranch(asst2)
+          def mergeBranchInfos(infos: List[AssignInfo]): AssignInfo =
+            if infos.exists(_ is Unknown) then Unknown
+            else if infos.exists(_ is Uninitialized) && !infos.forall(_ is Uninitialized) then
+              val initializedInfos = infos.filterNot(_ is Uninitialized)
+              if initializedInfos.forall(canEscapeBranch) then initializedInfos.reduce(_.merge(_))
+              else Unknown
+            else infos.reduce(_.merge(_))
           
           val arms2 = if gaveUp then arms else arms.filterConserve: (pat, body) =>
             @inline def regChange(reason: Str) =
@@ -811,19 +845,23 @@ class BlockSimplifier
           val newArms = arms2.mapConserve:
             case arm @ (cse, body) =>
               val newBody = applyBlock(body)
-              curAssigned = merge(curAssigned, assignedResults)
-              assignedResults = oldAssigned
+              recordBranch(newBody)
               if newBody is body then arm else cse -> newBody
           val newDflt = if !gaveUp && shapes.isEmpty
             then S(Unreachable("exhaustive match"))
             else dflt.mapConserve:
               case body =>
                 val newBody = applyBlock(body)
-                curAssigned = merge(curAssigned, assignedResults)
-                assignedResults = oldAssigned
+                recordBranch(newBody)
                 if newBody is body then body else newBody
-          if newDflt.isEmpty then curAssigned = merge(curAssigned, assignedResults)
-          assignedResults = curAssigned
+          if newDflt.isEmpty then branchAssigneds ::= oldAssigned
+          val branchKeys = branchAssigneds.iterator.flatMap(_.keysIterator).toSet
+          assignedResults =
+            branchKeys.iterator
+              .map: key =>
+                key -> mergeBranchInfos(branchAssigneds.map(_(key)))
+              .toMap
+              .withDefaultValue(Unknown)
           
           // log(s"After match: ${assignedResults}")
           val restRewritten = applySubBlock(rest)
@@ -859,10 +897,10 @@ class BlockSimplifier
     override def applyValue(v: Value)(k: Value => Block): Block =
       v match
       case Value.SimpleRef(loc: LocalVar) if !inDryRun && !capturedVars(loc) =>
-        
+
         val rs = assignedResults(loc)
         // log(s"Ref ${loc.showDbg} ${rs} ${localVars(loc)} ${capturedVars(loc)}")
-        
+
         val analysis = rs.valueAnalysis
         val refs = analysis.refs.iterator.filter(_.isCurrent).map(_.ref).toList
         
@@ -979,6 +1017,87 @@ class BlockSimplifier
             case _ => N
           case _ => N
       
+      /** Match calls to methods selected through a qualifier, such as `Outer.Inner.f(x)`.
+        *
+        * The qualifier is later used to rewrite module `this` references in the copied body.
+        * Direct member refs do not carry enough qualifier information and are handled by
+        * `TermSymbolPath` instead. */
+      object MethodCallQualifier:
+        def unapply(p: Path): Opt[(Path, TermSymbol)] = p match
+          case s: Select => s.symbol match
+            case S(ts: TermSymbol) if ts.owner.nonEmpty => S((s.qual, ts))
+            case _ => N
+          case _ => N
+
+      /** Build a mapping from module `this` symbols to their call-site qualifier paths.
+        *
+        * For example, for `Outer.Mid.Inner.f(x)`, this records:
+        * `Inner.this -> Outer.Mid.Inner`, `Mid.this -> Outer.Mid`,
+        * and `Outer.this -> Outer`. */
+      def buildThisMapping(qual: Path, ownerSym: InnerSymbol): Map[InnerSymbol, Path] =
+        var mapping = Map.empty[InnerSymbol, Path]
+        var currentQual = qual
+        var currentOwner = ownerSym
+        var continue = true
+        while continue do
+          mapping = mapping + (currentOwner -> currentQual)
+          currentQual match
+          case s: Select =>
+            s.qual.targetSymbol match
+            case S(ds: InnerSymbol) =>
+              currentOwner = ds
+              currentQual = s.qual
+            case _ => continue = false
+          case _ => continue = false
+        mapping
+
+      def buildAmbientSymbolMapping(callee: TermSymbol)(using State): Map[Symbol, Symbol] =
+        callee.getState.ambientSymbolMappingTo(State, ctx)
+
+      def accessesPrivateMembers(blk: Block): Bool =
+        var found = false
+        (new BlockTraverser:
+          override def applySymbol(sym: Symbol): Unit = sym match
+            case ts: TermSymbol if ts.isPrivate => found = true
+            case _ =>
+        ).applyBlock(blk)
+        found
+
+      def hasDuplicateBoundSymbols(fun: FunDefn): Bool =
+        val seen = MutSet.empty[BoundSymbol | LabelSymbol | ClassCtorSymbol]
+        var found = false
+        def register(sym: BoundSymbol | LabelSymbol | ClassCtorSymbol): Unit =
+          if seen(sym) then found = true
+          else seen += sym
+        def registerParamList(pl: ParamList): Unit =
+          pl.params.foreach(param => register(param.sym))
+          pl.restParam.foreach(param => register(param.sym))
+        (new BlockTraverser:
+          override def applyBlock(b: Block): Unit = b match
+            case Scoped(syms, body) =>
+              syms.foreach(register)
+              applyBlock(body)
+            case Label(lbl, loop, body, rest) =>
+              register(lbl)
+              applyBlock(body)
+              applyBlock(rest)
+            case _ => super.applyBlock(b)
+
+          override def applyFunDefn(fun: FunDefn): Unit =
+            register(fun.sym)
+            register(fun.dSym)
+            fun.params.foreach(registerParamList)
+            applyBlock(fun.body)
+
+          override def applyClsLikeDefn(defn: ClsLikeDefn): Unit =
+            register(defn.sym)
+            defn.ctorSym.foreach(register)
+            defn.paramsOpt.foreach(registerParamList)
+            defn.auxParams.foreach(registerParamList)
+            super.applyClsLikeDefn(defn)
+        ).applyFunDefn(fun)
+        found
+
       def matchArgs(args: List[Arg], params: ParamList): Option[List[(VarSymbol, Result)]] =
         if args.exists(_.spread.isDefined) then
           // we require a precise match when any arg is a spread arg
@@ -1028,16 +1147,47 @@ class BlockSimplifier
         
         inline def isLoopBreaker = _isLoopBreaker
         
+        // Whether this method belongs to a true module (as opposed to a class or
+        // an instance-based singleton object).
+        def isModuleMethod: Bool = defn.dSym.owner match
+          case S(owner: ModuleOrObjectSymbol) => owner.tree.k is syntax.Mod
+          case _ => false
+
         // Whether this function can be inlined without causing any code duplication,
         // i.e. the original definition can be removed and there is only one usage.
         def canBeInlineEliminated: Bool =
           isPrivate && !isMethod && !defn.noInline && useCount <= 1 && !disallowElimination && !isLoopBreaker
+            && !defn.owner.exists(_.isInstanceOf[PatternSymbol]) && !hasDuplicateBoundSymbols(defn)
           // false
         
         def shouldBeInlined(newBlk: Block, threshold: Int): Bool =
-          // method requires the capturing of `this`, which is not supported currently.
-          if isMethod then return false
           if defn.noInline then return false
+          // Pattern compiler helpers may intentionally reuse source pattern variables across
+          // mutually-exclusive generated blocks. Symbol-refreshing them as ordinary inline
+          // bodies is not sound, so keep those helpers in place.
+          if defn.owner.exists(_.isInstanceOf[PatternSymbol]) then return false
+          if hasDuplicateBoundSymbols(defn) then return false
+          // Instance methods access instance state via `this`, so they must not be
+          // inlined as if they were static calls. True modules are safe because
+          // their `this` references can be replaced by call-site qualifier paths.
+          if isMethod && !isModuleMethod then return false
+          // Instantiate nodes are rendered according to the receiving JS builder's
+          // freezing policy. Moving a body across compilation units with a different
+          // policy could silently turn mutable values into frozen values, or vice versa.
+          if defn.dSym.getState.compilationUnitConfig.exists(_.noFreeze =/= config.noFreeze)
+          then return false
+          // Accessors for JS-private members use a fresh Symbol shared by the owner
+          // definition and its out-of-owner references within one emitted module.
+          // There is deliberately no cross-module accessor ABI, so keep such accesses
+          // in the compilation unit that defines them.
+          if (defn.dSym.getState isnt State) && accessesPrivateMembers(newBlk)
+          then return false
+          // `import.meta.url` denotes the file containing the generated code.
+          // Moving it into a caller would silently change its meaning.
+          if newBlk.freeVars.exists:
+            case sym: VarSymbol => sym.nme === "import"
+            case _ => false
+          then return false
           // If the definition is marked with inline, we should inline it regardless of the size of the body.
           // If both callee and caller are marked with inline, inlining will ignore the stricter @inline limits.
           // Remark: the case of a recursive function marked with inline will be blocked by loop breaker logic.
@@ -1102,6 +1252,13 @@ class BlockSimplifier
             argss.foreach(_.foreach(applyArg))
           case _ => super.applyResult(r)
         
+        override def applyValue(v: Value): Unit = v match
+          case Value.MemberRef(bms, ts: TermSymbol) =>
+            applySymbol(bms)
+            useCnt(ts) += 1
+            disallowElimination(ts) = true
+          case _ => super.applyValue(v)
+
         override def applySymbol(sym: Symbol): Unit =
           sym.asTrm.foreach: ts =>
             useCnt(ts) += 1
@@ -1155,7 +1312,7 @@ class BlockSimplifier
     
     object InlinerReplacer:
       
-      class Copier(resSym: LocalVarSymbol, existingMapping: Map[Symbol, Symbol])(using State):
+      class Copier(resSym: LocalVarSymbol, existingMapping: Map[Symbol, Symbol], thisMapping: Map[InnerSymbol, Path])(using State):
         val lblSym = LabelSymbol(N, "inlinedLbl")
         
         object Copier extends SymbolRefresher(existingMapping):
@@ -1173,6 +1330,18 @@ class BlockSimplifier
               applyResult(res): r2 =>
                 Assign(resSym, r2, Break(lblSym))
             case _ => super.applyBlock(b)
+
+          override def applyValue(v: Value)(k: Value => Block): Block = v match
+            case Value.This(sym) if thisMapping.contains(sym) =>
+              thisMapping(sym) match
+              case v2: Value => k(v2)
+              case _ => super.applyValue(v)(k)
+            case _ => super.applyValue(v)(k)
+
+          override def applyPath(p: Path)(k: Path => Block): Block = p match
+            case Value.This(sym) if thisMapping.contains(sym) =>
+              k(thisMapping(sym))
+            case _ => super.applyPath(p)(k)
         
         def applyBlock(blk: Block) =
           Label(lblSym, false, Copier.apply(blk), _)
@@ -1187,6 +1356,7 @@ class BlockSimplifier
         // Key in map with value -> the function is optimized
         val newFunctionBody = MutMap.empty[TermSymbol, Option[Block]]
         var insideInlineAnnotatedFunction = false
+        var insideCrossUnitFunctionBody = false
 
         inline def enterFunBlock[T](inlineAnnot: Bool, inline thunk: => T): T =
           val old = insideInlineAnnotatedFunction
@@ -1195,6 +1365,16 @@ class BlockSimplifier
           insideInlineAnnotatedFunction = old
           res
         
+        inline def enterFunctionBody[T](fun: FunDefn, inline thunk: => T): T =
+          val old = insideCrossUnitFunctionBody
+          insideCrossUnitFunctionBody = fun.dSym.getState isnt State
+          val res = enterFunBlock(fun.inline, thunk)
+          insideCrossUnitFunctionBody = old
+          res
+
+        def shouldDeferCrossUnitInline(info: InlinerAnalyzer.InlinerFunInfo): Bool =
+          insideCrossUnitFunctionBody && (info.defn.dSym.getState isnt State) && !info.defn.inline
+
         override def applyMainBlock(main: Block): Block =
           super.applyMainBlock(main).flattened
         
@@ -1210,7 +1390,7 @@ class BlockSimplifier
           newFunctionBody.get(fun.dSym) match
             case N =>
               newFunctionBody(fun.dSym) = N
-              val newBdy = enterFunBlock(fun.inline, applyBlock(fun.body))
+              val newBdy = enterFunctionBody(fun, applyBlock(fun.body))
               newFunctionBody(fun.dSym) = S(newBdy)
               if newBdy is fun.body then fun else
               FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, newBdy)(fun.configOverride, fun.annotations)
@@ -1222,12 +1402,59 @@ class BlockSimplifier
               FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, blk)(fun.configOverride, fun.annotations)
         
         override def applyResult(r: Result)(k: Result => Block): Block = r match
-          case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
+          case c @ Call(MethodCallQualifier(qual, ts), argss) if m.contains(ts) && argss.nonEmpty =>
+            // `this.method()` calls inside constructors/methods are deliberately left alone:
+            // inlining them can bypass runtime checks and resolve forward references too early.
+            if shouldDeferCrossUnitInline(m(ts)) then return super.applyResult(r)(k)
+            if qual.isInstanceOf[Value.This] then return super.applyResult(r)(k)
             if m(ts).isLoopBreaker then return super.applyResult(r)(k)
             newFunctionBody.get(ts)
             .getOrElse:
               newFunctionBody(ts) = N
-              val newBdy = enterFunBlock(m(ts).defn.inline, applyBlock(m(ts).defn.body))
+              val newBdy = enterFunctionBody(m(ts).defn, applyBlock(m(ts).defn.body))
+              newFunctionBody(ts) = S(newBdy)
+              S(newBdy)
+            .fold(super.applyResult(r)(k)): blk =>
+              val info = m(ts)
+              val cfg = summon[Config.Inliner]
+              val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
+              if !info.shouldBeInlined(blk, threshold) then
+                super.applyResult(r)(k)
+              else
+                val matchedArgs = matchAllArgs(argss, info.defn.params)
+                matchedArgs match
+                case N =>
+                  super.applyResult(r)(k)
+                case S(matchedArgs) =>
+                  registerChange(s"inline call ${ts.showDbg}")
+                  log(s"Inline call for ${ts}, with args ${argss}")
+                  val extraArgss = argss.drop(info.defn.params.length)
+                  val thisMap = ts.owner match
+                    case S(ownerSym: InnerSymbol) => buildThisMapping(qual, ownerSym)
+                    case _ => Map.empty[InnerSymbol, Path]
+                  def go(acc: Block => Block, args: List[(VarSymbol, Result)], mapping: Map[Symbol, Symbol]): Block =
+                    args match
+                    case Nil =>
+                      val resSym = TempSymbol(N, "inlinedVal")
+                      val copier = Copier(resSym, mapping, thisMap)
+                      val newBlk = copier.applyBlock(blk)
+                      if extraArgss.isEmpty then
+                        acc(Scoped(Set.single(resSym), newBlk(k(resSym.asSimpleRef))))
+                      else
+                        acc(Scoped(Set(resSym), newBlk(
+                          k(Call(resSym.asSimpleRef, extraArgss.ne_!)(c.isMlsFun, c.mayRaiseEffects, false)))))
+                    case (sym, value) :: argRest =>
+                      val newSym = VarSymbol(sym.id)
+                      go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
+                  go(blockBuilder, matchedArgs, buildAmbientSymbolMapping(ts))
+
+          case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
+            if shouldDeferCrossUnitInline(m(ts)) then return super.applyResult(r)(k)
+            if m(ts).isLoopBreaker then return super.applyResult(r)(k)
+            newFunctionBody.get(ts)
+            .getOrElse:
+              newFunctionBody(ts) = N
+              val newBdy = enterFunctionBody(m(ts).defn, applyBlock(m(ts).defn.body))
               newFunctionBody(ts) = S(newBdy)
               S(newBdy)
             .fold(super.applyResult(r)(k)): blk =>
@@ -1249,7 +1476,7 @@ class BlockSimplifier
                     args match
                     case Nil =>
                       val resSym = TempSymbol(N, "inlinedVal")
-                      val copier = Copier(resSym, mapping)
+                      val copier = Copier(resSym, mapping, Map.empty)
                       val newBlk = copier.applyBlock(blk)
                       if extraArgss.isEmpty then
                         acc(Scoped(Set.single(resSym), newBlk(k(resSym.asSimpleRef))))
@@ -1259,7 +1486,7 @@ class BlockSimplifier
                     case (sym, value) :: argRest =>
                       val newSym = VarSymbol(sym.id)
                       go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
-                  go(blockBuilder, matchedArgs, Map.empty)
+                  go(blockBuilder, matchedArgs, buildAmbientSymbolMapping(ts))
           case _ => super.applyResult(r)(k)
       
       def replace(m: InlinerMap, prog: Program): Program =
