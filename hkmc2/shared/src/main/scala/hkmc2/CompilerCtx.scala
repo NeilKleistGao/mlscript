@@ -147,7 +147,7 @@ class CompilerCtx(
           val low = ltl.givenIn:
             new codegen.Lowering()
               with codegen.LoweringSelSanityChecks
-          low.program(blk0)
+          low.program(blk0, Set.empty)
       val ir = paths.map: compilerPaths =>
         artifactConfig.givenIn:
           def findQuote(t: semantics.Statement): Bool = t match
@@ -171,7 +171,7 @@ class CompilerCtx(
               with codegen.LoweringSelSanityChecks
           val jsb = ltl.givenIn:
             codegen.js.JSBuilder()
-          val lowered = low.program(blk)
+          val lowered = low.program(blk, Set.empty)
           val compilationUnitSymbols = collectCompilationUnitSymbols(lowered)
           var optimized = lowered
           val symbolsToPreserve: Set[codegen.BoundSymbol] =

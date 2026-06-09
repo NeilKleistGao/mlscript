@@ -56,7 +56,7 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
       doc"begin #{  # ${print(sub)}; #}  # ${print(rest)}"
     case TryBlock(sub, finallyDo, rest) =>
       doc"try #{  # ${print(sub)} #}  # finally #{  # ${print(finallyDo)}; #  #} ${print(rest)}"
-    case Assign(_: NoSymbol, rhs, rest) =>
+    case Assign(NoSymbol, rhs, rest) =>
       doc"do ${print(rhs)}; # ${print(rest)}"
     case Assign(lhs: (LocalVarSymbol | TermSymbol), rhs, rest) =>
       doc"set ${print(lhs)} = ${print(rhs)}; # ${print(rest)}"
@@ -210,25 +210,12 @@ class Printer(using Raise, ShowCfg, State, SymbolPrinter, Config):
   def print(imports: Ls[ImportSymbol -> Str])(using Scope): Document =
     imports.map: (local, path) =>
         val docLocal = scope.allocateName(local)
-        doc"import ${docLocal}; # "
+        doc"""import "..." as ${docLocal}; # """
       .mkDocument()
   
   def print(prog: Program)(using Scope): Document =
     doc"${print(prog.imports)}${print(prog.main)}"
   
   def worksheet(prog: Program)(using Scope): Document =
-    doc"${print(prog.imports)}${
-      prog.main match
-      case Scoped(syms, body) =>
-        // * The top-level Scoped block in a worksheet contains symbols that are actually
-        // * still visible in the following blocks;
-        // * therefore, we want to avoid printing them with fresh names but use their `dbgName`s instead.
-        scope.nest.givenIn:
-          import hkmc2.given_Ordering_Uid // Not sure why needed...
-          val names = syms.toList.sortBy(_.uid).map:
-            case s: TempSymbol => scope.allocateName(s)
-            case s => summon[SymbolPrinter].printSymbol(s)
-          doc"let ${names.mkString(", ")}; # ${print(body)}"
-      case m => print(m)
-    }"
+    print(prog)
   

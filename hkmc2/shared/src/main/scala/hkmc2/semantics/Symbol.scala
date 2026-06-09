@@ -154,9 +154,10 @@ end Symbol
 
 
 // * Used, eg, as the Assign receiver of intermediate computations whose result is not used
-final class NoSymbol(using State) extends MaybeSymbol:
+object NoSymbol extends MaybeSymbol:
   def nme: Str = "‹no symbol›"
   override def toString: Str = nme
+type NoSymbol = NoSymbol.type
 
 
 /** Symbols bound by `Program.imports`.
@@ -174,8 +175,6 @@ abstract class FlowSymbol(label: Str)(using State) extends Symbol:
   val outFlows: mutable.Buffer[FlowSymbol] = mutable.Buffer.empty
   val consumers: mutable.Buffer[Consumer] = mutable.Buffer.empty
   val producers: mutable.Buffer[ConcreteProd] = mutable.Buffer.empty
-  def showDbg: Str =
-    label + s"‹$uid›"
 
 object FlowSymbol:
   

@@ -61,7 +61,7 @@ class LoweringCtx(
     case _ => v
 object LoweringCtx:
   def loweringCtx(using sub: LoweringCtx): LoweringCtx = sub
-  val empty =
+  def empty =
     LoweringCtx(Map.empty, mayRet = false, collection.mutable.Set.empty)
   def nestFunc(using sub: LoweringCtx): LoweringCtx =
     LoweringCtx(sub.map, mayRet = true, sub.definedSymsDuringLowering)
@@ -154,7 +154,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       isTailCall = false,
       args,
       N, // TODO: location?
-    )(c => Assign(State.noSymbol, c, End()))
+    )(c => Assign(NoSymbol, c, End()))
   
   // * Used to work around Scala's @tailrec annotation for those few calls that are not in tail position.
   final def term_nonTail(t: st, inStmtPos: Bool = false)(k: Result => Block)(using LoweringCtx): Block =
@@ -180,7 +180,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         (k: Result => Block)(using LoweringCtx): Block =
     // TODO we should also isolate and reorder classes by inheritance topological sort
     val (imps, funs, rest) = splitBlock(stats, Nil, Nil, Nil)
-  
+    
     def blockImpl(stats: Ls[Statement], res: Rcd \/ Term)(using LoweringCtx): Block =
       stats match
       case (t: sem.Term) :: stats =>
@@ -1309,12 +1309,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         Assign(l, r, k(l |> Value.SimpleRef.apply))
   
   
-  def program(main: st.Blk): Program =
+  def program(main: st.Blk, symbolsToPreserve: Set[BoundSymbol]): Program =
     
     val (imps, funs, rest) = splitBlock(main.stats, Nil, Nil, Nil)
     
     val blk =
-      inScopedBlock(using LoweringCtx.empty):
+      inScopedBlockExcept(symbolsToPreserve)(using LoweringCtx.empty):
         block(funs ::: rest, R(main.res))(ImplctRet)
     
     val desug = LambdaRewriter.desugar(blk)
@@ -1386,9 +1386,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     setupFunctionDef(physicalParams, bodyTerm, name)
   
   def inScopedBlock(using LoweringCtx)(mkBlock: LoweringCtx ?=> Block): Block =
+    inScopedBlockExcept(Set.empty)(mkBlock)
+  def inScopedBlockExcept(syms: Set[BoundSymbol])(using LoweringCtx)(mkBlock: LoweringCtx ?=> Block): Block =
     LoweringCtx.nestScoped.givenIn:
       val body = mkBlock
-      val scopedSyms = loweringCtx.getCollectedSym
+      val scopedSyms = loweringCtx.getCollectedSym.filterNot(syms)
       Scoped(scopedSyms, body)
   
   def setupFunctionDef(paramLists: List[ParamList], bodyTerm: Term, name: Option[Str])
@@ -1459,7 +1461,7 @@ trait LoweringSelSanityChecks(using Config, TL, Raise, State)
       // * the access should throw an error like `TypeError: Cannot read property 'f' of undefined`.
       blockBuilder
         .assign(selRes, Select(p, nme)(disamb))
-        .assign(State.noSymbol, Select(p, Tree.Ident(nme.name+"$__checkNotMethod"))(N))
+        .assign(NoSymbol, Select(p, Tree.Ident(nme.name+"$__checkNotMethod"))(N))
           .ifthen(selRes.asSimpleRef,
             Case.Lit(syntax.Tree.UnitLit(false)),
             Throw(Instantiate(mut = false, Select(State.globalThisSymbol.asThis, Tree.Ident("Error"))(N),
@@ -1480,7 +1482,7 @@ trait LoweringTraceLog(instrument: Bool)(using TL, Raise, State)
     stmts.foldRight(rest):
       case ((sym, res), acc) => Assign(sym, res, acc)
   
-  private def pureCall(fn: Path, args: Ls[Arg]): Call =
+  private def pureCall(fn: Path, args: Ls[Arg]): Result =
     Call(fn, args ne_:: Nil)(true, false, false)
   
   extension (k: Block => Block)
