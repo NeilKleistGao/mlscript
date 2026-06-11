@@ -2,7 +2,7 @@ package hkmc2
 
 import scala.collection.mutable
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 import utils.*
 
 import hkmc2.semantics.{Elaborator, Resolver, Resolvable, Symbol, SymbolPrinter}
@@ -184,6 +184,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       inlining = Opt.when(!noInlineOpt.isSet)(Config.Inliner(inlineThreshold =
         inlineThreshold.get.getOrElse(Config.default.inlineThreshold))),
       deadBranchRemoval = Config.default.deadBranchRemoval,
+      disableDataFlowAnalysis = false,
       qqEnabled = importQQ.isSet,
       funcToCls = funcToCls.isSet,
       commentGeneratedCode = debug.isSet,
@@ -466,4 +467,3 @@ abstract class MLsDiffMaker extends DiffMaker:
           doc" #{ ${trm.showTopLevel(using flowScp)} #} \nwhere #{ ${floan.showFlows(using flowScp)} #} ".mkString()
     
   
-

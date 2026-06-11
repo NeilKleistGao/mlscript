@@ -4,11 +4,11 @@
 :staging
 
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ import Predef; end
+//│ import "..." as Predef; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 staged fun direct() = 1
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let direct⁰; @staged define direct⁰ as staged fun direct¹() { return 1 }; end
+//│ @staged define direct⁰ as staged fun direct¹() { return 1 }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -17,9 +17,9 @@ staged module LiftedNested with
     fun g() = 1
     g()
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let g⁰, LiftedNested⁰;
+//│ let g;
 //│ @staged
-//│ define g⁰ as staged fun g¹() {
+//│ define g as staged fun g⁰() {
 //│   return 1
 //│ };
 //│ define LiftedNested⁰ as class LiftedNested¹
@@ -94,12 +94,12 @@ staged module LiftedNested with
 staged module LiftedLambda with
   fun foo(x) = y => x + y
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let LiftedLambda⁰, lambda⁰, Function$⁰;
+//│ let lambda, Function$;
 //│ @staged @private
-//│ define lambda⁰ as staged fun lambda¹(x, y) {
+//│ define lambda as staged fun lambda⁰(x, y) {
 //│   return +⁰(x, y)
 //│ };
-//│ define Function$⁰ as class extends globalThis⁰.Function⁰ Function$¹ {
+//│ define Function$ as class Function$⁰ extends globalThis⁰.Function⁰ {
 //│   val x⁰;
 //│   constructor(x) {
 //│     do super⁰();
@@ -110,10 +110,10 @@ staged module LiftedLambda with
 //│     end
 //│   }
 //│   method call⁰ = fun call¹(y) {
-//│     return lambda¹(Function$¹.this.x﹖, y)
+//│     return lambda⁰(Function$⁰.this.x﹖, y)
 //│   }
 //│ }
-//│ module Function$² {
+//│ module Function$¹ {
 //│   constructor {
 //│     let tmp, tmp1, tmp2, tmp3, tmp4, sym, tmp5, tmp6, tmp7, sym1, tmp8, tmp9, tmp10, tmp11, tmp12;
 //│     set tmp3 = option⁰.None﹖;
@@ -122,14 +122,14 @@ staged module LiftedLambda with
 //│     set tmp5 = Block⁰.Param﹖(tmp4, sym);
 //│     set tmp6 = [tmp5];
 //│     set tmp7 = [tmp6];
-//│     set sym1 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$¹, tmp3, tmp7, true);
-//│     set tmp8 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$¹, sym1);
+//│     set sym1 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁰, tmp3, tmp7, true);
+//│     set tmp8 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁰, sym1);
 //│     set tmp9 = new globalThis⁰.Map﹖();
 //│     set tmp10 = ["call", "x"];
 //│     set tmp11 = new globalThis⁰.Set﹖(tmp10);
 //│     set tmp12 = new SpecializeHelpers⁰.FunCache﹖(tmp8, tmp9, tmp11);
 //│     define class$cache$Function$⁰ as val class$cache$Function$¹ = tmp12;
-//│     set tmp = ["call", Function$².this.call_gen﹖];
+//│     set tmp = ["call", Function$¹.this.call_gen﹖];
 //│     set tmp1 = [tmp];
 //│     set tmp2 = new globalThis⁰.Map﹖(tmp1);
 //│     define class$generatorMap$Function$⁰ as val class$generatorMap$Function$¹ = tmp2;
@@ -137,37 +137,37 @@ staged module LiftedLambda with
 //│   }
 //│   method generate² = fun generate³(source, path) {
 //│     let tmp, tmp1, tmp2;
-//│     set tmp = Function$².this.propagate﹖();
+//│     set tmp = Function$¹.this.propagate﹖();
 //│     set tmp1 = [];
-//│     set tmp2 = Block⁰.codegen﹖("Function$", Function$².this.class$cache$Function$﹖, source, path, tmp1);
+//│     set tmp2 = Block⁰.codegen﹖("Function$", Function$¹.this.class$cache$Function$﹖, source, path, tmp1);
 //│     end
 //│   }
 //│   method preCtor$_instr⁰ = fun preCtor$_instr¹() {
-//│     let sym, tmp, sym1, tmp1, tmp2, tmp3, sym2, tmp4, sym3, tmp5, tmp6, tmp7, sym4, tmp8, sel, tmp9, app, end, assign, tmp10;
+//│     let sym, tmp, sym1, tmp1, tmp2, tmp3, sym2, tmp4, tmp5, tmp6, sym3, tmp7, sel, tmp8, app, sym4, tmp9, end, assign, tmp10;
 //│     set sym = Block⁰.Symbol﹖("preCtor$");
 //│     set tmp = option⁰.None﹖;
 //│     set sym1 = Block⁰.Symbol﹖("x");
 //│     set tmp1 = Block⁰.Param﹖(tmp, sym1);
 //│     set tmp2 = [tmp1];
 //│     set tmp3 = [tmp2];
-//│     set sym2 = Block⁰.NoSymbol﹖();
-//│     set tmp4 = Block⁰.ValueSimpleRef﹖(sym2);
-//│     set sym3 = Block⁰.Symbol﹖("globalThis");
-//│     set tmp5 = Block⁰.ValueThis﹖(sym3);
-//│     set tmp6 = option⁰.None﹖;
-//│     set tmp7 = [];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function", globalThis⁰.Function⁰, tmp6, tmp7, false);
-//│     set tmp8 = runtime⁰.SymbolMap﹖.checkClassMap﹖(globalThis⁰.Function⁰, sym4);
-//│     set sel = Block⁰.Select﹖(tmp5, tmp8);
-//│     set tmp9 = [];
-//│     set app = Block⁰.Call﹖(sel, tmp9);
+//│     set sym2 = Block⁰.Symbol﹖("globalThis");
+//│     set tmp4 = Block⁰.ValueThis﹖(sym2);
+//│     set tmp5 = option⁰.None﹖;
+//│     set tmp6 = [];
+//│     set sym3 = Block⁰.ConcreteClassSymbol﹖("Function", globalThis⁰.Function⁰, tmp5, tmp6, false);
+//│     set tmp7 = runtime⁰.SymbolMap﹖.checkClassMap﹖(globalThis⁰.Function⁰, sym3);
+//│     set sel = Block⁰.Select﹖(tmp4, tmp7);
+//│     set tmp8 = [];
+//│     set app = Block⁰.Call﹖(sel, tmp8);
+//│     set sym4 = Block⁰.NoSymbol﹖();
+//│     set tmp9 = Block⁰.ValueSimpleRef﹖(sym4);
 //│     set end = Block⁰.End﹖();
-//│     set assign = Block⁰.Assign﹖(sym2, app, end);
+//│     set assign = Block⁰.Assign﹖(sym4, app, end);
 //│     set tmp10 = Block⁰.FunDefn﹖(sym, tmp3, assign);
 //│     return tmp10
 //│   }
 //│   method class$ctor$_instr⁰ = fun class$ctor$_instr¹() {
-//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, tmp6, var1, tmp7, tmp8, sym3, tmp9, tmp10, tmp11, sym4, tmp12, tmp13, sym5, end, tmp14, tmp15, assign, tmp16, tmp17;
+//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, var1, tmp6, tmp7, tmp8, sym3, tmp9, tmp10, tmp11, sym4, tmp12, tmp13, sym5, end, tmp14, tmp15, assign, tmp16, tmp17;
 //│     set sym = Block⁰.Symbol﹖("class$ctor$");
 //│     set tmp1 = option⁰.None﹖;
 //│     set sym1 = Block⁰.Symbol﹖("x");
@@ -176,16 +176,17 @@ staged module LiftedLambda with
 //│     set tmp4 = [tmp3];
 //│     set sym2 = Block⁰.Symbol﹖("tmp");
 //│     set tmp5 = [sym2];
-//│     set tmp6 = Block⁰.ValueSimpleRef﹖(sym2);
 //│     set var1 = Block⁰.ValueSimpleRef﹖(sym1);
+//│     set tmp6 = Block⁰.ValueSimpleRef﹖(sym2);
+//│     set tmp = tmp6;
 //│     set tmp7 = option⁰.None﹖;
 //│     set tmp8 = option⁰.None﹖;
 //│     set sym3 = Block⁰.Symbol﹖("x");
 //│     set tmp9 = Block⁰.Param﹖(tmp8, sym3);
 //│     set tmp10 = [tmp9];
 //│     set tmp11 = [tmp10];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$¹, tmp7, tmp11, true);
-//│     set tmp12 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$¹, sym4);
+//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁰, tmp7, tmp11, true);
+//│     set tmp12 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁰, sym4);
 //│     set tmp13 = option⁰.Some﹖(tmp12);
 //│     set sym5 = Block⁰.Symbol﹖("x");
 //│     set end = Block⁰.End﹖();
@@ -199,14 +200,14 @@ staged module LiftedLambda with
 //│   method propagate² = fun propagate³() {
 //│     let tmp_dyn, gen_call, gen_call1;
 //│     set tmp_dyn = ShapeSet⁰.mkDyn﹖();
-//│     set gen_call = Function$².this.call_gen﹖(tmp_dyn);
+//│     set gen_call = Function$¹.this.call_gen﹖(tmp_dyn);
 //│     set gen_call1 = gen_call(tmp_dyn);
 //│     end
 //│   }
 //│   method toCode² = fun toCode³() {
 //│     let tmp, tmp1;
 //│     set tmp = [];
-//│     set tmp1 = Block⁰.toCode﹖("Function$", Function$².this.class$cache$Function$﹖, tmp);
+//│     set tmp1 = Block⁰.toCode﹖("Function$", Function$¹.this.class$cache$Function$﹖, tmp);
 //│     return tmp1
 //│   }
 //│   method call_instr⁰ = fun call_instr¹() {
@@ -225,8 +226,8 @@ staged module LiftedLambda with
 //│     set tmp6 = Block⁰.Param﹖(tmp5, sym3);
 //│     set tmp7 = [tmp6];
 //│     set tmp8 = [tmp7];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$¹, tmp4, tmp8, true);
-//│     set tmp9 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$¹, sym4);
+//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁰, tmp4, tmp8, true);
+//│     set tmp9 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁰, sym4);
 //│     set tmp10 = Block⁰.ValueThis﹖(tmp9);
 //│     set tmp11 = Block⁰.Symbol﹖("x");
 //│     set sel = Block⁰.Select﹖(tmp10, tmp11);
@@ -244,7 +245,7 @@ staged module LiftedLambda with
 //│     set tmp = [cls];
 //│     set tmp1 = [y];
 //│     set tmp2 = [tmp, tmp1];
-//│     set tmp3 = SpecializeHelpers⁰.specialize﹖(Function$².this.class$cache$Function$﹖, "call", Function$².this.call_instr﹖, tmp2);
+//│     set tmp3 = SpecializeHelpers⁰.specialize﹖(Function$¹.this.class$cache$Function$﹖, "call", Function$¹.this.call_instr﹖, tmp2);
 //│     return tmp3
 //│   }
 //│ };
@@ -263,7 +264,7 @@ staged module LiftedLambda with
 //│     set tmp1 = [tmp];
 //│     set tmp2 = new globalThis⁰.Map﹖(tmp1);
 //│     define generatorMap$LiftedLambda⁰ as val generatorMap$LiftedLambda¹ = tmp2;
-//│     define Function$$LiftedLambda⁰ as val Function$$LiftedLambda¹ = Function$¹;
+//│     define Function$$LiftedLambda⁰ as val Function$$LiftedLambda¹ = Function$⁰;
 //│     end
 //│   }
 //│   method generate⁴ = fun generate⁵(source, path) {
@@ -295,7 +296,7 @@ staged module LiftedLambda with
 //│     return tmp1
 //│   }
 //│   method foo_instr⁰ = fun foo_instr¹() {
-//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, tmp6, var1, tmp7, tmp8, tmp9, sym3, tmp10, tmp11, tmp12, sym4, tmp13, var2, tmp14, inst, return1, assign, tmp15, tmp16;
+//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, var1, tmp6, tmp7, tmp8, sym3, tmp9, tmp10, tmp11, sym4, tmp12, var2, tmp13, inst, tmp14, return1, assign, tmp15, tmp16;
 //│     set sym = Block⁰.Symbol﹖("foo");
 //│     set tmp1 = option⁰.None﹖;
 //│     set sym1 = Block⁰.Symbol﹖("x");
@@ -304,21 +305,22 @@ staged module LiftedLambda with
 //│     set tmp4 = [tmp3];
 //│     set sym2 = Block⁰.Symbol﹖("tmp1");
 //│     set tmp5 = [sym2];
-//│     set tmp6 = Block⁰.ValueSimpleRef﹖(sym2);
 //│     set var1 = Block⁰.ValueSimpleRef﹖(sym1);
-//│     set tmp7 = Block⁰.Arg﹖(var1);
+//│     set tmp6 = Block⁰.Arg﹖(var1);
+//│     set tmp7 = option⁰.None﹖;
 //│     set tmp8 = option⁰.None﹖;
-//│     set tmp9 = option⁰.None﹖;
 //│     set sym3 = Block⁰.Symbol﹖("x");
-//│     set tmp10 = Block⁰.Param﹖(tmp9, sym3);
+//│     set tmp9 = Block⁰.Param﹖(tmp8, sym3);
+//│     set tmp10 = [tmp9];
 //│     set tmp11 = [tmp10];
-//│     set tmp12 = [tmp11];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$¹, tmp8, tmp12, true);
-//│     set tmp13 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$¹, sym4);
-//│     set var2 = Block⁰.ValueMemberRef﹖(tmp13);
-//│     set tmp14 = [tmp7];
-//│     set inst = Block⁰.Instantiate﹖(var2, tmp14);
-//│     set return1 = Block⁰.Return﹖(tmp6);
+//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁰, tmp7, tmp11, true);
+//│     set tmp12 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁰, sym4);
+//│     set var2 = Block⁰.ValueMemberRef﹖(tmp12);
+//│     set tmp13 = [tmp6];
+//│     set inst = Block⁰.Instantiate﹖(var2, tmp13);
+//│     set tmp14 = Block⁰.ValueSimpleRef﹖(sym2);
+//│     set tmp = tmp14;
+//│     set return1 = Block⁰.Return﹖(tmp14);
 //│     set assign = Block⁰.Assign﹖(sym2, inst, return1);
 //│     set tmp15 = Block⁰.Scoped﹖(tmp5, assign);
 //│     set tmp16 = Block⁰.FunDefn﹖(sym, tmp4, tmp15);
@@ -338,12 +340,12 @@ staged module LiftedLambda with
 staged module LiftedMultParams with
   fun foo(x)(y) = x + y
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let LiftedMultParams⁰, lambda$⁰, Function$³;
+//│ let lambda$, Function$;
 //│ @staged
-//│ define lambda$⁰ as staged fun lambda$¹(x, y) {
+//│ define lambda$ as staged fun lambda$⁰(x, y) {
 //│   return +⁰(x, y)
 //│ };
-//│ define Function$³ as class extends globalThis⁰.Function⁰ Function$⁴ {
+//│ define Function$ as class Function$² extends globalThis⁰.Function⁰ {
 //│   val x²;
 //│   constructor(x) {
 //│     do super⁰();
@@ -354,10 +356,10 @@ staged module LiftedMultParams with
 //│     end
 //│   }
 //│   method call² = fun call³(y) {
-//│     return lambda$¹(Function$⁴.this.x﹖, y)
+//│     return lambda$⁰(Function$².this.x﹖, y)
 //│   }
 //│ }
-//│ module Function$⁵ {
+//│ module Function$³ {
 //│   constructor {
 //│     let tmp, tmp1, tmp2, tmp3, tmp4, sym, tmp5, tmp6, tmp7, sym1, tmp8, tmp9, tmp10, tmp11, tmp12;
 //│     set tmp3 = option⁰.None﹖;
@@ -366,14 +368,14 @@ staged module LiftedMultParams with
 //│     set tmp5 = Block⁰.Param﹖(tmp4, sym);
 //│     set tmp6 = [tmp5];
 //│     set tmp7 = [tmp6];
-//│     set sym1 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁴, tmp3, tmp7, true);
-//│     set tmp8 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁴, sym1);
+//│     set sym1 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$², tmp3, tmp7, true);
+//│     set tmp8 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$², sym1);
 //│     set tmp9 = new globalThis⁰.Map﹖();
 //│     set tmp10 = ["call", "x"];
 //│     set tmp11 = new globalThis⁰.Set﹖(tmp10);
 //│     set tmp12 = new SpecializeHelpers⁰.FunCache﹖(tmp8, tmp9, tmp11);
 //│     define class$cache$Function$² as val class$cache$Function$³ = tmp12;
-//│     set tmp = ["call", Function$⁵.this.call_gen﹖];
+//│     set tmp = ["call", Function$³.this.call_gen﹖];
 //│     set tmp1 = [tmp];
 //│     set tmp2 = new globalThis⁰.Map﹖(tmp1);
 //│     define class$generatorMap$Function$² as val class$generatorMap$Function$³ = tmp2;
@@ -381,37 +383,37 @@ staged module LiftedMultParams with
 //│   }
 //│   method generate⁶ = fun generate⁷(source, path) {
 //│     let tmp, tmp1, tmp2;
-//│     set tmp = Function$⁵.this.propagate﹖();
+//│     set tmp = Function$³.this.propagate﹖();
 //│     set tmp1 = [];
-//│     set tmp2 = Block⁰.codegen﹖("Function$", Function$⁵.this.class$cache$Function$﹖, source, path, tmp1);
+//│     set tmp2 = Block⁰.codegen﹖("Function$", Function$³.this.class$cache$Function$﹖, source, path, tmp1);
 //│     end
 //│   }
 //│   method preCtor$_instr² = fun preCtor$_instr³() {
-//│     let sym, tmp, sym1, tmp1, tmp2, tmp3, sym2, tmp4, sym3, tmp5, tmp6, tmp7, sym4, tmp8, sel, tmp9, app, end, assign, tmp10;
+//│     let sym, tmp, sym1, tmp1, tmp2, tmp3, sym2, tmp4, tmp5, tmp6, sym3, tmp7, sel, tmp8, app, sym4, tmp9, end, assign, tmp10;
 //│     set sym = Block⁰.Symbol﹖("preCtor$");
 //│     set tmp = option⁰.None﹖;
 //│     set sym1 = Block⁰.Symbol﹖("x");
 //│     set tmp1 = Block⁰.Param﹖(tmp, sym1);
 //│     set tmp2 = [tmp1];
 //│     set tmp3 = [tmp2];
-//│     set sym2 = Block⁰.NoSymbol﹖();
-//│     set tmp4 = Block⁰.ValueSimpleRef﹖(sym2);
-//│     set sym3 = Block⁰.Symbol﹖("globalThis");
-//│     set tmp5 = Block⁰.ValueThis﹖(sym3);
-//│     set tmp6 = option⁰.None﹖;
-//│     set tmp7 = [];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function", globalThis⁰.Function⁰, tmp6, tmp7, false);
-//│     set tmp8 = runtime⁰.SymbolMap﹖.checkClassMap﹖(globalThis⁰.Function⁰, sym4);
-//│     set sel = Block⁰.Select﹖(tmp5, tmp8);
-//│     set tmp9 = [];
-//│     set app = Block⁰.Call﹖(sel, tmp9);
+//│     set sym2 = Block⁰.Symbol﹖("globalThis");
+//│     set tmp4 = Block⁰.ValueThis﹖(sym2);
+//│     set tmp5 = option⁰.None﹖;
+//│     set tmp6 = [];
+//│     set sym3 = Block⁰.ConcreteClassSymbol﹖("Function", globalThis⁰.Function⁰, tmp5, tmp6, false);
+//│     set tmp7 = runtime⁰.SymbolMap﹖.checkClassMap﹖(globalThis⁰.Function⁰, sym3);
+//│     set sel = Block⁰.Select﹖(tmp4, tmp7);
+//│     set tmp8 = [];
+//│     set app = Block⁰.Call﹖(sel, tmp8);
+//│     set sym4 = Block⁰.NoSymbol﹖();
+//│     set tmp9 = Block⁰.ValueSimpleRef﹖(sym4);
 //│     set end = Block⁰.End﹖();
-//│     set assign = Block⁰.Assign﹖(sym2, app, end);
+//│     set assign = Block⁰.Assign﹖(sym4, app, end);
 //│     set tmp10 = Block⁰.FunDefn﹖(sym, tmp3, assign);
 //│     return tmp10
 //│   }
 //│   method class$ctor$_instr² = fun class$ctor$_instr³() {
-//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, tmp6, var1, tmp7, tmp8, sym3, tmp9, tmp10, tmp11, sym4, tmp12, tmp13, sym5, end, tmp14, tmp15, assign, tmp16, tmp17;
+//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, var1, tmp6, tmp7, tmp8, sym3, tmp9, tmp10, tmp11, sym4, tmp12, tmp13, sym5, end, tmp14, tmp15, assign, tmp16, tmp17;
 //│     set sym = Block⁰.Symbol﹖("class$ctor$");
 //│     set tmp1 = option⁰.None﹖;
 //│     set sym1 = Block⁰.Symbol﹖("x");
@@ -420,16 +422,17 @@ staged module LiftedMultParams with
 //│     set tmp4 = [tmp3];
 //│     set sym2 = Block⁰.Symbol﹖("tmp");
 //│     set tmp5 = [sym2];
-//│     set tmp6 = Block⁰.ValueSimpleRef﹖(sym2);
 //│     set var1 = Block⁰.ValueSimpleRef﹖(sym1);
+//│     set tmp6 = Block⁰.ValueSimpleRef﹖(sym2);
+//│     set tmp = tmp6;
 //│     set tmp7 = option⁰.None﹖;
 //│     set tmp8 = option⁰.None﹖;
 //│     set sym3 = Block⁰.Symbol﹖("x");
 //│     set tmp9 = Block⁰.Param﹖(tmp8, sym3);
 //│     set tmp10 = [tmp9];
 //│     set tmp11 = [tmp10];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁴, tmp7, tmp11, true);
-//│     set tmp12 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁴, sym4);
+//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$², tmp7, tmp11, true);
+//│     set tmp12 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$², sym4);
 //│     set tmp13 = option⁰.Some﹖(tmp12);
 //│     set sym5 = Block⁰.Symbol﹖("x");
 //│     set end = Block⁰.End﹖();
@@ -443,14 +446,14 @@ staged module LiftedMultParams with
 //│   method propagate⁶ = fun propagate⁷() {
 //│     let tmp_dyn, gen_call, gen_call1;
 //│     set tmp_dyn = ShapeSet⁰.mkDyn﹖();
-//│     set gen_call = Function$⁵.this.call_gen﹖(tmp_dyn);
+//│     set gen_call = Function$³.this.call_gen﹖(tmp_dyn);
 //│     set gen_call1 = gen_call(tmp_dyn);
 //│     end
 //│   }
 //│   method toCode⁶ = fun toCode⁷() {
 //│     let tmp, tmp1;
 //│     set tmp = [];
-//│     set tmp1 = Block⁰.toCode﹖("Function$", Function$⁵.this.class$cache$Function$﹖, tmp);
+//│     set tmp1 = Block⁰.toCode﹖("Function$", Function$³.this.class$cache$Function$﹖, tmp);
 //│     return tmp1
 //│   }
 //│   method call_instr² = fun call_instr³() {
@@ -469,8 +472,8 @@ staged module LiftedMultParams with
 //│     set tmp6 = Block⁰.Param﹖(tmp5, sym3);
 //│     set tmp7 = [tmp6];
 //│     set tmp8 = [tmp7];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁴, tmp4, tmp8, true);
-//│     set tmp9 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁴, sym4);
+//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$², tmp4, tmp8, true);
+//│     set tmp9 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$², sym4);
 //│     set tmp10 = Block⁰.ValueThis﹖(tmp9);
 //│     set tmp11 = Block⁰.Symbol﹖("x");
 //│     set sel = Block⁰.Select﹖(tmp10, tmp11);
@@ -488,7 +491,7 @@ staged module LiftedMultParams with
 //│     set tmp = [cls];
 //│     set tmp1 = [y];
 //│     set tmp2 = [tmp, tmp1];
-//│     set tmp3 = SpecializeHelpers⁰.specialize﹖(Function$⁵.this.class$cache$Function$﹖, "call", Function$⁵.this.call_instr﹖, tmp2);
+//│     set tmp3 = SpecializeHelpers⁰.specialize﹖(Function$³.this.class$cache$Function$﹖, "call", Function$³.this.call_instr﹖, tmp2);
 //│     return tmp3
 //│   }
 //│ };
@@ -507,7 +510,7 @@ staged module LiftedMultParams with
 //│     set tmp1 = [tmp];
 //│     set tmp2 = new globalThis⁰.Map﹖(tmp1);
 //│     define generatorMap$LiftedMultParams⁰ as val generatorMap$LiftedMultParams¹ = tmp2;
-//│     define Function$$LiftedMultParams⁰ as val Function$$LiftedMultParams¹ = Function$⁴;
+//│     define Function$$LiftedMultParams⁰ as val Function$$LiftedMultParams¹ = Function$²;
 //│     end
 //│   }
 //│   method generate⁸ = fun generate⁹(source, path) {
@@ -539,7 +542,7 @@ staged module LiftedMultParams with
 //│     return tmp1
 //│   }
 //│   method foo_instr² = fun foo_instr³() {
-//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, tmp6, var1, tmp7, tmp8, tmp9, sym3, tmp10, tmp11, tmp12, sym4, tmp13, var2, tmp14, inst, return1, assign, tmp15, tmp16;
+//│     let tmp, sym, tmp1, sym1, tmp2, tmp3, tmp4, sym2, tmp5, var1, tmp6, tmp7, tmp8, sym3, tmp9, tmp10, tmp11, sym4, tmp12, var2, tmp13, inst, tmp14, return1, assign, tmp15, tmp16;
 //│     set sym = Block⁰.Symbol﹖("foo");
 //│     set tmp1 = option⁰.None﹖;
 //│     set sym1 = Block⁰.Symbol﹖("x");
@@ -548,21 +551,22 @@ staged module LiftedMultParams with
 //│     set tmp4 = [tmp3];
 //│     set sym2 = Block⁰.Symbol﹖("tmp1");
 //│     set tmp5 = [sym2];
-//│     set tmp6 = Block⁰.ValueSimpleRef﹖(sym2);
 //│     set var1 = Block⁰.ValueSimpleRef﹖(sym1);
-//│     set tmp7 = Block⁰.Arg﹖(var1);
+//│     set tmp6 = Block⁰.Arg﹖(var1);
+//│     set tmp7 = option⁰.None﹖;
 //│     set tmp8 = option⁰.None﹖;
-//│     set tmp9 = option⁰.None﹖;
 //│     set sym3 = Block⁰.Symbol﹖("x");
-//│     set tmp10 = Block⁰.Param﹖(tmp9, sym3);
+//│     set tmp9 = Block⁰.Param﹖(tmp8, sym3);
+//│     set tmp10 = [tmp9];
 //│     set tmp11 = [tmp10];
-//│     set tmp12 = [tmp11];
-//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$⁴, tmp8, tmp12, true);
-//│     set tmp13 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$⁴, sym4);
-//│     set var2 = Block⁰.ValueMemberRef﹖(tmp13);
-//│     set tmp14 = [tmp7];
-//│     set inst = Block⁰.Instantiate﹖(var2, tmp14);
-//│     set return1 = Block⁰.Return﹖(tmp6);
+//│     set sym4 = Block⁰.ConcreteClassSymbol﹖("Function$", Function$², tmp7, tmp11, true);
+//│     set tmp12 = runtime⁰.SymbolMap﹖.checkClassMap﹖(Function$², sym4);
+//│     set var2 = Block⁰.ValueMemberRef﹖(tmp12);
+//│     set tmp13 = [tmp6];
+//│     set inst = Block⁰.Instantiate﹖(var2, tmp13);
+//│     set tmp14 = Block⁰.ValueSimpleRef﹖(sym2);
+//│     set tmp = tmp14;
+//│     set return1 = Block⁰.Return﹖(tmp14);
 //│     set assign = Block⁰.Assign﹖(sym2, inst, return1);
 //│     set tmp15 = Block⁰.Scoped﹖(tmp5, assign);
 //│     set tmp16 = Block⁰.FunDefn﹖(sym, tmp4, tmp15);
