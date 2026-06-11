@@ -1438,6 +1438,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     
     annotations.foreach:
       case Annot.Untyped => ()
+      case annot @ Annot.Special => receiver match
+        case st.App(Ref(_: BuiltinSymbol), _) => warn(annot)
+        case st.App(_, _) | New(_, _, _) | DynNew(_, _) | Mut(_: New | _: DynNew) => ()
+        case st.Resolved(_, defnSym) if isImplicitNullaryCall(defnSym) => ()
+        case _ => warn(annot)
       case annot: Annot.Trm => receiver match
         case st.App(Ref(_: BuiltinSymbol), _) => warn(annot)
         case st.App(_, _) | New(_, _, _) | DynNew(_, _) | Mut(_: New | _: DynNew) => ()
