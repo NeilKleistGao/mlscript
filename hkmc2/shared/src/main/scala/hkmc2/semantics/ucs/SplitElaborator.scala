@@ -251,7 +251,7 @@ trait SplitElaborator:
     private inline def reference(continuation: Reference => SimpleSplit): SimpleSplit =
       term match
         // If the term is already a reference, we can re-reference its symbol.
-        case Term.Ref(symbol) => continuation(() => symbol.ref())
+        case Term.Ref(symbol) => continuation(() => symbol.ref().withLocOf(term))
         // Otherwise, we need to create a temporary symbol holding the term.
         case term: Term =>
           val symbol = TempSymbol(N, "scrut")

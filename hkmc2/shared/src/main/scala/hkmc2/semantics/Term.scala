@@ -652,7 +652,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case New(cls, args, rft) => "object creation"
       case SelProj(pre, cls, proj) => "field selection"
       case Asc(term, ty) => "type ascription"
-      case CompType(lhs, rhs, pol) => "composed type"
+      case CompType(lhs, rhs, pol) => if pol then "alternation" else "composition"
       case Neg(rhs) => "negation type"
       case Region(name, body) => "region expression"
       case RegRef(reg, value) => "reference creation"

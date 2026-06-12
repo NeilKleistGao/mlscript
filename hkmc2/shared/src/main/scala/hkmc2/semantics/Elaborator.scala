@@ -751,10 +751,6 @@ extends Importer with ucs.SplitElaborator:
         raise:
           ErrorReport(msg"Cannot use 'this' outside of an object scope" -> tree.toLoc :: Nil)
         error
-    case id @ Ident("|" | "&") =>
-      raise:
-        ErrorReport(msg"Unexpected use of special operator '${id.name}'" -> id.toLoc :: Nil)
-      error
     case id @ Ident(name) => ident(id).getOrElse:
       raise(ErrorReport(msg"Name not found: $name" -> id.toLoc :: Nil))
       error
@@ -835,21 +831,21 @@ extends Importer with ucs.SplitElaborator:
           raise(ErrorReport(msg"Identifier `${idn.name}` does not name a known class symbol." -> idn.toLoc :: Nil))
           N
       Term.SelProj(subterm(pre), c, idp)(f, FlowSymbol.selProj(idp.name), N, S(summon))
+    case InfixApp(lhs, op @ Keywrd(Keyword.`|`), rhs) =>
+      Term.CompType(subterm(lhs), subterm(rhs), true)//.withLocOf(tree)
+    case InfixApp(lhs, op @ Keywrd(Keyword.`&`), rhs) =>
+      Term.CompType(subterm(lhs), subterm(rhs), false)//.withLocOf(tree)
     case InfixApp(lhs, kw, rhs) =>
       raise:
         ErrorReport(msg"Unexpected infix use of keyword '${kw.name}' here" -> tree.toLoc :: Nil)
       error
-    case OpApp(lhs, Ident("|"), rhs :: Nil) =>
-      Term.CompType(subterm(lhs), subterm(rhs), true)
-    case OpApp(lhs, Ident("&"), rhs :: Nil) =>
-      Term.CompType(subterm(lhs), subterm(rhs), false)
     case OpApp(lhs, Ident(":="),rhs :: Nil) =>
       Term.SetRef(subterm(lhs), subterm(rhs))
     case App(Ident("!"), Tup(rhs :: Nil)) =>
       Term.Deref(subterm(rhs))
     case App(Ident("~"), Tup(rhs :: Nil)) =>
       Term.Neg(subterm(rhs))
-    case App(Ident("|" | "&"), Tup(rhs :: Nil)) =>
+    case PrefixApp(Keywrd(Keyword.`|` | Keyword.`&`), rhs) =>
       subterm(rhs)
     case tree @ OpSplit(lhs, rhss) =>
       val tree = rhss.foldLeft(lhs):
@@ -2115,10 +2111,10 @@ extends Importer with ucs.SplitElaborator:
       case app @ App(Ident("-"), Tup(DecLit(n) :: Nil)) =>
         Literal(DecLit(-n).withLocOf(app))
       // Union and intersection patterns: `p | q` and `p & q`
-      case App(Ident(op @ ("|" | "&")), Tup(rhs :: Nil)) =>
+      case PrefixApp(Keywrd(Keyword.`|` | Keyword.`&`), rhs) =>
         go(rhs) // unary uses of `|` and `&` are no-ops
-      case OpApp(lhs, Ident(op @ ("|" | "&")), rhs :: Nil) =>
-        Composition(op === "|", go(lhs), go(rhs))
+      case InfixApp(lhs, Keywrd(op @ (Keyword.`|` | Keyword.`&`)), rhs) =>
+        Composition(op is Keyword.`|`, go(lhs), go(rhs))
       // Constructor patterns with pattern arguments and arguments.
       case App(ctor: Ctor, Tup(argTrees)) =>
         Constructor(term(ctor), S(argTrees.map(go(_))))
