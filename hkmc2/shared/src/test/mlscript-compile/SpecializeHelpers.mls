@@ -529,6 +529,22 @@ fun propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss) =
   mergeAssigned(ctx.ctx, assigned)
   [UCS(p, branches.map(branch => [branch.0, branch.1])), retShape, canReachEnd]
 
+fun propUCSMatch(ctx, p, arms, dflt, restBlock, pss) =
+  let branches = orderedUCSShapes(pss).map(shape =>
+    let branchCtx = ctx.clone
+    branchCtx.refine(p, lift(shape))
+    let res = prop(branchCtx, Match(p, arms, dflt, restBlock))
+    [shape, res.0, res.1, res.2, branchCtx.sub(ctx)]
+  )
+  let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
+  let canReachEnd = branches.some(_.3)
+  let assigned = foldl((acc, branch) =>
+    mergeAssigned(acc, branch.4)
+    acc
+  )(new Map(), ...branches)
+  mergeAssigned(ctx.ctx, assigned)
+  [UCS(p, branches.map(branch => [branch.0, branch.1])), retShape, canReachEnd]
+
 // [retBlock, retShape, canReachEnd]
 fun prop(ctx, b) = if b is
     End() then [b, mkBot(), true]
@@ -560,6 +576,10 @@ fun prop(ctx, b) = if b is
       sor(ctx, r) is [blk, r1, s1] and
         prop(ctx.add(ValueSimpleRef(x), s1), restBlock) is [b2, s2, canReachEnd] then
           [concat(blk, Assign(x, r1, b2)), s2, canReachEnd]
+    Match(p, arms, dflt, restBlock) and
+      let pss = sop(ctx, p)
+      needsUCS(pss) then
+        propUCSMatch(ctx, p, arms, dflt, restBlock, pss)
     Match(p, arms, dflt, restBlock) then
       let s = sop(ctx, p)
       fun propBranch(body, branchShape) =

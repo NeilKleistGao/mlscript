@@ -247,8 +247,8 @@ class Printer(val owner: Opt[Symbol]) with
   fun showArm(a) =
     showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
 
-  fun showUCSArm(a) =
-    a.0.toPattern(this) + " then" + (if a.1 is Return then " " else "\n  ") + indent(showBlock(a.1))
+  fun showUCSArm(a, branchShapes) =
+    a.0.toUCSPattern(this, branchShapes) + " then" + (if a.1 is Return then " " else "\n  ") + indent(showBlock(a.1))
 
   fun showParams(pl: ParamList) =
     // do not print constraints to next stage
@@ -386,8 +386,9 @@ class Printer(val owner: Opt[Symbol]) with
         + showRestBlock(rest)
       UCS(scrut, arms) then
         let printer = this
+        let branchShapes = arms.map(_.0)
         "if " + showPath(scrut) + " is"
-        + indent("\n" + arms.map(printer.showUCSArm(_)).join("\n"))
+        + indent("\n" + arms.map(a => printer.showUCSArm(a, branchShapes)).join("\n"))
       Scoped(symbols, rest) then
         // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)

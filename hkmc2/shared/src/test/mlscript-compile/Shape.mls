@@ -21,7 +21,7 @@ class Shape extends CachedHash with
     Lit(val l: Literal)
     Arr(val shapes: Array[ShSet])
     Class(val sym: ConcreteClassSymbol, val fields: Array[ShSet], val isSpecial: Bool) // TODO: track the auxParams as well
-  fun toPattern(printer) = showPattern(this, printer)
+  fun toUCSPattern(printer, branchShapes) = showUCSPattern(this, printer, branchShapes)
 
 fun show(s: Shape) =
   if s is
@@ -44,6 +44,34 @@ fun showPattern(s: Shape, printer) =
       let cls = printer.showSymbol(sym)
       if isSpecial then cls + "(" + fields.map(showPatternSet(_, printer)).join(", ") + ")"
       else cls
+
+// This mask only simplifies emitted UCS patterns; the branch shapes remain unchanged.
+fun sharedPatternFields(s: Shape, branchShapes: Array[Shape]) =
+  if s is
+    Class(sym1, fields, _) then
+      let sameClassShapes = branchShapes.filter(s' =>
+        if s' is Class(sym2, _, _) then
+          getActualClass(sym1.value) == getActualClass(sym2.value)
+        else false
+      )
+      if sameClassShapes.length < 2 then Array(fields.length).fill(false)
+      else fields.map((field, i, _) =>
+        sameClassShapes.every(other =>
+          if other is Class(_, otherFields, _) then
+            i < otherFields.length and field.hash() == otherFields.(i).hash()
+          else false
+        )
+      )
+
+fun showUCSPattern(s: Shape, printer, branchShapes: Array[Shape]) =
+  if s is
+    Class(sym, fields, true) then
+      let sharedFields = sharedPatternFields(s, branchShapes)
+      printer.showSymbol(sym) + "(" +
+        fields.map((field, i, _) =>
+          if sharedFields.(i) then "_" else showPatternSet(field, printer)
+        ).join(", ") + ")"
+    else showPattern(s, printer)
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is
