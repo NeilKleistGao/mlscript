@@ -219,7 +219,7 @@ fun sov(v): ShapeSet =
         let argsMap = new Map()
         if not (paramsOpt is None) do
           meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n))))
-        mkClassFromMap(classSymbol, argsMap, None) // FIXME
+        mkClassFromMap(classSymbol, argsMap, None, false) // FIXME
     else mkDyn() // unknown shape of value
 
 // shape of path
@@ -268,7 +268,7 @@ class SplitResult(val knownMap: Map[Class, [ConcreteClassSymbol, ShapeSet]], val
 fun fsplit(pss) = 
   let knownMap = new Map()
   let unkShape = foldl((acc, s) => if s is
-    Class(sym, params) and isStagedClass(sym.value) then
+    Class(sym, params, _) and isStagedClass(sym.value) then
       let key = getActualClass(sym.value)
       if knownMap.has(key) then
         let entry = knownMap.get(key)
@@ -282,7 +282,7 @@ fun fsplit(pss) =
 fun lit(l) = [End(), ValueLit(l), mkLit(l)]
 
 
-fun sorInstantiate(ctx, r, cls, args) =
+fun sorInstantiate(ctx, r, cls, args, isSpecial) =
   let clsSymb = if cls is
     ValueMemberRef(symb) and symb is ConcreteClassSymbol then symb  // class defined globally
     Select(_, symb) and symb is ConcreteClassSymbol then symb // class defined in a module
@@ -291,10 +291,10 @@ fun sorInstantiate(ctx, r, cls, args) =
   if isStagedClass(clsSymb.value) then
     let cache = getClassCache(clsSymb.value)
     if not (cache is undefined) then
-      let res = SpecializeHelpers.specializeCtor(clsSymb, argsShape, ctx.clearCtx)
+      let res = SpecializeHelpers.specializeCtor(clsSymb, argsShape, ctx.clearCtx, isSpecial)
       [End(), r, res]
     else throw Error("cache not found in staged class")
-  else [End(), r, mkClass(clsSymb, argsShape)]
+  else [End(), r, mkClass(clsSymb, argsShape, isSpecial)]
 
 fun sorBuiltinOp(ctx, r, f, name, args, isSpecial) = if args is
   [x] and sop(ctx, x.value).values() is [Shape.Lit(l)] and name is
@@ -351,17 +351,17 @@ fun sorCall(ctx, r, f, args, isSpecial, argShapes) = if f is
   Select(Select(ValueMemberRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
     throw Error("runtime.Tuple.slice not handled in shape propagation")
   Select(ValueMemberRef(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
-    [End(), r, mkClass(clsSymb, argShapes)]
+    [End(), r, mkClass(clsSymb, argShapes, false)]
   Select(ValueThis(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within current module
-    [End(), r, mkClass(clsSymb, argShapes)] // FIXME
+    [End(), r, mkClass(clsSymb, argShapes, false)] // FIXME
   ValueMemberRef(clsSymb) and clsSymb is ConcreteClassSymbol and // top-level class
     isStagedClass(clsSymb.value) and
       let cache = getClassCache(clsSymb.value)
       not (cache is undefined) then
-        let res = SpecializeHelpers.specializeCtor(clsSymb, argShapes, ctx.clearCtx)
+        let res = SpecializeHelpers.specializeCtor(clsSymb, argShapes, ctx.clearCtx, false)
         [End(), r, res]
       else throw Error("class is staged but cache not found")
-    else [End(), r, mkClass(clsSymb, argShapes)]
+    else [End(), r, mkClass(clsSymb, argShapes, false)]
   ValueSimpleRef(symb) | ValueMemberRef(symb) then sorBuiltinOp(ctx, r, f, symb.name, args, isSpecial)  // built-in or top-level
   Select(ValueThis(ModuleSymbol(name, value, redir)), Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
@@ -396,7 +396,7 @@ fun sor(ctx, r) = if r is
   Path then
     let s = sop(ctx, r)
     [End(), subLitPath(ctx, r), s]
-  Instantiate(cls, args, _) then sorInstantiate(ctx, r, cls, args)
+  Instantiate(cls, args, isSpecial) then sorInstantiate(ctx, r, cls, args, isSpecial)
   Tuple(elems) then [End(), r, mkArr(elems.map(a => sop(ctx, a.value)))]
   Call(f, args, isSpecial) then sorCall(ctx, r, f, args, isSpecial, args.map((a, _, _) => sop(ctx, a.value)))
   else throw Error("unknown result in sor: " + r.toString())
@@ -567,9 +567,9 @@ fun buildShapeName(s: Shape): Str = if s is
   Lit(lit) and lit is Str then "Str" + lit
   Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
   Arr(shapes) then "Arr_" + shapes.map(buildShapeSetName).join("_") + "_end"
-  Class(sym, params) and params.length is
-    0 then sym.name
-    else sym.name + "_" + params.map(buildShapeSetName).join("_")
+  Class(sym, params, isSpecial) and params.length is
+    0 then sym.name + (if isSpecial then "_Special" else "")
+    else sym.name + "_" + params.map(buildShapeSetName).join("_") + (if isSpecial then "_Special" else "")
   else throw Error("unknown shape when building shape name" + s.toString())
 
 fun buildShapeSetName(ss: ShapeSet): Str =
@@ -661,7 +661,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   else throw Error("instrumented function is not a FunDefn")
 
 // this builds the shape of an instantiation of class through shape propagation of constructor
-fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx) =
+fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx, isSpecial: Bool) =
   let actualClass = getActualClass(classSymb.value)
   let defn = actualClass."class$ctor$_instr"()
   if defn is FunDefn(Symbol(_), ps, body) then
@@ -672,5 +672,5 @@ fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], c
     if not (actualClass."class$ctor$_instr" is undefined) and actualClass."class$ctor$_instr"() is FunDefn(_, _, ctorBody) then do
       prop(ctx, ctorBody)
     else throw Error("ctor not found in staged class")
-    mkClassFromMap(classSymb, ctx.valDefnCtx, Some(ps))
+    mkClassFromMap(classSymb, ctx.valDefnCtx, Some(ps), isSpecial)
   else throw Error("instrumented method is not a FunDefn")

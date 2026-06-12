@@ -44,15 +44,15 @@ val clsSym = ConcreteClassSymbol("C", C, Some([Param(None, Symbol("a"))]), [], f
 //│ )
 
 :fixme
-let x = liftMany([Class(clsSym, [mkLit(42)]), Arr([mkLit(1), mkLit("a")])])
+let x = liftMany([Class(clsSym, [mkLit(42)], false), Arr([mkLit(1), mkLit("a")])])
 let y = liftMany([Lit(1), Lit("a")])
 selSet(x, y)
 //│ ═══[RUNTIME ERROR] Error: Array out of bound
-//│ x = {Arr([{Lit(1)}, {Lit("a")}]),Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [{Lit(42)}])}
+//│ x = {Arr([{Lit(1)}, {Lit("a")}]),Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [{Lit(42)}], false)}
 //│ y = {Lit("a"),Lit(1)}
 
-mkClass(clsSym, [mkLit(1)])
-//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [{Lit(1)}])}
+mkClass(clsSym, [mkLit(1)], false)
+//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [{Lit(1)}], false)}
 
 filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)])]), Tup(3))
 //│ = {Arr([Lit(1), Lit(2), Lit(3)])}
