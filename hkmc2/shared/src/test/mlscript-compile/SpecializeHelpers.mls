@@ -470,16 +470,72 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args, isSpecial) =
       let totalRetShape = union2(totalStagedRetShape, dfltRet.1)
       [matchBody, totalRetShape]
 
+fun isDispatchPath(p) = if p is
+  ValueSimpleRef(symb) | ValueMemberRef(symb) then not symb is ModuleSymbol
+  Select(ValueThis(ConcreteClassSymbol), _) then true
+  Select(ValueMemberRef(ConcreteClassSymbol), _) then true
+  else false
+
+fun needsUCS(pss) =
+  let shapes = pss.values()
+  shapes.length > 1 and shapes.some(s =>
+    s is Class(sym, _, true) and shapes.some(other =>
+      other !== s and other is Class(otherSym, _, _) and
+        getActualClass(sym.value) == getActualClass(otherSym.value)
+    )
+  )
+
+fun orderedUCSShapes(pss) =
+  let shapes = pss.values()
+  // Exact patterns must precede broad class patterns, and Dyn is the final wildcard.
+  [
+    ...shapes.filter(_ is Class(_, _, true)),
+    ...shapes.filter(s => s is Class(_, _, false)),
+    ...shapes.filter(s => not (s is Class)),
+  ]
+
+fun mergeAssigned(acc, assigned) =
+  assigned.forEach((ss, ps, _) =>
+    if acc.has(ps) then
+      acc.set(ps, union2(acc.get(ps), ss))
+    else
+      acc.set(ps, ss)
+  )
+
+fun propUCSReturn(ctx, p, f, args, isSpecial, pss) =
+  let branches = orderedUCSShapes(pss).map(shape =>
+    let branchCtx = ctx.clone
+    branchCtx.refine(p, lift(shape))
+    let res = dispatchMethodCall(branchCtx, None, p, f, args, isSpecial)
+    [shape, res.0, res.1]
+  )
+  let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
+  [UCS(p, branches.map(branch => [branch.0, branch.1])), retShape, false]
+
+fun propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss) =
+  let branches = orderedUCSShapes(pss).map(shape =>
+    let branchCtx = ctx.clone
+    branchCtx.refine(p, lift(shape))
+    let callRes = dispatchMethodCall(branchCtx, Some(x), p, f, args, isSpecial)
+    let restRes = prop(branchCtx.add(ValueSimpleRef(x), callRes.1), restBlock)
+    [shape, concat(callRes.0, restRes.0), restRes.1, restRes.2, branchCtx.sub(ctx)]
+  )
+  let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
+  let canReachEnd = branches.some(_.3)
+  let assigned = foldl((acc, branch) =>
+    mergeAssigned(acc, branch.4)
+    acc
+  )(new Map(), ...branches)
+  mergeAssigned(ctx.ctx, assigned)
+  [UCS(p, branches.map(branch => [branch.0, branch.1])), retShape, canReachEnd]
+
 // [retBlock, retShape, canReachEnd]
 fun prop(ctx, b) = if b is
     End() then [b, mkBot(), true]
-    Return(Call(Select(p, Symbol(f)), args, isSpecial)) and not (f is "concat") and p is // TODO[later]: Ref -> Path, remove special checks
-      ValueSimpleRef(symb) | ValueMemberRef(symb) and not symb is ModuleSymbol then
-        [...dispatchMethodCall(ctx, None, p, f, args, isSpecial), false]
-      Select(ValueThis(ConcreteClassSymbol), _) then
-        [...dispatchMethodCall(ctx, None, p, f, args, isSpecial), false]
-      Select(ValueMemberRef(ConcreteClassSymbol), _) then
-        [...dispatchMethodCall(ctx, None, p, f, args, isSpecial), false]
+    Return(Call(Select(p, Symbol(f)), args, isSpecial)) and not (f is "concat") and isDispatchPath(p) then
+      let pss = sop(ctx, p)
+      if needsUCS(pss) then propUCSReturn(ctx, p, f, args, isSpecial, pss)
+      else [...dispatchMethodCall(ctx, None, p, f, args, isSpecial), false]
     Return(res) and sor(ctx, res) is [blk, r1, s1] then
       [concat(blk, Return(r1)), s1, false]
     Scoped(symbols, rest) then
@@ -488,16 +544,10 @@ fun prop(ctx, b) = if b is
       let newCtx = Ctx(new Map(ctx.ctx), ctx.valDefnCtx, new Map(ctx.staticCallCtx), newAllocs, ctx.thisShape)
       let res = prop(newCtx, rest)
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
-    Assign(x, Call(Select(p, Symbol(f)), args, isSpecial), restBlock) and p is // TODO Can we deduplicate this?
-      ValueSimpleRef(symb) | ValueMemberRef(symb) and not (symb is ModuleSymbol) then
-        let res = dispatchMethodCall(ctx, Some(x), p, f, args, isSpecial)
-        let b2 = prop(ctx.add(ValueSimpleRef(x), res.1), restBlock)
-        [concat(res.0, b2.0), b2.1, b2.2]
-      Select(ValueThis(ConcreteClassSymbol), _) then
-        let res = dispatchMethodCall(ctx, Some(x), p, f, args, isSpecial)
-        let b2 = prop(ctx.add(ValueSimpleRef(x), res.1), restBlock)
-        [concat(res.0, b2.0), b2.1, b2.2]
-      Select(ValueMemberRef(ConcreteClassSymbol), _) then
+    Assign(x, Call(Select(p, Symbol(f)), args, isSpecial), restBlock) and isDispatchPath(p) then
+      let pss = sop(ctx, p)
+      if needsUCS(pss) then propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss)
+      else
         let res = dispatchMethodCall(ctx, Some(x), p, f, args, isSpecial)
         let b2 = prop(ctx.add(ValueSimpleRef(x), res.1), restBlock)
         [concat(res.0, b2.0), b2.1, b2.2]
@@ -512,13 +562,6 @@ fun prop(ctx, b) = if b is
           [concat(blk, Assign(x, r1, b2)), s2, canReachEnd]
     Match(p, arms, dflt, restBlock) then
       let s = sop(ctx, p)
-      fun mergeAssigned(acc, assigned) =
-        assigned.forEach((ss, ps, _) =>
-          if acc.has(ps) then
-            acc.set(ps, union2(acc.get(ps), ss))
-          else
-            acc.set(ps, ss)
-        )
       fun propBranch(body, branchShape) =
         let branchCtx = ctx.clone
         if not p is ValueLit do branchCtx.refine(p, branchShape)
@@ -538,12 +581,7 @@ fun prop(ctx, b) = if b is
           [Some(res.0), res.1, res.3, Some(res.2)]
         else [None, mkBot(), new Map(), None]
       mergeAssigned(filteredArms.3, dfltRes.2)
-      filteredArms.3.forEach((ss, ps, _) =>
-        if ctx.ctx.has(ps) then
-          ctx.ctx.set(ps, union2(ctx.ctx.get(ps), ss))
-        else
-          ctx.ctx.set(ps, ss)
-      )
+      mergeAssigned(ctx.ctx, filteredArms.3)
       let canReachEnd = filteredArms.4 || (dfltRes.3 is Some(true))
       let restRes = prop(ctx, restBlock)
       let retShape = if canReachEnd then union(filteredArms.1, dfltRes.1, restRes.1) 

@@ -21,6 +21,7 @@ class Shape extends CachedHash with
     Lit(val l: Literal)
     Arr(val shapes: Array[ShSet])
     Class(val sym: ConcreteClassSymbol, val fields: Array[ShSet], val isSpecial: Bool) // TODO: track the auxParams as well
+  fun toPattern(printer) = showPattern(this, printer)
 
 fun show(s: Shape) =
   if s is
@@ -30,6 +31,19 @@ fun show(s: Shape) =
     Class(sym, fields, isSpecial) then
       "Class(" + printer.showSymbol(sym) + ", {" + [...fields.entries()].map(e => e.0 + ": " + e.1.toString()).join(", ") + "}" +
         (if isSpecial then ", true)" else ")")
+
+fun showPatternSet(s: ShSet, printer) =
+  if s.values() is [shape] then showPattern(shape, printer) else "_"
+
+fun showPattern(s: Shape, printer) =
+  if s is
+    Dyn then "_"
+    Lit(lit) then printer.showLiteral(lit)
+    Arr(shapes) then "[" + shapes.map(showPatternSet(_, printer)).join(", ") + "]"
+    Class(sym, fields, isSpecial) then
+      let cls = printer.showSymbol(sym)
+      if isSpecial then cls + "(" + fields.map(showPatternSet(_, printer)).join(", ") + ")"
+      else cls
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] = 
   if [s1, s2] is

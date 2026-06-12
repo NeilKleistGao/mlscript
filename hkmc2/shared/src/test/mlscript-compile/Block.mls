@@ -125,6 +125,8 @@ class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicField
 class Block with
   constructor
     Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
+    // Output-only shape dispatch; ReflectionInstrumenter never constructs this node.
+    UCS(val scrut: Path, val arms: Array[[Any, Block]])
     Return(val res: Result)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
@@ -135,6 +137,7 @@ fun concat(b1: Block, b2: Block) = if b1 is
   Return then b1
   End then b2
   Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, concat(rest, b2))
+  UCS(scrut, arms) then UCS(scrut, arms.map(a => [a.0, concat(a.1, b2)]))
   Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
   Define(defn, rest) then Define(defn, concat(rest, b2))
   Scoped(symbols, rest) then Scoped(symbols, concat(rest, b2))
@@ -244,6 +247,9 @@ class Printer(val owner: Opt[Symbol]) with
   fun showArm(a) =
     showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
 
+  fun showUCSArm(a) =
+    a.0.toPattern(this) + " then" + (if a.1 is Return then " " else "\n  ") + indent(showBlock(a.1))
+
   fun showParams(pl: ParamList) =
     // do not print constraints to next stage
     "(" + pl.map(p => showSymbol(p.sym)).join(", ") + ")"
@@ -290,6 +296,8 @@ class Printer(val owner: Opt[Symbol]) with
         arms.forEach(a => printer.collectBlockSymbolNames(names, a.body))
         if dflt is Some(db) do printer.collectBlockSymbolNames(names, db)
         printer.collectBlockSymbolNames(names, rest)
+      UCS(_, arms) then
+        arms.forEach(a => printer.collectBlockSymbolNames(names, a.1))
       Scoped(symbols, rest) then
         symbols.forEach(s => printer.collectSymbolName(names, s))
         printer.collectBlockSymbolNames(names, rest)
@@ -376,6 +384,10 @@ class Printer(val owner: Opt[Symbol]) with
         + indent("\n" + arms.map(showArm(_)).join("\n"))
         + if dflt is Some(db) then indent("\nelse" + indent((if db is Return then " " else "\n") + showBlock(db))) else ""
         + showRestBlock(rest)
+      UCS(scrut, arms) then
+        let printer = this
+        "if " + showPath(scrut) + " is"
+        + indent("\n" + arms.map(printer.showUCSArm(_)).join("\n"))
       Scoped(symbols, rest) then
         // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
