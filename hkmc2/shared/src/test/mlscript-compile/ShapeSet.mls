@@ -201,7 +201,7 @@ private fun shape2path(s: Shape, allocs) =
       let paths = mapped.map(_.1) 
       let clsSym = freshId("obj")
       allocs.push(clsSym)
-      let clsAssign = Block.Assign(clsSym, Block.Instantiate(Block.ValueMemberRef(sym), paths.map(Block.Arg(_))), Block.End())
+      let clsAssign = Block.Assign(clsSym, Block.Instantiate(Block.ValueMemberRef(sym), paths.map(Block.Arg(_)), false), Block.End())
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(clsAssign, ...blocks)
       [fullBlock, Block.ValueSimpleRef(clsSym)]
   

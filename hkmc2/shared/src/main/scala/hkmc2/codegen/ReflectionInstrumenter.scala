@@ -237,6 +237,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     case S(x) => f(x)((p, ctx) => optionSome(p)(k(_, ctx)))
     case N => optionNone()(k(_, summon))
 
+  private def hasSpecialAnnot(annotations: Ls[Annot]): Bool =
+    annotations.foldLeft(false):
+      case (_, Annot.Special) => true
+      case (isSpecial, annotation) =>
+        raise(WarningReport(
+          msg"Only @special is supported when reflecting calls and instantiations; this annotation is ignored." ->
+            annotation.toLoc :: Nil,
+        ))
+        isSpecial
+
   // instrumentation rules
 
   def ruleEnd(symName: String = "end")(k: Path => Block): Block =
@@ -295,8 +305,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       transformArgs(elems): (xs, ctx) =>
         tuple(xs.map(_._1)): codes =>
           blockCtor("Tuple", Ls(codes), "tup")(k(_, ctx))
-    case Instantiate(mut, cls, argss) =>
+    case inst @ Instantiate(mut, cls, argss) =>
       if mut then raise(ErrorReport(msg"Mutable instantiations not supported in staged module." -> r.toLoc :: Nil))
+      val isSpecial = hasSpecialAnnot(inst.metadata.annotations)
       argss match
         case Nil =>
           raise(ErrorReport(msg"Instantiate with no argument lists not supported in staged module." -> r.toLoc :: Nil))
@@ -305,20 +316,21 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformArgs(args): (xs, ctx) =>
             transformPath(cls)(using ctx): (cls, ctx) =>
               tuple(xs.map(_._1)): codes =>
-                blockCtor("Instantiate", Ls(cls, codes), "inst")(k(_, ctx))
+                blockCtor("Instantiate", Ls(cls, codes, toValue(isSpecial)), "inst")(k(_, ctx))
         case args :: restArgss =>
           raise(ErrorReport(msg"Instantiate with multiple argument lists not supported in staged module." -> r.toLoc :: Nil))
           End()
-    // desugar Runtime.Tuple.get into Select
-    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _) if fun == Value.SimpleRef(State.runtimeSymbol).selSN("Tuple").selSN("get") =>
-      transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
-    case Call(fun, argss) =>
+    case call @ Call(fun, argss) =>
+      val isSpecial = hasSpecialAnnot(call.metadata.annotations)
       argss match
+        // desugar Runtime.Tuple.get into Select
+        case Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _ if fun == Value.SimpleRef(State.runtimeSymbol).selSN("Tuple").selSN("get") =>
+          transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
         case args :: Nil =>
           transformPath(fun): (stagedFun, ctx) =>
             transformArgs(args)(using ctx): (args, ctx) =>
               tuple(args.map(_._1)): tup =>
-                blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, ctx))
+                blockCtor("Call", Ls(stagedFun, tup, toValue(isSpecial)), "app")(k(_, ctx))
         case args :: restArgss =>
           raise(ErrorReport(msg"Call with multiple argument lists not supported in staged module." -> r.toLoc :: Nil))
           End()

@@ -1,0 +1,23 @@
+#config(noFreeze: true)
+
+open annotations { special }
+
+staged module Special with
+  staged class Pair(val x, val y) with
+    fun swap() = new Pair(y, x)
+  
+  fun sub(p) = p.x - p.y
+
+  fun foo(b) =
+    let x = if b then new Pair(1, 2) else new Pair(3, 4)
+    sub(x.swap()) > 0
+  
+  fun f() = (@special new Pair(1, 2))
+
+  fun g(p) = (@special sub(p))
+
+  fun bar(b) =
+    let x =
+      if b then (@special new Pair(1, 2))
+      else new Pair(3, 4)
+    sub(x.swap()) > 0
