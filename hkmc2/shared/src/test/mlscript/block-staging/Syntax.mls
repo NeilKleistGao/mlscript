@@ -15,12 +15,18 @@ staged object Foo
 
 staged fun f() = 0
 
+:sir
+open annotations { special }
+class SpecialBox
+@special new SpecialBox
+//│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
+//│ define SpecialBox⁰ as class SpecialBox¹; return @special new SpecialBox¹()
+
 :js
 :sir
 :staging
 staged module A
 //│ ———————————————| Lowered IR |———————————————————————————————————————————————————————————————————————
-//│ let A⁰;
 //│ define A⁰ as class A¹
 //│ staged module A² {
 //│   constructor {
@@ -77,8 +83,8 @@ fun g(@static x) = x
 :e
 fun h(@dynamic @static x) = x
 //│ ╔══[COMPILATION ERROR] At most one reflection constraint can be added for each parameter.
-//│ ║  l.78: 	fun h(@dynamic @static x) = x
+//│ ║  l.84: 	fun h(@dynamic @static x) = x
 //│ ╙──      	               ^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Name not found: x
-//│ ║  l.78: 	fun h(@dynamic @static x) = x
+//│ ║  l.84: 	fun h(@dynamic @static x) = x
 //│ ╙──      	                            ^

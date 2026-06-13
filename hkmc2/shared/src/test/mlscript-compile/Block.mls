@@ -1,3 +1,5 @@
+#config(liftDefns: None)
+
 import "./Predef.mls"
 import "./Option.mls"
 import "./StrOps.mls"
@@ -98,8 +100,8 @@ class Case with
 
 class Result with
   constructor
-    Call(val _fun: Path, val args: Array[Arg])
-    Instantiate(val cls: Path, val args: Array[Arg]) // assume immutable
+    Call(val _fun: Path, val args: Array[Arg], val isSpecial: Bool)
+    Instantiate(val cls: Path, val args: Array[Arg], val isSpecial: Bool) // assume immutable
     Tuple(val elems: Array[Arg]) // assume immutable
 
 class Path extends Result with
@@ -123,6 +125,8 @@ class ClsLikeBody(val isym: Symbol, val methods: Array[FunDefn], val publicField
 class Block with
   constructor
     Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
+    // Output-only shape dispatch; ReflectionInstrumenter never constructs this node.
+    UCS(val scrut: Path, val arms: Array[[Any, Block]])
     Return(val res: Result)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
     Define(val defn: Defn, val rest: Block)
@@ -133,6 +137,7 @@ fun concat(b1: Block, b2: Block) = if b1 is
   Return then b1
   End then b2
   Match(scrut, arms, dflt, rest) then Match(scrut, arms, dflt, concat(rest, b2))
+  UCS(scrut, arms) then UCS(scrut, arms.map(a => [a.0, concat(a.1, b2)]))
   Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
   Define(defn, rest) then Define(defn, concat(rest, b2))
   Scoped(symbols, rest) then Scoped(symbols, concat(rest, b2))
@@ -211,15 +216,19 @@ class Printer(val owner: Opt[Symbol]) with
   fun showResult(r: Result): Str =
     if r is
       Path then showPath(r)
-      Call(fun_, args) and
-        args is [arg] and fun_ is
-          ValueSimpleRef(Symbol("!")) then "not " + showArg(arg)
-        // use infix to avoid parsing + and - as taking a unary argument
-        args is [lhs, rhs] and fun_ is
-          ValueSimpleRef(Symbol("+")) then showArg(lhs) + " + " + showArg(rhs)
-          ValueSimpleRef(Symbol("-")) then showArg(lhs) + " - " + showArg(rhs)
-        else showPath(fun_) + "(" + showArgs(args) + ")"
-      Instantiate(cls, args) then 
+      Call(fun_, args, _) then
+          if
+            args is [arg] and fun_ is
+              ValueSimpleRef(Symbol("!")) then "not " + showArg(arg)
+            // use infix
+            args is [lhs, rhs] and fun_ is
+              ValueSimpleRef(Symbol(op)) and op is
+                "+" | "-" | "*" | "/" | "%" |
+                "==" | "!=" | "<" | "<=" | ">" | ">=" |
+                "===" | "!==" | "&&" | "||" then
+                  showArg(lhs) + " " + op + " " + showArg(rhs)
+            else showPath(fun_) + "(" + showArgs(args) + ")"
+      Instantiate(cls, args, _) then
         let classPath = showInstantiatePath(cls)
         // redirections must be dynamic selections, hence the use of new! is required
         // NOTE: noModuleCheck is enabled, so we don't need to switch to new! for dynamic selections from a module
@@ -237,6 +246,9 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showArm(a) =
     showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
+
+  fun showUCSArm(a, branchShapes) =
+    a.0.toUCSPattern(this, branchShapes) + " then" + (if a.1 is Return then " " else "\n  ") + indent(showBlock(a.1))
 
   fun showParams(pl: ParamList) =
     // do not print constraints to next stage
@@ -284,6 +296,8 @@ class Printer(val owner: Opt[Symbol]) with
         arms.forEach(a => printer.collectBlockSymbolNames(names, a.body))
         if dflt is Some(db) do printer.collectBlockSymbolNames(names, db)
         printer.collectBlockSymbolNames(names, rest)
+      UCS(_, arms) then
+        arms.forEach(a => printer.collectBlockSymbolNames(names, a.1))
       Scoped(symbols, rest) then
         symbols.forEach(s => printer.collectSymbolName(names, s))
         printer.collectBlockSymbolNames(names, rest)
@@ -370,6 +384,11 @@ class Printer(val owner: Opt[Symbol]) with
         + indent("\n" + arms.map(showArm(_)).join("\n"))
         + if dflt is Some(db) then indent("\nelse" + indent((if db is Return then " " else "\n") + showBlock(db))) else ""
         + showRestBlock(rest)
+      UCS(scrut, arms) then
+        let printer = this
+        let branchShapes = arms.map(_.0)
+        "if " + showPath(scrut) + " is"
+        + indent("\n" + arms.map(a => printer.showUCSArm(a, branchShapes)).join("\n"))
       Scoped(symbols, rest) then
         // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
@@ -403,6 +422,8 @@ let configs =
   let options = [
     "noFreeze: true",
     "noModuleCheck: true",
+    "liftDefns: None",
+    "disableDataFlowAnalysis: true", // FIXME: remove it. it now leads to timeout in staged reg exp output
     "deadParamElim: Some(DeadParamElim(debug: false, mono: true))"
   ]
   "#config(" + options.join(", ") + ")\n"

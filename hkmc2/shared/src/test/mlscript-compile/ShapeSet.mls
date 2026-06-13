@@ -1,3 +1,5 @@
+#config(liftDefns: None)
+
 import "./Block.mls"
 import "./CachedHash.mls"
 import "./Option.mls"
@@ -69,10 +71,16 @@ fun mkLit(l) = lift(Lit(l))
 fun mkArr(shapes: Array[ShapeSet]) = 
   lift(Arr(shapes))
 
-fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet]) = 
-  lift(Class(sym, params))
+fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet], isSpecial: Bool) =
+  lift(Class(sym, params, mkBot(), isSpecial))
 
-fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], psOpt: Option[Array[Array[Param]]]) =
+fun mkClassFromMapWithSuper(
+  sym: ConcreteClassSymbol,
+  paramsMap: Map[String, ShapeSet],
+  psOpt: Option[Array[Array[Param]]],
+  superShape: ShapeSet,
+  isSpecial: Bool,
+) =
   if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams, redir) then
     let entries = [...paramsMap.entries()]
     let keys = entries.map(a =>
@@ -85,7 +93,10 @@ fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], p
     )
     let params = entries.map(_.1)
     let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams, redir)
-    lift(Class(newSym, params))
+    lift(Class(newSym, params, superShape, isSpecial))
+
+fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], psOpt: Option[Array[Array[Param]]], isSpecial: Bool) =
+  mkClassFromMapWithSuper(sym, paramsMap, psOpt, mkBot(), isSpecial)
 
 fun filterSet(s: ShapeSet, p: Block.Case) = s.flatMap(Shape.filter(_, p))
 
@@ -165,7 +176,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOfSet(x))
-    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params) then new! value(...params.map(valOfSet))
+    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params, _, _) then new! value(...params.map(valOfSet))
     else throw Error("Unknown shape: " + s)
 
 fun valOfSet(s : ShapeSet) = 
@@ -192,14 +203,14 @@ private fun shape2path(s: Shape, allocs) =
       let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
       [fullBlock, Block.ValueSimpleRef(tupSym)]
-    Class(sym, fields) then
+    Class(sym, fields, _, isSpecial) then
       let mapped = fields.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)
       blocks.reverse()
       let paths = mapped.map(_.1) 
       let clsSym = freshId("obj")
       allocs.push(clsSym)
-      let clsAssign = Block.Assign(clsSym, Block.Instantiate(Block.ValueMemberRef(sym), paths.map(Block.Arg(_))), Block.End())
+      let clsAssign = Block.Assign(clsSym, Block.Instantiate(Block.ValueMemberRef(sym), paths.map(Block.Arg(_)), isSpecial), Block.End())
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(clsAssign, ...blocks)
       [fullBlock, Block.ValueSimpleRef(clsSym)]
   

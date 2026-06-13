@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../StagedClass.mls" as StagedClass__Legacy
 module StagedClass with
     class Foo
@@ -22,7 +22,7 @@ module StagedClass with
       ()
       fun f(y) =
         let {scrut}
-        scrut = <(x, y)
+        scrut = x < y
         if scrut is
           true then new Bar(x)
           else new Bar(y)

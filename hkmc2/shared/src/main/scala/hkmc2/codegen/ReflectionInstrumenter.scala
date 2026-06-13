@@ -7,7 +7,7 @@ import hkmc2.Message.MessageContext
 import scala.collection.mutable.{HashMap, HashSet}
 import scala.util.chaining.*
 
-import mlscript.utils.*, shorthands.*
+import hkmc2.utils.*, shorthands.*
 
 import semantics.*
 import semantics.Elaborator.{State, Ctx, ctx}
@@ -22,6 +22,7 @@ case class Context(cache: HashMap[Path | Symbol, Path], allowMultipleParamList: 
   def getCache(p: Path | Symbol): Option[Path] = cache.get(p)
   def addCache(p: Path | Symbol, v: Path): Context = Context(cache.clone() += (p -> v), allowMultipleParamList)
   def delCache(p: Path | Symbol): Context = Context(cache.clone() -= p, allowMultipleParamList)
+  override def clone(): Context = Context(cache.clone(), allowMultipleParamList)
 
 object Context:
   def apply(allowMultipleParamList: Bool): Context = Context(new HashMap(), allowMultipleParamList)
@@ -72,10 +73,10 @@ object Helpers:
     assign(Tuple(false, elems.map(asArg)), symName)(k)
 
   def ctor(using State)(cls: Path, args: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Instantiate(false, cls, Ls(args.map(asArg))), symName)(k)
+    assign(Instantiate(false, cls, Ls(args.map(asArg)))(InstantiateMetadata.empty), symName)(k)
 
   def call(using State)(fun: Path, args: Ls[ArgWrappable], isMlsFun: Bool = true, symName: Str = "tmp")(k: Path => Block): Block =
-    assign(Call(fun, args.map(asArg) ne_:: Nil)(isMlsFun, false, false), symName)(k)
+    assign(Call(fun, args.map(asArg) ne_:: Nil)(CallMetadata(isMlsFun, false, Nil)), symName)(k)
 
 // transform fields of a class from private to public
 class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id):
@@ -236,6 +237,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     case S(x) => f(x)((p, ctx) => optionSome(p)(k(_, ctx)))
     case N => optionNone()(k(_, summon))
 
+  private def hasSpecialAnnot(annotations: Ls[Annot]): Bool =
+    annotations.foldLeft(false):
+      case (_, Annot.Special) => true
+      case (isSpecial, annotation) =>
+        raise(WarningReport(
+          msg"Only @special is supported when reflecting calls and instantiations; this annotation is ignored." ->
+            annotation.toLoc :: Nil,
+        ))
+        isSpecial
+
   // instrumentation rules
 
   def ruleEnd(symName: String = "end")(k: Path => Block): Block =
@@ -294,8 +305,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       transformArgs(elems): (xs, ctx) =>
         tuple(xs.map(_._1)): codes =>
           blockCtor("Tuple", Ls(codes), "tup")(k(_, ctx))
-    case Instantiate(mut, cls, argss) =>
+    case inst @ Instantiate(mut, cls, argss) =>
       if mut then raise(ErrorReport(msg"Mutable instantiations not supported in staged module." -> r.toLoc :: Nil))
+      val isSpecial = hasSpecialAnnot(inst.metadata.annotations)
       argss match
         case Nil =>
           raise(ErrorReport(msg"Instantiate with no argument lists not supported in staged module." -> r.toLoc :: Nil))
@@ -304,20 +316,21 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformArgs(args): (xs, ctx) =>
             transformPath(cls)(using ctx): (cls, ctx) =>
               tuple(xs.map(_._1)): codes =>
-                blockCtor("Instantiate", Ls(cls, codes), "inst")(k(_, ctx))
+                blockCtor("Instantiate", Ls(cls, codes, toValue(isSpecial)), "inst")(k(_, ctx))
         case args :: restArgss =>
           raise(ErrorReport(msg"Instantiate with multiple argument lists not supported in staged module." -> r.toLoc :: Nil))
           End()
-    // desugar Runtime.Tuple.get into Select
-    case Call(fun, Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _) if fun == Value.SimpleRef(State.runtimeSymbol).selSN("Tuple").selSN("get") =>
-      transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
-    case Call(fun, argss) =>
+    case call @ Call(fun, argss) =>
+      val isSpecial = hasSpecialAnnot(call.metadata.annotations)
       argss match
+        // desugar Runtime.Tuple.get into Select
+        case Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _ if fun == Value.SimpleRef(State.runtimeSymbol).selSN("Tuple").selSN("get") =>
+          transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
         case args :: Nil =>
           transformPath(fun): (stagedFun, ctx) =>
             transformArgs(args)(using ctx): (args, ctx) =>
               tuple(args.map(_._1)): tup =>
-                blockCtor("Call", Ls(stagedFun, tup), "app")(k(_, ctx))
+                blockCtor("Call", Ls(stagedFun, tup, toValue(isSpecial)), "app")(k(_, ctx))
         case args :: restArgss =>
           raise(ErrorReport(msg"Call with multiple argument lists not supported in staged module." -> r.toLoc :: Nil))
           End()
@@ -370,14 +383,16 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       transformResult(res): (x, ctx) =>
         blockCtor("Return", Ls(x), "return")(k(_, ctx))
     case Assign(x, r, b) =>
-      transformSymbol(x): (xSym, ctx) =>
-        blockCtor("ValueSimpleRef", Ls(xSym)): xStaged =>
-          given Context = x match
-            case _: NoSymbol => ctx
-            case x: ValueSymbol => ctx.addCache(x.asPath, xStaged)
-          transformResult(r): (y, ctx) =>
-            transformBlock(b)(using ctx): (z, ctx) =>
-              blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
+      transformResult(r): (y, ctx) =>
+        transformSymbol(x): (xSym, ctx) =>
+          blockCtor("ValueSimpleRef", Ls(xSym)): xStaged =>
+            (Assign(x, xStaged, _)):
+              val nextCtx = ctx.clone()
+              given Context = x match
+                case NoSymbol => nextCtx
+                case x: ValueSymbol => nextCtx.addCache(x.asPath, xStaged)
+              transformBlock(b): (z, ctx) =>
+                blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
     case assign @ AssignField(lhs, nme, r, rest) =>
       // TODO: Improve. This is a kludge to allow private field initialization in modules;
       //    Ideally, we should just properly reflect these as the private field assignments they are
@@ -468,9 +483,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // refresh parameters
     val funParams = f.params.map(refreshParamList)
     val params = if classFun then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
+    val isExplicitlySpecialized = f.annotations.contains(Annot.Specialize)
     val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
       tuple(tups): args =>
-        call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
+        call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args, toValue(isExplicitlySpecialized))): res =>
           Return(res)
     FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(f.configOverride, f.annotations)
   
@@ -666,7 +682,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       
       def replaceSuper(parentPath: Path) = new BlockTransformer(SymbolSubst.Id):
         override def applyResult(r: Result)(k: Result => Block) = super.applyResult(r):
-          case Call(Value.SimpleRef(sym: BuiltinSymbol), args) if sym.nme == "super" => k(Call(parentPath, args)(true, false, false))
+          case Call(Value.SimpleRef(sym: BuiltinSymbol), args) if sym.nme == "super" => k(Call(parentPath, args)(CallMetadata.defaultMlsFun))
           case r => k(r)
       val preCtor = defn.parentPath match
         case S(parent) => replaceSuper(parent).applyBlock(defn.preCtor)

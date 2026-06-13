@@ -1,10 +1,14 @@
+#config(liftDefns: None)
+
 import "./Block.mls"
 import "./Option.mls"
 import "./CachedHash.mls"
+import "./Predef.mls"
 import "./ShapeSet.mjs"
 
-open Block { Literal, ConcreteClassSymbol, isPrimitiveType, isPrimitiveTypeOf }
+open Block { Literal, ConcreteClassSymbol, Param, Symbol, isPrimitiveType, isPrimitiveTypeOf }
 open Option
+open Predef { Symbols }
 
 type Shape = Shape.Shape
 type ShSet = ShapeSet.ShapeSet
@@ -18,22 +22,69 @@ class Shape extends CachedHash with
     Dyn()
     Lit(val l: Literal)
     Arr(val shapes: Array[ShSet])
-    Class(val sym: ConcreteClassSymbol, val fields: Array[ShSet]) // TODO: track the auxParams as well
+    // superShape is the direct superclass instance shape, or bot when the class has no superclass.
+    Class(val sym: ConcreteClassSymbol, val fields: Array[ShSet], val superShape: ShSet, val isSpecial: Bool) // TODO: track the auxParams as well
+  fun toUCSPattern(printer, branchShapes) = showUCSPattern(this, printer, branchShapes)
 
 fun show(s: Shape) =
   if s is
-    Dyn then "Dyn"
-    Lit(lit) then "Lit(" + printer.showLiteral(lit) + ")"
-    Arr(shapes) then "Arr(" + shapes.map(_.toString()).join(", ") + ")"
-    Class(sym, fields) then "Class(" + printer.showSymbol(sym) + ", {" + [...fields.entries()].map(e => e.0 + ": " + e.1.toString()).join(", ") + "})" 
+    Dyn then "D"
+    Lit(lit) then "L(" + printer.showLiteral(lit) + ")"
+    Arr(shapes) then "A(" + shapes.map(_.toString()).join(", ") + ")"
+    Class(sym, fields, superShape, isSpecial) then
+      "C(" + printer.showSymbol(sym) + ", {" + [...fields.entries()].map(e => e.1.toString()).join(", ") + "}" +
+        ", " + superShape.toString() +
+        (if isSpecial then ", true)" else ")")
 
-fun sel(s1: Shape, s2: Shape): Array[Shape] = 
+fun showPatternSet(s: ShSet, printer) =
+  if s.values() is [shape] then showPattern(shape, printer) else "_"
+
+fun showPattern(s: Shape, printer) =
+  if s is
+    Dyn then "_"
+    Lit(lit) then printer.showLiteral(lit)
+    Arr(shapes) then "[" + shapes.map(showPatternSet(_, printer)).join(", ") + "]"
+    Class(sym, fields, _, isSpecial) then
+      let cls = printer.showSymbol(sym)
+      if isSpecial then cls + "(" + fields.map(showPatternSet(_, printer)).join(", ") + ")"
+      else cls
+
+// This mask only simplifies emitted UCS patterns; the branch shapes remain unchanged.
+fun sharedPatternFields(s: Shape, branchShapes: Array[Shape]) =
+  if s is
+    Class(sym1, fields, _, _) then
+      let sameClassShapes = branchShapes.filter(s' =>
+        if s' is Class(sym2, _, _, _) then
+          getActualClass(sym1.value) == getActualClass(sym2.value)
+        else false
+      )
+      if sameClassShapes.length < 2 then Array(fields.length).fill(false)
+      else fields.map((field, i, _) =>
+        sameClassShapes.every(other =>
+          if other is Class(_, otherFields, _, _) then
+            i < otherFields.length and field.hash() == otherFields.(i).hash()
+          else false
+        )
+      )
+
+fun showUCSPattern(s: Shape, printer, branchShapes: Array[Shape]) =
+  if s is
+    Class(sym, fields, _, true) then
+      let sharedFields = sharedPatternFields(s, branchShapes)
+      printer.showSymbol(sym) + "(" +
+        fields.map((field, i, _) =>
+          if sharedFields.(i) then "_" else showPatternSet(field, printer)
+        ).join(", ") + ")"
+    else showPattern(s, printer)
+
+fun sel(s1: Shape, s2: Shape): Array[Shape] =
   if [s1, s2] is
-    [Class(ConcreteClassSymbol(_, _, paramsOpt, auxParams, _), params), Lit(n)] and n is Str and paramsOpt is Some(paramsSymb) and
-      paramsSymb.map(_.sym.name).indexOf(n) is
-        -1 then []
+    [Class(ConcreteClassSymbol(_, _, paramsOpt, auxParams, _), params, superShape, _), Lit(n)] and n is Str and
+      let fieldIndex = if paramsOpt is Some(paramsSymb) then paramsSymb.map(_.sym.name).indexOf(n) else -1
+      fieldIndex is
+        -1 then superShape.values().flatMap(sel(_, s2))
         n then params.(n).values()
-    [Class(ConcreteClassSymbol, p), Dyn] then [Dyn()]
+    [Class(ConcreteClassSymbol, p, _, _), Dyn] then [Dyn()]
     [Dyn, Lit(n)] and 
       n is Str then [Dyn()]
       n is Int then [Dyn()]
@@ -50,7 +101,9 @@ fun static(s: Shape) =
   if s is
     Dyn then false
     Lit(l) then not (l is Str and isPrimitiveType(l)) // redundant bracket?
-    Class(_, params) then params.every(_.values() is [v] and static(v))
+    Class(_, params, superShape, _) then
+      params.every(_.values() is [v] and static(v)) and
+        superShape.values().every(static)
     Arr(shapes) then shapes.every(_.values() is [v] and static(v))    
 
 open Block { Case }
@@ -59,7 +112,7 @@ fun silh(p: Case): Shape = if p is
   Block.Lit(l) then Lit(l)
   Block.Cls(clsSymb, path) then
     let paramsSize = if clsSymb.paramsOpt is Some(params) then params.length else 0
-    Class(clsSymb, Array(paramsSize).fill(ShapeSet.mkDyn()))
+    Class(clsSymb, Array(paramsSize).fill(ShapeSet.mkDyn()), ShapeSet.mkDyn(), false)
   Block.Tup(n) then Arr(Array(n).fill(ShapeSet.mkDyn()))
 
 fun getActualClass(c) = if not (c."class" is undefined) then c.class else c
@@ -73,9 +126,9 @@ fun filter(s: Shape, p: Case): Array[Shape] =
     [Lit(l1), Block.Lit(l2)] and l1 == l2 then [s]
     [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then [s] 
     [Arr(ls), Block.Tup(n)] and ls.length == n then [s]
-    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+    [Class(c1, _, _, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and
       c1 == c2 then [s] // TODO: is === possible?
-    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+    [Class(c1, _, _, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and
       isSubClassOf(c1.value, c2.value) then [s]
     [Dyn, _] then [silh(p)]
     else []
@@ -85,10 +138,10 @@ fun rest(s: Shape, p: Case): Array[Shape] =
     [Lit(l1), Block.Lit(l2)] and l1 == l2 then []
     [Lit(l), Block.Cls(c, _)] and isPrimitiveTypeOf(c, l) then []
     [Arr(ls), Block.Tup(n)] and ls.length == n then []
-    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+    [Class(c1, _, _, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and
       c1 == c2 then [] // TODO: is === possible?
-    [Class(c1, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and 
+    [Class(c1, _, _, _), Block.Cls(c2, _)] and c1 is ConcreteClassSymbol and c2 is ConcreteClassSymbol and
       isSubClassOf(c1.value, c2.value) then []
-    [Class(c1, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
+    [Class(c1, _, _, _), Block.Cls(c2, _)] and c1.name == c2.name then [s]
     [Dyn, _] then [s]
     else [s]

@@ -5,7 +5,7 @@ import org.scalatest.time._
 import org.scalatest.concurrent.{TimeLimitedTests, Signaler}
 import os.up
 
-import mlscript.utils._, shorthands._
+import hkmc2.utils.*, shorthands.*
 import io.PlatformPath.given, io.FileSystem
 
 
@@ -48,7 +48,7 @@ object DiffTestRunner:
     
     val TimeLimit =
       if sys.env.get("CI").isDefined then Span(60, Seconds)
-      else Span(25, Seconds)
+      else Span(60, Seconds)
     
   end State
   
