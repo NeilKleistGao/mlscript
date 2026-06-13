@@ -11,10 +11,6 @@ module SeqHelper with
   fun len(s) = s.length
   fun eq(arr1, arr2) =
     arr1.length == arr2.length and arr1.every((v, i) => v == arr2.(i))
-  fun setEq(s1, s2) =
-    s1.slice().sort()
-    s2.slice().sort()
-    s1.length == s2.length and s1.every((v, i) => v.eq(s2.(i)))
 
 module CharSet with
   fun alphabet() = [
@@ -28,22 +24,31 @@ staged module SpecialRegExp with
   class Some(val x)
   class None
 
+  class Cons(val x, val xs)
+  class Nil
+
+  fun pushUnique(ls, e) =
+    if ls is
+      Cons(x, xs) then
+        if x.eq(e) then ls
+        else (@special new Cons(x, pushUnique(xs, e)))
+      else (@special new Cons(e, Nil))
+
+  fun concatUnique(xs, ys) =
+    if ys is
+      Cons(y, ys) then concatUnique(pushUnique(xs, y), ys)
+      else xs
+
+  fun lsEq(xs, ys) =
+    if [xs, ys] is
+      [Nil, Nil] then true
+      [Cons(x, xs), Cons(y, ys)] then x.eq(y) and lsEq(xs, ys)
+      else false
+
   fun len(s) = SeqHelper.len(s)
   fun has(arr, ele) = SeqHelper.has(arr, ele)
   fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
   fun push(arr, ele) = SeqHelper.push(arr, ele)
-  fun concat(lhs, rhs) = SeqHelper.concat(lhs, rhs)
-  fun setEq(s1, s2) = SeqHelper.setEq(s1, s2)
-
-  staged class DedupSet(val arr) with
-    fun addImp(e, i) =
-      let s = len(arr)
-      if s - i == s then new DedupSet(push(arr, e))
-      else 
-        let e' = arr.(s - i)
-        if e.eq(e') then this else addImp(e, i - 1)
-    fun add(e) =
-      addImp(e, len(arr))
 
   staged class RegExp() with
     fun derive(c)
@@ -51,6 +56,7 @@ staged module SpecialRegExp with
     fun normalize()
     fun eq(other)
     fun startsWith(c)
+    fun flat()
 
   staged class Nothing() extends RegExp() with
     fun derive(c) = this
@@ -58,6 +64,7 @@ staged module SpecialRegExp with
     fun normalize() = this
     fun eq(other) = other is Nothing
     fun startsWith(c) = false
+    fun flat() = new Nil
 
   staged class Empty() extends RegExp() with
     fun derive(c) = new Nothing()
@@ -65,6 +72,7 @@ staged module SpecialRegExp with
     fun normalize() = this
     fun eq(other) = other is Empty
     fun startsWith(c) = false
+    fun flat() = (@special new Cons(this, Nil))
 
   staged class Exact(val ch) extends RegExp() with
     fun derive(c) =
@@ -75,6 +83,7 @@ staged module SpecialRegExp with
     fun eq(other) =
       if other is Exact(ch') then ch == ch' else false
     fun startsWith(c) = ch == c
+    fun flat() = (@special new Cons(this, Nil))
 
   staged class Any() extends RegExp() with
     fun derive(c) = new Empty()
@@ -82,6 +91,7 @@ staged module SpecialRegExp with
     fun normalize() = this
     fun eq(other) = other is Any()
     fun startsWith(c) = true
+    fun flat() = (@special new Cons(this, Nil))
 
   staged class Not(val chars) extends RegExp() with
     fun derive(c) =
@@ -91,41 +101,33 @@ staged module SpecialRegExp with
     fun eq(other) =
       if other is Not(chars') then arrEq(chars, chars') else false
     fun startsWith(c) = not has(chars, c)
+    fun flat() = (@special new Cons(this, Nil))
 
   fun notWord() = new Not(CharSet.alphabet())
   fun notSpace() = new Not(CharSet.space())
   fun notDigit() = new Not(CharSet.digit())
 
-  fun mkUnion(arr, i, s) =
-    if s - i == s - 1 then arr.(s - i)
-    else
-      if arr.(s - i) is
-        Nothing() then mkUnion(arr, i - 1, s)
-        else (@special new Altern(arr.(s - i), mkUnion(arr, i - 1, s)))
+  fun mkUnion(ls) =
+    if ls is
+      Cons(x, Nil) then x
+      Cons(x, xs) then (@special new Altern(x, mkUnion(xs)))
+      else new Nothing()
 
   staged class Altern(val p1, val p2) extends RegExp() with
-    fun derive(c) = (@special new Altern(p1.derive(c), p2.derive(c))).normalize()
+    fun derive(c) = (new Altern(p1.derive(c), p2.derive(c))).normalize()
     fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
-    fun flat() =
-      let p1' = if p1 is Altern then p1.flat() else [p1]
-      let p2' = if p2 is Altern then p2.flat() else [p2]
-      concat(p1', p2')
-    fun iter(st, arr, i, s) =
-      if s - i == s then st
-      else iter(st.add(arr.(s - i)), arr, i - 1, s)
     fun normalize() =
-      let p1' = p1.normalize()
-      let p2' = p2.normalize()
-      let arr1 = if p1' is Altern then p1'.flat() else [p1']
-      let arr2 = if p2' is Altern then p2'.flat() else [p2']
-      let s = iter(new DedupSet(arr1), arr2, len(arr2), len(arr2))
-      mkUnion(s.arr, len(s.arr), len(s.arr))
+      mkUnion(flat())
     fun eq(other) =
       let n = other.normalize()
       if n is
-        Altern then setEq(normalize().flat(), n.flat())
+        Altern then lsEq(flat(), n.flat())
         else false
     fun startsWith(c) = p1.startsWith(c) || p2.startsWith(c)
+    fun flat() =
+      let p1' = p1.flat()
+      let p2' = p2.flat()
+      concatUnique(concatUnique(new Nil, p1'), p2')
 
   fun question(r) = (@special new Altern(r, new Empty()))
 
@@ -137,6 +139,7 @@ staged module SpecialRegExp with
     fun eq(other) =
       if other is In(chars') then arrEq(chars, chars') else false
     fun startsWith(c) = has(chars, c)
+    fun flat() = (@special new Cons(this, Nil))
 
   fun words() = new In(CharSet.alphabet())
   fun spaces() = new In(CharSet.space())
@@ -158,6 +161,7 @@ staged module SpecialRegExp with
     fun eq(other) =
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
+    fun flat() = (@special new Cons(this, Nil))
 
   fun nTimes(r, i) =
     if i == 1 then r
@@ -170,6 +174,7 @@ staged module SpecialRegExp with
     fun eq(other) =
       if other is Star(p') then p.eq(p') else false
     fun startsWith(c) = p.startsWith(c)
+    fun flat() = (@special new Cons(this, Nil))
 
   fun plus(r) = (@special new Concat(r, (@special new Star(r))))
 
