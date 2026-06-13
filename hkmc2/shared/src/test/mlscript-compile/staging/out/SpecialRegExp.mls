@@ -437,7 +437,8 @@ module SpecialRegExp with
       new In(tmp49)
 open SpecialRegExp
 fun has_SpecialRegExp_sp_0(arr, ele) = SpecialRegExp__Legacy."SeqHelper$SpecialRegExp".has(arr, ele)
-fun len_SpecialRegExp_sp_0(s) = SpecialRegExp__Legacy."SeqHelper$SpecialRegExp".len(s)
+fun len_SpecialRegExp_sp_0(s) = 1
+fun len_SpecialRegExp_sp_1(s) = 1
 fun matchAllImpl_SpecialRegExp_sp_0(p, s, res) =
   let {scrut22, scrut23, ss, scrut24, tmp59, arg_Some_0_, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65}
   tmp59 = len(s)
@@ -574,10 +575,10 @@ fun matchImpl_SpecialRegExp_sp_2(p, s, acc) =
   if scrut18 is
     true then
       if p is
-        Nothing then
-          scrut19 = canBeEmpty_Nothing_sp_0(p)
         Concat then
           scrut19 = canBeEmpty_Concat_sp_2(p)
+        Nothing then
+          scrut19 = canBeEmpty_Nothing_sp_0(p)
       new None()
     else
       if p is
@@ -677,23 +678,66 @@ fun normalize_Altern_sp_1(self) =
   mkUnion(s2.arr, tmp21, tmp22)
 fun normalize_Altern_sp_2(self) =
   let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
-  p1__1 = normalize_Concat_sp_13(self.p1)
-  if self.p2 is
-    Concat then
-      p2__1 = normalize_Concat_sp_10(self.p2)
-    Nothing then
+  if self.p1 is
+    Concat(Star(In), _) then
+      p1__1 = normalize_Concat_sp_4(self.p1)
+      p2__1 = normalize_Concat_sp_6(self.p2)
+      tmp16 = [p1__1]
+      arr11 = tmp16
+      tmp17 = [p2__1]
+      arr2 = tmp17
+      tmp18 = new DedupSet(arr11)
+      tmp19 = len_SpecialRegExp_sp_0(arr2)
+      tmp20 = len_SpecialRegExp_sp_0(arr2)
+      s2 = self.iter(tmp18, arr2, 1, 1)
+      tmp21 = len(s2.arr)
+      tmp22 = len(s2.arr)
+      mkUnion(s2.arr, tmp21, tmp22)
+    Concat(Nothing, _) then
+      p1__1 = normalize_Concat_sp_9(self.p1)
+      p2__1 = normalize_Concat_sp_6(self.p2)
+      tmp16 = [p1__1]
+      arr11 = tmp16
+      tmp17 = [p2__1]
+      arr2 = tmp17
+      tmp18 = new DedupSet(arr11)
+      tmp19 = len_SpecialRegExp_sp_0(arr2)
+      tmp20 = len_SpecialRegExp_sp_0(arr2)
+      s2 = self.iter(tmp18, arr2, 1, 1)
+      tmp21 = len(s2.arr)
+      tmp22 = len(s2.arr)
+      mkUnion(s2.arr, tmp21, tmp22)
+fun normalize_Altern_sp_3(self) =
+  let {p1__1, p2__1, arr11, arr2, s2, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  if self.p1 is
+    Concat(Star(In), _) then
+      p1__1 = normalize_Concat_sp_4(self.p1)
       p2__1 = normalize_Nothing_sp_0(self.p2)
-  tmp16 = [p1__1]
-  arr11 = tmp16
-  tmp17 = [p2__1]
-  arr2 = tmp17
-  tmp18 = new DedupSet(arr11)
-  tmp19 = len_SpecialRegExp_sp_0(arr2)
-  tmp20 = len_SpecialRegExp_sp_0(arr2)
-  s2 = self.iter(tmp18, arr2, tmp19, tmp20)
-  tmp21 = len(s2.arr)
-  tmp22 = len(s2.arr)
-  mkUnion(s2.arr, tmp21, tmp22)
+      tmp16 = [p1__1]
+      arr11 = tmp16
+      tmp17 = [p2__1]
+      arr2 = tmp17
+      tmp18 = new DedupSet(arr11)
+      tmp19 = len_SpecialRegExp_sp_1(arr2)
+      tmp20 = len_SpecialRegExp_sp_1(arr2)
+      s2 = self.iter(tmp18, arr2, 1, 1)
+      tmp21 = len(s2.arr)
+      tmp22 = len(s2.arr)
+      mkUnion(s2.arr, tmp21, tmp22)
+    Concat(Nothing, _) then
+      p1__1 = normalize_Concat_sp_9(self.p1)
+      p2__1 = normalize_Nothing_sp_0(self.p2)
+      tmp16 = [p1__1]
+      arr11 = tmp16
+      tmp17 = [p2__1]
+      arr2 = tmp17
+      tmp18 = new DedupSet(arr11)
+      tmp19 = len_SpecialRegExp_sp_1(arr2)
+      tmp20 = len_SpecialRegExp_sp_1(arr2)
+      s2 = self.iter(tmp18, arr2, 1, 1)
+      tmp21 = len(s2.arr)
+      tmp22 = len(s2.arr)
+      mkUnion(s2.arr, tmp21, tmp22)
 fun canBeEmpty_In_sp_0(self) = false
 fun derive_In_sp_0(self, c) =
   let {scrut7}
@@ -712,13 +756,17 @@ fun derive_Concat_sp_0(self, c) =
   p1__2 = derive_Concat_sp_1(self.p1, c)
   scrut8 = canBeEmpty_Concat_sp_1(self.p1)
   tmp30 = new Concat.class(p1__2, self.p2)
-  normalize_Concat_sp_3(tmp30)
+  if tmp30 is
+    Concat(Star(In), _) then normalize_Concat_sp_4(tmp30)
+    Concat(Nothing, _) then normalize_Concat_sp_9(tmp30)
 fun derive_Concat_sp_1(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
   p1__2 = derive_In_sp_0(self.p1, c)
   scrut8 = canBeEmpty_In_sp_0(self.p1)
   tmp30 = new Concat.class(p1__2, self.p2)
-  normalize_Concat_sp_2(tmp30)
+  if tmp30 is
+    Concat(Empty, _) then normalize_Concat_sp_2(tmp30)
+    Concat(Nothing, _) then normalize_Concat_sp_3(tmp30)
 fun derive_Concat_sp_2(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
   p1__2 = derive_Star_sp_0(self.p1, c)
@@ -726,13 +774,17 @@ fun derive_Concat_sp_2(self, c) =
   tmp27 = new Concat.class(p1__2, self.p2)
   tmp28 = derive_Concat_sp_3(self.p2, c)
   tmp29 = new Altern(tmp27, tmp28)
-  normalize_Altern_sp_2(tmp29)
+  if tmp29 is
+    Altern(_, Concat(Concat(In, Star(In)), Concat(Exact, Concat(In, Star(In))))) then normalize_Altern_sp_2(tmp29)
+    Altern(_, Nothing) then normalize_Altern_sp_3(tmp29)
 fun derive_Concat_sp_3(self, c) =
   let {p1__2, scrut8, tmp27, tmp28, tmp29, tmp30}
   p1__2 = derive_Exact_sp_0(self.p1, c)
   scrut8 = canBeEmpty_Exact_sp_0(self.p1)
   tmp30 = new Concat.class(p1__2, self.p2)
-  normalize_Concat_sp_9(tmp30)
+  if tmp30 is
+    Concat(Empty, _) then normalize_Concat_sp_10(tmp30)
+    Concat(Nothing, _) then normalize_Concat_sp_11(tmp30)
 fun normalize_Concat_sp_0(self) =
   let {p1__3, tmp31}
   p1__3 = self.p1.normalize()
@@ -753,98 +805,49 @@ fun normalize_Concat_sp_1(self) =
       new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_10(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_Concat_sp_11(self.p1)
-  tmp31 = normalize_Concat_sp_12(self.p2)
-  new Concat.class(p1__3, tmp31)
+  p1__3 = normalize_Empty_sp_0(self.p1)
+  normalize_Concat_sp_6(self.p2)
 fun normalize_Concat_sp_11(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_In_sp_0(self.p1)
-  tmp31 = normalize_Star_sp_2(self.p2)
-  new Concat.class(p1__3, tmp31)
-fun normalize_Concat_sp_12(self) =
-  let {p1__3, tmp31}
-  p1__3 = normalize_Exact_sp_1(self.p1)
-  tmp31 = normalize_Concat_sp_11(self.p2)
-  new Concat.class(p1__3, tmp31)
-fun normalize_Concat_sp_13(self) =
-  let {p1__3, tmp31}
-  if self.p1 is
-    Star then
-      p1__3 = normalize_Star_sp_2(self.p1)
-    Nothing then
-      p1__3 = normalize_Nothing_sp_0(self.p1)
-  if p1__3 is
-    Nothing then p1__3
-    else
-      tmp31 = normalize_Concat_sp_14(self.p2)
-      new Concat.class(p1__3, tmp31)
-fun normalize_Concat_sp_14(self) =
-  let {p1__3, tmp31}
-  p1__3 = normalize_Exact_sp_0(self.p1)
-  tmp31 = normalize_Concat_sp_10(self.p2)
-  new Concat.class(p1__3, tmp31)
+  p1__3 = normalize_Nothing_sp_0(self.p1)
+  p1__3
 fun normalize_Concat_sp_2(self) =
   let {p1__3, tmp31}
-  if self.p1 is
-    Empty then
-      p1__3 = normalize_Empty_sp_0(self.p1)
-    Nothing then
-      p1__3 = normalize_Nothing_sp_0(self.p1)
-  if p1__3 is
-    Empty then normalize_Star_sp_1(self.p2)
-    Nothing then p1__3
+  p1__3 = normalize_Empty_sp_0(self.p1)
+  normalize_Star_sp_1(self.p2)
 fun normalize_Concat_sp_3(self) =
   let {p1__3, tmp31}
-  if self.p1 is
-    Star then
-      p1__3 = normalize_Star_sp_2(self.p1)
-    Nothing then
-      p1__3 = normalize_Nothing_sp_0(self.p1)
-  if p1__3 is
-    Nothing then p1__3
-    else
-      tmp31 = normalize_Concat_sp_4(self.p2)
-      new Concat.class(p1__3, tmp31)
+  p1__3 = normalize_Nothing_sp_0(self.p1)
+  p1__3
 fun normalize_Concat_sp_4(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_Exact_sp_0(self.p1)
+  p1__3 = normalize_Star_sp_1(self.p1)
   tmp31 = normalize_Concat_sp_5(self.p2)
   new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_5(self) =
   let {p1__3, tmp31}
-  p1__3 = normalize_Concat_sp_6(self.p1)
-  tmp31 = normalize_Concat_sp_7(self.p2)
+  p1__3 = normalize_Exact_sp_0(self.p1)
+  tmp31 = normalize_Concat_sp_6(self.p2)
   new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_6(self) =
+  let {p1__3, tmp31}
+  p1__3 = normalize_Concat_sp_7(self.p1)
+  tmp31 = normalize_Concat_sp_8(self.p2)
+  new Concat.class(p1__3, tmp31)
+fun normalize_Concat_sp_7(self) =
   let {p1__3, tmp31}
   p1__3 = normalize_In_sp_0(self.p1)
   tmp31 = normalize_Star_sp_1(self.p2)
   new Concat.class(p1__3, tmp31)
-fun normalize_Concat_sp_7(self) =
-  let {p1__3, tmp31}
-  p1__3 = normalize_Exact_sp_1(self.p1)
-  tmp31 = normalize_Concat_sp_6(self.p2)
-  new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_8(self) =
   let {p1__3, tmp31}
-  if self.p1 is
-    Empty then
-      p1__3 = normalize_Empty_sp_0(self.p1)
-    Nothing then
-      p1__3 = normalize_Nothing_sp_0(self.p1)
-  if p1__3 is
-    Empty then normalize_Star_sp_1(self.p2)
-    Nothing then p1__3
+  p1__3 = normalize_Exact_sp_1(self.p1)
+  tmp31 = normalize_Concat_sp_7(self.p2)
+  new Concat.class(p1__3, tmp31)
 fun normalize_Concat_sp_9(self) =
   let {p1__3, tmp31}
-  if self.p1 is
-    Empty then
-      p1__3 = normalize_Empty_sp_0(self.p1)
-    Nothing then
-      p1__3 = normalize_Nothing_sp_0(self.p1)
-  if p1__3 is
-    Empty then normalize_Concat_sp_10(self.p2)
-    Nothing then p1__3
+  p1__3 = normalize_Nothing_sp_0(self.p1)
+  p1__3
 fun startsWith_Concat_sp_0(self, c) =
   let {scrut13, scrut14, tmp32}
   tmp32 = startsWith_Concat_sp_1(self.p1, c)
@@ -886,16 +889,14 @@ fun derive_Star_sp_0(self, c) =
   tmp33 = derive_In_sp_0(self.p, c)
   tmp34 = new Star.class(self.p)
   tmp35 = new Concat(tmp33, tmp34)
-  normalize_Concat_sp_8(tmp35)
+  if tmp35 is
+    Concat(Empty, _) then normalize_Concat_sp_2(tmp35)
+    Concat(Nothing, _) then normalize_Concat_sp_3(tmp35)
 fun normalize_Star_sp_0(self) =
   let {tmp36}
   tmp36 = self.p.normalize()
   new Star(tmp36)
 fun normalize_Star_sp_1(self) =
-  let {tmp36}
-  tmp36 = normalize_In_sp_0(self.p)
-  new Star(tmp36)
-fun normalize_Star_sp_2(self) =
   let {tmp36}
   tmp36 = normalize_In_sp_0(self.p)
   new Star(tmp36)

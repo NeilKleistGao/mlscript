@@ -6,6 +6,7 @@ staged module Special with
   staged class Pair(val x, val y) with
     fun swap() = new Pair(y, x)
   class Foo(val x)
+  class Bar(val x, val y)
   
   fun sub(p) = p.x - p.y
 
@@ -65,3 +66,11 @@ staged module Special with
       Pair(f, s) then s - f
       Foo(e) then e + 1
       else 0
+
+  fun dec(b) =
+    if b then new Foo(1) else new Bar(2, 2)
+
+  fun bazbaz(b) =
+    let x = dec(b)
+    let y = if b then (@special new Pair(1, x)) else (@special new Pair(2, x))
+    y.swap()

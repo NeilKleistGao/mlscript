@@ -68,7 +68,7 @@ selSet(mkDyn(), mkLit(5))
 class A(val a, val b)
 let aSym = ConcreteClassSymbol("A", A, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false)
 
-let a = Class(aSym, [mkLit(42), mkLit("c")], false)
+let a = Class(aSym, [mkLit(42), mkLit("c")], mkBot(), false)
 let x = liftMany([Dyn(), a, Arr([mkLit(100), mkLit(false), mkLit(undefined)])])
 selSet(x, union(mkLit("a"), mkLit(2)))
 //│ = {Dyn()}
@@ -81,6 +81,7 @@ selSet(x, union(mkLit("a"), mkLit(2)))
 //│     false
 //│   ),
 //│   [{Lit(42)}, {Lit("c")}],
+//│   {},
 //│   false
 //│ )
 //│ x = {Dyn()}
@@ -88,9 +89,88 @@ selSet(x, union(mkLit("a"), mkLit(2)))
 selSet(lift(Arr([mkDyn(), mkLit(1), lift(a)])), mkLit(1))
 //│ = {Lit(1)}
 
+class Base(val base)
+class Derived(val own) extends Base(1)
+class MoreDerived(val top) extends Derived(2)
+let baseSym = ConcreteClassSymbol("Base", Base, Some([Param(None, Symbol("base"))]), [], false)
+let derivedSym = ConcreteClassSymbol("Derived", Derived, Some([Param(None, Symbol("own"))]), [], false)
+let moreDerivedSym = ConcreteClassSymbol("MoreDerived", MoreDerived, Some([Param(None, Symbol("top"))]), [], false)
+let baseShape = Class(baseSym, [mkLit(1)], mkBot(), false)
+let derivedShape = Class(derivedSym, [mkLit(2)], lift(baseShape), true)
+let moreDerivedShape = Class(moreDerivedSym, [mkLit(3)], lift(derivedShape), false)
+//│ baseShape = Class(
+//│   ConcreteClassSymbol(
+//│     "Base",
+//│     fun Base { class: class Base },
+//│     Some([Param(None, Symbol("base"))]),
+//│     [],
+//│     false
+//│   ),
+//│   [{Lit(1)}],
+//│   {},
+//│   false
+//│ )
+//│ baseSym = ConcreteClassSymbol(
+//│   "Base",
+//│   fun Base { class: class Base },
+//│   Some([Param(None, Symbol("base"))]),
+//│   [],
+//│   false
+//│ )
+//│ derivedShape = Class(
+//│   ConcreteClassSymbol(
+//│     "Derived",
+//│     fun Derived { class: class Derived },
+//│     Some([Param(None, Symbol("own"))]),
+//│     [],
+//│     false
+//│   ),
+//│   [{Lit(2)}],
+//│   {Class(ConcreteClassSymbol("Base", fun Base { class: class Base }, Some([Param(None, Symbol("base"))]), [], false), [{Lit(1)}], {}, false)},
+//│   true
+//│ )
+//│ derivedSym = ConcreteClassSymbol(
+//│   "Derived",
+//│   fun Derived { class: class Derived },
+//│   Some([Param(None, Symbol("own"))]),
+//│   [],
+//│   false
+//│ )
+//│ moreDerivedShape = Class(
+//│   ConcreteClassSymbol(
+//│     "MoreDerived",
+//│     fun MoreDerived { class: class MoreDerived },
+//│     Some([Param(None, Symbol("top"))]),
+//│     [],
+//│     false
+//│   ),
+//│   [{Lit(3)}],
+//│   {Class(ConcreteClassSymbol("Derived", fun Derived { class: class Derived }, Some([Param(None, Symbol("own"))]), [], false), [{Lit(2)}], {Class(ConcreteClassSymbol("Base", fun Base { class: class Base }, Some([Param(None, Symbol("base"))]), [], false), [{Lit(1)}], {}, false)}, true)},
+//│   false
+//│ )
+//│ moreDerivedSym = ConcreteClassSymbol(
+//│   "MoreDerived",
+//│   fun MoreDerived { class: class MoreDerived },
+//│   Some([Param(None, Symbol("top"))]),
+//│   [],
+//│   false
+//│ )
+
+selSet(lift(derivedShape), mkLit("own"))
+//│ = {Lit(2)}
+
+selSet(lift(derivedShape), mkLit("base"))
+//│ = {Lit(1)}
+
+selSet(lift(moreDerivedShape), mkLit("base"))
+//│ = {Lit(1)}
+
+derivedShape.toUCSPattern(Block.Printer(None), [derivedShape])
+//│ = "Derived(2)"
+
 // union
 mkClass(aSym, [union2(mkLit(42), mkLit(43)), union2(mkLit("c"), mkLit("d"))], false)
-//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42),Lit(43)}, {Lit("c"),Lit("d")}], false)}
+//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42),Lit(43)}, {Lit("c"),Lit("d")}], {}, false)}
 
 mkArr([union2(mkLit(42), mkLit(43)), union2(mkLit("c"), mkLit("d"))])
 //│ = {Arr([{Lit(42),Lit(43)}, {Lit("c"),Lit("d")}])}
@@ -112,7 +192,7 @@ filterSet(mkDyn(), Block.Tup(2))
 //│ = {Arr([{Dyn()}, {Dyn()}])}
 
 let filterShapes = liftMany([Lit(1), Lit(null), Arr([mkDyn()]), Arr([mkLit(1), mkLit(2), mkLit(3)]), a])
-//│ filterShapes = {Arr([{Dyn()}]),Arr([{Lit(1)}, {Lit(2)}, {Lit(3)}]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}], false),Lit(1),Lit(null)}
+//│ filterShapes = {Arr([{Dyn()}]),Arr([{Lit(1)}, {Lit(2)}, {Lit(3)}]),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}], {}, false),Lit(1),Lit(null)}
 
 // wildcard is represented as dflt in Match
 
@@ -122,7 +202,7 @@ filterSet(filterShapes, Block.Lit(1))
 assert(filterSet(filterShapes, Block.Lit(2)).isEmpty())
 
 filterSet(filterShapes, Block.Cls(aSym, undefined))
-//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}], false)}
+//│ = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param(None, Symbol("a")), Param(None, Symbol("b"))]), [], false), [{Lit(42)}, {Lit("c")}], {}, false)}
 
 filterSet(filterShapes, Block.Cls(Symbol("Int"), undefined))
 //│ = {Lit(1)}
@@ -203,7 +283,7 @@ sop(ctx, selPath)
 //│ C = ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false)
 //│ ctx = Ctx(
 //│   Map(1) {
-//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false), [{Lit("pass")}], false)}
+//│     "Symbol(x)" => {Class(ConcreteClassSymbol("C", undefined, Some([Param(None, "a")]), [], false), [{Lit("pass")}], {}, false)}
 //│   },
 //│   Map(0) {},
 //│   Map(0) {},
@@ -243,7 +323,7 @@ sor(Ctx.empty(), inst)
 //│     [Arg(ValueLit(123))],
 //│     false
 //│   ),
-//│   {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [], false), [{Lit(123)}], false)}
+//│   {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [], false), [{Lit(123)}], {}, false)}
 //│ ]
 //│ c = ConcreteClassSymbol(
 //│   "C",
@@ -267,7 +347,7 @@ sor(Ctx.empty(), inst)
 //│ )
 
 sor(Ctx.empty(), Instantiate(ValueMemberRef(c), [Arg(ValueLit(123))], true)).2
-//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [], false), [{Lit(123)}], true)}
+//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Symbol("p")]), [], false), [{Lit(123)}], {}, true)}
 
 fun testBinOp(op, v1, v2) =
   let args = [Arg(ValueLit(v1)), Arg(ValueLit(v2))]
@@ -399,7 +479,7 @@ module M with
 :ignore
 val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.400: 	val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
+//│ ║  l.480: 	val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
 //│ ║         	                                            ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueMemberRef(ModuleSymbol("M", class M, false))

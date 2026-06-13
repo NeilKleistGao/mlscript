@@ -52,21 +52,29 @@ class Ctx(
   // thisShape stores the shapeset of this, e.g., C1(1) U C1(2)
   val thisShape: Option[ShapeSet],
 ) with
+  // Constructor propagation stores the shape returned by the direct super() call here.
+  let superShape = mkBot()
   fun get(path) =
     let ps = showCtxPath(path)
     if ctx.has(ps) then Some(ctx.get(ps)) else None
   fun getValDefn(name) =
-    if valDefnCtx.has(name) then Some(valDefnCtx.get(name)) else None
+    if valDefnCtx.has(name) then Some(valDefnCtx.get(name))
+    else
+      let inherited = selSet(superShape, mkLit(name))
+      if inherited.isEmpty() then None else Some(inherited)
   fun getStaticCall(key) =
     if staticCallCtx.has(key) then Some(staticCallCtx.get(key)) else None
   fun addStaticCall(key, entry) =
     staticCallCtx.set(key, entry)
     this
-  fun clone = Ctx(new Map(ctx), new Map(valDefnCtx), new Map(staticCallCtx), allocs, thisShape)
-  // For propagation of instantiation of derived class,
-  // we need to keep track of fields defined in parent class,
-  // which is stored in valDefnCtx
-  fun clearCtx = Ctx(new Map(), valDefnCtx, new Map(staticCallCtx), allocs, thisShape)
+  fun getSuperShape() = superShape
+  fun setSuperShape(ss) =
+    set superShape = ss
+    this
+  fun clone =
+    let res = Ctx(new Map(ctx), new Map(valDefnCtx), new Map(staticCallCtx), allocs, thisShape)
+    res.setSuperShape(superShape)
+  fun clearCtx = Ctx(new Map(), new Map(), new Map(staticCallCtx), allocs, thisShape)
   fun sub(other: Ctx) =
     let res = new Map()
     fun otherIsBot(ps) =
@@ -268,7 +276,7 @@ class SplitResult(val knownMap: Map[Class, [ConcreteClassSymbol, ShapeSet]], val
 fun fsplit(pss) = 
   let knownMap = new Map()
   let unkShape = foldl((acc, s) => if s is
-    Class(sym, params, _) and isStagedClass(sym.value) then
+    Class(sym, params, _, _) and isStagedClass(sym.value) then
       let key = getActualClass(sym.value)
       if knownMap.has(key) then
         let entry = knownMap.get(key)
@@ -476,11 +484,28 @@ fun isDispatchPath(p) = if p is
   Select(ValueMemberRef(ConcreteClassSymbol), _) then true
   else false
 
+fun isClassCallPath(p) = if p is
+  ValueMemberRef(ConcreteClassSymbol) then true
+  Select(ValueThis(ModuleSymbol), ConcreteClassSymbol) then true
+  Select(ValueMemberRef(ModuleSymbol), ConcreteClassSymbol) then true
+  else false
+
+fun flattenUCSShape(s: Shape): Array[Shape] =
+  if s is
+    Class(sym, fields, superShape, true) and fields.some(_.values().length > 1) then
+      prod(fields.map(_.values())).map(fieldShapes =>
+        Class(sym, fieldShapes.map(lift), superShape, true)
+      )
+    else [s]
+
+fun prepareUCSShapes(pss) =
+  liftMany(pss.values().flatMap(flattenUCSShape))
+
 fun needsUCS(pss) =
   let shapes = pss.values()
   shapes.length > 1 and shapes.some(s =>
-    s is Class(sym, _, true) and shapes.some(other =>
-      other !== s and other is Class(otherSym, _, _) and
+    s is Class(sym, _, _, true) and shapes.some(other =>
+      other !== s and other is Class(otherSym, _, _, _) and
         getActualClass(sym.value) == getActualClass(otherSym.value)
     )
   )
@@ -489,8 +514,8 @@ fun orderedUCSShapes(pss) =
   let shapes = pss.values()
   // Exact patterns must precede broad class patterns, and Dyn is the final wildcard.
   [
-    ...shapes.filter(_ is Class(_, _, true)),
-    ...shapes.filter(s => s is Class(_, _, false)),
+    ...shapes.filter(_ is Class(_, _, _, true)),
+    ...shapes.filter(s => s is Class(_, _, _, false)),
     ...shapes.filter(s => not (s is Class)),
   ]
 
@@ -549,7 +574,7 @@ fun propUCSMatch(ctx, p, arms, dflt, restBlock, pss) =
 fun prop(ctx, b) = if b is
     End() then [b, mkBot(), true]
     Return(Call(Select(p, Symbol(f)), args, isSpecial)) and not (f is "concat") and isDispatchPath(p) then
-      let pss = sop(ctx, p)
+      let pss = prepareUCSShapes(sop(ctx, p))
       if needsUCS(pss) then propUCSReturn(ctx, p, f, args, isSpecial, pss)
       else [...dispatchMethodCall(ctx, None, p, f, args, isSpecial), false]
     Return(res) and sor(ctx, res) is [blk, r1, s1] then
@@ -558,10 +583,13 @@ fun prop(ctx, b) = if b is
       symbols.forEach(x => ctx.add(ValueSimpleRef(x), mkBot()))
       let newAllocs = mut []
       let newCtx = Ctx(new Map(ctx.ctx), ctx.valDefnCtx, new Map(ctx.staticCallCtx), newAllocs, ctx.thisShape)
+      newCtx.setSuperShape(ctx.getSuperShape())
       let res = prop(newCtx, rest)
+      // preCtor$ is usually scoped, so commit a super() shape discovered inside the scope.
+      ctx.setSuperShape(newCtx.getSuperShape())
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
     Assign(x, Call(Select(p, Symbol(f)), args, isSpecial), restBlock) and isDispatchPath(p) then
-      let pss = sop(ctx, p)
+      let pss = prepareUCSShapes(sop(ctx, p))
       if needsUCS(pss) then propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss)
       else
         let res = dispatchMethodCall(ctx, Some(x), p, f, args, isSpecial)
@@ -572,12 +600,17 @@ fun prop(ctx, b) = if b is
         do ctx.addValDefn(sym.name, s1)
         prop(ctx, restBlock) is [b2, s2, canReachEnd] then
           [concat(blk, Define(ValDefn(opt, sym, r1), b2)), s2, canReachEnd]
+    Assign(x, Call(f, args, isSpecial), restBlock) and x is NoSymbol and isClassCallPath(f) and
+      sorCall(ctx, Call(f, args, isSpecial), f, args, isSpecial, args.map((a, _, _) => sop(ctx, a.value))) is [blk, r1, s1] and
+        do ctx.setSuperShape(s1)
+        prop(ctx, restBlock) is [b2, s2, canReachEnd] then
+          [concat(blk, Assign(x, r1, b2)), s2, canReachEnd]
     Assign(x, r, restBlock) and 
       sor(ctx, r) is [blk, r1, s1] and
         prop(ctx.add(ValueSimpleRef(x), s1), restBlock) is [b2, s2, canReachEnd] then
           [concat(blk, Assign(x, r1, b2)), s2, canReachEnd]
     Match(p, arms, dflt, restBlock) and
-      let pss = sop(ctx, p)
+      let pss = prepareUCSShapes(sop(ctx, p))
       needsUCS(pss) then
         propUCSMatch(ctx, p, arms, dflt, restBlock, pss)
     Match(p, arms, dflt, restBlock) then
@@ -625,9 +658,11 @@ fun buildShapeName(s: Shape): Str = if s is
   Lit(lit) and lit is Str then "Str" + lit
   Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
   Arr(shapes) then "Arr_" + shapes.map(buildShapeSetName).join("_") + "_end"
-  Class(sym, params, isSpecial) and params.length is
-    0 then sym.name + (if isSpecial then "_Special" else "")
-    else sym.name + "_" + params.map(buildShapeSetName).join("_") + (if isSpecial then "_Special" else "")
+  Class(sym, params, superShape, isSpecial) and
+    let superName = if superShape.isEmpty() then "" else "_Super_" + buildShapeSetName(superShape) + "_end"
+    params.length is
+      0 then sym.name + superName + (if isSpecial then "_Special" else "")
+      else sym.name + "_" + params.map(buildShapeSetName).join("_") + superName + (if isSpecial then "_Special" else "")
   else throw Error("unknown shape when building shape name" + s.toString())
 
 fun buildShapeSetName(ss: ShapeSet): Str =
@@ -730,5 +765,5 @@ fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], c
     if not (actualClass."class$ctor$_instr" is undefined) and actualClass."class$ctor$_instr"() is FunDefn(_, _, ctorBody) then do
       prop(ctx, ctorBody)
     else throw Error("ctor not found in staged class")
-    mkClassFromMap(classSymb, ctx.valDefnCtx, Some(ps), isSpecial)
+    mkClassFromMapWithSuper(classSymb, ctx.valDefnCtx, Some(ps), ctx.getSuperShape(), isSpecial)
   else throw Error("instrumented method is not a FunDefn")
