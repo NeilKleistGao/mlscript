@@ -483,9 +483,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // refresh parameters
     val funParams = f.params.map(refreshParamList)
     val params = if classFun then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
+    val isExplicitlySpecialized = f.annotations.contains(Annot.Specialize)
     val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
       tuple(tups): args =>
-        call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
+        call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args, toValue(isExplicitlySpecialized))): res =>
           Return(res)
     FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(f.configOverride, f.annotations)
   

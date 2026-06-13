@@ -1,6 +1,6 @@
 #config(noFreeze: true)
 
-open annotations { special }
+open annotations { special, specialize }
 
 module SeqHelper with
   fun push(arr, ele) =
@@ -27,11 +27,11 @@ staged module SpecialRegExp with
   class Cons(val x, val xs)
   class Nil
 
+  @specialize
   fun pushUnique(ls, e) =
-    let s = ls // FIXME: remove it after we have @specialize and rec check
     if ls is
       Cons(x, xs) then
-        if x.eq(e) then s
+        if x.eq(e) then ls
         else (@special new Cons(x, pushUnique(xs, e)))
       else (@special new Cons(e, Nil))
 
@@ -40,6 +40,7 @@ staged module SpecialRegExp with
       Cons(y, ys') then concatUnique(pushUnique(xs, y), ys')
       else xs
 
+  @specialize
   fun lsEq(xs, ys) =
     if [xs, ys] is
       [Nil, Nil] then true
@@ -115,7 +116,7 @@ staged module SpecialRegExp with
       else new Nothing()
 
   staged class Altern(val p1, val p2) extends RegExp() with
-    fun derive(c) = (new Altern(p1.derive(c), p2.derive(c))).normalize()
+    fun derive(c) = (@special new Altern(p1.derive(c), p2.derive(c))).normalize()
     fun canBeEmpty() = p1.canBeEmpty() || p2.canBeEmpty()
     fun normalize() =
       mkUnion(flat())
@@ -127,7 +128,7 @@ staged module SpecialRegExp with
     fun flat() =
       let p1' = p1.flat()
       let p2' = p2.flat()
-      concatUnique(p1', p2') // FIXME: dedup for p1'
+      concatUnique(concatUnique(Nil, p1'), p2')
 
   fun question(r) = (@special new Altern(r, new Empty()))
 
@@ -178,7 +179,7 @@ staged module SpecialRegExp with
 
   fun plus(r) = (@special new Concat(r, (@special new Star(r))))
 
-  fun matchImpl(p, s, acc) = if
+  @specialize fun matchImpl(p, s, acc) = if
     len(s) == 0 and
       p.canBeEmpty() then new Some(acc)
       else new None
@@ -190,7 +191,7 @@ staged module SpecialRegExp with
   fun match(p, s) =
     matchImpl(p, s, "")
 
-  fun matchAllImpl(p, s, res) =
+  @specialize fun matchAllImpl(p, s, res) =
     if len(s) == 0 then res
     else
       if match(p, s) is
