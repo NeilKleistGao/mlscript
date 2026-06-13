@@ -48,7 +48,7 @@ object DiffTestRunner:
     
     val TimeLimit =
       if sys.env.get("CI").isDefined then Span(60, Seconds)
-      else Span(60, Seconds)
+      else Span(600, Seconds)
     
   end State
   
