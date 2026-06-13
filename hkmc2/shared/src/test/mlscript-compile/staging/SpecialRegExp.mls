@@ -28,15 +28,16 @@ staged module SpecialRegExp with
   class Nil
 
   fun pushUnique(ls, e) =
+    let s = ls // FIXME: remove it after we have @specialize and rec check
     if ls is
       Cons(x, xs) then
-        if x.eq(e) then ls
+        if x.eq(e) then s
         else (@special new Cons(x, pushUnique(xs, e)))
       else (@special new Cons(e, Nil))
 
   fun concatUnique(xs, ys) =
     if ys is
-      Cons(y, ys) then concatUnique(pushUnique(xs, y), ys)
+      Cons(y, ys') then concatUnique(pushUnique(xs, y), ys')
       else xs
 
   fun lsEq(xs, ys) =
@@ -119,15 +120,14 @@ staged module SpecialRegExp with
     fun normalize() =
       mkUnion(flat())
     fun eq(other) =
-      let n = other.normalize()
-      if n is
-        Altern then lsEq(flat(), n.flat())
+      if other is
+        Altern then lsEq(flat(), other.flat())
         else false
     fun startsWith(c) = p1.startsWith(c) || p2.startsWith(c)
     fun flat() =
       let p1' = p1.flat()
       let p2' = p2.flat()
-      concatUnique(concatUnique(new Nil, p1'), p2')
+      concatUnique(p1', p2') // FIXME: dedup for p1'
 
   fun question(r) = (@special new Altern(r, new Empty()))
 
