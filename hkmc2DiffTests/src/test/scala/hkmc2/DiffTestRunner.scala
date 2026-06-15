@@ -46,7 +46,7 @@ object DiffTestRunner:
     
     def filter(file: os.RelPath): Bool = true
     
-    val TimeLimit = Span(1200, Seconds)
+    val TimeLimit = Span(600, Seconds)
     
   end State
   
