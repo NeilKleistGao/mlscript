@@ -3,7 +3,7 @@ import { run, bench, boxplot, summary } from 'mitata';
 
 import SimpleRegExp from "../../SimpleRegExp.mjs"
 import StagedRegExp from "../out/StagedRegExp.mjs"
-import SpecialRegExp from "../out/SpecialRegExp.mjs"
+import SpecialRegExpEmail from "../out/SpecialRegExpEmail.mjs"
 
 let text = fs.readFileSync("./input-text.txt", "utf8")
 
@@ -18,7 +18,7 @@ boxplot(() => {
     });
 
     bench('SpecialRegExp.matchAllEmail', () => {
-      SpecialRegExp.matchAllEmail(text);
+      SpecialRegExpEmail.matchAllEmail(text);
     });
   });
 });
