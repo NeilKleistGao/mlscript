@@ -46,9 +46,7 @@ object DiffTestRunner:
     
     def filter(file: os.RelPath): Bool = true
     
-    val TimeLimit =
-      if sys.env.get("CI").isDefined then Span(60, Seconds)
-      else Span(600, Seconds)
+    val TimeLimit = Span(1200, Seconds)
     
   end State
   

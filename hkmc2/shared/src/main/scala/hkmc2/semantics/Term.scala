@@ -27,9 +27,7 @@ enum Annot extends AutoLocated:
   case TailRec
   case TailCall
   case Inline
-  // Requests specialization of a call or instantiation.
   case Special
-  // Prevents a staged function or method from widening recursive specializations.
   case Specialize
   // Whether the function is guaranteed to not raise effects.
   case MayNotRaiseEffects
