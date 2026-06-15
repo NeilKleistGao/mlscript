@@ -1422,7 +1422,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           case _ => warn(a)
       case a @ Annot.Specialize => target match
         case TermDefinition(body = S(_), k = syntax.Fun) => ()
-        case TermDefinition(k = syntax.Fun) => warn(a, S(msg"Only functions with a body may be marked as @specialize."))
         case _ => warn(a)
       case Annot.Modifier(syntax.Keyword.`public` | syntax.Keyword.`private` | syntax.Keyword.`virtual`) => ()
       case Annot.Modifier(syntax.Keyword("staged")) => ()

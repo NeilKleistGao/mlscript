@@ -44,14 +44,18 @@ fun specializationContextName(cache, funName) =
   if cache.owner is ConcreteClassSymbol(name, _, _, _, _) then name + "." + funName
   else funName
 
+fun isDynamicSpecializationScrutinee(scrutShape) =
+  scrutShape.isDyn() || scrutShape.values().length > 1
+
 fun withDynamicSpecialization(scrutShape, action) =
-  if staticSet(scrutShape) || (currentSpecialization is None) || currentSpecializationIsExplicit then action()
+  if not isDynamicSpecializationScrutinee(scrutShape) || currentSpecializationIsExplicit then action()
   else if currentSpecialization is Some(name) then
     let wasPresent = dynamicSpecializations.has(name)
     dynamicSpecializations.add(name)
     let res = action()
     if not wasPresent do dynamicSpecializations.delete(name)
     res
+  else action()
 
 class StaticCallEntry(
   val block: Block.Block,
@@ -754,7 +758,8 @@ fun specialize(cache: FunCache, funName, dflt, shapes, isExplicitlySpecialized) 
     let isMethod = cache.owner is ConcreteClassSymbol
     let contextName = specializationContextName(cache, funName)
     let effectiveShapes =
-      if dynamicSpecializations.has(contextName) then dynamicSpecializationShapes(cache, isMethod, ps)
+      if not isExplicitlySpecialized and dynamicSpecializations.has(contextName) then
+        dynamicSpecializationShapes(cache, isMethod, ps)
       else shapes
     let specializationKey = specializeKey(funName, isMethod, ps, effectiveShapes)
     let isPrivate = not hasAllDynamicParams(isMethod, ps, effectiveShapes)
