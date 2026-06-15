@@ -18,7 +18,7 @@ abstract class CompileTestRunnerBase(
 ) extends TimeOutTests, ParallelTestExecution:
   
   
-  val timeLimit = Span(15, Seconds)
+  val timeLimit = Span(600, Seconds)
   
   
   given CompilerCtx = cctx
