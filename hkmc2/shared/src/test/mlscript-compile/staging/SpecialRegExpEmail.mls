@@ -148,11 +148,10 @@ staged module SpecialRegExpEmail with
   fun digits() = new In(CharSet.digit())
 
   staged class Concat(val p1, val p2) extends RegExp() with
-    @specialize fun derive(c) =
+    fun derive(c) =
       let p1' = p1.derive(c)
       if p1.canBeEmpty() then
-        let t = (@special new Concat(p1', p2)).normalize()
-        (@special new Altern(t, p2.derive(c))).normalize()
+        (@special new Altern((@special new Concat(p1', p2)), p2.derive(c))).normalize()
       else (@special new Concat(p1', p2)).normalize()
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
     @specialize fun normalize() =
