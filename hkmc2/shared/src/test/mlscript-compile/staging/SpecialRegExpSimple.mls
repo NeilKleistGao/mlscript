@@ -3,24 +3,10 @@
 open annotations { special, specialize }
 
 module SeqHelper with
-  fun push(arr, ele) =
-    arr.push(ele)
-    arr
-  fun concat(lhs, rhs) = lhs.concat(rhs)
   fun has(arr, ele) = arr.includes(ele)
   fun len(s) = s.length
-  fun eq(arr1, arr2) =
-    arr1.length == arr2.length and arr1.every((v, i) => v == arr2.(i))
 
-module CharSet with
-  fun alphabet() = [
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
-  ]
-  fun space() = [" ", "\n", "\t", "\r"]
-  fun digit() = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-staged module SpecialRegExpEmail with
+staged module SpecialRegExpSimple with
   class Some(val x)
   class None
 
@@ -47,10 +33,7 @@ staged module SpecialRegExpEmail with
       [Cons(x, xs), Cons(y, ys)] then x.eq(y) and lsEq(xs, ys)
       else false
 
-  fun len(s) = SeqHelper.len(s)
   fun has(arr, ele) = SeqHelper.has(arr, ele)
-  fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
-  fun push(arr, ele) = SeqHelper.push(arr, ele)
 
   staged class RegExp() with
     fun derive(c)
@@ -87,28 +70,6 @@ staged module SpecialRegExpEmail with
     fun startsWith(c) = ch == c
     fun flat() = (@special new Cons(this, Nil))
 
-  staged class Any() extends RegExp() with
-    fun derive(c) = new Empty()
-    fun canBeEmpty() = false
-    fun normalize() = this
-    fun eq(other) = other is Any()
-    fun startsWith(c) = true
-    fun flat() = (@special new Cons(this, Nil))
-
-  staged class Not(val chars) extends RegExp() with
-    fun derive(c) =
-      if startsWith(c) then new Empty() else new Nothing()
-    fun canBeEmpty() = false
-    fun normalize() = this
-    fun eq(other) =
-      if other is Not(chars') then arrEq(chars, chars') else false
-    fun startsWith(c) = not has(chars, c)
-    fun flat() = (@special new Cons(this, Nil))
-
-  fun notWord() = new Not(CharSet.alphabet())
-  fun notSpace() = new Not(CharSet.space())
-  fun notDigit() = new Not(CharSet.digit())
-
   @specialize
   fun mkUnion(ls) =
     if ls is
@@ -129,33 +90,17 @@ staged module SpecialRegExpEmail with
     fun flat() =
       let p1' = p1.flat()
       let p2' = p2.flat()
-      concatUnique(concatUnique(new Nil, p1'), p2')
-
-  fun question(r) = (@special new Altern(r, new Empty()))
-
-  staged class In(val chars) extends RegExp() with
-    fun derive(c) =
-      if startsWith(c) then new Empty() else new Nothing()
-    fun canBeEmpty() = false
-    fun normalize() = this
-    fun eq(other) =
-      if other is In(chars') then arrEq(chars, chars') else false
-    fun startsWith(c) = has(chars, c)
-    fun flat() = (@special new Cons(this, Nil))
-
-  fun words() = new In(CharSet.alphabet())
-  fun spaces() = new In(CharSet.space())
-  fun digits() = new In(CharSet.digit())
+      concatUnique(concatUnique(Nil, p1'), p2')
 
   staged class Concat(val p1, val p2) extends RegExp() with
-    @specialize fun derive(c) =
+    fun derive(c) =
       let p1' = p1.derive(c)
       if p1.canBeEmpty() then
         let t = (@special new Concat(p1', p2)).normalize()
         (@special new Altern(t, p2.derive(c))).normalize()
       else (@special new Concat(p1', p2)).normalize()
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
-    @specialize fun normalize() =
+    fun normalize() =
       let p1' = p1.normalize()
       if p1' is
         Empty() then p2.normalize()
@@ -166,10 +111,6 @@ staged module SpecialRegExpEmail with
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
     fun flat() = (@special new Cons(this, Nil))
 
-  fun nTimes(r, i) =
-    if i == 1 then r
-    else (@special new Concat(r, nTimes(r, i - 1)))
-
   staged class Star(val p) extends RegExp() with
     fun derive(c) = (@special new Concat(p.derive(c), (@special new Star(p)))).normalize()
     fun canBeEmpty() = true
@@ -179,10 +120,8 @@ staged module SpecialRegExpEmail with
     fun startsWith(c) = p.startsWith(c)
     fun flat() = (@special new Cons(this, Nil))
 
-  fun plus(r) = (@special new Concat(r, (@special new Star(r))))
-
   @specialize fun matchImpl(p, s, acc) = if
-    len(s) == 0 and
+    SeqHelper.len(s) == 0 and
       p.canBeEmpty() then new Some(acc)
       else new None
     p is Nothing then new None
@@ -193,19 +132,6 @@ staged module SpecialRegExpEmail with
   fun match(p, s) =
     matchImpl(p, s, "")
 
-  @specialize fun matchAllImpl(p, s, res) =
-    if len(s) == 0 then res
-    else
-      if match(p, s) is
-        Some(ss) then
-          if len(ss) > 0 then matchAllImpl(p, s.slice(len(ss)), SeqHelper.push(res, ss))
-          else matchAllImpl(p, s.slice(1), res)
-        else matchAllImpl(p, s.slice(1), res)
-  fun matchAll(p, s) =
-    matchAllImpl(p, s, [])
-
-  // [\w\.-]+@[\w\.-]+\.[\w\.-]+
-  fun matchAllEmail(s) =
-    let p = plus(new In(SeqHelper.concat(CharSet.alphabet(), ["-", "."])))
-    let email = new Concat(p, new Concat(new Exact("@"), new Concat(p, new Concat(new Exact("."), p))))
-    matchAll(email, s)
+  fun test(s) =
+    let p = new Concat(new Star(new Exact("a")), new Exact("b"))
+    match(p, s)
