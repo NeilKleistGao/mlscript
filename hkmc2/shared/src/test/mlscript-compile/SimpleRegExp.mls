@@ -147,7 +147,8 @@ module SimpleRegExp with
     fun derive(c) =
       let p1' = p1.derive(c)
       if p1.canBeEmpty() then
-        (new Altern(new Concat(p1', p2), p2.derive(c))).normalize()
+        let t = new Concat(p1', p2).normalize()
+        new Altern(t, p2.derive(c)).normalize()
       else (new Concat(p1', p2)).normalize()
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
     fun normalize() =
