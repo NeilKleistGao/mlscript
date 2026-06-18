@@ -1,0 +1,25 @@
+:js
+
+
+class Foo(val x)
+
+
+:ssjs
+fun foo(x) =
+  if x is
+    Foo(x) then x + 1
+    else branch.unreachable
+//│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
+//│ let foo;
+//│ foo = function foo(x) {
+//│   runtime.checkArgs("foo", 1, true, arguments.length);
+//│   let arg$Foo$0$;
+//│   arg$Foo$0$ = x.x;
+//│   return arg$Foo$0$ + 1
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+
+:expect 1
+foo(Foo(0))
+//│ = 1
