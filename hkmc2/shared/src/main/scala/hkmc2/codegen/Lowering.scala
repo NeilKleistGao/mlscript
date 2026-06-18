@@ -1360,9 +1360,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     // * TODO[Anto]: Can we remove MergeMatchArmTransformer? Seems no longer necessary
     val merged = MergeMatchArmTransformer.applyBlock(bufferable)
     
+    val flattenedUnreachableMatches =
+      FlattenUnreachableMatchTransformer(ctx.builtins.branch.unreachable).applyBlock(merged)
+
     val funcToCls =
-      if config.funcToCls then Lifter(FirstClassFunctionTransformer().transform(merged)).transform
-      else merged
+      if config.funcToCls then Lifter(FirstClassFunctionTransformer().transform(flattenedUnreachableMatches)).transform
+      else flattenedUnreachableMatches
     
     val flatClassParams = ClassParamFlattener(funcToCls)
 
@@ -1608,4 +1611,26 @@ object MergeMatchArmTransformer extends BlockTransformer(SymbolSubst.Id):
             Match(scrut, arms ::: newArms,
               dfltRewritten.fold(restRewritten)(Begin(_, restRewritten)) |> some, rest)
       case _ => m
+    case b => b
+
+
+/** Eliminates a one-arm match whose fallback is explicitly marked unreachable.
+  * Declared builtins lower as selections, so identify the marker through its
+  * canonical block-member symbol rather than relying on a particular path shape.
+  * Keep the marker lazy because Prelude diff-tests lower declaration blocks before
+  * all builtins have been introduced.
+  */
+final class FlattenUnreachableMatchTransformer(mkUnreachableBuiltin: => BlockMemberSymbol)
+extends BlockTransformer(SymbolSubst.Id):
+  private lazy val unreachableBuiltin = mkUnreachableBuiltin
+
+  private def isUnreachableBranch(body: Block): Bool = body match
+    case Return(path: Path) =>
+      path.targetSymbol.flatMap(_.asBlkMember).exists(_ is unreachableBuiltin)
+    case _ => false
+
+  override def applyBlock(b: Block): Block = super.applyBlock(b) match
+    case Match(_, (_ -> body) :: Nil, Some(dflt), rest)
+        if isUnreachableBranch(dflt) =>
+      Begin(body, rest)
     case b => b

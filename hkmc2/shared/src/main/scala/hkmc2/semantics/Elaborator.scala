@@ -284,6 +284,8 @@ object Elaborator:
         val mayNotRaiseEffects = assumeObject("mayNotRaiseEffects")
       object scope extends VirtualModule(assumeBuiltinMod("scope")):
         val locally = assumeObject("locally")
+      object branch extends VirtualModule(assumeBuiltinMod("branch")):
+        val unreachable = assumeObject("unreachable")
       object runtime extends VirtualModule(assumeBuiltinMod("runtime")):
         val suspend = assumeObject("suspend")
         val handle_suspension = assumeObject("handle_suspension")
