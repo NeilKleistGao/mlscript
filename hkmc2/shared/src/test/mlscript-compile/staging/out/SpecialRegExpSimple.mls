@@ -445,6 +445,7 @@ fun matchImpl_SpecialRegExpSimple_sp_2(p, s, acc) =
         Concat(Nothing, _) then
           scrut13 = canBeEmpty_Concat_sp_2(p)
           new None()
+        else branch.unreachable
     else
       if p is
         Altern(Concat(Star(Exact), Exact), _) then
@@ -481,6 +482,7 @@ fun matchImpl_SpecialRegExpSimple_sp_2(p, s, acc) =
           scrut14 = startsWith_Concat_sp_2(p, c12)
           scrut15 = canBeEmpty_Concat_sp_2(p)
           new None()
+        else branch.unreachable
 fun match_SpecialRegExpSimple_sp_0(p, s) = matchImpl_SpecialRegExpSimple_sp_1(p, s, "")
 fun mkUnion_SpecialRegExpSimple_sp_0(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
@@ -499,6 +501,7 @@ fun mkUnion_SpecialRegExpSimple_sp_0(ls) =
       x5 = arg_Cons_0_4
       tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
       new Altern(x5, tmp21)
+    else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_1(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
   arg_Cons_0_4 = ls.x
@@ -518,6 +521,7 @@ fun mkUnion_SpecialRegExpSimple_sp_2(ls) =
       arg_Cons_1_4 = ls.xs
       x4 = arg_Cons_0_4
       x4
+    else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_3(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
   arg_Cons_0_4 = ls.x
@@ -628,6 +632,7 @@ fun derive_Altern_sp_0(self, c) =
     Altern(Altern(Concat(Nothing, Exact), Empty), _) then normalize_Altern_sp_5(tmp2)
     Altern(Concat(Star(Exact), Exact), _) then normalize_Altern_sp_6(tmp2)
     Altern(Concat(Nothing, Exact), _) then normalize_Altern_sp_7(tmp2)
+    else branch.unreachable
 fun flat_Altern_sp_0(self) =
   let {p1__, p2__, tmp8}
   p1__ = self.p1.flat()
@@ -665,6 +670,7 @@ fun flat_Altern_sp_3(self) =
       p2__ = flat_Empty_sp_0(self.p2)
       tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
       concatUnique_SpecialRegExpSimple_sp_10(tmp8, p2__)
+    else branch.unreachable
 fun flat_Altern_sp_4(self) =
   let {p1__, p2__, tmp8}
   if self.p1 is
@@ -678,6 +684,7 @@ fun flat_Altern_sp_4(self) =
       p2__ = flat_Nothing_sp_0(self.p2)
       tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
       concatUnique_SpecialRegExpSimple_sp_9(tmp8, p2__)
+    else branch.unreachable
 fun flat_Altern_sp_5(self) =
   let {p1__, p2__, tmp8}
   p1__ = flat_Altern_sp_6(self.p1)
@@ -760,6 +767,7 @@ fun derive_Concat_sp_0(self, c) =
   if tmp11 is
     Altern(_, Empty) then normalize_Altern_sp_2(tmp11)
     Altern(_, Nothing) then normalize_Altern_sp_3(tmp11)
+    else branch.unreachable
 fun derive_Concat_sp_1(self, c) =
   let {p1__1, scrut1, tmp9, tmp10, tmp11, tmp12}
   p1__1 = derive_Star_sp_1(self.p1, c)
@@ -770,6 +778,7 @@ fun derive_Concat_sp_1(self, c) =
   if tmp11 is
     Altern(_, Empty) then normalize_Altern_sp_2(tmp11)
     Altern(_, Nothing) then normalize_Altern_sp_3(tmp11)
+    else branch.unreachable
 fun eq_Concat_sp_0(self, other) =
   let {p2__1, p1__3, scrut4, scrut5, arg_Concat_0_, arg_Concat_1_}
   if other is
@@ -851,6 +860,7 @@ fun derive_Star_sp_0(self, c) =
   if tmp17 is
     Concat(Empty, _) then normalize_Concat_sp_2(tmp17)
     Concat(Nothing, _) then normalize_Concat_sp_3(tmp17)
+    else branch.unreachable
 fun derive_Star_sp_1(self, c) =
   let {tmp15, tmp16, tmp17}
   tmp15 = derive_Exact_sp_0(self.p, c)
@@ -859,6 +869,7 @@ fun derive_Star_sp_1(self, c) =
   if tmp17 is
     Concat(Empty, _) then normalize_Concat_sp_2(tmp17)
     Concat(Nothing, _) then normalize_Concat_sp_3(tmp17)
+    else branch.unreachable
 fun normalize_Star_sp_0(self) =
   let {tmp18}
   tmp18 = self.p.normalize()

@@ -389,6 +389,7 @@ class Printer(val owner: Opt[Symbol]) with
         let branchShapes = arms.map(_.0)
         "if " + showPath(scrut) + " is"
         + indent("\n" + arms.map(a => printer.showUCSArm(a, branchShapes)).join("\n"))
+        + indent("\nelse branch.unreachable")
       Scoped(symbols, rest) then
         // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
