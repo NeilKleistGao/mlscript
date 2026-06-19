@@ -508,8 +508,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args, isSpecial) =
 fun isDispatchPath(p) = if p is
   ValueSimpleRef(symb) | ValueMemberRef(symb) then not symb is ModuleSymbol
   ValueThis(ConcreteClassSymbol) then true
-  Select(ValueThis(ConcreteClassSymbol), _) then true
-  Select(ValueMemberRef(ConcreteClassSymbol), _) then true
+  Select(p', _) then isDispatchPath(p')
   else false
 
 fun isClassCallPath(p) = if p is
@@ -601,7 +600,7 @@ fun propUCSMatch(ctx, p, arms, dflt, restBlock, pss) =
 // [retBlock, retShape, canReachEnd]
 fun prop(ctx, b) = if b is
     End() then [b, mkBot(), true]
-    Return(Call(Select(p, Symbol(f)), args, isSpecial)) and not (f is "concat") and isDispatchPath(p) then
+    Return(Call(Select(p, Symbol(f)), args, isSpecial)) and isDispatchPath(p) then
       let pss = prepareUCSShapes(sop(ctx, p))
       withDynamicSpecialization(pss, () =>
         if needsUCS(pss) then propUCSReturn(ctx, p, f, args, isSpecial, pss)

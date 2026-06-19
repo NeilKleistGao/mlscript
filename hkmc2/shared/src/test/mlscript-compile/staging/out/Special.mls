@@ -4,8 +4,12 @@ module Special with
     class Pair(val x, val y) with
       ()
       fun swap() = new Pair.class(y, x)
-    class Foo(val x)
-    class Bar(val x, val y)
+    class Foo(val x) with
+      ()
+      fun f() = x + 1
+    class Bar(val x, val y) with
+      ()
+      fun f() = x + y
     fun bar(b) = true
     fun barbar(n) = 1
     fun baz(b) =
@@ -62,6 +66,19 @@ module Special with
           tmp11 = swap_Pair_sp_5(x6)
           tmp11.x
         else branch.unreachable
+    fun fff(b) =
+      let {x12, p2, tmp23, tmp24}
+      if b is
+        true then
+          tmp23 = new Foo(1)
+        else
+          tmp23 = new Bar(2, 2)
+      x12 = tmp23
+      tmp24 = new Foo(x12)
+      p2 = new Pair(tmp24, 0)
+      if p2.x.x is
+        Foo then f_Foo_sp_0(p2.x.x)
+        Bar then f_Bar_sp_0(p2.x.x)
     fun foo(b) =
       let {x3, tmp, tmp1, tmp2}
       if b is
@@ -129,3 +146,5 @@ fun swap_Pair_sp_6(self) = new Pair.class(self.y, self.x)
 fun swap_Pair_sp_7(self) = new Pair.class(self.y, self.x)
 fun swap_Pair_sp_8(self) = new Pair.class(self.y, self.x)
 fun swap_Pair_sp_9(self) = new Pair.class(self.y, self.x)
+fun f_Foo_sp_0(self) = 2
+fun f_Bar_sp_0(self) = 4
