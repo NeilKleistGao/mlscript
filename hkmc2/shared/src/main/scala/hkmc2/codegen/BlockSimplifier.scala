@@ -683,6 +683,18 @@ class BlockSimplifier
       .iterator.map: (k, v) =>
         s"${k.showDbg} -> ${v.toString}"
       .mkString("{", ", ", "}")
+
+    private def canCollapseImmediateCallPrefix(
+        lhs: LocalVar,
+        path: Path,
+        fun: LocalVar,
+        argss: NELs[Ls[Arg]],
+        restAfterCall: Block,
+    ): Bool =
+      !inDryRun && (fun is lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs)
+        && !path.freeVars(lhs)
+        && !argss.iterator.flatten.exists(_.value.freeVars(lhs))
+        && !restAfterCall.freeVars(lhs)
     
     override def applyBlock(b: Block): Block =
     // trace[Block](s"Applying block: ${b.showDbg.abbreviate} with map:\n${showMap}", res => s"|= ${showMap}"):
@@ -693,14 +705,17 @@ class BlockSimplifier
       // * this preserves both the number and order of evaluations. This notably removes
       // * forwarding temporaries introduced when inlining getters that return a JS selection.
       case Assign(lhs: LocalVar, path: Path, Assign(nextLhs, call @ Call(Value.SimpleRef(fun: LocalVar), argss), rst))
-        if !inDryRun && (fun is lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs)
-          && !path.freeVars(lhs)
-          && !argss.iterator.flatten.exists(_.value.freeVars(lhs))
-          && !rst.freeVars(lhs)
-        =>
+        if canCollapseImmediateCallPrefix(lhs, path, fun, argss, rst)
+      =>
           registerChange(s"immediate call prefix ${lhs.showDbg} ~> ${path.showDbg}")
           val combined = Call(path, argss)(call.metadata).withLocOf(call)
           applyBlock(Assign(nextLhs, combined, rst))
+      case Assign(lhs: LocalVar, path: Path, Return(call @ Call(Value.SimpleRef(fun: LocalVar), argss)))
+        if canCollapseImmediateCallPrefix(lhs, path, fun, argss, End())
+      =>
+          registerChange(s"immediate return call prefix ${lhs.showDbg} ~> ${path.showDbg}")
+          val combined = Call(path, argss)(call.metadata).withLocOf(call)
+          applyBlock(Return(combined))
 
       // * Discard local variables that are assigned just to be returned
       // * Note: the reason we do this here and not in DeadCodeElim is that we need to check `capturedVars`
