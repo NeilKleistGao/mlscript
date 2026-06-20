@@ -694,6 +694,27 @@ class BlockSimplifier
         && !path.freeVars(lhs)
         && !argss.iterator.flatten.exists(_.value.freeVars(lhs))
     
+    private def applyLocalAssignLhs(lhs: LocalVar): LocalVar =
+      applyAssignLhs(lhs) match
+      case lhs2: LocalVar => lhs2
+      case other =>
+        softAssert(false, s"Expected local assignment lhs ${lhs.showDbg}, got ${other.showDbg}")
+        lhs
+
+    private def recordAssignmentFact(lhs: LocalVar, rhs: Result): LocalVar =
+      val lhs2 = applyLocalAssignLhs(lhs)
+      val varAsst = rhs.match
+        case r @ Value.SimpleRef(sym: LocalVar) =>
+          if capturedVars(sym) then N
+          else S(r -> assignedResults(sym))
+        case r: Value.RefLike => S(r -> Unknown)
+        case _ => N
+      val rhsRequirements = rhs.freeVars.iterator.collect:
+        case sym: LocalVar if !capturedVars(sym) =>
+          sym -> assignedResults(sym)
+      assignedResults += lhs2 -> Assigned(lhs2, rhs, varAsst, rhsRequirements.toSet)
+      lhs2
+
     override def applyBlock(b: Block): Block =
     // trace[Block](s"Applying block: ${b.showDbg.abbreviate} with map:\n${showMap}", res => s"|= ${showMap}"):
       b match
@@ -704,12 +725,14 @@ class BlockSimplifier
         if canCollapseImmediateCallPrefix(lhs, path, fun, argss) && path.isPure
       =>
           registerChange(s"immediate assigned call prefix ${lhs.showDbg} ~> ${path.showDbg}")
-          val combined = Call(path, argss)(call.metadata).withLocOf(call)
-          val res = applyBlock(Assign(nextLhs, combined, rst))
-          // * Note that it is incorrect to eliminate the `lhs` assignment even if `!rst.freeVars(lhs)`,
-          // * because the assignment may be visible from an outer block
-          // * (eg, the current block could be inside a Label or Match).
-          Assign(lhs, path, res)
+          applyPath(path): path2 =>
+            val lhs2 = recordAssignmentFact(lhs, path2)
+            val combined = Call(path2, argss)(call.metadata).withLocOf(call)
+            val res = applyBlock(Assign(nextLhs, combined, rst))
+            // * Note that it is incorrect to eliminate the `lhs` assignment even if `!rst.freeVars(lhs)`,
+            // * because the assignment may be visible from an outer block
+            // * (eg, the current block could be inside a Label or Match).
+            Assign(lhs2, path2, res)
       // * Note the following case does not necessarily assume evaluating the path is pure.
       // * Since there is no intervening statement and the local has no other use,
       // * this preserves both the number and order of evaluations.
@@ -717,9 +740,11 @@ class BlockSimplifier
         if canCollapseImmediateCallPrefix(lhs, path, fun, argss) && (path.isPure || !symbolsToPreserve(lhs))
       =>
           registerChange(s"immediate returned call prefix ${lhs.showDbg} ~> ${path.showDbg}")
-          val combined = Call(path, argss)(call.metadata).withLocOf(call)
-          val res = applyBlock(Return(combined))
-          if symbolsToPreserve(lhs) then Assign(lhs, path, res) else res
+          applyPath(path): path2 =>
+            val lhs2 = recordAssignmentFact(lhs, path2)
+            val combined = Call(path2, argss)(call.metadata).withLocOf(call)
+            val res = applyBlock(Return(combined))
+            if symbolsToPreserve(lhs) then Assign(lhs2, path2, res) else res
       
       // * Discard local variables that are assigned just to be returned
       // * Note: the reason we do this here and not in DeadCodeElim is that we need to check `capturedVars`
@@ -734,19 +759,7 @@ class BlockSimplifier
         
         applyResult(rhs): rhs2 =>
         
-          val lhs2 = applyAssignLhs(lhs).asInstanceOf[LocalVar]
-          
-          val varAsst = rhs2.match
-            case r @ Value.SimpleRef(sym: LocalVar) =>
-              if capturedVars(sym) then N
-              else S(r -> assignedResults(sym))
-            case r: Value.RefLike => S(r -> Unknown)
-            case _ => N
-          val rhsRequirements = rhs2.freeVars.iterator.collect:
-            case sym: LocalVar if !capturedVars(sym) =>
-              sym -> assignedResults(sym)
-          assignedResults += lhs2 -> Assigned(lhs2, rhs2, varAsst, rhsRequirements.toSet)
-          
+          val lhs2 = recordAssignmentFact(lhs, rhs2)
           val rst2 = applyBlock(rst)
           if (lhs2 is lhs) && (rhs2 is rhs) && (rst2 is rst) then ass else Assign(lhs, rhs2, rst2)
         
