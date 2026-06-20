@@ -248,13 +248,7 @@ fun foo(x)(y) =
   lam
 foo(1)(2)(3)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let lam$, foo$worker;
-//│ @inline @private
-//│ define lam$ as fun lam$⁰(x, y)(z) {
-//│   let tmp;
-//│   set tmp = +⁰(x, y);
-//│   return +⁰(tmp, z)
-//│ };
+//│ let foo$worker;
 //│ @inline
 //│ define foo⁰ as fun foo¹(x)(y) {
 //│   return foo$worker⁰(x, y)
@@ -264,13 +258,25 @@ foo(1)(2)(3)
 //│   set tmp = +⁰(x, y);
 //│   set inlinedVal = +⁰(tmp, 4);
 //│   do Predef⁰.print⁰(inlinedVal);
-//│   return lam$⁰(x, y)
+//│   return undefined
 //│ };
 //│ do Predef⁰.print⁰(7);
-//│ return 6
+//│ return undefined(3)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 7
-//│ = 6
+//│ FAILURE: Unexpected runtime error
+//│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:276)
+//│ ═══[RUNTIME ERROR] TypeError: undefined is not a function
+//│     at REPL57:1:472
+//│     at ContextifyScript.runInThisContext (node:vm:137:12)
+//│     at REPLServer.defaultEval (node:repl:598:22)
+//│     at bound (node:domain:433:15)
+//│     at REPLServer.runBound [as eval] (node:domain:444:12)
+//│     at REPLServer.onLine (node:repl:927:10)
+//│     at REPLServer.emit (node:events:518:28)
+//│     at REPLServer.emit (node:domain:489:12)
+//│     at [_onLine] [as _onLine] (node:internal/readline/interface:415:12)
+//│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:609:22)
 
 // Pathological cases
 :soir

@@ -689,34 +689,38 @@ class BlockSimplifier
         path: Path,
         fun: LocalVar,
         argss: NELs[Ls[Arg]],
-        restAfterCall: Block,
     ): Bool =
-      !inDryRun && (fun is lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs)
+      !inDryRun && (fun is lhs) && !capturedVars(lhs)
         && !path.freeVars(lhs)
         && !argss.iterator.flatten.exists(_.value.freeVars(lhs))
-        && !restAfterCall.freeVars(lhs)
     
     override def applyBlock(b: Block): Block =
     // trace[Block](s"Applying block: ${b.showDbg.abbreviate} with map:\n${showMap}", res => s"|= ${showMap}"):
       b match
       
-      // * Collapse immediately-invoked ANF path aliases without assuming that evaluating the
-      // * path is pure. Since there is no intervening statement and the local has no other use,
-      // * this preserves both the number and order of evaluations. This notably removes
-      // * forwarding temporaries introduced when inlining getters that return a JS selection.
+      // * Collapse immediately-invoked path aliases.
+      // * This can often arise due to inlining and forwarding functions like `fun i = id`.
       case Assign(lhs: LocalVar, path: Path, Assign(nextLhs, call @ Call(Value.SimpleRef(fun: LocalVar), argss), rst))
-        if canCollapseImmediateCallPrefix(lhs, path, fun, argss, rst)
+        if canCollapseImmediateCallPrefix(lhs, path, fun, argss) && path.isPure
       =>
-          registerChange(s"immediate call prefix ${lhs.showDbg} ~> ${path.showDbg}")
+          registerChange(s"immediate assigned call prefix ${lhs.showDbg} ~> ${path.showDbg}")
           val combined = Call(path, argss)(call.metadata).withLocOf(call)
-          applyBlock(Assign(nextLhs, combined, rst))
+          val res = applyBlock(Assign(nextLhs, combined, rst))
+          // * Note that it is incorrect to eliminate the `lhs` assignment even if `!rst.freeVars(lhs)`,
+          // * because the assignment may be visible from an outer block
+          // * (eg, the current block could be inside a Label or Match).
+          Assign(lhs, path, res)
+      // * Note the following case does not necessarily assume evaluating the path is pure.
+      // * Since there is no intervening statement and the local has no other use,
+      // * this preserves both the number and order of evaluations.
       case Assign(lhs: LocalVar, path: Path, Return(call @ Call(Value.SimpleRef(fun: LocalVar), argss)))
-        if canCollapseImmediateCallPrefix(lhs, path, fun, argss, End())
+        if canCollapseImmediateCallPrefix(lhs, path, fun, argss) && (path.isPure || !symbolsToPreserve(lhs))
       =>
-          registerChange(s"immediate return call prefix ${lhs.showDbg} ~> ${path.showDbg}")
+          registerChange(s"immediate returned call prefix ${lhs.showDbg} ~> ${path.showDbg}")
           val combined = Call(path, argss)(call.metadata).withLocOf(call)
-          applyBlock(Return(combined))
-
+          val res = applyBlock(Return(combined))
+          if symbolsToPreserve(lhs) then Assign(lhs, path, res) else res
+      
       // * Discard local variables that are assigned just to be returned
       // * Note: the reason we do this here and not in DeadCodeElim is that we need to check `capturedVars`
       case Assign(lhs: LocalVar, rhs, Return(Value.SimpleRef(ret)))
