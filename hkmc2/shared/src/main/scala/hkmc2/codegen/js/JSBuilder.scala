@@ -295,7 +295,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       val calls = argss.foldLeft(base): (acc, args) =>
         val argsDoc = args.map(argument).mkDocument(", ")
         doc"${acc}(${argsDoc})"
-      if c.isMlsFun
+      if c.metadata.isMlsFun
       then if checkMLsCalls
         then doc"$runtimeVar.checkCall(${calls})"
         else doc"${calls}"
@@ -481,7 +481,8 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
             
             val symName = sym.nme
             
-            // * If the name is a valid JavaScript identifier, use it in the generated function code.
+            // * If the name is a valid JavaScript identifier, try to use it as the generated inner function name.
+            // * This is only a convenience for users, as this name will be printed in logs and stack traces.
             if sym.nameIsMeaningful && isValidIdentifier(symName)
             then
               val varName = scope.lookup_!(sym, dSym.toLoc)

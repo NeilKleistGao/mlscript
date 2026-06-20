@@ -55,7 +55,7 @@ abstract class Symbol(using State) extends MaybeSymbol with Located:
   def ref(id: Tree.Ident =
     Tree.Ident("") // FIXME hack
   ): Term.Ref =
-    val res = new Term.Ref(this)(id, directRefs.size, N)
+    val res = new Term.Ref(this)(id, directRefs.size, N).withLocOf(id)
     directRefs += res
     res
   def refsNumber: Int = directRefs.size
@@ -356,11 +356,14 @@ object TermSymbol:
     TermSymbol(syntax.Fun, owner, Tree.Ident(b.nme))
 
 
+/** Represents the companion constructor function of parameterized classes,
+  * which is the one that is accessed on plain `C` references for a definition like `class C(...)`.
+  * Note that the owner of this function is NOT the class; it is the same as the class's own owner. */
 class ClassCtorSymbol(
   override val k: syntax.Fun.type,
-  override val owner: S[ClassSymbol],
-  id: Tree.Ident
-)(using State) extends TermSymbol(k, owner, id):
+  override val owner: Opt[InnerSymbol],
+  val associatedCls: ClassSymbol,
+)(using State) extends TermSymbol(k, owner, associatedCls.id):
   override def subst(using sub: SymbolSubst): ClassCtorSymbol = sub.mapClassCtorSym(this)
   override def mayRaiseEffects(using Config) =
     super.mayRaiseEffects || config.checkInstantiateEffect
@@ -521,7 +524,12 @@ class PatternSymbol(val id: Tree.Ident, val params: Opt[Tree.Tup], val body: Tre
   def nme = id.name
   def toLoc: Option[Loc] = id.toLoc // TODO track source tree of pattern here
   override def prefix: Str = "pattern:"
-  
+
+  /** The fixed-point machine compiled from this definition, paired with
+    * whether a failed run must be retried with the naive translation;
+    * memoized across `@compile` match sites (see `ups.FixedPointCompiler`). */
+  var fixedPointMachine: Opt[(ups.FixedPointCompiler.Machine, Bool)] = N
+
   override def subst(using sub: SymbolSubst): PatternSymbol = sub.mapPatSym(this)
 
 class TopLevelSymbol(blockNme: Str)(using State)

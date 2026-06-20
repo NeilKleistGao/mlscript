@@ -67,8 +67,8 @@ class DebugPrinter:
       case Some(v) => "S of " + aux(v)
       case None => "N"
       case Nil => "Nil"
-      case xs: List[_] => "Ls of \n" + xs.iterator.map(aux(_)).mkString("\n").indent("  ")
-      case xs: Vector[_] => "Vector of \n" + xs.iterator.map(aux(_)).mkString("\n").indent("  ")
+      case xs: List[_] => "Ls of\n" + xs.iterator.map(aux(_)).mkString("\n").indent("  ")
+      case xs: Vector[_] => "Vector of\n" + xs.iterator.map(aux(_)).mkString("\n").indent("  ")
       case s: Str => s.escaped
       case TermDefFlags(isMethod) =>
         val flags = Buffer.empty[Str]
@@ -203,5 +203,4 @@ def enumerate(strs: NELs[Str], connective: Str): Str =
   case str :: Nil => str
   case str1 :: str2 :: Nil => s"$str1, $connective $str2"
   case str :: rest => s"$str, ${enumerate(rest.ne_!, connective)}"
-
 

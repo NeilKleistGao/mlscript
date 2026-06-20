@@ -289,7 +289,7 @@ object DataSegment:
     */
   case class Passive(bytes: Seq[Str], override val sym: ValueSymbol, wrapId: Opt[Str] -> Opt[Str] = N -> N)(using Ctx, Raise)
       extends DataSegment(bytes, sym, wrapId):
-    
+
     def toWat: Document =
       doc"(data ${id.toWat}${bytes.map(s => s"\"$s\"").mkDocument(doc" ").surroundUnlessEmpty(doc" ")})"
 
@@ -327,7 +327,7 @@ object ElemSegment:
       override val sym: ValueSymbol,
       wrapId: Opt[Str] -> Opt[Str] = N -> N,
   )(using Ctx, Raise) extends ElemSegment(elemlist, sym, wrapId):
-  
+
     def toWat: Document = doc"(elem ${id.toWat} ${abbrevElemList})"
 
   /** An active element segment, which is automatically copied into a table given by `offset. */
@@ -338,7 +338,7 @@ object ElemSegment:
       override val sym: ValueSymbol,
       wrapId: Opt[Str] -> Opt[Str] = N -> N,
   )(using Ctx, Raise) extends ElemSegment(elemlist, sym, wrapId):
-  
+
     def toWat: Document = doc"(elem ${id.toWat} ${offset.toWat} ${abbrevElemList})"
 
   /** A declarative element segment, which is used to forward declare references present in the code (such as using
@@ -349,7 +349,7 @@ object ElemSegment:
       override val sym: ValueSymbol,
       wrapId: Opt[Str] -> Opt[Str] = N -> N,
   )(using Ctx, Raise) extends ElemSegment(elemlist, sym, wrapId):
-  
+
     def toWat: Document = doc"(elem ${id.toWat} declare ${abbrevElemList})"
 end ElemSegment
 
@@ -411,15 +411,29 @@ case class FoldedInstr(
     resultTypes: Seq[Type],
 ) extends Instruction:
 
-  /** Returns the result type of this instruction if this instruction only has 0-1 result values. */
+  /** Returns the result type of this instruction if this instruction has exactly 0-1 result values.
+    *
+    * This is provided as a shorthand since the majority of instruction builders (in [[Instructions]]) are designed to
+    * take one value per operand argument, and either place no value (represented by `N`) or one value (represented by
+    * `S(ty)`) on the stack.
+    *
+    * The use of these APIs with multi-value instructions, for instance:
+    *
+    * ```scala
+    * i32.add(
+    *   call(returnTypes = Seq(Result(I32Type), Result(I32Type)), /* ... */),
+    *   i32.const(1),
+    * )
+    * ```
+    *
+    * is not supported and is therefore rejected by this function, which throws an exception.
+    */
   def resultType: Opt[Type] = resultTypes match
     case Seq() => N
-    case ty :: Seq() => S(ty)
-    case _ => lastWords(s"resultType_! called on instruction with multi-value result type: $this")
-
-  /** Returns the singular result type of this instruction, otherwise throws an exception. */
-  def resultType_! : Type = resultType.getOrElse:
-    lastWords(s"resultType_! called on instruction with a non-unique result type: $this")
+    case Seq(ty) => S(ty)
+    case tys =>
+      lastWords:
+        s"resultType called on instruction `$mnemonic` with multi-value result type: ${tys.map(ty => doc"`${ty.toWat}`").mkDocument(doc"[", doc", ", doc"]").mkString()}"
 
   def toWat: Document = doc"($mnemonic${
       instrargs.map: a =>
