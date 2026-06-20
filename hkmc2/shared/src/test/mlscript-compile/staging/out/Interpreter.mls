@@ -1,0 +1,237 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+import "../Interpreter.mls" as Interpreter__Legacy
+module Interpreter with
+    class Cons(val x, val xs)
+    class Nil
+    class Some(val x)
+    class None
+    class Error
+    class Instruction() with
+      ()
+    class Push(val v) extends Instruction() with
+      ()
+      fun eval(s) =
+        let {tmp, tmp1}
+        tmp = new None()
+        tmp1 = new Cons(v, s)
+        [tmp, tmp1]
+    class Comp(val le) extends Instruction() with
+      ()
+      fun eval(s) =
+        let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp2, tmp3, tmp4, tmp5}
+        if s is
+          Cons then
+            arg_Cons_0_ = s.x
+            arg_Cons_1_ = s.xs
+            if arg_Cons_1_ is
+              Cons then
+                arg_Cons_0_1 = arg_Cons_1_.x
+                arg_Cons_1_1 = arg_Cons_1_.xs
+                rest = arg_Cons_1_1
+                y = arg_Cons_0_1
+                x2 = arg_Cons_0_
+                scrut = le
+                if scrut is
+                  true then
+                    tmp2 = x2 <= y
+                  else
+                    tmp2 = x2 >= y
+                tmp3 = new Some(tmp2)
+                [tmp3, rest]
+              else
+                tmp4 = new Error()
+                [tmp4, s]
+          else
+            tmp5 = new Error()
+            [tmp5, s]
+    class And() extends Instruction() with
+      ()
+      fun eval(s) =
+        let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp6, tmp7, tmp8, tmp9}
+        if s is
+          Cons then
+            arg_Cons_0_2 = s.x
+            arg_Cons_1_2 = s.xs
+            if arg_Cons_1_2 is
+              Cons then
+                arg_Cons_0_3 = arg_Cons_1_2.x
+                arg_Cons_1_3 = arg_Cons_1_2.xs
+                rest1 = arg_Cons_1_3
+                y1 = arg_Cons_0_3
+                x3 = arg_Cons_0_2
+                if x3 is
+                  true then
+                    if y1 is
+                      true then
+                        tmp6 = true
+                      else
+                        tmp6 = false
+                  else
+                    tmp6 = false
+                tmp7 = new Some(tmp6)
+                [tmp7, rest1]
+              else
+                tmp8 = new Error()
+                [tmp8, s]
+          else
+            tmp9 = new Error()
+            [tmp9, s]
+    class Branch(val t, val f) extends Instruction() with
+      ()
+      fun eval(s) =
+        let {rest2, c, arg_Cons_0_4, arg_Cons_1_4, tmp10}
+        if s is
+          Cons then
+            arg_Cons_0_4 = s.x
+            arg_Cons_1_4 = s.xs
+            rest2 = arg_Cons_1_4
+            c = arg_Cons_0_4
+            if c is
+              true then evalAll(t, rest2)
+              else evalAll(f, rest2)
+          else
+            tmp10 = new Error()
+            [tmp10, s]
+    fun evalAll(insts, s) =
+      let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+      if insts is
+        Cons then
+          arg_Cons_0_5 = insts.x
+          arg_Cons_1_5 = insts.xs
+          rest3 = arg_Cons_1_5
+          inst = arg_Cons_0_5
+          res = inst.eval(s)
+          if res is
+            [_, _] then
+              element0_ = res.0
+              element1_ = res.1
+              if element0_ is
+                Some then
+                  arg_Some_0_ = element0_.x
+                  ss = element1_
+                  x4 = arg_Some_0_
+                  tmp11 = new Cons(x4, ss)
+                  evalAll(rest3, tmp11)
+                None then
+                  ss1 = element1_
+                  evalAll(rest3, ss1)
+                else
+                  tmp12 = new Error()
+                  [tmp12, s]
+            else
+              tmp13 = new Error()
+              [tmp13, s]
+        else
+          tmp14 = new None()
+          [tmp14, s]
+    fun exec(insts, s) =
+      let {ss2, x5, element1_1, element0_1, arg_Cons_0_6, arg_Cons_1_6}
+      ss2 = evalAll(insts, s)
+      if ss2 is
+        [_, _] then
+          element0_1 = ss2.0
+          element1_1 = ss2.1
+          if element0_1 is
+            None then
+              if element1_1 is
+                Cons then
+                  arg_Cons_0_6 = element1_1.x
+                  arg_Cons_1_6 = element1_1.xs
+                  if arg_Cons_1_6 is
+                    Nil then
+                      x5 = arg_Cons_0_6
+                      new Some(x5)
+                    else new Error()
+                Nil then new None()
+                else new Error()
+            else new Error()
+        else new Error()
+    fun mkInRange(x, r) =
+      let {insts2, lb, ub, element1_2, element0_2, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22, tmp23, tmp24, tmp25, tmp26, tmp27, tmp28, tmp29, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52}
+      if r is
+        [_, _] then
+          element0_2 = r.0
+          element1_2 = r.1
+          ub = element1_2
+          lb = element0_2
+          tmp15 = new Push(x)
+          tmp16 = new Push(lb)
+          tmp17 = new Comp(true)
+          tmp18 = new Push(x)
+          tmp19 = new Push(ub)
+          tmp20 = new Comp(false)
+          tmp21 = new And()
+          tmp22 = new Push(1)
+          tmp23 = new Nil()
+          tmp24 = new Cons(tmp22, tmp23)
+          tmp25 = new Push(0)
+          tmp26 = new Nil()
+          tmp27 = new Cons(tmp25, tmp26)
+          tmp28 = new Branch(tmp24, tmp27)
+          tmp29 = new Nil()
+          tmp30 = new Cons(tmp28, tmp29)
+          tmp31 = new Cons(tmp21, tmp30)
+          tmp32 = new Cons(tmp20, tmp31)
+          tmp33 = new Cons(tmp19, tmp32)
+          tmp34 = new Cons(tmp18, tmp33)
+          tmp35 = new Cons(tmp17, tmp34)
+          tmp36 = new Cons(tmp16, tmp35)
+          tmp37 = new Cons(tmp15, tmp36)
+        else
+          tmp38 = new Push(x)
+          tmp39 = new Push(r)
+          tmp40 = new Comp(false)
+          tmp41 = new Push(1)
+          tmp42 = new Nil()
+          tmp43 = new Cons(tmp41, tmp42)
+          tmp44 = new Push(0)
+          tmp45 = new Nil()
+          tmp46 = new Cons(tmp44, tmp45)
+          tmp47 = new Branch(tmp43, tmp46)
+          tmp48 = new Nil()
+          tmp49 = new Cons(tmp47, tmp48)
+          tmp50 = new Cons(tmp40, tmp49)
+          tmp51 = new Cons(tmp39, tmp50)
+          tmp37 = new Cons(tmp38, tmp51)
+      insts2 = tmp37
+      tmp52 = new Nil()
+      exec_Interpreter_sp_0(insts2, tmp52)
+open Interpreter
+fun evalAll_Interpreter_sp_0(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_0(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  ss1 = element1_
+  evalAll(rest3, ss1)
+fun exec_Interpreter_sp_0(insts, s) =
+  let {ss2, x5, element1_1, element0_1, arg_Cons_0_6, arg_Cons_1_6}
+  ss2 = evalAll_Interpreter_sp_0(insts, s)
+  if ss2 is
+    [_, _] then
+      element0_1 = ss2.0
+      element1_1 = ss2.1
+      if element0_1 is
+        None then
+          if element1_1 is
+            Cons then
+              arg_Cons_0_6 = element1_1.x
+              arg_Cons_1_6 = element1_1.xs
+              if arg_Cons_1_6 is
+                Nil then
+                  x5 = arg_Cons_0_6
+                  new Some(x5)
+                else new Error()
+            Nil then new None()
+            else new Error()
+        else new Error()
+    else new Error()
+fun eval_Push_sp_0(self, s) =
+  let {tmp, tmp1}
+  tmp = new None()
+  tmp1 = new Cons(self.v, s)
+  [tmp, tmp1]
