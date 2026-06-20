@@ -28,10 +28,22 @@ class BlockSimplifier
   
   val MaxIterations = 10
   val MaxDCEIterationsPerIter = 10
+  val MinInlineFuelInThresholdUnits = 100
+  private var remainingInlineFuel = 0
   
   
   def apply(prog: Program): Program =
     
+    // Automatic inlining is individually bounded by the small-body threshold, but
+    // repeated simplification can keep making a recursive worker look small after
+    // each round of constant propagation. Give each file a finite growth budget
+    // proportional to its initial IR size, with a threshold-based floor so tiny
+    // files can still benefit from ordinary cross-file inlining. Explicit
+    // `@inline` and no-duplication inline elimination do not spend from this budget.
+    remainingInlineFuel = config.inlining match
+      case S(cfg) => prog.main.size max (cfg.inlineThreshold * MinInlineFuelInThresholdUnits)
+      case N => 0
+
     var res = prog
     def printRes = printer(res)
     var changed = true
@@ -1375,39 +1387,42 @@ class BlockSimplifier
             && !defn.owner.exists(_.isInstanceOf[PatternSymbol]) && !hasDuplicateBoundSymbols(defn)
           // false
         
-        def shouldBeInlined(newBlk: Block, threshold: Int): Bool =
-          if defn.noInline then return false
+        def inlineCost(newBlk: Block, threshold: Int): Opt[Int] =
+          if defn.noInline then return N
           // Pattern compiler helpers may intentionally reuse source pattern variables across
           // mutually-exclusive generated blocks. Symbol-refreshing them as ordinary inline
           // bodies is not sound, so keep those helpers in place.
-          if defn.owner.exists(_.isInstanceOf[PatternSymbol]) then return false
-          if hasDuplicateBoundSymbols(defn) then return false
+          if defn.owner.exists(_.isInstanceOf[PatternSymbol]) then return N
+          if hasDuplicateBoundSymbols(defn) then return N
           // Instance methods access instance state via `this`, so they must not be
           // inlined as if they were static calls. True modules are safe because
           // their `this` references can be replaced by call-site qualifier paths.
-          if isMethod && !isModuleMethod then return false
+          if isMethod && !isModuleMethod then return N
           // Instantiate nodes are rendered according to the receiving JS builder's
           // freezing policy. Moving a body across compilation units with a different
           // policy could silently turn mutable values into frozen values, or vice versa.
           if defn.dSym.getState.compilationUnitConfig.exists(_.noFreeze =/= config.noFreeze)
-          then return false
+          then return N
           // Accessors for JS-private members use a fresh Symbol shared by the owner
           // definition and its out-of-owner references within one emitted module.
           // There is deliberately no cross-module accessor ABI, so keep such accesses
           // in the compilation unit that defines them.
           if (defn.dSym.getState isnt State) && accessesPrivateMembers(newBlk)
-          then return false
+          then return N
           // `import.meta.url` denotes the file containing the generated code.
           // Moving it into a caller would silently change its meaning.
           if newBlk.freeVars.exists:
             case sym: VarSymbol => sym.nme === "import"
             case _ => false
-          then return false
+          then return N
           // If the definition is marked with inline, we should inline it regardless of the size of the body.
           // If both callee and caller are marked with inline, inlining will ignore the stricter @inline limits.
           // Remark: the case of a recursive function marked with inline will be blocked by loop breaker logic.
-          if defn.inline then return true
-          newBlk.size <= threshold || canBeInlineEliminated
+          if defn.inline then return S(0)
+          // Inline elimination does not spend fuel: the original definition disappears, so
+          // substituting it at its only call site does not duplicate the body.
+          if canBeInlineEliminated then return S(0)
+          if newBlk.size <= threshold then S(newBlk.size) else N
         
       type InlinerMap = Map[TermSymbol, InlinerFunInfo]
       
@@ -1573,6 +1588,12 @@ class BlockSimplifier
         var insideInlineAnnotatedFunction = false
         var insideCrossUnitFunctionBody = false
 
+        def spendInlineFuel(cost: Int): Bool =
+          if cost <= 0 then return true
+          if remainingInlineFuel < cost then return false
+          remainingInlineFuel -= cost
+          true
+
         inline def enterFunBlock[T](inlineAnnot: Bool, inline thunk: => T): T =
           val old = insideInlineAnnotatedFunction
           insideInlineAnnotatedFunction = inlineAnnot
@@ -1633,9 +1654,12 @@ class BlockSimplifier
               val info = m(ts)
               val cfg = summon[Config.Inliner]
               val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
-              if !info.shouldBeInlined(blk, threshold) then
+              info.inlineCost(blk, threshold) match
+              case N =>
                 super.applyResult(r)(k)
-              else
+              case S(cost) if !spendInlineFuel(cost) =>
+                super.applyResult(r)(k)
+              case S(_) =>
                 val matchedArgs = matchAllArgs(argss, info.defn.params)
                 matchedArgs match
                 case N =>
@@ -1679,9 +1703,12 @@ class BlockSimplifier
               val info = m(ts)
               val cfg = summon[Config.Inliner]
               val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
-              if !info.shouldBeInlined(blk, threshold) then
+              info.inlineCost(blk, threshold) match
+              case N =>
                 super.applyResult(r)(k)
-              else
+              case S(cost) if !spendInlineFuel(cost) =>
+                super.applyResult(r)(k)
+              case S(_) =>
                 val matchedArgs = matchAllArgs(argss, info.defn.params)
                 matchedArgs match
                 case N =>
