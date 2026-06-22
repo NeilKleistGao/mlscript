@@ -29,6 +29,8 @@ enum Annot extends AutoLocated:
   case Inline
   case Special
   case Specialize
+  case Dynamic
+  case Static
   // Whether the function is guaranteed to not raise effects.
   case MayNotRaiseEffects
   case Config(modify: hkmc2.Config => hkmc2.Config)
@@ -50,13 +52,13 @@ enum Annot extends AutoLocated:
   
   def subTerms: Vector[Term] = this match
     case Trm(trm) => Vector.single(trm)
-    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize
+    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize | Dynamic | Static
       | MayNotRaiseEffects | _: Config | _: Affine => Vector.empty
   
   def children: Vector[Located] = this match
     case Trm(trm) => Vector.single(trm)
     // case Modifier(kw) => Vector.single(kw) // TODO: make `kw` a `Keywrd`
-    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize
+    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize | Dynamic | Static
       | MayNotRaiseEffects | _: Config | _: Affine => Vector.empty
   
   def show(using Scope, ShowCfg, Raise): Document = this match
@@ -64,6 +66,8 @@ enum Annot extends AutoLocated:
     case Inline => doc"@inline"
     case Special => doc"@special"
     case Specialize => doc"@specialize"
+    case Dynamic => doc"@dynamic"
+    case Static => doc"@static"
     case TailRec => doc"@tailrec"
     case TailCall => doc"@tailcall"
     case Affine(n) => doc"@affine($n)"
@@ -81,6 +85,8 @@ enum Annot extends AutoLocated:
     case Inline => Inline
     case Special => Special
     case Specialize => Specialize
+    case Dynamic => Dynamic
+    case Static => Static
     case MayNotRaiseEffects => MayNotRaiseEffects
     case c: Config => c
     case a: Affine => a
@@ -1296,17 +1302,11 @@ case class TypeDef(
   annotations: Ls[Annot],
 ) extends TypeLikeDef
 
-enum ReflectionConstraint:
-  case Dynamic, Static
-  def str: Str = this match
-    case Dynamic => "@dynamic"
-    case Static => "@static"
-
 // TODO Store optional source locations for the flags instead of booleans
-final case class FldFlags(reflConstraint: Opt[ReflectionConstraint], mut: Bool, spec: Bool, pat: Bool, isVal: Bool):
+final case class FldFlags(annotations: Ls[Annot], mut: Bool, spec: Bool, pat: Bool, isVal: Bool):
   def show: Str = 
     val flags = Buffer.empty[String]
-    reflConstraint.map(flags += _.str)
+    flags ++= annotations.map(FldFlags.showAnnotation)
     if mut then flags += "mut"
     if spec then flags += "spec"
     if pat then flags += "pattern"
@@ -1315,7 +1315,10 @@ final case class FldFlags(reflConstraint: Opt[ReflectionConstraint], mut: Bool, 
   override def toString: String = "‹" + show + "›"
 
 object FldFlags:
-  val empty: FldFlags = FldFlags(N, false, false, false, false)
+  def showAnnotation(annotation: Annot): Str =
+    "@" + annotation.toString.toLowerCase()
+
+  val empty: FldFlags = FldFlags(Nil, false, false, false, false)
   object benign:
     // * Some flags like `mut` and `module` are "benign" in the sense that they don't affect code-gen
     def unapply(flags: FldFlags): Bool =

@@ -5,8 +5,10 @@ open annotations { special }
 staged module Special with
   staged class Pair(val x, val y) with
     fun swap() = new Pair(y, x)
-  class Foo(val x)
-  class Bar(val x, val y)
+  staged class Foo(val x) with
+    fun f() = x + 1
+  staged class Bar(val x, val y) with
+    fun f() = x + y
   
   fun sub(p) = p.x - p.y
 
@@ -74,3 +76,8 @@ staged module Special with
     let x = dec(b)
     let y = if b then (@special new Pair(1, x)) else (@special new Pair(2, x))
     y.swap()
+
+  fun fff(b) =
+    let x = if b then new Foo(1) else new Bar(2, 2)
+    let p = (@special new Pair((@special new Foo(x)), 0))
+    p.x.x.f()

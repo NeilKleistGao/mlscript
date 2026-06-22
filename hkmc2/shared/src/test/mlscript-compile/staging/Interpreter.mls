@@ -1,0 +1,61 @@
+staged module Interpreter with
+  class Cons(val x, val xs)
+  class Nil
+
+  class Some(val x)
+  class None
+  class Error
+
+  staged class Instruction() with
+    fun eval(s)
+
+  staged class Push(val v) extends Instruction() with
+    fun eval(s) = [new None, new Cons(v, s)]
+
+  staged class Comp(val le) extends Instruction() with
+    fun eval(s) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Some(if le then x <= y else x >= y), rest]
+        else [new Error, s]
+
+  staged class And() extends Instruction() with
+    fun eval(s) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Some(x and y), rest]
+        else [new Error, s]
+
+  staged class Branch(val t, val f) extends Instruction() with
+    fun eval(s) =
+      if s is
+        Cons(c, rest) then
+          if c then evalAll(t, rest) else evalAll(f, rest)
+        else [new Error, s]
+
+  fun evalAll(@specialize insts, s) =
+    if insts is
+      Cons(inst, rest) then
+        let res = inst.eval(s)
+        if res is
+          [Some(x), ss] then evalAll(rest, new Cons(x, ss))
+          [None, ss] then evalAll(rest, ss)
+          else [new Error, s]
+      else [new None, s]
+
+  fun exec(insts, s) =
+    let ss = evalAll(insts, s)
+    if ss is
+      [None, Cons(x, Nil)] then new Some(x)
+      [None, Nil] then new None
+      else new Error
+
+  fun mkInRange(x, r) =
+    let insts =
+      if r is
+        [lb, ub] then
+          new Cons(new Push(x), new Cons(new Push(lb), new Cons(new Comp(true),
+            new Cons(new Push(x), new Cons(new Push(ub), new Cons(new Comp(false),
+              new Cons(new And(), new Cons(new Branch(new Cons(new Push(1), new Nil), new Cons(new Push(0), new Nil)), new Nil))))))))
+        else
+          new Cons(new Push(x), new Cons(new Push(r), new Cons(new Comp(false),
+            new Cons(new Branch(new Cons(new Push(1), new Nil), new Cons(new Push(0), new Nil)), new Nil))))
+    exec(insts, new Nil)
