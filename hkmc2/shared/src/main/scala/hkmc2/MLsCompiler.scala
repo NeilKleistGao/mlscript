@@ -83,16 +83,10 @@ class MLsCompiler
     // val ltl = new TraceLogger{override def doTrace: Bool = true}
     val rtl = new TraceLogger{override def doTrace: Bool = false}
     
-    val preludeParse = ParserSetup(preludeFile, dbgParsing)
-    val mainParse = ParserSetup(file, dbgParsing)
+    val preludeArtifact = compilerCtx.getPrelude(preludeFile, dbgParsing)(using etl, summon[Raise], config)
+    val preludeCtx = preludeArtifact.ctx
     
-    val elab = Elaborator(etl, wd, Ctx.empty)
-    
-    val initState = State.init.nestLocal("prelude")
-    
-    val (pblk, newCtx) = elab.importFrom(preludeParse.resultBlk)(using initState)
-    
-    newCtx.nestLocal("file:"+file.baseName).givenIn:
+    preludeCtx.nestLocal("file:"+file.baseName).givenIn:
       given CompilerCtx = compilerCtx.derive(file)
       /*
       val elab = Elaborator(etl, wd, newCtx)
@@ -131,7 +125,7 @@ class MLsCompiler
       ltl.givenIn:
         optimized = codegen.DeadParamElim(optimized)
       */
-      val artifact = compilerCtx.getElaboratedBlock(file, newCtx, config)(using etl)
+      val artifact = compilerCtx.getElaboratedBlock(file, preludeCtx, config)(using etl)
       val optimized = artifact.ir.getOrElse:
         lastWords(s"Compiler artifact for $file does not contain lowered IR")
 

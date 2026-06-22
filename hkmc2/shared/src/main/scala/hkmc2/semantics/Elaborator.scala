@@ -286,46 +286,6 @@ object Elaborator:
       object runtime extends VirtualModule(assumeBuiltinMod("runtime")):
         val suspend = assumeObject("suspend")
         val handle_suspension = assumeObject("handle_suspension")
-      /** Map source-level builtins to their counterparts in another prelude context.
-        *
-        * Imported IR is cached across worksheets, but each worksheet elaborates its own
-        * Prelude symbols. Rebinding these symbols keeps backend identity checks valid after
-        * inlining a cached body into a different worksheet. */
-      def symbolMappingTo(target: Ctx#MkBuiltins): Map[Symbol, Symbol] =
-        def moduleMapping(
-            from: VirtualModule,
-            toModule: ModuleOrObjectSymbol,
-            toBms: BlockMemberSymbol,
-        ): Map[Symbol, Symbol] =
-          Map(from.module -> toModule, from.bms -> toBms) ++
-            from.module.tree.definedSymbols.iterator.flatMap: (nme, sym) =>
-              targetModuleSymbol(toModule, nme).map(sym -> _)
-
-        def targetModuleSymbol(toModule: ModuleOrObjectSymbol, nme: Str): Opt[MemberSymbol] =
-          toModule.tree.definedSymbols.get(nme)
-
-        Map[Symbol, Symbol](
-          Int -> target.Int,
-          Int31 -> target.Int31,
-          Num -> target.Num,
-          Str -> target.Str,
-          BigInt -> target.BigInt,
-          Function -> target.Function,
-          Error -> target.Error,
-          Bool -> target.Bool,
-          Object -> target.Object,
-          Array -> target.Array,
-          TypedArray -> target.TypedArray,
-          Symbol -> target.Symbol,
-        ) ++
-          moduleMapping(SymbolModule, target.SymbolModule.module, target.SymbolModule.bms) ++
-          moduleMapping(source, target.source.module, target.source.bms) ++
-          moduleMapping(js, target.js.module, target.js.bms) ++
-          moduleMapping(wasm, target.wasm.module, target.wasm.bms) ++
-          moduleMapping(debug, target.debug.module, target.debug.bms) ++
-          moduleMapping(annotations, target.annotations.module, target.annotations.bms) ++
-          moduleMapping(scope, target.scope.module, target.scope.bms) ++
-          moduleMapping(runtime, target.runtime.module, target.runtime.bms)
       def getBuiltinOp(op: Str): Opt[Str] =
         if getBuiltin(op).isDefined then builtinBinOps.get(op) else N
       object BuiltInOpIdent:
@@ -402,11 +362,6 @@ object Elaborator:
       * Root worksheet states intentionally leave this empty because their configuration can
       * still be changed by the worksheet being compiled. */
     var compilationUnitConfig: Opt[Config] = N
-    /** Top-level context captured after elaborating an imported compilation unit.
-      *
-      * This is used only for cached imported artifacts, where later callers need to reuse
-      * the same symbols rather than reconstruct a similar-looking context in a fresh state. */
-    var compilationUnitCtx: Opt[Ctx] = N
     val globalThisSymbol = TopLevelSymbol("globalThis")
     val unitSymbol = ModuleOrObjectSymbol(DummyTypeDef(syntax.Obj), Ident("Unit"))
     // Stable symbol for the synthetic Wasm Unit singleton
@@ -497,7 +452,7 @@ object Elaborator:
       * unit's bindings. Import-backed symbols such as `termSymbol`, `blockSymbol`, `optionSymbol`,
       * and `wasmSymbol` deliberately stay out of this mapping: their original import provenance
       * is needed when an inlined body introduces a new module dependency. */
-    def ambientSymbolMappingTo(target: State, targetCtx: Ctx): Map[Symbol, Symbol] =
+    def ambientSymbolMappingTo(target: State): Map[Symbol, Symbol] =
       Map[Symbol, Symbol](
         globalThisSymbol -> target.globalThisSymbol,
         unitSymbol -> target.unitSymbol,
@@ -524,7 +479,6 @@ object Elaborator:
         matchFailureTrmSymbol -> target.matchFailureTrmSymbol,
       ) ++ builtinOpsMap.iterator.map: (nme, sym) =>
         sym -> target.builtinOpsMap(nme)
-      ++ compilationUnitCtx.fold(Map.empty[Symbol, Symbol])(_.builtins.symbolMappingTo(targetCtx.builtins))
     def dbg: Bool = false
     def dbgRefNum(num: Int): Str =
       if dbg then s"#$num" else ""
