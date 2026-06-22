@@ -9,7 +9,7 @@ import hkmc2.utils.*, shorthands.*
 import hkmc2.utils.*
 
 import hkmc2.Message.MessageContext
-import semantics.{FldFlags, TermDefFlags, Modulefulness, ReflectionConstraint}
+import semantics.{Annot, FldFlags, TermDefFlags, Modulefulness}
 import semantics.Elaborator.State
 import Tree._
 
@@ -384,16 +384,25 @@ enum Tree extends AutoLocated:
         go(inner, flags, modifiers + Ins)
       // fun f(@dynamic <...>)
       case Annotated(Ident("dynamic"), inner) =>
-        if flags.reflConstraint.isDefined then L:
+        if flags.annotations.exists:
+          case Annot.Dynamic | Annot.Static => true
+          case _ => false
+        then L:
           ErrorReport:
             msg"At most one reflection constraint can be added for each parameter." -> t.toLoc :: Nil
-        else go(inner, flags.copy(reflConstraint = S(ReflectionConstraint.Dynamic)), modifiers)
+        else go(inner, flags.copy(annotations = Annot.Dynamic :: flags.annotations), modifiers)
       // fun f(@static <...>)
       case Annotated(Ident("static"), inner) =>
-        if flags.reflConstraint.isDefined then L:
+        if flags.annotations.exists:
+          case Annot.Dynamic | Annot.Static => true
+          case _ => false
+        then L:
           ErrorReport:
             msg"At most one reflection constraint can be added for each parameter." -> t.toLoc :: Nil
-        else go(inner, flags.copy(reflConstraint = S(ReflectionConstraint.Static)), modifiers)
+        else go(inner, flags.copy(annotations = Annot.Static :: flags.annotations), modifiers)
+      // fun f(@specialize <...>)
+      case Annotated(Ident("specialize"), inner) =>
+        go(inner, flags.copy(annotations = Annot.Specialize :: flags.annotations), modifiers)
       
       // * Base Case (for `using` clause)
       // fun f(using A)

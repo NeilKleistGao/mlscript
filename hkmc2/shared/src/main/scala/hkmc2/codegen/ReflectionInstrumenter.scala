@@ -225,7 +225,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           baseSym match
             case _: ClassSymbol =>
               transformParamsOpt(paramsOpt): (paramsOpt, ctx) =>
-                auxParams.map(ps => ctx => transformParamList(ps)(using ctx)).chainContext: (auxParams, ctx) =>
+                auxParams.map(ps => ctx => transformParamList(ps, Nil)(using ctx)).chainContext: (auxParams, ctx) =>
                   tuple(auxParams): auxParams =>
                     blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams, toValue(rename)), symName)(checkMap("checkClassMap", path, _, ctx))
             case _: ModuleOrObjectSymbol =>
@@ -348,22 +348,31 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   def transformArgs(args: Ls[Arg])(using Context)(k: (Ls[(Path, Bool)], Context) => Block): Block =
     args.map(a => ctx => transformArg(a)(using ctx)).chainContext(k)
 
-  // maintain parameter names in instrumented code
-  def transformParamList(ps: ParamList)(using ctx: Context)(k: (Path, Context) => Block) =
+  // maintain parameter names and annotations in instrumented code
+  def transformParamAnnotation(annotation: Annot)(using ctx: Context)(k: Path => Block): Block =
+    annotation match
+      case Annot.Dynamic => blockCtor("Dynamic", Nil)(k)
+      case Annot.Static => blockCtor("Static", Nil)(k)
+      case Annot.Specialize => blockCtor("Specialize", Nil)(k)
+      case _ =>
+        raise(ErrorReport(msg"Unsupported parameter annotation in staged module: ${annotation.toString}" -> N :: Nil))
+        End()
+
+  def transformParamList(ps: ParamList, inheritedAnnotations: Ls[Annot])(using ctx: Context)(k: (Path, Context) => Block) =
     ps.params.map(p => (ctx: Context) => (k: (Path, Context) => Block) =>
-        transformOption(p.flags.reflConstraint, {
-          case ReflectionConstraint.Dynamic => k => blockCtor("Dynamic", Nil)(k(_, ctx))
-          case ReflectionConstraint.Static => k => blockCtor("Static", Nil)(k(_, ctx))
-        })(using ctx): (constraint, ctx) =>
-          transformSymbol(p.sym, true)(using ctx): (sym, ctx) =>
-            blockCtor("Param", Ls(constraint, sym))(k(_, ctx))
+        val annotations = inheritedAnnotations.foldLeft(p.flags.annotations): (annotations, annotation) =>
+          if annotations.contains(annotation) then annotations else annotations :+ annotation
+        annotations.map(annotation => transformParamAnnotation(annotation)(using ctx)).collectApply: annotations =>
+          tuple(annotations): annotations =>
+            transformSymbol(p.sym, true)(using ctx): (sym, ctx) =>
+              blockCtor("Param", Ls(annotations, sym))(k(_, ctx))
       ).chainContext((ps, ctx) => tuple(ps)(k(_, ctx)))
 
   def transformParamsOpt(pOpt: Opt[ParamList])(using ctx: Context)(k: (Path, Context) => Block) =
-    transformOption(pOpt, transformParamList)(k)
+    transformOption(pOpt, ps => k => transformParamList(ps, Nil)(k))(k)
 
-  def transformParams(params: Ls[ParamList])(using Context)(k: (Path, Context) => Block) =
-    params.map(ps => ctx => transformParamList(ps)(using ctx)).chainContext((p, ctx) => tuple(p)(k(_, ctx)))
+  def transformParams(params: Ls[ParamList], inheritedAnnotations: Ls[Annot])(using Context)(k: (Path, Context) => Block) =
+    params.map(ps => ctx => transformParamList(ps, inheritedAnnotations)(using ctx)).chainContext((p, ctx) => tuple(p)(k(_, ctx)))
 
   def transformCase(cse: Case)(using Context)(k: Path => Block): Block = cse match
     case Case.Lit(lit) => blockCtor("Lit", Ls(Value.Lit(lit)))(k)
@@ -457,7 +466,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     transformSymbol(f.sym): (sym, ctx) =>
       if f.params.length > 1 && !ctx.allowMultipleParamList then
         raise(ErrorReport(msg":ftc must be enabled to desugar functions with multiple parameter lists." -> f.sym.toLoc :: Nil))
-      transformParams(f.params)(using ctx): (paramList, ctx) =>
+      // A function-level `@specialize` applies to every one of its parameters.
+      val paramAnnotations = if f.annotations.contains(Annot.Specialize) then Annot.Specialize :: Nil else Nil
+      transformParams(f.params, paramAnnotations)(using ctx): (paramList, ctx) =>
         transformBlock(f.body)(using ctx): (body, ctx) =>
           blockCtor("FunDefn", Ls(sym, paramList, body))(k(_, ctx))
 
@@ -483,10 +494,9 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     // refresh parameters
     val funParams = f.params.map(refreshParamList)
     val params = if classFun then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
-    val isExplicitlySpecialized = f.annotations.contains(Annot.Specialize)
     val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
       tuple(tups): args =>
-        call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args, toValue(isExplicitlySpecialized))): res =>
+        call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
           Return(res)
     FunDefn.withFreshSymbol(f.dSym.owner, sym, params, body)(f.configOverride, f.annotations)
   

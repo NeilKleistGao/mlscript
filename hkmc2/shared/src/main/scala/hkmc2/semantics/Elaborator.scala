@@ -1747,9 +1747,9 @@ extends Importer with ucs.SplitElaborator:
             val allParams = ps.fold(Nil):
               _.params.flatMap:
                 // Only `pat` flag is `true`.
-                case p @ Param(flags = FldFlags(N, false, false, true, false)) => S(p)
+                case p @ Param(flags = FldFlags(Nil, false, false, true, false)) => S(p)
                 // All flags are `false`.
-                case p @ Param(flags = FldFlags(N, false, false, false, false)) => S(p)
+                case p @ Param(flags = FldFlags(Nil, false, false, false, false)) => S(p)
                 case Param(flags, sym, _, _) =>
                   raise(ErrorReport(msg"Unexpected pattern parameter ${sym.name} with modifiers: ${flags.show}" -> sym.toLoc :: Nil))
                   N

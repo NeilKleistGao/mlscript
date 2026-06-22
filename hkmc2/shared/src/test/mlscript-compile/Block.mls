@@ -65,12 +65,13 @@ class ConcreteClassSymbol(val name: Str, val value: Class, val paramsOpt: Opt[Pa
 class ModuleSymbol(val name: Str, val value: Class, val redirect: Bool) extends Symbol(name)
 class NoSymbol() extends Symbol("$no_symbol$")
 
-class Constraint with
+class Annotation with
   constructor
     Dynamic()
     Static()
+    Specialize()
 
-class Param(val constraint: Opt[Constraint], val sym: Symbol)
+class Param(val annotations: Array[Annotation], val sym: Symbol)
 class Arm(val cse: Case, val body: Block)
 
 fun isPrimitiveType(sym: Symbol) =
@@ -251,7 +252,7 @@ class Printer(val owner: Opt[Symbol]) with
     a.0.toUCSPattern(this, branchShapes) + " then" + (if a.1 is Return then " " else "\n  ") + indent(showBlock(a.1))
 
   fun showParams(pl: ParamList) =
-    // do not print constraints to next stage
+    // do not print annotations to next stage
     "(" + pl.map(p => showSymbol(p.sym)).join(", ") + ")"
 
   fun showCtorParams(pl: ParamList) =  
@@ -349,7 +350,7 @@ class Printer(val owner: Opt[Symbol]) with
     if d is
       FunDefn(sym, ps, body) then
         let selfSym = freshSelfSymbol(ps, body)
-        let psWithSelf = prependParam(ps, Param(None, selfSym))
+        let psWithSelf = prependParam(ps, Param([], selfSym))
         // substitute `this` with `self`
         class SelfPrinter(val selfSym: Symbol) extends Printer(owner) with
           fun showPath(p: Path): Str =

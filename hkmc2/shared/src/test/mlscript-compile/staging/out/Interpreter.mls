@@ -219,6 +219,22 @@ fun evalAll_Interpreter_sp_1(insts, s) =
   element1_ = res.1
   ss1 = element1_
   evalAll_Interpreter_sp_2(rest3, ss1)
+fun evalAll_Interpreter_sp_10(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Branch_sp_1(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  if element0_ is
+    None then
+      ss1 = element1_
+      evalAll_Interpreter_sp_5(rest3, ss1)
+    else
+      tmp12 = new Error()
+      [tmp12, s]
 fun evalAll_Interpreter_sp_2(insts, s) =
   let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
   arg_Cons_0_5 = insts.x
@@ -244,46 +260,107 @@ fun evalAll_Interpreter_sp_3(insts, s) =
       res = eval_Push_sp_1(inst, s)
     Branch then
       res = eval_Branch_sp_0(inst, s)
-  if res is
-    [_, _] then
+  element0_ = res.0
+  element1_ = res.1
+  ss1 = element1_
+  evalAll_Interpreter_sp_7(rest3, ss1)
+fun evalAll_Interpreter_sp_4(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_2(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  ss1 = element1_
+  evalAll_Interpreter_sp_5(rest3, ss1)
+fun evalAll_Interpreter_sp_5(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  tmp14 = new None()
+  [tmp14, s]
+fun evalAll_Interpreter_sp_6(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_3(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  ss1 = element1_
+  evalAll_Interpreter_sp_5(rest3, ss1)
+fun evalAll_Interpreter_sp_7(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.x
+      arg_Cons_1_5 = insts.xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_4(inst, s)
       element0_ = res.0
       element1_ = res.1
-      if element0_ is
-        Some then
-          arg_Some_0_ = element0_.x
-          ss = element1_
-          x4 = arg_Some_0_
-          tmp11 = new Cons(x4, ss)
-          evalAll(rest3, tmp11)
-        None then
-          ss1 = element1_
-          evalAll(rest3, ss1)
-        else
-          tmp12 = new Error()
-          [tmp12, s]
+      ss1 = element1_
+      evalAll_Interpreter_sp_8(rest3, ss1)
     else
-      tmp13 = new Error()
-      [tmp13, s]
+      tmp14 = new None()
+      [tmp14, s]
+fun evalAll_Interpreter_sp_8(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Comp_sp_1(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  if element0_ is
+    Some then
+      arg_Some_0_ = element0_.x
+      ss = element1_
+      x4 = arg_Some_0_
+      tmp11 = new Cons(x4, ss)
+      evalAll_Interpreter_sp_9(rest3, tmp11)
+    else
+      tmp12 = new Error()
+      [tmp12, s]
+fun evalAll_Interpreter_sp_9(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_And_sp_0(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  if element0_ is
+    Some then
+      arg_Some_0_ = element0_.x
+      ss = element1_
+      x4 = arg_Some_0_
+      tmp11 = new Cons(x4, ss)
+      evalAll_Interpreter_sp_10(rest3, tmp11)
+    else
+      tmp12 = new Error()
+      [tmp12, s]
 fun exec_Interpreter_sp_0(insts, s) =
   let {ss2, x5, element1_1, element0_1, arg_Cons_0_6, arg_Cons_1_6}
   ss2 = evalAll_Interpreter_sp_0(insts, s)
-  if ss2 is
-    [_, _] then
-      element0_1 = ss2.0
-      element1_1 = ss2.1
-      if element0_1 is
-        None then
-          if element1_1 is
-            Cons then
-              arg_Cons_0_6 = element1_1.x
-              arg_Cons_1_6 = element1_1.xs
-              if arg_Cons_1_6 is
-                Nil then
-                  x5 = arg_Cons_0_6
-                  new Some(x5)
-                else new Error()
-            Nil then new None()
+  element0_1 = ss2.0
+  element1_1 = ss2.1
+  if element0_1 is
+    None then
+      if element1_1 is
+        Cons then
+          arg_Cons_0_6 = element1_1.x
+          arg_Cons_1_6 = element1_1.xs
+          if arg_Cons_1_6 is
+            Nil then
+              x5 = arg_Cons_0_6
+              new Some(x5)
             else new Error()
+        Nil then new None()
         else new Error()
     else new Error()
 fun eval_Push_sp_0(self, s) =
@@ -292,6 +369,21 @@ fun eval_Push_sp_0(self, s) =
   tmp1 = new Cons(self.v, s)
   [tmp, tmp1]
 fun eval_Push_sp_1(self, s) =
+  let {tmp, tmp1}
+  tmp = new None()
+  tmp1 = new Cons(self.v, s)
+  [tmp, tmp1]
+fun eval_Push_sp_2(self, s) =
+  let {tmp, tmp1}
+  tmp = new None()
+  tmp1 = new Cons(self.v, s)
+  [tmp, tmp1]
+fun eval_Push_sp_3(self, s) =
+  let {tmp, tmp1}
+  tmp = new None()
+  tmp1 = new Cons(self.v, s)
+  [tmp, tmp1]
+fun eval_Push_sp_4(self, s) =
   let {tmp, tmp1}
   tmp = new None()
   tmp1 = new Cons(self.v, s)
@@ -313,6 +405,59 @@ fun eval_Comp_sp_0(self, s) =
       tmp2 = x2 >= y
   tmp3 = new Some(tmp2)
   [tmp3, rest]
+fun eval_Comp_sp_1(self, s) =
+  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp2, tmp3, tmp4, tmp5}
+  if s is
+    Cons then
+      arg_Cons_0_ = s.x
+      arg_Cons_1_ = s.xs
+      if arg_Cons_1_ is
+        Cons then
+          arg_Cons_0_1 = arg_Cons_1_.x
+          arg_Cons_1_1 = arg_Cons_1_.xs
+          rest = arg_Cons_1_1
+          y = arg_Cons_0_1
+          x2 = arg_Cons_0_
+          scrut = self.le
+          tmp2 = x2 >= y
+          tmp3 = new Some(tmp2)
+          [tmp3, rest]
+        else
+          tmp4 = new Error()
+          [tmp4, s]
+    else
+      tmp5 = new Error()
+      [tmp5, s]
+fun eval_And_sp_0(self, s) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp6, tmp7, tmp8, tmp9}
+  if s is
+    Cons then
+      arg_Cons_0_2 = s.x
+      arg_Cons_1_2 = s.xs
+      if arg_Cons_1_2 is
+        Cons then
+          arg_Cons_0_3 = arg_Cons_1_2.x
+          arg_Cons_1_3 = arg_Cons_1_2.xs
+          rest1 = arg_Cons_1_3
+          y1 = arg_Cons_0_3
+          x3 = arg_Cons_0_2
+          if x3 is
+            true then
+              if y1 is
+                true then
+                  tmp6 = true
+                else
+                  tmp6 = false
+            else
+              tmp6 = false
+          tmp7 = new Some(tmp6)
+          [tmp7, rest1]
+        else
+          tmp8 = new Error()
+          [tmp8, s]
+    else
+      tmp9 = new Error()
+      [tmp9, s]
 fun eval_Branch_sp_0(self, s) =
   let {rest2, c, arg_Cons_0_4, arg_Cons_1_4, tmp10}
   arg_Cons_0_4 = s.x
@@ -320,5 +465,19 @@ fun eval_Branch_sp_0(self, s) =
   rest2 = arg_Cons_1_4
   c = arg_Cons_0_4
   if c is
-    true then evalAll(self.t, rest2)
-    else evalAll(self.f, rest2)
+    true then evalAll_Interpreter_sp_4(self.t, rest2)
+    else evalAll_Interpreter_sp_6(self.f, rest2)
+fun eval_Branch_sp_1(self, s) =
+  let {rest2, c, arg_Cons_0_4, arg_Cons_1_4, tmp10}
+  if s is
+    Cons then
+      arg_Cons_0_4 = s.x
+      arg_Cons_1_4 = s.xs
+      rest2 = arg_Cons_1_4
+      c = arg_Cons_0_4
+      if c is
+        true then evalAll_Interpreter_sp_4(self.t, rest2)
+        else evalAll_Interpreter_sp_6(self.f, rest2)
+    else
+      tmp10 = new Error()
+      [tmp10, s]

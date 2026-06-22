@@ -38,7 +38,6 @@ fun staticCallKey(f, argShapes) =
 // or virtual dispatch. Recursive re-entry must use dynamic parameter shapes.
 let dynamicSpecializations = new Set()
 let currentSpecialization = None
-let currentSpecializationIsExplicit = false
 
 fun specializationContextName(cache, funName) =
   if cache.owner is ConcreteClassSymbol(name, _, _, _, _) then name + "." + funName
@@ -49,7 +48,7 @@ fun isDynamicSpecializationScrutinee(scrutShape, hasSingleBranch) =
     scrutShape.values().length > 1 and not hasSingleBranch
 
 fun withDynamicSpecialization(scrutShape, hasSingleBranch, action) =
-  if not isDynamicSpecializationScrutinee(scrutShape, hasSingleBranch) || currentSpecializationIsExplicit then action()
+  if not isDynamicSpecializationScrutinee(scrutShape, hasSingleBranch) then action()
   else if currentSpecialization is Some(name) then
     let wasPresent = dynamicSpecializations.has(name)
     dynamicSpecializations.add(name)
@@ -724,22 +723,35 @@ fun buildShapeSetName(ss: ShapeSet): Str =
   if vals.length is 1 then buildShapeName(vals.0)
   else "Union_" + vals.map(buildShapeName).join("_") + "_end"
 
+fun hasDynamicAnnotation(p) =
+  p.annotations.some(_ is Dynamic)
+
+fun hasStaticAnnotation(p) =
+  p.annotations.some(_ is Static)
+
+fun hasSpecializeAnnotation(p) =
+  p.annotations.some(_ is Specialize)
+
 fun specializationParamShapes(isMethod, ps, shapes) =
   shapes.map((ss, i, _) =>
     if isMethod and i is 0 then ss
     else ss.map((s, j, _) =>
       let psIdx = if isMethod then i - 1 else i
-      if ps.(psIdx).(j).constraint is Some(Dynamic) then mkDyn() else s
+      if hasDynamicAnnotation(ps.(psIdx).(j)) then mkDyn() else s
     )
   )
 
-fun dynamicParamShapes(ps) =
-  ps.map(p => p.map(_ => mkDyn()))
+fun dynamicParamShapes(ps, shapes) =
+  ps.map((paramList, i, _) => paramList.map((p, j, _) =>
+    if hasSpecializeAnnotation(p) then shapes.(i).(j) else mkDyn()
+  ))
 
-fun dynamicSpecializationShapes(cache, isMethod, ps) =
+fun dynamicSpecializationShapes(cache, isMethod, ps, shapes) =
+  let paramShapes = if isMethod then shapes.slice(1) else shapes
+  let dynamicShapes = dynamicParamShapes(ps, paramShapes)
   if isMethod and cache.owner is ConcreteClassSymbol then
-    [[lift(silh(Cls(cache.owner, ValueMemberRef(cache.owner))))], ...dynamicParamShapes(ps)]
-  else dynamicParamShapes(ps)
+    [[lift(silh(Cls(cache.owner, ValueMemberRef(cache.owner))))], ...dynamicShapes]
+  else dynamicShapes
 
 fun hasAllDynamicParams(isMethod, ps, shapes) =
   specializationParamShapes(isMethod, ps, shapes).every(_.every(_.isDyn()))
@@ -766,18 +778,18 @@ fun isStaticSetPath(ss: ShapeSet) =
 fun isStaticPath(ss: ShapeSet) =
   isStaticSetPath(ss)
 
-fun specialize(cache: FunCache, funName, dflt, shapes, isExplicitlySpecialized) =
+fun specialize(cache: FunCache, funName, dflt, shapes) =
   // FIXME
-  // right now the function name depends on the parameter constraints
-  // so we need to read the constraints by running dflt() anyway
+  // right now the function name depends on the parameter annotations
+  // so we need to read the annotations by running dflt() anyway
   // which prevent the possibilily of not running dflt when specialized function already exists in cache
   let defn = dflt()
   if defn is FunDefn(Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
     let contextName = specializationContextName(cache, funName)
     let effectiveShapes =
-      if not isExplicitlySpecialized and dynamicSpecializations.has(contextName) then
-        dynamicSpecializationShapes(cache, isMethod, ps)
+      if dynamicSpecializations.has(contextName) then
+        dynamicSpecializationShapes(cache, isMethod, ps, shapes)
       else shapes
     let specializationKey = specializeKey(funName, isMethod, ps, effectiveShapes)
     let isPrivate = not hasAllDynamicParams(isMethod, ps, effectiveShapes)
@@ -793,9 +805,10 @@ fun specialize(cache: FunCache, funName, dflt, shapes, isExplicitlySpecialized) 
         else Ctx.empty()
 
         ps.forEach((p, i, _) => p.forEach((p2, j, _) =>
-          let shape = if p2.constraint is
-            Some(Dynamic) then mkDyn()
-            Some(Static) and not staticSet(paramShapes.(i).(j)) then throw Error("Non-static shape given to static parameter " + p2)
+          let shape =
+            if hasDynamicAnnotation(p2) then mkDyn()
+            else if hasStaticAnnotation(p2) and not staticSet(paramShapes.(i).(j)) then
+              throw Error("Non-static shape given to static parameter " + p2)
             else paramShapes.(i).(j)
           ctx.add(ValueSimpleRef(p2.sym), shape)
         ))
@@ -803,12 +816,9 @@ fun specialize(cache: FunCache, funName, dflt, shapes, isExplicitlySpecialized) 
         cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, body), mkDyn(), isPrivate))
 
         let oldSpecialization = currentSpecialization
-        let oldSpecializationIsExplicit = currentSpecializationIsExplicit
         set currentSpecialization = Some(contextName)
-        set currentSpecializationIsExplicit = isExplicitlySpecialized
         let res = prop(ctx, body)
         set currentSpecialization = oldSpecialization
-        set currentSpecializationIsExplicit = oldSpecializationIsExplicit
         let bodyWithScoped = wrapScoped(ctx.allocs, res.0)
         
         let actualRetShape = res.1
