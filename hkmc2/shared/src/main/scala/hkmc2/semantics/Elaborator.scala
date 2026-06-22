@@ -2058,6 +2058,7 @@ extends Importer with ucs.SplitElaborator:
         val p = Param(flg, sym, sig, Modulefulness.ofSign(sig)(Mod in modifiers))
         sym.decl = S(p)
         (p, spd, aliases)
+  
   def funParams(t: Tree): Ctxl[(ParamList, Ctx)] =
     val ps_ctx = params(t, inDataClass = false, inPattern = false)
     def checkFlags(p: Param): Unit =
