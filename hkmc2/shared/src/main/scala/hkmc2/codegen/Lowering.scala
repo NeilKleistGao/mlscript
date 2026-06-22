@@ -141,6 +141,20 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
   def unit: Path =
     Select(State.runtimeSymbol.asSimpleRef, Tree.Ident("Unit"))(S(State.unitSymbol))
 
+  private def memberIdent(nme: Tree.Ident, sym: Opt[MemberSymbol]): Tree.Ident =
+    sym match
+    case S(sym) =>
+      new Tree.Ident(sym.nme).withLocOf(nme)
+    case N =>
+      symbolicSuffixBase(nme.name) match
+      case S(base) =>
+        new Tree.Ident(base).withLocOf(nme)
+      case N =>
+        nme
+
+  private def definitionIdent(nme: Tree.Ident, sym: DefinitionSymbol[?]): Tree.Ident =
+    new Tree.Ident(sym.nme).withLocOf(nme)
+
   // type Rcd = (mut: Bool, args: List[RcdArg]) // * Better, but Scala's patmat exhaustiveness chokes on it
   type Rcd = (Bool, List[RcdArg])
 
@@ -531,19 +545,19 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       WarningReport(msg"Pure expression in statement position" -> loc :: Nil, extraInfo,
         source = Diagnostic.Source.Compilation)
 
-  private def assignSymbol(sym: Symbol, rhs: Result, rest: Block, loco: Opt[Loc])(using LoweringCtx): Block =
+  private def assignSymbol(target: Symbol, diagnostic: Symbol, rhs: Result, rest: Block, loco: Opt[Loc])(using LoweringCtx): Block =
     def nope = fail:
       ErrorReport(
-        msg"Cannot assign to ${sym match
+        msg"Cannot assign to ${diagnostic match
             case sym: BlockMemberSymbol => sym.describe
             case sym => "symbol"
-          } '${sym.nme}'" -> loco
-          :: sym.toLoc.match
+          } '${diagnostic.nme}'" -> loco
+          :: diagnostic.toLoc.match
             case s @ S(_) => msg"Defined here:" -> s :: Nil
             case N => Nil,
         source = Diagnostic.Source.Compilation,
-        extraInfo = S(sym.getClass))
-    sym match
+        extraInfo = S(target.getClass))
+    target match
     case sym: TermSymbol if (sym.k is MutVal) || (sym.k is LetBind) =>
       sym.owner match
       case S(owner) => AssignField(owner.asThis, sym.id, rhs, rest)(S(sym))
@@ -882,13 +896,13 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           conclude(Select(p, nme)(N).withLocOf(sel))
       case Resolved(sel @ Sel(prefix, nme), sym) =>
         subTerm(prefix): p =>
-          conclude(Select(p, nme)(S(sym)).withLocOf(sel))
+          conclude(Select(p, definitionIdent(nme, sym))(S(sym)).withLocOf(sel))
       case sel @ SelProj(prefix, _, nme) =>
         subTerm(prefix): p =>
           conclude(Select(p, nme)(N).withLocOf(sel))
       case Resolved(sel @ SelProj(prefix, _, nme), sym) =>
         subTerm(prefix): p =>
-          conclude(Select(p, nme)(S(sym)).withLocOf(sel))
+          conclude(Select(p, definitionIdent(nme, sym))(S(sym)).withLocOf(sel))
       case _ => subTerm(baseF)(conclude)
     case h @ Handle(lhs, rhs, as, cls, defs, bod) =>
       if !lowerHandlers then
@@ -916,18 +930,33 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
             k(resSym.asSimpleRef))
     case st.Blk(sts, res) => block(sts, R(res), inStmtPos = inStmtPos)(k)
     case Assgn(lhs, rhs) =>
-      lhs match
+      // * An assignment LHS is an l-value: normal term lowering would read the
+      // * selected field, possibly with access instrumentation, while here we
+      // * need the selected prefix/name/symbol in order to emit `AssignField`.
+      // * Still, resolver expansions matter: `Resolved(lhs, sym)` carries the
+      // * disambiguated member symbol needed for private fields and overloads.
+      val (target, resolvedSelectionSymbol) = lhs.instantiated match
+        case Resolved(inner, sym) => inner -> S(sym)
+        case target => target -> N
+      target match
       case Ref(sym) =>
         subTerm(rhs): r =>
-          assignSymbol(sym, r, k(unit), trm.toLoc)
-      case sel @ SynthSel(prefix, nme) =>
-        subTerm(prefix): p =>
-          subTerm_nonTail(rhs): r =>
-            AssignField(p, nme, r, k(unit))(sel.sym)
+          assignSymbol(resolvedSelectionSymbol.getOrElse(sym), sym, r, k(unit), trm.toLoc)
       case sel @ Sel(prefix, nme) =>
         subTerm(prefix): p =>
           subTerm_nonTail(rhs): r =>
-            AssignField(p, nme, r, k(unit))(sel.sym)
+            AssignField(p, nme, r, k(unit))(resolvedSelectionSymbol)
+      case sel @ SynthSel(prefix, nme) =>
+        // * See the doc in the `term` case for `SynthSel` for why we fall back to `sel.sym` here
+        val sym = resolvedSelectionSymbol match
+          case S(sym) => S(sym)
+          case N => sel.sym match
+            case S(sym: DefinitionSymbol[?]) => S(sym)
+            case _ => N
+        softAssert(sym.nonEmpty, s"Missing symbol for synthetic assignment target ${sel.showDbg}")
+        subTerm(prefix): p =>
+          subTerm_nonTail(rhs): r =>
+            AssignField(p, memberIdent(nme, sel.sym), r, k(unit))(sym)
       case sel @ DynSel(prefix, fld, ai) =>
         subTerm(prefix): p =>
           subTerm_nonTail(fld): f =>
@@ -936,7 +965,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       case sel @ SelProj(prefix, _, proj) =>
         subTerm(prefix): p =>
           subTerm_nonTail(rhs): r =>
-            AssignField(p, proj, r, k(unit))(sel.sym)
+            AssignField(p, memberIdent(proj, sel.sym), r, k(unit))(resolvedSelectionSymbol)
       case _ => fail:
         ErrorReport(
           msg"Unexpected left-hand side in assignment (${lhs.describe})" -> lhs.toLoc :: Nil, S(lhs),
@@ -969,14 +998,20 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
 
     case sel @ SynthSel(prefix, nme) =>
       // * Not using `setupSelection` as these selections are not meant to be sanity-checked
+      // * Unlike source `Sel`s, compiler-synthesized selections may carry a known
+      // * member symbol directly in `sel.sym` without being wrapped in `Resolved`.
+      // * This reflects the current IR convention: `sel.sym` records the selected
+      // * member/representative, while `Resolved(sel, sym)` records a disambiguated
+      // * definition when one exists. Do not use this fallback for ordinary `Sel`
+      // * lowering unless that convention is changed at the source.
       subTerm(prefix): p =>
-        k(Select(p, nme)(sel.sym.collect:
+        k(Select(p, memberIdent(nme, sel.sym))(sel.sym.collect:
           case s: DefinitionSymbol[?] => s
         ))
     case Resolved(sel @ SynthSel(prefix, nme), sym) =>
       // * Not using `setupSelection` as these selections are not meant to be sanity-checked
       subTerm(prefix): p =>
-        k(Select(p, nme)(S(sym)))
+        k(Select(p, definitionIdent(nme, sym))(S(sym)))
 
     case DynSel(prefix, fld, ai) =>
       subTerm(prefix): p =>
@@ -1233,11 +1268,15 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
           val cfgOverride = td.extraAnnotations.collectFirst:
             case Annot.Config(modify) => modify(config)
           FunDefn(td.owner, td.sym, td.tsym, paramLists, bodyBlock)(cfgOverride, td.annotations)
-    val publicFlds = clsBody.publicFlds.map(f => f.sym -> f.tsym)
+    val publicFlds = clsBody.publicFlds.collect:
+      case f if !f.tsym.isPrivate =>
+        f.sym -> f.tsym
     val privateFlds = clsBody.nonMethods.collect:
       case decl @ LetDecl(sym: TermSymbol, annotations) =>
         reportAnnotations(decl, annotations)
         sym
+      case td: TermDefinition if td.tsym.isPrivate =>
+        td.tsym
     val ctor =
       inScopedBlock:
         term_nonTail(Blk(clsBody.nonMethods, clsBody.blk.res), inStmtPos = true)(Assign.discard(_, End()))
@@ -1384,7 +1423,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
 
   def setupSelection(prefix: Term, nme: Tree.Ident, disamb: Opt[DefinitionSymbol[?]])(k: Result => Block)(using LoweringCtx): Block =
     subTerm(prefix): p =>
-      k(Select(p, nme)(disamb))
+      k(Select(p, disamb.fold(memberIdent(nme, N))(definitionIdent(nme, _)))(disamb))
 
   final def setupFunctionOrByNameDef(paramLists: List[ParamList], bodyTerm: Term, name: Option[Str])
       (using LoweringCtx): (List[ParamList], Block) =
