@@ -94,7 +94,7 @@ class MLsCompiler
     
     newCtx.nestLocal("file:"+file.baseName).givenIn:
       given CompilerCtx = compilerCtx.derive(file)
-      /* 
+      /*
       val elab = Elaborator(etl, wd, newCtx)
       val parsed = mainParse.resultBlk
       val (blk0, _) = elab.importFrom(parsed)
@@ -134,7 +134,7 @@ class MLsCompiler
       val artifact = compilerCtx.getElaboratedBlock(file, newCtx, config)(using etl)
       val optimized = artifact.ir.getOrElse:
         lastWords(s"Compiler artifact for $file does not contain lowered IR")
-      
+
       val nme = file.baseName
       val parsed = artifact.tree
       val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
@@ -156,7 +156,7 @@ class MLsCompiler
         val jsStr = je.stripBreaks.mkString(100)
         cctx.fs.write(out, jsStr)
       }
-      
+
       // }
   
   

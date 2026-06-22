@@ -9,7 +9,7 @@ class Keyword(
     val name: String,
     val leftPrec: Opt[Int],
     val rightPrec: Opt[Int],
-
+    
     /** If the operator can be used infix, can it be done on a newline (with no indent)?
         For instance, if `via` has `canStartInfixOnNewLine`, then one can write:
           foo
@@ -36,24 +36,24 @@ class Keyword(
 
 object Keyword:
   def unapply(kw: Keyword): Opt[Str] = S(kw.name)
-
+  
   val all: mutable.Map[Str, Keyword] = mutable.Map.empty
-
+  
   // val Let = Keyword("let", 0, 0)
   // val Let = Keyword("let", 0, 0)
-
+  
   private var _curPrec = 2
   private def curPrec: S[Int] = S(_curPrec)
   private def nextPrec: S[Int] =
     _curPrec += 1
     S(_curPrec)
-
+  
   val `class` = Keyword("class", N, N)
-
+  
   val `extends` = Keyword("extends", nextPrec, curPrec)
   val `restricts` = Keyword("restricts", curPrec, curPrec)
   val `with` = Keyword("with", curPrec, curPrec)
-
+  
   val `val` = Keyword("val", N, curPrec)
 
   val eqPrec = nextPrec
@@ -61,52 +61,52 @@ object Keyword:
   val `..` = Keyword("..", N, N)
   val `...` = Keyword("...", N, N)
   // val `;` = Keyword(";", ascPrec, eqPrec)
-
+  
   val `if` = Keyword("if", N, nextPrec)
   val `while` = Keyword("while", N, curPrec)
   val `assert` = Keyword("assert", N, curPrec)
   type `assert` = `assert`.type
-
+  
   val `case` = Keyword("case", N, curPrec)
-
+  
   val thenPrec = nextPrec
-
+  
   val whereLhsPrec = nextPrec
-
+  
   val `then` = Keyword("then", thenPrec, eqPrec)
   val `do` = Keyword("do", thenPrec, eqPrec)
   val `drop` = Keyword("drop", thenPrec, eqPrec)
-
+  
   val `else` = Keyword("else", N, eqPrec)
   type `else` = `else`.type
-
+  
   val `return` = Keyword("return", N, curPrec)
   val `throw` = Keyword("throw", N, curPrec)
   val `import` = Keyword("import", N, curPrec)
-
+  
   val `fun` = Keyword("fun", N, N)
   // val `val` = Keyword("val", N, N)
   val `var` = Keyword("var", N, N)
   val `where` = Keyword("where", whereLhsPrec, curPrec)
   val `of` = Keyword("of", N, N) // * Note that `of` is parsed specially, so its precedence is not listed here
-
+  
   val `in` = Keyword("in", nextPrec, curPrec)
   val `out` = Keyword("out", N, curPrec)
-
+  
   // * `|` should bind looser than `=>` RHS, so that `0 => false | 1 => true` works
   val pipePrec = nextPrec
   val ampPrec = nextPrec
   val `|` = Keyword("|", pipePrec, pipePrec)
   val `&` = Keyword("&", ampPrec, ampPrec)
-
+  
   val lamRhsPrec = nextPrec
   // * ^ `x => x as T` should parsed as `x => (x as T)`
   // * ^ `(a, b) => a and b` should parsed as `(a, b) => (a and b)`
   // *    so `=>` RHS should bind looser than `and` and `or`
-
+  
   val `or` = Keyword("or", nextPrec, curPrec)
   val `and` = Keyword("and", nextPrec, nextPrec)
-
+  
   // * Ideally, `is` RHS should bind looser than `|`, so that `x is A | B` works
   // * However, we also want `is` RHS to bing stronger than `and`/`or`, so that `x is A and b is B` works!
   // * So, for now, we settle on requiring parentheses in `x is (A | B)`
@@ -116,15 +116,15 @@ object Keyword:
     // isRhsPrec // * Allows `42 as Int | Num` to parse as `42 as (Int | Num)`
     curPrec // * Allows `pattern Steps = Steps as Step | _` to parse as `(Steps as Step) | _`, which is more natural
   )
-
+  
   // * `x => x : T` should parsed as `x => (x : T)`
   // * (though this is not very important, since we now use `as` for type ascription)
   val colonPrec = nextPrec
   val `:` = Keyword(":", colonPrec, eqPrec)
-
+  
   val `not` = Keyword("not", nextPrec, nextPrec)
   val `is` = Keyword("is", nextPrec, isRhsPrec, canStartInfixOnNewLine = false)
-
+  
   // val `let` = Keyword("let", nextPrec, curPrec)
   val `let` = Keyword("let", N, N)
   val `handle` = Keyword("handle", N, N)
@@ -159,11 +159,11 @@ object Keyword:
   val `this` = Keyword("this", N, N)
   val `outer` = Keyword("outer", N, N)
   val `pattern` = Keyword("pattern", N, N)
-
+  
   val `->` = Keyword("->", nextPrec, eqPrec)
-
+  
   val maxPrec = curPrec
-
+  
   // * The lambda operator is special:
   // *  it should associate very strongly on the left and very loosely on the right
   // *  so that we can write things like `f() |> x => x is 0` ie `(f()) |> (x => (x is 0))`
@@ -180,7 +180,7 @@ object Keyword:
   val `new` = Keyword("new", N, newRightPrec)
   val `new!` = Keyword("new!", N, newRightPrec)
   val `mut` = Keyword("mut", N, newRightPrec)
-
+  
   // * `#` is both a prefix keyword (for directives like `#config(...)`)
   // * and an infix operator (for disambiguation like `Lazy#get()`).
   // * It has very high left precedence (like selection) when used as infix.
@@ -193,31 +193,31 @@ object Keyword:
   // * when it appears on a new line after an expression.
   val hashSelPrec = S(maxPrec.get + charPrecList.length)
   val `#` = Keyword("#", hashSelPrec, hashSelPrec, canStartInfixOnNewLine = false)
-
+  
   val __ = Keyword("_", N, N)
-
+  
   val modifiers = Set(
     `abstract`, mut, virtual, `override`, declare, public, `private`)
-
+  
   type Prefix =
     `do`.type | `drop`.type | `not`.type | `new!`.type | `else`.type | `return`.type | `throw`.type | `import`.type |
     `|`.type | `&`.type
-
+  
   type Infix =
     `is`.type | `:`.type | `->`.type | `=>`.type | `extends`.type | `restricts`.type | `as`.type |
     `|`.type | `&`.type | `do`.type |
     `where`.type | `with`.type | `and`.type | `or`.type | `then`.type | `else`.type | `#`.type
-
+  
   type InfixSplittable =
     `is`.type | `:`.type | `->`.type | `=>`.type | `extends`.type | `restricts`.type | `as`.type | `do`.type |
     `where`.type | `with`.type | `of`.type
-
+  
   type Ellipsis = `...`.type | `..`.type
-
+  
   type IfLike = `if`.type | `while`.type
   type SplitLike = IfLike | `case`.type
-
+  
   type LetLike = `let`.type | `set`.type
-
+  
   type Modifier = `in`.type | `out`.type | `mut`.type | `abstract`.type | `declare`.type | `data`.type | `virtual`.type | `override`.type |
     `public`.type | `private`.type | `staged`.type

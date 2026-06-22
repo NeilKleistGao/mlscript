@@ -39,11 +39,11 @@ case class Config(
   noModuleCheck: Bool,
   deadParamElim: Opt[DeadParamElim],
 ):
-
+  
   def stackSafety: Opt[StackSafety] = effectHandlers.flatMap(_.stackSafety)
 
   def checkInstantiateEffect: Bool = effectHandlers.exists(_.checkInstantiateEffect)
-
+  
   // NOTE: We force the rewriting of while loops to functions when handler lowering is on
   // to prevent the "floating out" of definitions done by handler lowering,
   // which currently does not respect scopes introduced by `Scoped` blocks.
@@ -53,12 +53,12 @@ case class Config(
   // and https://github.com/hkust-taco/mlscript/pull/356#discussion_r2585183902
   def shouldRewriteWhile: Bool =
     rewriteWhileLoops || effectHandlers.isDefined
-
+  
 end Config
 
 
 object Config:
-
+  
   def default(baseDir: io.Path): Config = Config(
     language = Language.default,
     baseDir = baseDir,
@@ -86,15 +86,15 @@ object Config:
     val patMatConsequentSharingThreshold = S(15)
     val deadBranchRemoval = false // TODO
     val inlineThreshold = 10
-
+  
   case class Language(
     allowUnresolvedAccesses: Bool,
     useNewResolution: Bool,
     typeCheck: Opt[TypeChecking],
   )(val versionName: Str)
-
+  
   object Language:
-
+    
     val v0_2_x = Language(
       typeCheck = N,
       useNewResolution = false,
@@ -102,7 +102,7 @@ object Config:
     )(
       versionName = "0.2.x",
     )
-
+    
     val v0_3_x = Language(
       typeCheck = N,
       useNewResolution = true,
@@ -110,21 +110,21 @@ object Config:
     )(
       versionName = "0.3.x",
     )
-
+    
     val presets: Map[Str, Language] = Ls(
       v0_2_x,
       v0_3_x,
     ).map(l => l.versionName -> l).toMap
-
+    
     val default = v0_2_x
-
+    
   end Language
-
+  
   // TODO
   case class TypeChecking()
-
+  
   case class SanityChecks(light: Bool, checkUnreachable: Bool)
-
+  
   case class EffectHandlers(
     debug: Bool,
     stackSafety: Opt[StackSafety],
@@ -138,13 +138,13 @@ object Config:
     // reference Runtime.mls during construction of the Rendering module, causing a cyclic dependency error.
     doNotInstrumentTopLevelModCtor: Bool = false,
   )
-
+  
   case class StackSafety(stackLimit: Int)
   object StackSafety:
     val default: StackSafety = StackSafety(
       stackLimit = 1000,
     )
-
+  
   case class LiftDefns() // there may be other settings in the future, having it as a case class now
 
   case class FlowAnalysisConfig(
@@ -160,7 +160,7 @@ object Config:
 
     def effectiveTrackAccumulator: Bool =
       trackAccumulator || logAccumulator
-
+  
   case class Deforest(config: FlowAnalysisConfig):
     export config.{
       debug,
@@ -216,11 +216,11 @@ object Config:
         logAccumulator = false,
       ))
     val default: EtaExpansion = withDebug(debug = false)
-
+  
   /** `altSmallThreshold` is the alternative threshold for inlining things into @inline functions.
     * Normally, we avoid inlining into @inline functions as that could lead to unexpected code bloat. */
   case class Inliner(inlineThreshold: Int, altSmallThreshold: Int = 2)
-
+  
   def extractConfigFromStats(prgm: semantics.Term.Blk)(using Config) =
     // Extract cumulative config modifications from SetConfig statements
     val configModify = prgm.stats.collect:
@@ -287,13 +287,13 @@ object ConfigParser:
       parseOpt(value)(tree => parse(tree, current(cfg))) match
         case S(v) => set(v)(cfg)
         case N => cfg
-
+  
   /** Parse a list of config override arguments (from the Tup tree) into a Config modification function. */
   def parseOverrides(args: Ls[Tree])(using Raise): Config => Config =
     args.foldLeft(identity[Config]): (acc, arg) =>
       val override_ = parseOverride(arg)
       cfg => override_(acc(cfg))
-
+  
   /** Parse a single config override argument. */
   def parseOverride(arg: Tree)(using Raise): Config => Config = arg match
     case NamedArg(name, value) =>
@@ -303,7 +303,7 @@ object ConfigParser:
         msg"Unsupported config override syntax" -> arg.toLoc :: Nil,
         source = Diagnostic.Source.Compilation))
       identity
-
+  
   private def parseBool(tree: Tree)(using Raise): Opt[Bool] = tree match
     case BoolLit(v) => S(v)
     case Ident("true") => S(true)
@@ -311,7 +311,7 @@ object ConfigParser:
     case _ =>
       expect("a boolean value")(tree)
       N
-
+  
   private def parseInt(tree: Tree)(using Raise): Opt[Int] = tree match
     case IntLit(v) => S(v.toInt)
     case App(Ident("-"), Tup(IntLit(v) :: Nil)) => S(-v.toInt)
@@ -453,7 +453,7 @@ object ConfigParser:
       parseInner(inner).map(v => S(v))
     case other =>
       parseInner(other).map(v => S(v))
-
+  
   private def parseStackSafety(tree: Tree)(using Raise): Opt[Config.StackSafety] = tree match
     case Call("StackSafety", args) =>
       var stackLimit = Config.StackSafety.default.stackLimit
@@ -470,7 +470,7 @@ object ConfigParser:
     case _ =>
       expect("StackSafety(...) or an integer")(tree)
       N
-
+  
   private def parseEffectHandlers(tree: Tree, current: Opt[Config.EffectHandlers])(using Raise): Opt[Config.EffectHandlers] = tree match
     case Call("EffectHandlers", args) =>
       val base = current.getOrElse(Config.EffectHandlers(debug = false, stackSafety = N))
@@ -570,7 +570,7 @@ object ConfigParser:
     case _ =>
       expect("EtaExpansion(...)")(tree)
       N
-
+  
   /** Parse a single field override like `tailRecOpt: false`. */
   private def parseField(name: Str, value: Tree)(using Raise): Config => Config = name match
     case "language" => parseLanguageOverride(value)

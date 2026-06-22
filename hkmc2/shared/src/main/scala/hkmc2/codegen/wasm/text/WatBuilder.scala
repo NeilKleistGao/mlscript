@@ -282,7 +282,7 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
       typeref: TypeIdx,
   )(using Ctx, Raise): Unit =
     if ctx.containsSingleton(clsLikeDefn.sym) then return
-
+    
     val globalSym = BlockMemberSymbol(s"${clsLikeDefn.sym.nme}$$inst", Nil, nameIsMeaningful = false)
     val globalTy = RefType(typeref, nullable = true)
 
@@ -481,7 +481,7 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
       objectTag = S(runtimeTag),
     ))
   end predeclareClassType
-
+  
   /** Declares the shared Wasm function type used by a class-associated function placeholder. */
   private def declareClassFuncType(
       defn: ClsLikeDefn,
@@ -2114,7 +2114,7 @@ class WatBuilder(using TraceLogger, State) extends CodeBuilder:
                         children = armBodyExpr ++ br(matchLabel).optionUnless(armIsCtrlXfer).toVector,
                         resultTypes = Seq.empty,
                       )
-
+                
                 cse match
                   case Case.Lit(lit) =>
                     val testExpr: FoldedInstr = lit match

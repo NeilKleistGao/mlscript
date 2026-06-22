@@ -75,8 +75,8 @@ class CompilerCtx(
       // * Later, we can draw this from a global root configuration,
       // * which is set for a whole application.
       given Config = compilationUnitConfig
-      
-      /* 
+
+      /*
       val parse =
         given CompilerCtx = this
         ParserSetup(file, dbgParsing = false)
@@ -86,13 +86,13 @@ class CompilerCtx(
         given CompilerCtx = derive(parse.origin.fileName)
         Elaborator(tl, file.up, prelude)
       val elabbed = elab.importFrom(resBlk)
-      
-      // val 
+
+      // val
       */
-      
-      
-      
-      
+
+
+
+
       // TODO: !CLEANUP!
       // TODO adapt logic
       given SymbolPrinter = new SymbolPrinter(
@@ -107,8 +107,8 @@ class CompilerCtx(
       val dtl = new TraceLogger{override def doTrace: Bool = false}
       // val ltl = new TraceLogger{override def doTrace: Bool = true}
       val rtl = new TraceLogger{override def doTrace: Bool = false}
-      
-      
+
+
       val mainParse =
         given CompilerCtx = this
         ParserSetup(file, dbgParsing = false)
@@ -119,7 +119,7 @@ class CompilerCtx(
       val elab =
         given CompilerCtx = derive(mainParse.origin.fileName)
         Elaborator(tl, file.up, prelude)
-      
+
       // val elab = Elaborator(etl, wd, newCtx)
       val parsed = mainParse.resultBlk
       val nme = file.baseName
@@ -133,7 +133,7 @@ class CompilerCtx(
           .toSet
         case _ => Set.empty
       val (blk0, _) = elab.importFrom(parsed)
-      
+
       val artifactConfig = Config.extractConfigFromStats(blk0)
       state.compilationUnitConfig = S(artifactConfig)
       artifactConfig.givenIn:

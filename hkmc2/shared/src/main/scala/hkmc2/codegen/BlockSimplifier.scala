@@ -52,13 +52,13 @@ class BlockSimplifier
     while changed do
       changed = false
       iteration += 1
-
+      
       if iteration > MaxIterations then
         log(s"⬤ Reached maximum number of iterations ($MaxIterations), stopping simplifications")
         return res
-
+      
       log(s"⬤ Simplif. iter. $iteration")
-
+      
       // * Running DCE once sometimes produces more DCE opportunities;
       // * it is important to apply all of them so that later passes, such as COC,
       // * are not impeded by things like unused labels from inlining.
@@ -73,20 +73,20 @@ class BlockSimplifier
           dceIteration < MaxDCEIterationsPerIter
         else false
       do ()
-
+      
       val vp = new DataFlowAnalysis(LocalVars.analyze(res.main))
       res = vp.apply(res)
       changed ||= vp.changed
       if vp.changed then log("▶ VP:\n" + printRes)
       
       summon[Config].inlining.foreach: cfg =>
-
+        
         // * Runs after DCE so that unused labels from inlining are already removed
         val coc = new CaseOfCase(using cfg)
         res = coc.applyProgram(res)
         changed ||= coc.changed
         if coc.changed then log("▶ COC:\n" + printRes)
-
+        
         val inl = new Inliner(using cfg)
         res = inl.apply(res)
         changed ||= inl.changed
@@ -366,14 +366,14 @@ class BlockSimplifier
     path.targetSymbol.flatMap:
       case sym: ClassLikeSymbol => S(sym)
       case _ => N
-
+  
   def getCallCtorShape(path: Path, argss: NELs[Ls[Arg]]): Opt[ClassLikeSymbol] =
     path.targetSymbol
       .collect:
         case ccs: ClassCtorSymbol => ccs.associatedCls
       .collect:
         case sym: ClassSymbol if isSaturatedClassCtorCall(sym, argss) => sym
-
+  
   def isSaturatedClassCtorCall(sym: ClassSymbol, argss: NELs[Ls[Arg]]): Bool =
     sym.irClsLikeDefn
     .fold(
@@ -385,9 +385,9 @@ class BlockSimplifier
         S(ird.paramsOpt.size + ird.auxParams.size)
     .exists: paramListsSize =>
       argss.sizeCompare(paramListsSize) === 0
-
+  
   // ——————————————————————————————————————————————————————————————————————————————————————————— //
-
+  
   
   /** Basic intraprocedural flow-sensitive analysis to figure out which assignments may flow into which variables,
     * at each point of the program.
@@ -438,7 +438,7 @@ class BlockSimplifier
       /* 
       if !changed then cur =
         (new BlockTransformer(SymbolSubst.Id):
-
+          
           override def applyBlock(b: Block): Block =
             b match
             case ass @ Assign(lhs: LocalVar, rhs, rst)
@@ -452,10 +452,10 @@ class BlockSimplifier
               registerChange(s"rm id ${System.identityHashCode(this)}")
               Assign.discard(rhs, applyBlock(rst))
             case _ => super.applyBlock(b)
-
+          
         ).applyProgram(cur)
       */
-
+      
       cur
       
     end apply
@@ -695,7 +695,7 @@ class BlockSimplifier
       .iterator.map: (k, v) =>
         s"${k.showDbg} -> ${v.toString}"
       .mkString("{", ", ", "}")
-
+    
     private def canCollapseImmediateCallPrefix(
         lhs: LocalVar,
         path: Path,
@@ -705,7 +705,7 @@ class BlockSimplifier
       !inDryRun && (fun is lhs) && !capturedVars(lhs)
         && !path.freeVars(lhs)
         && !argss.iterator.flatten.exists(_.value.freeVars(lhs))
-    
+
     private def applyLocalAssignLhs(lhs: LocalVar): LocalVar =
       applyAssignLhs(lhs) match
       case lhs2: LocalVar => lhs2
@@ -757,7 +757,7 @@ class BlockSimplifier
             val combined = Call(path2, argss)(call.metadata).withLocOf(call)
             val res = applyBlock(Return(combined))
             if symbolsToPreserve(lhs) then Assign(lhs2, path2, res) else res
-      
+
       // * Discard local variables that are assigned just to be returned
       // * Note: the reason we do this here and not in DeadCodeElim is that we need to check `capturedVars`
       case Assign(lhs: LocalVar, rhs, Return(Value.SimpleRef(ret)))
@@ -811,7 +811,7 @@ class BlockSimplifier
           // assignments and continues that may affect outer loop analysis.
           applyBlock(rest)
           b
-
+          
       case Continue(label) =>
         // log(s"Continue to ${label} with map: ${assignedResults}")
         // log(s"  atLabelBegin: ${atLabelBegin(label)}")
@@ -843,7 +843,7 @@ class BlockSimplifier
       case Match(scrut, arms, dflt, rest) =>
         
         applyPath(scrut): scrut2 =>
-
+          
           // * TODO: Support Tup and Field shapes; ModuleOrObjectSymbol
           // * TODO: Support class inheritance reasoning (using a tree of hierarchical shapes)
           // type Shape = Literal | ClassSymbol | ModuleOrObjectSymbol
@@ -994,10 +994,10 @@ class BlockSimplifier
     override def applyValue(v: Value)(k: Value => Block): Block =
       v match
       case Value.SimpleRef(loc: LocalVar) if !inDryRun && !capturedVars(loc) =>
-
+        
         val rs = assignedResults(loc)
         // log(s"Ref ${loc.showDbg} ${rs} ${localVars(loc)} ${capturedVars(loc)}")
-
+        
         val analysis = rs.valueAnalysis
         val refs = analysis.refs.iterator.filter(_.isCurrent).map(_.ref).toList
         
@@ -1086,18 +1086,18 @@ class BlockSimplifier
     *   similar to how `MergeMatchArmTransformer` works (in `Lowering.scala`) – we reuse `TrivialStatementsAndMatch`.
     * See examples in [test:case-of-case]. */
   class CaseOfCase(using cfg: Config.Inliner) extends BlockTransformer(SymbolSubst.Id), Helper:
-
+    
     type Shape = Literal | ClassLikeSymbol
-
+    
     case class Selected(index: Int, body: Block)
-
+    
     enum ProducerPlan:
       case Abortive(body: Block)
       case Known(body: Block, selected: Selected)
       case Unknown(body: Block)
-
+    
     import ProducerPlan.*
-
+    
     def getShape(result: Result): Opt[Shape] = result match
       case Value.MemberRef(_, sym: ModuleOrObjectSymbol) => S(sym)
       case Value.Lit(lit) => S(lit)
@@ -1105,7 +1105,7 @@ class BlockSimplifier
       case Call(path, argss) => getCallCtorShape(path, argss)
       case Instantiate(_, cls, _) => getInstCtorShape(cls)
       case _ => N
-
+    
     /** Find the shape held by `target` after a straight-line producer arm.
       * Complex control flow remains on the unspecialized path. */
     def getAssignedShape(body: Block, target: LocalVarSymbol): Opt[Shape] =
@@ -1120,7 +1120,7 @@ class BlockSimplifier
         case Begin(sub, rest) => loop(sub, shape)(loop(rest, _)(k))
         case _ => N
       loop(body, N)(identity)
-
+    
     def isSubtypeOf(actual: ClassLikeSymbol, expected: ClassLikeSymbol): Opt[Bool] =
       def parentOf(sym: ClassLikeSymbol): Opt[Opt[ClassLikeSymbol]] =
         (sym match
@@ -1148,7 +1148,7 @@ class BlockSimplifier
           case S(N) => S(false)
           case N => N
       loop(actual, Set.empty)
-
+    
     /** Return whether a known shape matches a case, or `None` if deciding would
       * require reasoning that this optimization deliberately does not attempt. */
     def matches(cse: Case, shape: Shape): Opt[Bool] = (cse, shape) match
@@ -1156,7 +1156,7 @@ class BlockSimplifier
       case (Case.Lit(_), _: ClassLikeSymbol) => S(false)
       case (Case.Cls(expected, _), actual: ClassLikeSymbol) => isSubtypeOf(actual, expected)
       case _ => N
-
+    
     def select(shape: Shape, arms: Ls[Case -> Block], dflt: Opt[Block]): Opt[Selected] =
       @tailrec
       def loop(arms: Ls[Case -> Block], index: Int): Opt[Selected] = arms match
@@ -1166,7 +1166,7 @@ class BlockSimplifier
           case N => N
         case Nil => dflt.map(Selected(index, _))
       loop(arms, 0)
-
+    
     def canMove(prefix: Block): Bool = prefix match
       case _: End => true
       case Assign(_, _: Value, rest) => canMove(rest)
@@ -1176,37 +1176,37 @@ class BlockSimplifier
       case Define(defn: FunDefn, rest) => defn.owner.isEmpty && canMove(rest)
       case Define(defn: ClsLikeDefn, rest) => defn.isPure && canMove(rest)
       case _ => false
-
+    
     def plan(body: Block, target: LocalVarSymbol, consumer: Match): ProducerPlan =
       if body.isAbortive then Abortive(body)
       else
         getAssignedShape(body, target)
           .flatMap(select(_, consumer.arms, consumer.dflt))
           .fold(Unknown(body))(Known(body, _))
-
+    
     override def applyBlock(b: Block): Block = super.applyBlock(b) match
       case m @ Match(scrut, arms, dflt,
         TrivialStatementsAndMatch(k,
           consumer @ Match(Value.SimpleRef(target: LocalVarSymbol), _, _, consumerRest)))
       =>
-
+        
         val prefix = k.fold[Block](End())(_(End()))
-
+        
         val producerDefinedVars: Set[Symbol] = arms.iterator.flatMap(_._2.definedVars).toSet
           ++ dflt.iterator.flatMap(_.definedVars)
-
+        
         if !canMove(prefix) || prefix.freeVars.exists(producerDefinedVars.contains) then m
         else
           val armPlans = arms.map((cse, body) => cse -> plan(body, target, consumer))
           val dfltPlan = dflt.fold[ProducerPlan](Unknown(End()))(plan(_, target, consumer))
           val allPlans = armPlans.map(_._2) :+ dfltPlan
           val unknownCount = allPlans.count(_.isInstanceOf[Unknown])
-
+          
           if unknownCount > 1 then m
           else
             val selected = allPlans.collect:
               case Known(_, selected) => selected
-
+            
             if selected.isEmpty then m
             else
               val selectedCounts = selected.groupMapReduce(_.index)(_ => 1)(_ + _)
@@ -1214,7 +1214,7 @@ class BlockSimplifier
               val wouldDuplicate = selected.exists: selected =>
                 selectedCounts(selected.index) + (if originalConsumerRetained then 1 else 0) > 1
                   && selected.body.size > cfg.inlineThreshold
-
+              
               if wouldDuplicate then m
               else
                 registerChange(s"case-of-case on ${target.showDbg}")
@@ -1235,15 +1235,15 @@ class BlockSimplifier
                 val newDflt = S(rewrite(dfltPlan))
                 k.getOrElse(identity[Block]):
                   Match(scrut, newArms, newDflt, consumerRest)
-
+      
       case b => b
-
+    
   end CaseOfCase
-
-
+  
+  
   // ——————————————————————————————————————————————————————————————————————————————————————————— //
-
-
+  
+  
   class Inliner(using Config.Inliner) extends Helper:
     
     def apply(prog: Program): Program =
@@ -1577,7 +1577,7 @@ class BlockSimplifier
               applyResult(res): r2 =>
                 Assign(resSym, r2, Break(lblSym))
             case _ => super.applyBlock(b)
-
+        
           override def applyValue(v: Value)(k: Value => Block): Block = v match
             case Value.This(sym) if thisMapping.contains(sym) =>
               thisMapping(sym) match
@@ -1589,7 +1589,7 @@ class BlockSimplifier
             case Value.This(sym) if thisMapping.contains(sym) =>
               k(thisMapping(sym))
             case _ => super.applyPath(p)(k)
-        
+
         def applyBlock(blk: Block) =
           Label(lblSym, false, Copier.apply(blk), _)
       
