@@ -829,6 +829,8 @@ final case class Handler(
 /* Represents either unreachable code (for functions that must return a result)
  * or the end of a non-returning function or a REPL block */
 case class End(msg: Str = "") extends BlockTail with ProductWithTail
+object End:
+  val empty: End = End()
 
 case class Unreachable(cause: Str) extends BlockTail with ProductWithTail
 
