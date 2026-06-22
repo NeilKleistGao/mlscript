@@ -44,11 +44,12 @@ fun specializationContextName(cache, funName) =
   if cache.owner is ConcreteClassSymbol(name, _, _, _, _) then name + "." + funName
   else funName
 
-fun isDynamicSpecializationScrutinee(scrutShape) =
-  scrutShape.isDyn() || scrutShape.values().length > 1
+fun isDynamicSpecializationScrutinee(scrutShape, hasSingleBranch) =
+  scrutShape.isDyn() ||
+    scrutShape.values().length > 1 and not hasSingleBranch
 
-fun withDynamicSpecialization(scrutShape, action) =
-  if not isDynamicSpecializationScrutinee(scrutShape) || currentSpecializationIsExplicit then action()
+fun withDynamicSpecialization(scrutShape, hasSingleBranch, action) =
+  if not isDynamicSpecializationScrutinee(scrutShape, hasSingleBranch) || currentSpecializationIsExplicit then action()
   else if currentSpecialization is Some(name) then
     let wasPresent = dynamicSpecializations.has(name)
     dynamicSpecializations.add(name)
@@ -537,6 +538,22 @@ fun needsUCS(pss) =
     )
   )
 
+fun hasSingleDispatchBranch(pss) =
+  if needsUCS(pss) then false
+  else
+    let splitRes = fsplit(pss)
+    splitRes.knownMap.size + (if splitRes.unkShape.isEmpty() then 0 else 1) is 1
+
+fun hasSingleMatchBranch(scrutShape, arms) =
+  let res = foldl((acc, arm) =>
+    let matching = filterSet(acc.0, arm.cse)
+    [
+      restSet(acc.0, arm.cse),
+      acc.1 + (if matching.isEmpty() then 0 else 1),
+    ]
+  )([scrutShape, 0], ...arms)
+  res.1 + (if res.0.isEmpty() then 0 else 1) is 1
+
 fun orderedUCSShapes(pss) =
   let shapes = pss.values()
   // Exact patterns must precede broad class patterns, and Dyn is the final wildcard.
@@ -602,7 +619,7 @@ fun prop(ctx, b) = if b is
     End() then [b, mkBot(), true]
     Return(Call(Select(p, Symbol(f)), args, isSpecial)) and isDispatchPath(p) then
       let pss = prepareUCSShapes(sop(ctx, p))
-      withDynamicSpecialization(pss, () =>
+      withDynamicSpecialization(pss, hasSingleDispatchBranch(pss), () =>
         if needsUCS(pss) then propUCSReturn(ctx, p, f, args, isSpecial, pss)
         else [...dispatchMethodCall(ctx, None, p, f, args, isSpecial), false]
       )
@@ -620,9 +637,11 @@ fun prop(ctx, b) = if b is
     Assign(x, Call(Select(p, Symbol(f)), args, isSpecial), restBlock) and isDispatchPath(p) then
       let pss = prepareUCSShapes(sop(ctx, p))
       if needsUCS(pss) then
-        withDynamicSpecialization(pss, () => propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss))
+        withDynamicSpecialization(pss, false, () => propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss))
       else
-        let res = withDynamicSpecialization(pss, () => dispatchMethodCall(ctx, Some(x), p, f, args, isSpecial))
+        let res = withDynamicSpecialization(pss, hasSingleDispatchBranch(pss), () =>
+          dispatchMethodCall(ctx, Some(x), p, f, args, isSpecial)
+        )
         let b2 = prop(ctx.add(ValueSimpleRef(x), res.1), restBlock)
         [concat(res.0, b2.0), b2.1, b2.2]
     Define(ValDefn(opt, sym, rhs), restBlock) and
@@ -642,10 +661,10 @@ fun prop(ctx, b) = if b is
     Match(p, arms, dflt, restBlock) and
       let pss = prepareUCSShapes(sop(ctx, p))
       needsUCS(pss) then
-        withDynamicSpecialization(pss, () => propUCSMatch(ctx, p, arms, dflt, restBlock, pss))
+        withDynamicSpecialization(pss, false, () => propUCSMatch(ctx, p, arms, dflt, restBlock, pss))
     Match(p, arms, dflt, restBlock) then
       let s = sop(ctx, p)
-      let matchRes = withDynamicSpecialization(s, () =>
+      let matchRes = withDynamicSpecialization(s, hasSingleMatchBranch(s, arms), () =>
         fun propBranch(body, branchShape) =
           let branchCtx = ctx.clone
           if not p is ValueLit do branchCtx.refine(p, branchShape)

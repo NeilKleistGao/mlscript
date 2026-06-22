@@ -207,7 +207,63 @@ fun evalAll_Interpreter_sp_0(insts, s) =
   element0_ = res.0
   element1_ = res.1
   ss1 = element1_
-  evalAll(rest3, ss1)
+  evalAll_Interpreter_sp_1(rest3, ss1)
+fun evalAll_Interpreter_sp_1(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_1(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  ss1 = element1_
+  evalAll_Interpreter_sp_2(rest3, ss1)
+fun evalAll_Interpreter_sp_2(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Comp_sp_0(inst, s)
+  element0_ = res.0
+  element1_ = res.1
+  arg_Some_0_ = element0_.x
+  ss = element1_
+  x4 = arg_Some_0_
+  tmp11 = new Cons(x4, ss)
+  evalAll_Interpreter_sp_3(rest3, tmp11)
+fun evalAll_Interpreter_sp_3(insts, s) =
+  let {rest3, inst, res, ss, x4, ss1, arg_Cons_0_5, arg_Cons_1_5, element1_, element0_, arg_Some_0_, tmp11, tmp12, tmp13, tmp14}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  if inst is
+    Push then
+      res = eval_Push_sp_1(inst, s)
+    Branch then
+      res = eval_Branch_sp_0(inst, s)
+  if res is
+    [_, _] then
+      element0_ = res.0
+      element1_ = res.1
+      if element0_ is
+        Some then
+          arg_Some_0_ = element0_.x
+          ss = element1_
+          x4 = arg_Some_0_
+          tmp11 = new Cons(x4, ss)
+          evalAll(rest3, tmp11)
+        None then
+          ss1 = element1_
+          evalAll(rest3, ss1)
+        else
+          tmp12 = new Error()
+          [tmp12, s]
+    else
+      tmp13 = new Error()
+      [tmp13, s]
 fun exec_Interpreter_sp_0(insts, s) =
   let {ss2, x5, element1_1, element0_1, arg_Cons_0_6, arg_Cons_1_6}
   ss2 = evalAll_Interpreter_sp_0(insts, s)
@@ -235,3 +291,34 @@ fun eval_Push_sp_0(self, s) =
   tmp = new None()
   tmp1 = new Cons(self.v, s)
   [tmp, tmp1]
+fun eval_Push_sp_1(self, s) =
+  let {tmp, tmp1}
+  tmp = new None()
+  tmp1 = new Cons(self.v, s)
+  [tmp, tmp1]
+fun eval_Comp_sp_0(self, s) =
+  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp2, tmp3, tmp4, tmp5}
+  arg_Cons_0_ = s.x
+  arg_Cons_1_ = s.xs
+  arg_Cons_0_1 = arg_Cons_1_.x
+  arg_Cons_1_1 = arg_Cons_1_.xs
+  rest = arg_Cons_1_1
+  y = arg_Cons_0_1
+  x2 = arg_Cons_0_
+  scrut = self.le
+  if scrut is
+    true then
+      tmp2 = x2 <= y
+    else
+      tmp2 = x2 >= y
+  tmp3 = new Some(tmp2)
+  [tmp3, rest]
+fun eval_Branch_sp_0(self, s) =
+  let {rest2, c, arg_Cons_0_4, arg_Cons_1_4, tmp10}
+  arg_Cons_0_4 = s.x
+  arg_Cons_1_4 = s.xs
+  rest2 = arg_Cons_1_4
+  c = arg_Cons_0_4
+  if c is
+    true then evalAll(self.t, rest2)
+    else evalAll(self.f, rest2)
