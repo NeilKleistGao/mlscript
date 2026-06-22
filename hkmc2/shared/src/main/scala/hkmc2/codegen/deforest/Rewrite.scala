@@ -373,7 +373,7 @@ class DeforestRewriter(val solver: DeforestFusionSolver)(using Raise):
               val lastRefedSymbol = called.getReferredFun.get
               val funToSccRepMap = collector.funToSccRep
               (funToSccRepMap(lastRefedSymbol), funToSccRepMap(refSym)) match
-                case (Some(a), Some(b)) if (a is b) => instId
+                case (Some(a), Some(b)) if a is b => instId
                 case _ => instId :+ refId
             case _ => die
           override def applyResult(r: Result)(k: Result => Block): Block =
