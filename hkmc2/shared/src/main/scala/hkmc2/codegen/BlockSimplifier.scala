@@ -435,7 +435,7 @@ class BlockSimplifier
       
       // * [Future: dead assignment removal]
       // * Technically, if nothing in the program changed, we could remove dead assignments using a simple flag.
-      /* 
+      /*
       if !changed then cur =
         (new BlockTransformer(SymbolSubst.Id):
           
@@ -927,7 +927,7 @@ class BlockSimplifier
               registerChange(s"Arm ${pat.showDbg} is unreachable. Reason: ${reason}")
               false
             pat match
-            case Case.Lit(lit) => 
+            case Case.Lit(lit) =>
               shapes.contains(lit) && { shapes -= lit; true } || regChange("Impossible literal")
             case Case.Cls(sym, _) =>
               
@@ -966,7 +966,7 @@ class BlockSimplifier
           if (scrut2 is scrut) && (newArms is arms) && (newDflt is dflt) && (restRewritten is rest) then b
           else Match(scrut2, newArms, newDflt, restRewritten)
           
-      case _ => 
+      case _ =>
         super.applyBlock(b)
     
     

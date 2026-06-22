@@ -828,7 +828,7 @@ extends Importer with ucs.SplitElaborator:
         block(sts_, hasResult = false)._1
       
       elabed.res match
-      case Term.Lit(UnitLit(false)) => 
+      case Term.Lit(UnitLit(false)) =>
       case trm => raise(WarningReport(msg"Terms in handler block do nothing" -> trm.toLoc :: Nil))
       
       val tds = elabed.stats.map {
@@ -839,11 +839,11 @@ extends Importer with ucs.SplitElaborator:
                   raise(ErrorReport(msg"Handler function cannot be a getter" -> td.toLoc :: Nil))
                 val newTd = TermDefinition(Fun, sym, tsym, newParams.reverse, tparams, sign, body, flags, mf, annotations, comp)
                 S(HandlerTermDefinition(value.sym, newTd))
-              case _ => 
+              case _ =>
                 raise(ErrorReport(msg"Handler function is missing resumption parameter" -> td.toLoc :: Nil))
                 None
               
-          case st => 
+          case st =>
             raise(ErrorReport(msg"Only function definitions are allowed in handler blocks" -> st.toLoc :: Nil))
             None
         }.collect { case Some(x) => x }
@@ -1619,7 +1619,7 @@ extends Importer with ucs.SplitElaborator:
             val tdf = ctx.nest(OuterCtx.NonReturnContext).givenIn: newCtx ?=>
               // * Add type parameters to context
               val (tps, newCtx1) = td.typeParams match
-                case S(t) => 
+                case S(t) =>
                   val (tps, ctx) = typeParams(t)
                   (S(tps), ctx)
                 case N => (N, ctx)
@@ -1657,13 +1657,13 @@ extends Importer with ucs.SplitElaborator:
                 // st.isModified(Mod) indicates if the function marks
                 // its result as "module". e.g, `fun f: module M`
                 //                                      ^^^^^^
-                case S(st) if st.isModified(Mod) => 
+                case S(st) if st.isModified(Mod) =>
                   Modulefulness.ofSign(s)(true)
                 case _ =>
                   Modulefulness.none
               
               val tsym = TermSymbol(k, owner, id) // TODO?
-              val tdf = TermDefinition(k, sym, tsym, pss, tps, s, body, 
+              val tdf = TermDefinition(k, sym, tsym, pss, tps, s, body,
                 TermDefFlags.empty.copy(isMethod = isMethod), mfn, annotations, N).withLocOf(td)
               tsym.defn = S(tdf)
               sym.tsym = S(tsym)
@@ -1752,7 +1752,7 @@ extends Importer with ucs.SplitElaborator:
               // For class-like types, "desugar" the parameters into additional class fields.
               
               val owner = td.symbol match
-                // Any MemberSymbol should be an InnerSymbol, except for TypeAliasSymbol, 
+                // Any MemberSymbol should be an InnerSymbol, except for TypeAliasSymbol,
                 // but type aliases should not call this function.
                 case s: InnerSymbol => S(s)
                 case _: TypeAliasSymbol => die
@@ -1958,7 +1958,7 @@ extends Importer with ucs.SplitElaborator:
                     N,
                     TermDefFlags.empty,
                     Modulefulness.none,
-                    annotations.collect: 
+                    annotations.collect:
                       case a @ Annot.Modifier(Keyword.`declare`) => a
                     ,
                     S(clsSym),
@@ -2110,7 +2110,7 @@ extends Importer with ucs.SplitElaborator:
             case S(spd) =>
               if spd is SpreadKind.Lazy then
                 raise(ErrorReport(msg"Lazy spread parameters not allowed." -> hd.toLoc :: Nil))
-              if tl.isEmpty then 
+              if tl.isEmpty then
                 (ParamList(flags, acc.reverse, S(p)).withLocOf(t), newCtx)
               else
                 raise(ErrorReport(msg"Spread parameters must be the last in the parameter list." -> hd.toLoc :: Nil))
@@ -2146,7 +2146,7 @@ extends Importer with ucs.SplitElaborator:
     /** Resolve an identifier. We need to perform a very preliminary check to
      *  determine whether this identifier refers to a pattern, a class, an
      *  object, or creates a new binding.
-     * 
+     *
      *  FIXME: This routine is insufficient to look up definitions defined
      *  later in the program. */
     def ident(id: Ident)(using Ctx): Ctxl[Opt[Term]] = scoped("ucs:pattern:resolution"):
@@ -2206,11 +2206,11 @@ extends Importer with ucs.SplitElaborator:
           // Found `...` (no following patterns), which means the spread part
           // will not be further matched. Set the spread pattern to `Wildcard`.
           (leading, S(SpreadKind.fromKw(ellipsis), Wildcard(), Nil))
-        case ((leading, N), t) => 
+        case ((leading, N), t) =>
           // Found a tuple field while the spread pattern is not set. Add the
           // elaborated pattern to the leading patterns.
           (go(t) :: leading, N)
-        case ((leading, S((spreadKind, spread, trailing))), t) => 
+        case ((leading, S((spreadKind, spread, trailing))), t) =>
           // Found a tuple field while the spread pattern has been set. Add the
           // elaborated pattern to the trailing patterns.
           (leading, S((spreadKind, spread, go(t) :: trailing)))
@@ -2443,7 +2443,7 @@ extends Importer with ucs.SplitElaborator:
         // fields.foreach(f => traverseType(pol)(f.value))
         fields.foreach(traverseType(pol))
       // case _ => ???
-      case Term.Neg(ty) => 
+      case Term.Neg(ty) =>
         traverseType(pol.!)(ty)
       case _ =>
         // TODO

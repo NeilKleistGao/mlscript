@@ -283,8 +283,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
               mod.classCompanion match
               case S(comp) => comp.defn.getOrElse(wat("Module companion without definition", mod.companion))
               case N =>
-                val stagedAnnots = mod.annotations.collect: 
-                  case Annot.Modifier(Keyword.`staged`) => Annot.Modifier(Keyword.`staged`) 
+                val stagedAnnots = mod.annotations.collect:
+                  case Annot.Modifier(Keyword.`staged`) => Annot.Modifier(Keyword.`staged`)
                 ClassDef.Plain(mod.owner, syntax.Cls, new ClassSymbol(Tree.DummyTypeDef(syntax.Cls), mod.sym.id),
                   mod.bsym,
                   Nil,
@@ -913,12 +913,12 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
             source = Diagnostic.Source.Compilation)
       val handlers = defs.map {
         case HandlerTermDefinition(resumeSym, td) => td.body match
-          case None => 
+          case None =>
             raise(ErrorReport(msg"Handler function definitions cannot be empty" -> td.toLoc :: Nil))
             N
           case Some(bod) =>
             reportAnnotations(td, td.annotations)
-            val (paramLists, bodyBlock) = setupFunctionDef(td.params, bod, S(td.sym.nme))      
+            val (paramLists, bodyBlock) = setupFunctionDef(td.params, bod, S(td.sym.nme))
             S(Handler(td.sym, resumeSym, paramLists, bodyBlock))
       }.collect{ case Some(v) => v }
       loweringCtx.collectScopedSym(lhs)
@@ -1291,7 +1291,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       case spd: Spd => R(S(spd.k) -> spd.term)
     // * The straightforward way to lower arguments creates too much recursion depth
     // * and makes Lowering stack overflow when lowering functions with lots of arguments.
-    /* 
+    /*
     def rec(as: Ls[Bool -> st], asr: Ls[Arg]): Block = as match
       case Nil => k(Call(fr, asr.reverse)(isMlsFun, true))
       case (spd, a) :: as =>
@@ -1588,7 +1588,7 @@ trait LoweringTraceLog(instrument: Bool)(using TL, Raise, State)
       ),
       tmp1 -> pureCall(traceLogFn, Arg(N, enterMsgSym.asSimpleRef) :: Nil),
       prevIndentLvlSym -> pureCall(traceLogIndentFn, Nil)
-    ) |>: 
+    ) |>:
     term(bod)(r =>
     assignStmts(
       resSym -> r,
