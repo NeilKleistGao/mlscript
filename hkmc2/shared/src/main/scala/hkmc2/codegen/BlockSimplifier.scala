@@ -1296,7 +1296,7 @@ class BlockSimplifier
         mapping
 
       def buildAmbientSymbolMapping(callee: TermSymbol)(using State): Map[Symbol, Symbol] =
-        callee.getState.ambientSymbolMappingTo(State)
+        Map.empty
 
       def accessesPrivateMembers(blk: Block): Bool =
         var found = false

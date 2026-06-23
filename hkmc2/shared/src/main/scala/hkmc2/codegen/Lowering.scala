@@ -118,22 +118,33 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       val map = if unary then wasmUnaryIntrinsicMap else wasmBinaryIntrinsicMap
       map.get(sym.nme).map(name => State.wasmSymbol.asSimpleRef.selN(Tree.Ident(name)))
     else N
+  private def getBuiltinOpt(nme: Str): Opt[Ctx.Elem] =
+    if ctx.parent.isEmpty then N else ctx.getBuiltin(nme)
+  private def builtinModuleMember(moduleName: Str, memberName: Str): Opt[BlockMemberSymbol] =
+    getBuiltinOpt(moduleName)
+      .flatMap(_.symbol)
+      .flatMap(_.asMod)
+      .flatMap(_.tree.definedSymbols.get(memberName))
+  private def builtinModuleSymbol(moduleName: Str): Opt[BlockMemberSymbol] =
+    getBuiltinOpt(moduleName)
+      .flatMap(_.symbol)
+      .flatMap(_.asBlkMember)
   private lazy val wasmIntrinsicSymbols: Set[BlockMemberSymbol] = Set(
-    ctx.builtins.wasm.plus_impl,
-    ctx.builtins.wasm.minus_impl,
-    ctx.builtins.wasm.times_impl,
-    ctx.builtins.wasm.div_impl,
-    ctx.builtins.wasm.mod_impl,
-    ctx.builtins.wasm.eq_impl,
-    ctx.builtins.wasm.neq_impl,
-    ctx.builtins.wasm.lt_impl,
-    ctx.builtins.wasm.le_impl,
-    ctx.builtins.wasm.gt_impl,
-    ctx.builtins.wasm.ge_impl,
-    ctx.builtins.wasm.neg_impl,
-    ctx.builtins.wasm.pos_impl,
-    ctx.builtins.wasm.not_impl
-  )
+    "plus_impl",
+    "minus_impl",
+    "times_impl",
+    "div_impl",
+    "mod_impl",
+    "eq_impl",
+    "neq_impl",
+    "lt_impl",
+    "le_impl",
+    "gt_impl",
+    "ge_impl",
+    "neg_impl",
+    "pos_impl",
+    "not_impl",
+  ).flatMap(builtinModuleMember("wasm", _))
 
   lazy val unreachableFn =
     Select(State.runtimeSymbol.asSimpleRef, Tree.Ident("unreachable"))(S(State.unreachableSymbol))
@@ -585,14 +596,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     def warnStmt = if inStmtPos then warnPureExprInStmtPos(ref.toLoc, S(ref))
     
     val sym = ref.sym
+    val virtualModuleSymbols = Set("source", "js", "wasm", "debug", "annotations")
+      .flatMap(builtinModuleSymbol)
     sym match
-      case
-          ctx.builtins.source.bms
-        | ctx.builtins.js.bms
-        | ctx.builtins.wasm.bms
-        | ctx.builtins.debug.bms
-        | ctx.builtins.annotations.bms
-      =>
+      case sym: BlockMemberSymbol if virtualModuleSymbols.exists(_ is sym) =>
         return fail:
           ErrorReport(
             msg"Module '${sym.nme}' is virtual (i.e., \"compiler fiction\"); cannot be used directly" -> ref.toLoc ::
@@ -846,17 +853,20 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       // * Note: now the instantiation is done by `collectAppChain`.
       val instantiated = baseF
       val instantiatedResolvedBms = instantiated.resolvedSym.flatMap(_.asBlkMember)
+      def isBuiltinModuleMember(moduleName: Str, memberName: Str): Bool =
+        instantiatedResolvedBms.exists: sym =>
+          builtinModuleMember(moduleName, memberName).exists(_ is sym)
       
       instantiated match
-      case t if instantiatedResolvedBms.exists(_ is ctx.builtins.js.bitand) =>
+      case t if isBuiltinModuleMember("js", "bitand") =>
         conclude(State.runtimeSymbol.asSimpleRef.selN(Tree.Ident("bitand")))
-      case t if instantiatedResolvedBms.exists(_ is ctx.builtins.js.bitnot) =>
+      case t if isBuiltinModuleMember("js", "bitnot") =>
         conclude(State.runtimeSymbol.asSimpleRef.selN(Tree.Ident("bitnot")))
-      case t if instantiatedResolvedBms.exists(_ is ctx.builtins.js.bitor) =>
+      case t if isBuiltinModuleMember("js", "bitor") =>
         conclude(State.runtimeSymbol.asSimpleRef.selN(Tree.Ident("bitor")))
-      case t if instantiatedResolvedBms.exists(_ is ctx.builtins.js.shl) =>
+      case t if isBuiltinModuleMember("js", "shl") =>
         conclude(State.runtimeSymbol.asSimpleRef.selN(Tree.Ident("shl")))
-      case t if instantiatedResolvedBms.exists(_ is ctx.builtins.js.try_catch) =>
+      case t if isBuiltinModuleMember("js", "try_catch") =>
         conclude(State.runtimeSymbol.asSimpleRef.selN(Tree.Ident("try_catch")))
       case t if t.resolvedSym.exists {
         case sym: BlockMemberSymbol => wasmIntrinsicSymbols.contains(sym)
@@ -864,7 +874,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       } =>
         val sym = t.resolvedSym.get.asInstanceOf[BlockMemberSymbol]
         conclude(State.wasmSymbol.asSimpleRef.selN(Tree.Ident(sym.nme)))
-      case t if instantiatedResolvedBms.exists(_ is ctx.builtins.debug.printStack) =>
+      case t if isBuiltinModuleMember("debug", "printStack") =>
         if !config.effectHandlers.exists(_.debug) then
           return fail:
             ErrorReport(
@@ -872,7 +882,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
               t.toLoc :: Nil,
               source = Diagnostic.Source.Compilation)
         conclude(State.runtimeSymbol.asSimpleRef.selSN("raisePrintStackEffect").withLocOf(baseF))
-      case t if instantiatedResolvedBms.exists(_ is ctx.builtins.scope.locally) =>
+      case t if isBuiltinModuleMember("scope", "locally") =>
         // scope.locally only applies to the innermost call; extra args are applied on top
         if allArgs.length > 1 then
           subTerm(baseF)(conclude)

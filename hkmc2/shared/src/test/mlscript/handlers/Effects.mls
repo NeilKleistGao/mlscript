@@ -196,13 +196,14 @@ fun f() = case [...x, y, z] then x
 //│ do runtime⁰.resetEffects﹖();
 //│ @private
 //│ define lambda as fun lambda⁰(caseScrut) {
-//│   let middleElements;
 //│   match caseScrut
 //│     Array(2+) =>
-//│       set middleElements = runtime⁰.Tuple⁰.slice⁰(caseScrut, 0, 2);
+//│       let inlinedVal, tmp;
+//│       set tmp = -⁰(caseScrut.length﹖, 2);
+//│       set inlinedVal = caseScrut.slice﹖(0, tmp);
 //│       do runtime⁰.Tuple⁰.get⁰(caseScrut, -2);
 //│       do runtime⁰.Tuple⁰.get⁰(caseScrut, -1);
-//│       return middleElements
+//│       return inlinedVal
 //│     else
 //│       throw new globalThis⁰.Error⁰("match error")
 //│   end
@@ -481,28 +482,28 @@ handle h = Eff with
   fun perform()(k) = k(())
 foo(h)
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.476: 	    module A with
+//│ ║  l.477: 	    module A with
 //│ ╙──       	           ^
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.472: 	    module A with
+//│ ║  l.473: 	    module A with
 //│ ╙──       	           ^
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.468: 	    module A with
+//│ ║  l.469: 	    module A with
 //│ ╙──       	           ^
 //│ ╔══[WARNING] Modules are not yet lifted.
-//│ ║  l.464: 	    module A with
+//│ ║  l.465: 	    module A with
 //│ ╙──       	           ^
 //│ ╔══[INTERNAL ERROR] Unexpected nested class: lambdas may not function correctly.
-//│ ║  l.464: 	    module A with
+//│ ║  l.465: 	    module A with
 //│ ╙──       	           ^
 //│ ╔══[INTERNAL ERROR] Unexpected nested class: lambdas may not function correctly.
-//│ ║  l.468: 	    module A with
+//│ ║  l.469: 	    module A with
 //│ ╙──       	           ^
 //│ ╔══[INTERNAL ERROR] Unexpected nested class: lambdas may not function correctly.
-//│ ║  l.472: 	    module A with
+//│ ║  l.473: 	    module A with
 //│ ╙──       	           ^
 //│ ╔══[INTERNAL ERROR] Unexpected nested class: lambdas may not function correctly.
-//│ ║  l.476: 	    module A with
+//│ ║  l.477: 	    module A with
 //│ ╙──       	           ^
 //│ = 123
 

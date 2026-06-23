@@ -38,6 +38,7 @@ object MLsCompiler:
   trait Paths:
     def preludeFile: io.Path
     def runtimeFile: io.Path
+    def runtimeSourceFile: io.Path
     def termFile: io.Path
 
 /**
@@ -85,13 +86,19 @@ class MLsCompiler
     
     val preludeArtifact = compilerCtx.getPrelude(preludeFile, dbgParsing)(using etl, summon[Raise], config)
     val preludeCtx = preludeArtifact.ctx
+    val mainParse = ParserSetup(file, dbgParsing)
     
     preludeCtx.nestLocal("file:"+file.baseName).givenIn:
       given CompilerCtx = compilerCtx.derive(file)
       /*
       val elab = Elaborator(etl, wd, newCtx)
+      val elab = Elaborator(etl, wd, preludeCtx)
       val parsed = mainParse.resultBlk
       val (blk0, _) = elab.importFrom(parsed)
+      if file.toString === runtimeSourceFile.toString then
+        State.initRuntimeSymbolsFromBlock(blk0)
+      else
+        State.initRuntimeSymbolsFromFile(runtimeSourceFile, preludeCtx)(using etl, summon[Raise], config, summon[CompilerCtx])
       Config.extractConfigFromStats(blk0).givenIn {
       val resolver = Resolver(rtl)
       resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
@@ -155,4 +162,3 @@ class MLsCompiler
   
   
 end MLsCompiler
-

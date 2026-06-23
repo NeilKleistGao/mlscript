@@ -30,5 +30,5 @@ let NoFreeze1;
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "NoFreeze"];
 });
-export { NoFreeze1 as _$_modulePrivate_$_NoFreeze_$_91 };
+export { NoFreeze1 as _$_modulePrivate_$_NoFreeze_$_39 };
 let NoFreeze = NoFreeze1; export default NoFreeze;

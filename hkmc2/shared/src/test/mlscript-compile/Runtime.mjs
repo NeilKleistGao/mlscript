@@ -61,7 +61,7 @@ lambda1 = (undefined, function (scope29$cap, cont, m, marker) {
 lambda = (undefined, function (l) {
   let tmp, tmp1;
   tmp = l.localName + "=";
-  tmp1 = Rendering.render(l.value);
+  tmp1 = runtime.safeCall(Rendering.render(l.value));
   return tmp + tmp1
 });
 lambda$1 = (undefined, function (Runtime2) {
@@ -1202,16 +1202,16 @@ lambda3 = (undefined, function (Runtime2, EffectHandle1, value) {
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "Runtime"];
 });
-export { Runtime1 as _$_modulePrivate_$_Runtime_$_184 };
-export { lambda as _$_modulePrivate_$_lambda_$_1304 };
-export { lambda1 as _$_modulePrivate_$_lambda_$_1323 };
-export { lambda2 as _$_modulePrivate_$_lambda_$_1333 };
-export { lambda3 as _$_modulePrivate_$_lambda_$_1404 };
-export { lambda4 as _$_modulePrivate_$_lambda_$_1452 };
-export { lambda$ as _$_modulePrivate_$_lambda$24$_$_1487 };
-export { lambda$1 as _$_modulePrivate_$_lambda$24$_$_1531 };
-export { Capture$scope291 as _$_modulePrivate_$_Capture$24$scope29_$_1579 };
-export { lambda$2 as _$_modulePrivate_$_lambda$24$_$_1584 };
-export { Capture$scope311 as _$_modulePrivate_$_Capture$24$scope31_$_1599 };
-export { lambda$3 as _$_modulePrivate_$_lambda$24$_$_1604 };
+export { Runtime1 as _$_modulePrivate_$_Runtime_$_132 };
+export { lambda as _$_modulePrivate_$_lambda_$_1253 };
+export { lambda1 as _$_modulePrivate_$_lambda_$_1272 };
+export { lambda2 as _$_modulePrivate_$_lambda_$_1282 };
+export { lambda3 as _$_modulePrivate_$_lambda_$_1353 };
+export { lambda4 as _$_modulePrivate_$_lambda_$_1401 };
+export { lambda$ as _$_modulePrivate_$_lambda$24$_$_1436 };
+export { lambda$1 as _$_modulePrivate_$_lambda$24$_$_1480 };
+export { Capture$scope291 as _$_modulePrivate_$_Capture$24$scope29_$_1528 };
+export { lambda$2 as _$_modulePrivate_$_lambda$24$_$_1533 };
+export { Capture$scope311 as _$_modulePrivate_$_Capture$24$scope31_$_1548 };
+export { lambda$3 as _$_modulePrivate_$_lambda$24$_$_1553 };
 let Runtime = Runtime1; export default Runtime;

@@ -117,6 +117,10 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       blockPrinter.worksheet(p)(using irPrintingScp).mkString(output.ColWidth)
     
     Config.extractConfigFromStats(blk).givenIn {
+    val loweringState = summon[Elaborator.State]
+    if file.toString =/= runtimeSourceFile.toString && file.toString =/= preludeFile.toString then
+      loweringState.initRuntimeSymbolsFromFile(runtimeSourceFile, prelude)(
+        using summon[TL], summon[Raise], summon[Config], cctx.withPaths(compilerPaths))
     
     if showJS.isSet then config.copy(sanityChecks = N).givenIn:
       given Raise =
@@ -126,7 +130,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
         case d => outerRaise(d)
       given Elaborator.Ctx = curCtx
       val low = ltl.givenIn:
-        codegen.Lowering()
+        codegen.Lowering()(using summon[Config], ltl, summon[Raise], loweringState, curCtx, summon[SymbolPrinter])
       val jsb = ltl.givenIn:
         new JSBuilder
       var lowered = low.program(blk, symbolsToPreserve = Set.empty)
@@ -149,7 +153,7 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
             output(s"Skipping already reported diagnostic: ${e.mainMsg}")
         case d => outerRaise(d)
       val low = ltl.givenIn:
-        new codegen.Lowering()
+        new codegen.Lowering()(using summon[Config], ltl, summon[Raise], loweringState, curCtx, summon[SymbolPrinter])
           with codegen.LoweringSelSanityChecks
           with codegen.LoweringTraceLog(traceJS.isSet)
       

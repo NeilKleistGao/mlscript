@@ -115,10 +115,16 @@ class CompilerCtx(
           .toSet
         case _ => Set.empty
       val (blk0, _) = elab.importFrom(parsed)
+      paths.foreach: compilerPaths =>
+        if file.toString === compilerPaths.runtimeSourceFile.toString then
+          state.initRuntimeSymbolsFromBlock(blk0)
+        else
+          state.initRuntimeSymbolsFromFile(compilerPaths.runtimeSourceFile, prelude)(using tl, summon[Raise], compilationUnitConfig, this)
 
       val artifactConfig = Config.extractConfigFromStats(blk0)
       state.compilationUnitConfig = S(artifactConfig)
       artifactConfig.givenIn:
+        given Elaborator.State = state
         val resolver = Resolver(rtl)
         resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
 
@@ -126,12 +132,14 @@ class CompilerCtx(
       // symbols carry IR definitions that the caller's inliner can inspect.
       if paths.isEmpty then
         artifactConfig.givenIn:
+          given Elaborator.State = state
           val low = ltl.givenIn:
-            new codegen.Lowering()
+            new codegen.Lowering()(using artifactConfig, ltl, summon[Raise], state, artifactCtx, summon[SymbolPrinter])
               with codegen.LoweringSelSanityChecks
           low.program(blk0, Set.empty)
       val ir = paths.map: compilerPaths =>
         artifactConfig.givenIn:
+          given Elaborator.State = state
           def findQuote(t: semantics.Statement): Bool = t match
             case Term.Quoted(_) | Term.Unquoted(_) => true
             case Term.Ref(sym) => sym === State.termSymbol
@@ -149,7 +157,7 @@ class CompilerCtx(
           state.noteImportedModule(State.runtimeSymbol, compilerPaths.runtimeFile.toString)
           if hasQuote then state.noteImportedModule(State.termSymbol, compilerPaths.termFile.toString)
           val low = ltl.givenIn:
-            new codegen.Lowering()
+            new codegen.Lowering()(using artifactConfig, ltl, summon[Raise], state, artifactCtx, summon[SymbolPrinter])
               with codegen.LoweringSelSanityChecks
           val jsb = ltl.givenIn:
             codegen.js.JSBuilder()
@@ -269,5 +277,3 @@ trait CompilerCache:
         .get
   
 end CompilerCache
-
-
