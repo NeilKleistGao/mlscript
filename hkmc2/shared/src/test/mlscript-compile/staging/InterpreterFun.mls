@@ -1,0 +1,120 @@
+staged module InterpreterFun with
+  class Cons(val x, val xs)
+  class Nil
+
+  class Some(val x)
+  class None
+  class Error
+
+  staged class Instruction() with
+    fun eval(s, e)
+
+  staged class Push(val v) extends Instruction() with
+    fun eval(s, e) = [new None, new Cons(v, s), e]
+
+  staged class Neg() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, rest) then [new Some(-x), rest, e]
+        else [new Error, s, e]
+
+  staged class Sub() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Some(y - x), rest, e]
+        else [new Error, s, e]
+
+  staged class Mult() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Some(x * y), rest, e]
+        else [new Error, s, e]
+
+  staged class Comp(val le) extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Some(if le then x <= y else x >= y), rest, e]
+        else [new Error, s, e]
+
+  staged class And() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Some(x and y), rest, e]
+        else [new Error, s, e]
+
+  staged class Branch(val t, val f) extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(c, rest) then
+          if c then evalAll(t, rest, e) else evalAll(f, rest, e)
+        else [new Error, s, e]
+
+  staged class Def(val name) extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(v, rest) then [new None, rest, new Cons([name, v], e)]
+        else [new Error, s, e]
+
+  staged class Load(val name) extends Instruction() with
+    fun eval(s, e) =
+      let opt = get(e, name)
+      if opt is
+        Some(v) then [new None, new Cons(v, s), e]
+        else [new Error, s, e]
+
+  staged class Fun(val name, val ps, val body) extends Instruction() with
+    fun eval(s, e) =
+      [new None, s, new Cons([name, [ps, body]], e)]
+
+  staged class Call(val name) extends Instruction() with
+    fun eval(s, e) =
+      let f = get(e, name)
+      if f is
+        Some([ps, body]) then
+          let t = bind(ps, s, e)
+          if t is
+            [ss, ee] then
+              let res = evalAll(body, ss, ee)
+              if res is
+                [None, rest, _] then [new None, rest, e]
+                else [new Error, s, e] 
+            else [new Error, s, e]
+        else [new Error, s, e]
+
+  fun get(env, name) =
+    if env is
+      Cons([n, v], rest) then
+        if n == name then new Some(v) else get(rest, name)
+      else new None
+
+  fun bind(ps, s, e) =
+    if [ps, s] is
+      [Cons(p, r1), Cons(v, r2)] then bind(r1, r2, new Cons([p, v], e))
+      [Nil, ss] then [ss, e]
+      else new Error
+
+  fun evalAll(@specialize insts, s, e) =
+    if insts is
+      Cons(inst, rest) then
+        let res = inst.eval(s, e)
+        if res is
+          [Some(x), ss, ne] then evalAll(rest, new Cons(x, ss), ne)
+          [None, ss, ne] then evalAll(rest, ss, ne)
+          else [new Error, s, e]
+      else [new None, s, e]
+
+  fun exec(insts, s, e) =
+    let ss = evalAll(insts, s, e)
+    if ss is
+      [None, Cons(x, Nil), _] then new Some(x)
+      [None, Nil, _] then new None
+      else new Error
+
+  fun mkCube5() =
+    let insts =
+      new Cons(new Fun("pow", new Cons("x", new Cons("p", new Nil)),
+        new Cons(new Load("p"), new Cons(new Push(0), new Cons(new Comp(false), new Cons(new Branch(
+          new Cons(new Push(1), new Nil),
+            new Cons(new Load("p"), new Cons(new Push(1), new Cons(new Sub(), new Cons(new Load("x"), new Cons(new Call("pow"), new Cons(new Load("x"), new Cons(new Mult(), new Nil)))))))), new Nil))))),
+              new Cons(new Push(3), new Cons(new Push(5), new Cons(new Call("pow"), new Nil))))
+    exec(insts, new Nil, new Nil)
