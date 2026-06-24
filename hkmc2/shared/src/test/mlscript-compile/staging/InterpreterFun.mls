@@ -1,3 +1,5 @@
+open annotations { special, specialize }
+
 staged module InterpreterFun with
   class Cons(val x, val xs)
   class Nil
@@ -18,6 +20,12 @@ staged module InterpreterFun with
     fun eval(s, e) =
       if s is
         Cons(x, rest) then [new Cons(-x, rest), e]
+        else new Error
+
+  staged class Add() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(x + y, rest), e]
         else new Error
 
   staged class Sub() extends Instruction() with
@@ -66,7 +74,7 @@ staged module InterpreterFun with
 
   staged class Fun(val name, val ps, val body) extends Instruction() with
     fun eval(s, e) =
-      [s, new Cons([name, new Closure(name, ps, body, e)], e)]
+      [s, new Cons([name, (@special new Closure(name, ps, body, e))], e)]
 
   staged class Call() extends Instruction() with
     fun eval(s, e) =
@@ -82,7 +90,7 @@ staged module InterpreterFun with
             else new Error
         else new Error
 
-  fun get(env, name) =
+  fun get(@specialize env, name) =
     if env is
       Cons([n, v], rest) then
         if n == name then new Some(v) else get(rest, name)
@@ -118,3 +126,12 @@ staged module InterpreterFun with
             new Cons(new Load("p"), new Cons(new Push(1), new Cons(new Sub(), new Cons(new Load("x"), new Cons(new Load("pow"), new Cons(new Call(), new Cons(new Load("x"), new Cons(new Mult(), new Nil))))))))), new Nil))))),
               new Cons(new Push(3), new Cons(new Push(5), new Cons(new Load("pow"), new Cons(new Call(), new Nil)))))
     exec(insts, new Nil, new Nil)
+
+  fun test(x, fn) =
+    let insts =
+      new Cons(new Fun("inc", new Cons("x", new Nil), new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Add(), new Nil)))),
+        new Cons(new Fun("dec", new Cons("x", new Nil), new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Sub(), new Nil)))),
+          new Cons(new Fun("f", new Cons("g", new Cons("x", new Nil)), new Cons(new Load("x"), new Cons(new Load("g"), new Cons(new Call(), new Nil)))),
+            new Cons(new Push(x), new Cons(new Load(fn), new Cons(new Call(), new Nil))))))
+    exec(insts, new Nil, new Nil)
+
