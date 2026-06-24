@@ -10,47 +10,47 @@ staged module InterpreterVar with
     fun eval(s, e)
 
   staged class Push(val v) extends Instruction() with
-    fun eval(s, e) = [new None, new Cons(v, s), e]
+    fun eval(s, e) = [new Cons(v, s), e]
 
   staged class Neg() extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, rest) then [new Some(-x), rest, e]
-        else [new Error, s, e]
+        Cons(x, rest) then [new Cons(-x, rest), e]
+        else new Error
 
   staged class Comp(val le) extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(if le then x <= y else x >= y), rest, e]
-        else [new Error, s, e]
+        Cons(x, Cons(y, rest)) then [new Cons(if le then x <= y else x >= y, rest), e]
+        else new Error
 
   staged class And() extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(x and y), rest, e]
-        else [new Error, s, e]
+        Cons(x, Cons(y, rest)) then [new Cons(x and y, rest), e]
+        else new Error
 
   staged class Branch(val t, val f) extends Instruction() with
     fun eval(s, e) =
       if s is
         Cons(c, rest) then
           if c then evalAll(t, rest, e) else evalAll(f, rest, e)
-        else [new Error, s, e]
+        else new Error
 
   staged class Def(val name) extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(v, rest) then [new None, rest, new Cons([name, v], e)]
-        else [new Error, s, e]
+        Cons(v, rest) then [rest, new Cons([name, v], e)]
+        else new Error
 
   staged class Load(val name) extends Instruction() with
     fun eval(s, e) =
       let opt = get(e, name)
       if opt is
-        Some(v) then [new None, new Cons(v, s), e]
-        else [new Error, s, e]
+        Some(v) then [new Cons(v, s), e]
+        else new Error
 
-  fun get(env, @specialize name) =
+  fun get(env, name) =
     if env is
       Cons([n, v], rest) then
         if n == name then new Some(v) else get(rest, name)
@@ -61,16 +61,15 @@ staged module InterpreterVar with
       Cons(inst, rest) then
         let res = inst.eval(s, e)
         if res is
-          [Some(x), ss, ne] then evalAll(rest, new Cons(x, ss), ne)
-          [None, ss, ne] then evalAll(rest, ss, ne)
-          else [new Error, s, e]
-      else [new None, s, e]
+          [ss, ne] then evalAll(rest, ss, ne)
+          else res
+      else [s, e]
 
   fun exec(insts, s, e) =
     let ss = evalAll(insts, s, e)
     if ss is
-      [None, Cons(x, Nil), _] then new Some(x)
-      [None, Nil, _] then new None
+      [Cons(x, Nil), _] then new Some(x)
+      [Nil, _] then new None
       else new Error
 
   fun mkAbs(x) =

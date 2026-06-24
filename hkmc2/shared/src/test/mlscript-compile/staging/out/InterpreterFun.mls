@@ -6,35 +6,33 @@ module InterpreterFun with
     class Some(val x)
     class None
     class Error
+    class Closure(val name, val ps, val body, val env)
     class Instruction() with
       ()
     class Push(val v) extends Instruction() with
       ()
       fun eval(s, e) =
-        let {tmp, tmp1}
-        tmp = new None()
-        tmp1 = new Cons(v, s)
-        [tmp, tmp1, e]
+        let {tmp}
+        tmp = new Cons(v, s)
+        [tmp, e]
     class Neg() extends Instruction() with
       ()
       fun eval(s, e) =
-        let {x2, rest, arg_Cons_0_, arg_Cons_1_, tmp2, tmp3, tmp4}
+        let {x2, rest, arg_Cons_0_, arg_Cons_1_, tmp1, tmp2}
         if s is
           Cons then
             arg_Cons_0_ = s.x
             arg_Cons_1_ = s.xs
             rest = arg_Cons_1_
             x2 = arg_Cons_0_
-            tmp2 = -(x2)
-            tmp3 = new Some(tmp2)
-            [tmp3, rest, e]
-          else
-            tmp4 = new Error()
-            [tmp4, s, e]
+            tmp1 = -(x2)
+            tmp2 = new Cons(tmp1, rest)
+            [tmp2, e]
+          else new Error()
     class Sub() extends Instruction() with
       ()
       fun eval(s, e) =
-        let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp5, tmp6, tmp7, tmp8}
+        let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp3, tmp4}
         if s is
           Cons then
             arg_Cons_0_1 = s.x
@@ -46,19 +44,15 @@ module InterpreterFun with
                 rest1 = arg_Cons_1_2
                 y = arg_Cons_0_2
                 x3 = arg_Cons_0_1
-                tmp5 = y - x3
-                tmp6 = new Some(tmp5)
-                [tmp6, rest1, e]
-              else
-                tmp7 = new Error()
-                [tmp7, s, e]
-          else
-            tmp8 = new Error()
-            [tmp8, s, e]
+                tmp3 = y - x3
+                tmp4 = new Cons(tmp3, rest1)
+                [tmp4, e]
+              else new Error()
+          else new Error()
     class Mult() extends Instruction() with
       ()
       fun eval(s, e) =
-        let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp9, tmp10, tmp11, tmp12}
+        let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp5, tmp6}
         if s is
           Cons then
             arg_Cons_0_3 = s.x
@@ -70,19 +64,15 @@ module InterpreterFun with
                 rest2 = arg_Cons_1_4
                 y1 = arg_Cons_0_4
                 x4 = arg_Cons_0_3
-                tmp9 = x4 * y1
-                tmp10 = new Some(tmp9)
-                [tmp10, rest2, e]
-              else
-                tmp11 = new Error()
-                [tmp11, s, e]
-          else
-            tmp12 = new Error()
-            [tmp12, s, e]
+                tmp5 = x4 * y1
+                tmp6 = new Cons(tmp5, rest2)
+                [tmp6, e]
+              else new Error()
+          else new Error()
     class Comp(val le) extends Instruction() with
       ()
       fun eval(s, e) =
-        let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp13, tmp14, tmp15, tmp16}
+        let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
         if s is
           Cons then
             arg_Cons_0_5 = s.x
@@ -97,21 +87,17 @@ module InterpreterFun with
                 scrut = le
                 if scrut is
                   true then
-                    tmp13 = x5 <= y2
+                    tmp7 = x5 <= y2
                   else
-                    tmp13 = x5 >= y2
-                tmp14 = new Some(tmp13)
-                [tmp14, rest3, e]
-              else
-                tmp15 = new Error()
-                [tmp15, s, e]
-          else
-            tmp16 = new Error()
-            [tmp16, s, e]
+                    tmp7 = x5 >= y2
+                tmp8 = new Cons(tmp7, rest3)
+                [tmp8, e]
+              else new Error()
+          else new Error()
     class And() extends Instruction() with
       ()
       fun eval(s, e) =
-        let {x6, y3, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Cons_0_8, arg_Cons_1_8, tmp17, tmp18, tmp19, tmp20}
+        let {x6, y3, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Cons_0_8, arg_Cons_1_8, tmp9, tmp10}
         if s is
           Cons then
             arg_Cons_0_7 = s.x
@@ -127,23 +113,19 @@ module InterpreterFun with
                   true then
                     if y3 is
                       true then
-                        tmp17 = true
+                        tmp9 = true
                       else
-                        tmp17 = false
+                        tmp9 = false
                   else
-                    tmp17 = false
-                tmp18 = new Some(tmp17)
-                [tmp18, rest4, e]
-              else
-                tmp19 = new Error()
-                [tmp19, s, e]
-          else
-            tmp20 = new Error()
-            [tmp20, s, e]
+                    tmp9 = false
+                tmp10 = new Cons(tmp9, rest4)
+                [tmp10, e]
+              else new Error()
+          else new Error()
     class Branch(val t, val f) extends Instruction() with
       ()
       fun eval(s, e) =
-        let {rest5, c, arg_Cons_0_9, arg_Cons_1_9, tmp21}
+        let {rest5, c, arg_Cons_0_9, arg_Cons_1_9}
         if s is
           Cons then
             arg_Cons_0_9 = s.x
@@ -153,1245 +135,1153 @@ module InterpreterFun with
             if c is
               true then evalAll(t, rest5, e)
               else evalAll(f, rest5, e)
-          else
-            tmp21 = new Error()
-            [tmp21, s, e]
+          else new Error()
     class Def(val name) extends Instruction() with
       ()
       fun eval(s, e) =
-        let {rest6, v1, arg_Cons_0_10, arg_Cons_1_10, tmp22, tmp23, tmp24, tmp25}
+        let {rest6, v1, arg_Cons_0_10, arg_Cons_1_10, tmp11, tmp12}
         if s is
           Cons then
             arg_Cons_0_10 = s.x
             arg_Cons_1_10 = s.xs
             rest6 = arg_Cons_1_10
             v1 = arg_Cons_0_10
-            tmp22 = new None()
-            tmp23 = [name, v1]
-            tmp24 = new Cons(tmp23, e)
-            [tmp22, rest6, tmp24]
-          else
-            tmp25 = new Error()
-            [tmp25, s, e]
+            tmp11 = [name, v1]
+            tmp12 = new Cons(tmp11, e)
+            [rest6, tmp12]
+          else new Error()
     class Load(val name) extends Instruction() with
       ()
       fun eval(s, e) =
-        let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
+        let {opt, v2, arg_Some_0_, tmp13}
         opt = get(e, name)
         if opt is
           Some then
             arg_Some_0_ = opt.x
             v2 = arg_Some_0_
-            tmp26 = new None()
-            tmp27 = new Cons(v2, s)
-            [tmp26, tmp27, e]
-          else
-            tmp28 = new Error()
-            [tmp28, s, e]
+            tmp13 = new Cons(v2, s)
+            [tmp13, e]
+          else new Error()
     class Fun(val name, val ps, val body) extends Instruction() with
       ()
       fun eval(s, e) =
-        let {tmp29, tmp30, tmp31, tmp32}
-        tmp29 = new None()
-        tmp30 = [ps, body]
-        tmp31 = [name, tmp30]
-        tmp32 = new Cons(tmp31, e)
-        [tmp29, s, tmp32]
-    class Call(val name) extends Instruction() with
+        let {tmp14, tmp15, tmp16}
+        tmp14 = new Closure(name, ps, body, e)
+        tmp15 = [name, tmp14]
+        tmp16 = new Cons(tmp15, e)
+        [s, tmp16]
+    class Call() extends Instruction() with
       ()
       fun eval(s, e) =
-        let {f1, body1, ps1, t1, ss, ee, res, rest7, arg_Some_0_1, element1_, element0_, element1_1, element0_1, element2_, element1_2, element0_2, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38}
-        f1 = get(e, name)
-        if f1 is
-          Some then
-            arg_Some_0_1 = f1.x
-            if arg_Some_0_1 is
-              [_, _] then
-                element0_ = arg_Some_0_1.0
-                element1_ = arg_Some_0_1.1
-                body1 = element1_
-                ps1 = element0_
-                t1 = bind(ps1, s, e)
+        let {v3, s__, body2, name4, ps2, e__, t1, ss, ee, res, rest7, arg_Cons_0_11, arg_Cons_1_11, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, tmp17, tmp18, element1_, element0_, element1_1, element0_1}
+        if s is
+          Cons then
+            arg_Cons_0_11 = s.x
+            arg_Cons_1_11 = s.xs
+            s__ = arg_Cons_1_11
+            v3 = arg_Cons_0_11
+            if v3 is
+              Closure then
+                arg_Closure_0_ = v3.name
+                arg_Closure_1_ = v3.ps
+                arg_Closure_2_ = v3.body
+                arg_Closure_3_ = v3.env
+                e__ = arg_Closure_3_
+                body2 = arg_Closure_2_
+                ps2 = arg_Closure_1_
+                name4 = arg_Closure_0_
+                tmp17 = [name4, v3]
+                tmp18 = new Cons(tmp17, e__)
+                t1 = bind_InterpreterFun_sp_0(ps2, s__, tmp18)
                 if t1 is
                   [_, _] then
-                    element0_1 = t1.0
-                    element1_1 = t1.1
-                    ee = element1_1
-                    ss = element0_1
-                    res = evalAll(body1, ss, ee)
+                    element0_ = t1.0
+                    element1_ = t1.1
+                    ee = element1_
+                    ss = element0_
+                    res = evalAll(body2, ss, ee)
                     if res is
-                      [_, _, _] then
-                        element0_2 = res.0
-                        element1_2 = res.1
-                        element2_ = res.2
-                        if element0_2 is
-                          None then
-                            rest7 = element1_2
-                            tmp33 = new None()
-                            [tmp33, rest7, e]
-                          else
-                            tmp34 = new Error()
-                            [tmp34, s, e]
-                      else
-                        tmp35 = new Error()
-                        [tmp35, s, e]
-                  else
-                    tmp36 = new Error()
-                    [tmp36, s, e]
-              else
-                tmp37 = new Error()
-                [tmp37, s, e]
-          else
-            tmp38 = new Error()
-            [tmp38, s, e]
+                      [_, _] then
+                        element0_1 = res.0
+                        element1_1 = res.1
+                        rest7 = element0_1
+                        [rest7, e]
+                      else new Error()
+                  else new Error()
+              else new Error()
+          else new Error()
     fun bind(ps, s, e) =
-      let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+      let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
       scrut2 = [ps, s]
-      element0_4 = scrut2.0
-      element1_4 = scrut2.1
-      if element0_4 is
+      element0_3 = scrut2.0
+      element1_3 = scrut2.1
+      if element0_3 is
         Cons then
-          arg_Cons_0_12 = element0_4.x
-          arg_Cons_1_12 = element0_4.xs
-          if element1_4 is
+          arg_Cons_0_13 = element0_3.x
+          arg_Cons_1_13 = element0_3.xs
+          if element1_3 is
             Cons then
-              arg_Cons_0_13 = element1_4.x
-              arg_Cons_1_13 = element1_4.xs
-              r2 = arg_Cons_1_13
-              v4 = arg_Cons_0_13
-              r1 = arg_Cons_1_12
-              p = arg_Cons_0_12
-              tmp39 = [p, v4]
-              tmp40 = new Cons(tmp39, e)
-              bind(r1, r2, tmp40)
+              arg_Cons_0_14 = element1_3.x
+              arg_Cons_1_14 = element1_3.xs
+              r2 = arg_Cons_1_14
+              v5 = arg_Cons_0_14
+              r1 = arg_Cons_1_13
+              p = arg_Cons_0_13
+              tmp19 = [p, v5]
+              tmp20 = new Cons(tmp19, e)
+              bind(r1, r2, tmp20)
             else new Error()
         Nil then
-          ss1 = element1_4
+          ss1 = element1_3
           [ss1, e]
         else new Error()
     fun evalAll(insts, s, e) =
-      let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
+      let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
       if insts is
         Cons then
-          arg_Cons_0_14 = insts.x
-          arg_Cons_1_14 = insts.xs
-          rest9 = arg_Cons_1_14
-          inst = arg_Cons_0_14
+          arg_Cons_0_15 = insts.x
+          arg_Cons_1_15 = insts.xs
+          rest9 = arg_Cons_1_15
+          inst = arg_Cons_0_15
           res1 = inst.eval(s, e)
           if res1 is
-            [_, _, _] then
-              element0_5 = res1.0
-              element1_5 = res1.1
-              element2_1 = res1.2
-              if element0_5 is
-                Some then
-                  arg_Some_0_2 = element0_5.x
-                  ne = element2_1
-                  ss2 = element1_5
-                  x7 = arg_Some_0_2
-                  tmp41 = new Cons(x7, ss2)
-                  evalAll(rest9, tmp41, ne)
-                None then
-                  ne1 = element2_1
-                  ss3 = element1_5
-                  evalAll(rest9, ss3, ne1)
-                else
-                  tmp42 = new Error()
-                  [tmp42, s, e]
-            else
-              tmp43 = new Error()
-              [tmp43, s, e]
-        else
-          tmp44 = new None()
-          [tmp44, s, e]
+            [_, _] then
+              element0_4 = res1.0
+              element1_4 = res1.1
+              ne = element1_4
+              ss2 = element0_4
+              evalAll(rest9, ss2, ne)
+            else res1
+        else [s, e]
     fun exec(insts, s, e) =
-      let {ss4, x8, element2_2, element1_6, element0_6, arg_Cons_0_15, arg_Cons_1_15}
-      ss4 = evalAll(insts, s, e)
-      if ss4 is
-        [_, _, _] then
-          element0_6 = ss4.0
-          element1_6 = ss4.1
-          element2_2 = ss4.2
-          if element0_6 is
-            None then
-              if element1_6 is
-                Cons then
-                  arg_Cons_0_15 = element1_6.x
-                  arg_Cons_1_15 = element1_6.xs
-                  if arg_Cons_1_15 is
-                    Nil then
-                      x8 = arg_Cons_0_15
-                      new Some(x8)
-                    else new Error()
-                Nil then new None()
+      let {ss3, x7, element1_5, element0_5, arg_Cons_0_16, arg_Cons_1_16}
+      ss3 = evalAll(insts, s, e)
+      if ss3 is
+        [_, _] then
+          element0_5 = ss3.0
+          element1_5 = ss3.1
+          if element0_5 is
+            Cons then
+              arg_Cons_0_16 = element0_5.x
+              arg_Cons_1_16 = element0_5.xs
+              if arg_Cons_1_16 is
+                Nil then
+                  x7 = arg_Cons_0_16
+                  new Some(x7)
                 else new Error()
+            Nil then new None()
             else new Error()
         else new Error()
     fun get(env, name) =
-      let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
+      let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
       if env is
         Cons then
-          arg_Cons_0_11 = env.x
-          arg_Cons_1_11 = env.xs
-          if arg_Cons_0_11 is
+          arg_Cons_0_12 = env.x
+          arg_Cons_1_12 = env.xs
+          if arg_Cons_0_12 is
             [_, _] then
-              element0_3 = arg_Cons_0_11.0
-              element1_3 = arg_Cons_0_11.1
-              rest8 = arg_Cons_1_11
-              v3 = element1_3
-              n = element0_3
+              element0_2 = arg_Cons_0_12.0
+              element1_2 = arg_Cons_0_12.1
+              rest8 = arg_Cons_1_12
+              v4 = element1_2
+              n = element0_2
               scrut1 = n == name
               if scrut1 is
-                true then new Some(v3)
+                true then new Some(v4)
                 else get(rest8, name)
             else new None()
         else new None()
     fun mkCube5() =
-      let {insts2, tmp45, tmp46, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84}
-      tmp45 = new Nil()
-      tmp46 = new Cons("p", tmp45)
-      tmp47 = new Cons("x", tmp46)
-      tmp48 = new Load("p")
-      tmp49 = new Push(0)
-      tmp50 = new Comp(false)
-      tmp51 = new Push(1)
-      tmp52 = new Nil()
-      tmp53 = new Cons(tmp51, tmp52)
-      tmp54 = new Load("p")
-      tmp55 = new Push(1)
-      tmp56 = new Sub()
-      tmp57 = new Load("x")
-      tmp58 = new Call("pow")
-      tmp59 = new Load("x")
-      tmp60 = new Mult()
-      tmp61 = new Nil()
-      tmp62 = new Cons(tmp60, tmp61)
-      tmp63 = new Cons(tmp59, tmp62)
-      tmp64 = new Cons(tmp58, tmp63)
-      tmp65 = new Cons(tmp57, tmp64)
-      tmp66 = new Cons(tmp56, tmp65)
-      tmp67 = new Cons(tmp55, tmp66)
-      tmp68 = new Cons(tmp54, tmp67)
-      tmp69 = new Branch(tmp53, tmp68)
-      tmp70 = new Nil()
-      tmp71 = new Cons(tmp69, tmp70)
-      tmp72 = new Cons(tmp50, tmp71)
-      tmp73 = new Cons(tmp49, tmp72)
-      tmp74 = new Cons(tmp48, tmp73)
-      tmp75 = new Fun("pow", tmp47, tmp74)
-      tmp76 = new Push(3)
-      tmp77 = new Push(5)
-      tmp78 = new Call("pow")
-      tmp79 = new Nil()
-      tmp80 = new Cons(tmp78, tmp79)
-      tmp81 = new Cons(tmp77, tmp80)
-      tmp82 = new Cons(tmp76, tmp81)
-      insts2 = new Cons(tmp75, tmp82)
-      tmp83 = new Nil()
-      tmp84 = new Nil()
-      exec_InterpreterFun_sp_0(insts2, tmp83, tmp84)
+      let {insts2, tmp21, tmp22, tmp23, tmp24, tmp25, tmp26, tmp27, tmp28, tmp29, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+      tmp21 = new Nil()
+      tmp22 = new Cons("p", tmp21)
+      tmp23 = new Cons("x", tmp22)
+      tmp24 = new Load("p")
+      tmp25 = new Push(0)
+      tmp26 = new Comp(false)
+      tmp27 = new Push(1)
+      tmp28 = new Nil()
+      tmp29 = new Cons(tmp27, tmp28)
+      tmp30 = new Load("p")
+      tmp31 = new Push(1)
+      tmp32 = new Sub()
+      tmp33 = new Load("x")
+      tmp34 = new Load("pow")
+      tmp35 = new Call()
+      tmp36 = new Load("x")
+      tmp37 = new Mult()
+      tmp38 = new Nil()
+      tmp39 = new Cons(tmp37, tmp38)
+      tmp40 = new Cons(tmp36, tmp39)
+      tmp41 = new Cons(tmp35, tmp40)
+      tmp42 = new Cons(tmp34, tmp41)
+      tmp43 = new Cons(tmp33, tmp42)
+      tmp44 = new Cons(tmp32, tmp43)
+      tmp45 = new Cons(tmp31, tmp44)
+      tmp46 = new Cons(tmp30, tmp45)
+      tmp47 = new Branch(tmp29, tmp46)
+      tmp48 = new Nil()
+      tmp49 = new Cons(tmp47, tmp48)
+      tmp50 = new Cons(tmp26, tmp49)
+      tmp51 = new Cons(tmp25, tmp50)
+      tmp52 = new Cons(tmp24, tmp51)
+      tmp53 = new Fun("pow", tmp23, tmp52)
+      tmp54 = new Push(3)
+      tmp55 = new Push(5)
+      tmp56 = new Load("pow")
+      tmp57 = new Call()
+      tmp58 = new Nil()
+      tmp59 = new Cons(tmp57, tmp58)
+      tmp60 = new Cons(tmp56, tmp59)
+      tmp61 = new Cons(tmp55, tmp60)
+      tmp62 = new Cons(tmp54, tmp61)
+      insts2 = new Cons(tmp53, tmp62)
+      tmp63 = new Nil()
+      tmp64 = new Nil()
+      exec_InterpreterFun_sp_0(insts2, tmp63, tmp64)
 open InterpreterFun
 fun bind_InterpreterFun_sp_0(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 5
-  r1 = arg_Cons_1_12
-  p = "x"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_1(r1, r2, tmp40)
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  if element0_3 is
+    Cons then
+      arg_Cons_0_13 = element0_3.x
+      arg_Cons_1_13 = element0_3.xs
+      if element1_3 is
+        Cons then
+          arg_Cons_0_14 = element1_3.x
+          arg_Cons_1_14 = element1_3.xs
+          r2 = arg_Cons_1_14
+          v5 = arg_Cons_0_14
+          r1 = arg_Cons_1_13
+          p = arg_Cons_0_13
+          tmp19 = [p, v5]
+          tmp20 = new Cons(tmp19, e)
+          bind(r1, r2, tmp20)
+        else new Error()
+    Nil then
+      ss1 = element1_3
+      [ss1, e]
+    else new Error()
 fun bind_InterpreterFun_sp_1(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 3
-  r1 = arg_Cons_1_12
-  p = "p"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_2(r1, r2, tmp40)
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 5
+  r1 = arg_Cons_1_13
+  p = "x"
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_2(r1, r2, tmp20)
 fun bind_InterpreterFun_sp_10(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 0
-  r1 = arg_Cons_1_12
-  p = "p"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_11(r1, r2, tmp40)
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 5
+  r1 = arg_Cons_1_13
+  p = "x"
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_11(r1, r2, tmp20)
 fun bind_InterpreterFun_sp_11(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  ss1 = element1_4
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 0
+  r1 = arg_Cons_1_13
+  p = "p"
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_12(r1, r2, tmp20)
+fun bind_InterpreterFun_sp_12(ps, s, e) =
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  ss1 = element1_3
   [ss1, e]
 fun bind_InterpreterFun_sp_2(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  ss1 = element1_4
-  [ss1, e]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 3
+  r1 = arg_Cons_1_13
+  p = "p"
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_3(r1, r2, tmp20)
 fun bind_InterpreterFun_sp_3(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 5
-  r1 = arg_Cons_1_12
-  p = "x"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_4(r1, r2, tmp40)
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  ss1 = element1_3
+  [ss1, e]
 fun bind_InterpreterFun_sp_4(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 2
-  r1 = arg_Cons_1_12
-  p = "p"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_5(r1, r2, tmp40)
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 5
+  r1 = arg_Cons_1_13
+  p = "x"
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_5(r1, r2, tmp20)
 fun bind_InterpreterFun_sp_5(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  ss1 = element1_4
-  [ss1, e]
-fun bind_InterpreterFun_sp_6(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
-  scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 5
-  r1 = arg_Cons_1_12
-  p = "x"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_7(r1, r2, tmp40)
-fun bind_InterpreterFun_sp_7(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
-  scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 1
-  r1 = arg_Cons_1_12
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 2
+  r1 = arg_Cons_1_13
   p = "p"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_8(r1, r2, tmp40)
-fun bind_InterpreterFun_sp_8(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_6(r1, r2, tmp20)
+fun bind_InterpreterFun_sp_6(ps, s, e) =
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  ss1 = element1_4
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  ss1 = element1_3
   [ss1, e]
-fun bind_InterpreterFun_sp_9(ps, s, e) =
-  let {scrut2, v4, r1, p, r2, ss1, element1_4, element0_4, arg_Cons_0_12, arg_Cons_1_12, arg_Cons_0_13, arg_Cons_1_13, tmp39, tmp40}
+fun bind_InterpreterFun_sp_7(ps, s, e) =
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
   scrut2 = [ps, s]
-  element0_4 = scrut2.0
-  element1_4 = scrut2.1
-  arg_Cons_0_12 = element0_4.x
-  arg_Cons_1_12 = element0_4.xs
-  arg_Cons_0_13 = element1_4.x
-  arg_Cons_1_13 = element1_4.xs
-  r2 = arg_Cons_1_13
-  v4 = 5
-  r1 = arg_Cons_1_12
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 5
+  r1 = arg_Cons_1_13
   p = "x"
-  tmp39 = [p, v4]
-  tmp40 = new Cons(tmp39, e)
-  bind_InterpreterFun_sp_10(r1, r2, tmp40)
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_8(r1, r2, tmp20)
+fun bind_InterpreterFun_sp_8(ps, s, e) =
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_13 = element0_3.x
+  arg_Cons_1_13 = element0_3.xs
+  arg_Cons_0_14 = element1_3.x
+  arg_Cons_1_14 = element1_3.xs
+  r2 = arg_Cons_1_14
+  v5 = 1
+  r1 = arg_Cons_1_13
+  p = "p"
+  tmp19 = [p, v5]
+  tmp20 = new Cons(tmp19, e)
+  bind_InterpreterFun_sp_9(r1, r2, tmp20)
+fun bind_InterpreterFun_sp_9(ps, s, e) =
+  let {scrut2, v5, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_13, arg_Cons_1_13, arg_Cons_0_14, arg_Cons_1_14, tmp19, tmp20}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  ss1 = element1_3
+  [ss1, e]
 fun evalAll_InterpreterFun_sp_0(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
   res1 = eval_Fun_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_1(rest9, ss3, ne1)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_1(rest9, ss2, ne)
 fun evalAll_InterpreterFun_sp_1(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
   res1 = eval_Push_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_2(rest9, ss3, ne1)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_2(rest9, ss2, ne)
 fun evalAll_InterpreterFun_sp_10(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Sub_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = 2
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_11(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_11(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_1(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_12(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_12(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Call_sp_1(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_43(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_13(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_14(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_14(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_4(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_15(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_15(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Comp_sp_1(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = false
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_16(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_16(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Branch_sp_1(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_42(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_17(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_18(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_18(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_5(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_19(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_19(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Sub_sp_1(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = 1
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_20(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_2(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_1(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_3(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_20(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_3(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_21(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_21(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Call_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_40(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_22(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_4(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_23(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_23(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_6(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_24(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_24(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Comp_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = false
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_25(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_25(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Branch_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_39(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_26(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_4(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_27(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_27(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_7(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_28(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_28(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Sub_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = 0
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_29(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_29(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_5(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_30(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_3(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Call_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_46(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_30(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Call_sp_3(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_37(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_31(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_6(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_32(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_32(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_8(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_33(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_33(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Comp_sp_3(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = true
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_34(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_34(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Branch_sp_3(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_36(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_35(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_9(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_36(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_36(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  tmp44 = new None()
-  [tmp44, s, e]
-fun evalAll_InterpreterFun_sp_37(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_7(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_38(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_38(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Mult_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = 5
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_39(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_39(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  tmp44 = new None()
-  [tmp44, s, e]
-fun evalAll_InterpreterFun_sp_4(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_5(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_40(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_8(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_41(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_41(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Mult_sp_1(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = 25
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_42(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_42(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  tmp44 = new None()
-  [tmp44, s, e]
-fun evalAll_InterpreterFun_sp_43(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_9(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_44(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_44(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Mult_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = 125
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_45(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_45(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  tmp44 = new None()
-  [tmp44, s, e]
-fun evalAll_InterpreterFun_sp_46(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  tmp44 = new None()
-  [tmp44, s, e]
-fun evalAll_InterpreterFun_sp_5(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Push_sp_2(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_6(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_6(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Comp_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  arg_Some_0_2 = element0_5.x
-  ne = element2_1
-  ss2 = element1_5
-  x7 = false
-  tmp41 = new Cons(x7, ss2)
-  evalAll_InterpreterFun_sp_7(rest9, tmp41, ne)
-fun evalAll_InterpreterFun_sp_7(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Branch_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_45(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_8(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
-  res1 = eval_Load_sp_0(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_9(rest9, ss3, ne1)
-fun evalAll_InterpreterFun_sp_9(insts, s, e) =
-  let {rest9, inst, res1, ne, ss2, x7, ss3, ne1, arg_Cons_0_14, arg_Cons_1_14, element2_1, element1_5, element0_5, arg_Some_0_2, tmp41, tmp42, tmp43, tmp44}
-  arg_Cons_0_14 = insts.x
-  arg_Cons_1_14 = insts.xs
-  rest9 = arg_Cons_1_14
-  inst = arg_Cons_0_14
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
   res1 = eval_Push_sp_3(inst, s, e)
-  element0_5 = res1.0
-  element1_5 = res1.1
-  element2_1 = res1.2
-  ne1 = element2_1
-  ss3 = element1_5
-  evalAll_InterpreterFun_sp_10(rest9, ss3, ne1)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_11(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_11(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Sub_sp_0(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_12(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_12(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_2(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_13(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_13(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_3(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_14(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_14(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Call_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_47(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_15(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_4(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_16(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_16(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_4(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_17(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_17(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Comp_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_18(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_18(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Branch_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_46(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_19(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_4(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_20(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_2(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_3(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_20(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_5(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_21(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_21(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Sub_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_22(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_22(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_5(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_23(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_23(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_6(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_24(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_24(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Call_sp_2(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_44(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_25(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_7(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_26(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_26(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_6(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_27(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_27(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Comp_sp_2(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_28(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_28(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Branch_sp_2(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_43(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_29(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_7(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_30(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_3(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_0(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_4(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_30(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_7(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_31(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_31(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Sub_sp_2(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_32(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_32(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_8(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_33(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_33(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_9(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_34(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_34(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Call_sp_3(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_41(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_35(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_10(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_36(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_36(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_8(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_37(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_37(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Comp_sp_3(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_38(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_38(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Branch_sp_3(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_40(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_39(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_9(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_40(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_4(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Call_sp_0(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_50(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_40(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  [s, e]
+fun evalAll_InterpreterFun_sp_41(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_11(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_42(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_42(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Mult_sp_0(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_43(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_43(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  [s, e]
+fun evalAll_InterpreterFun_sp_44(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_12(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_45(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_45(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Mult_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_46(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_46(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  [s, e]
+fun evalAll_InterpreterFun_sp_47(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_13(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_48(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_48(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Mult_sp_2(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_49(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_49(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  [s, e]
+fun evalAll_InterpreterFun_sp_5(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_6(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_50(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  [s, e]
+fun evalAll_InterpreterFun_sp_6(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Push_sp_2(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_7(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_7(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Comp_sp_0(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_8(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_8(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Branch_sp_0(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_49(rest9, ss2, ne)
+fun evalAll_InterpreterFun_sp_9(insts, s, e) =
+  let {rest9, inst, res1, ss2, ne, arg_Cons_0_15, arg_Cons_1_15, element1_4, element0_4}
+  arg_Cons_0_15 = insts.x
+  arg_Cons_1_15 = insts.xs
+  rest9 = arg_Cons_1_15
+  inst = arg_Cons_0_15
+  res1 = eval_Load_sp_1(inst, s, e)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFun_sp_10(rest9, ss2, ne)
 fun exec_InterpreterFun_sp_0(insts, s, e) =
-  let {ss4, x8, element2_2, element1_6, element0_6, arg_Cons_0_15, arg_Cons_1_15}
-  ss4 = evalAll_InterpreterFun_sp_0(insts, s, e)
-  element0_6 = ss4.0
-  element1_6 = ss4.1
-  element2_2 = ss4.2
-  arg_Cons_0_15 = element1_6.x
-  arg_Cons_1_15 = element1_6.xs
-  x8 = 125
-  new Some(x8)
+  let {ss3, x7, element1_5, element0_5, arg_Cons_0_16, arg_Cons_1_16}
+  ss3 = evalAll_InterpreterFun_sp_0(insts, s, e)
+  element0_5 = ss3.0
+  element1_5 = ss3.1
+  arg_Cons_0_16 = element0_5.x
+  arg_Cons_1_16 = element0_5.xs
+  x7 = 125
+  new Some(x7)
 fun get_InterpreterFun_sp_0(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = element1_3
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = element1_2
   n = "pow"
   scrut1 = true
-  new Some(v3)
+  new Some(v4)
 fun get_InterpreterFun_sp_1(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 3
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 3
   n = "p"
   scrut1 = true
-  new Some(v3)
+  new Some(v4)
 fun get_InterpreterFun_sp_10(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 5
-  n = "x"
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 1
+  n = "p"
   scrut1 = false
-  get_InterpreterFun_sp_4(rest8, name)
+  get_InterpreterFun_sp_3(rest8, name)
 fun get_InterpreterFun_sp_11(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 1
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 1
   n = "p"
-  scrut1 = true
-  new Some(v3)
+  scrut1 = false
+  get_InterpreterFun_sp_5(rest8, name)
 fun get_InterpreterFun_sp_12(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 1
-  n = "p"
-  scrut1 = false
-  get_InterpreterFun_sp_13(rest8, name)
-fun get_InterpreterFun_sp_13(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 5
-  n = "x"
-  scrut1 = true
-  new Some(v3)
-fun get_InterpreterFun_sp_14(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 1
-  n = "p"
-  scrut1 = false
-  get_InterpreterFun_sp_15(rest8, name)
-fun get_InterpreterFun_sp_15(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 5
-  n = "x"
-  scrut1 = false
-  get_InterpreterFun_sp_9(rest8, name)
-fun get_InterpreterFun_sp_16(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 0
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 0
   n = "p"
   scrut1 = true
-  new Some(v3)
+  new Some(v4)
 fun get_InterpreterFun_sp_2(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 3
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 3
   n = "p"
   scrut1 = false
   get_InterpreterFun_sp_3(rest8, name)
 fun get_InterpreterFun_sp_3(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 5
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 5
   n = "x"
   scrut1 = true
-  new Some(v3)
+  new Some(v4)
 fun get_InterpreterFun_sp_4(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 3
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 3
   n = "p"
   scrut1 = false
   get_InterpreterFun_sp_5(rest8, name)
 fun get_InterpreterFun_sp_5(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 5
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 5
   n = "x"
   scrut1 = false
   get_InterpreterFun_sp_0(rest8, name)
 fun get_InterpreterFun_sp_6(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 2
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 2
   n = "p"
   scrut1 = true
-  new Some(v3)
+  new Some(v4)
 fun get_InterpreterFun_sp_7(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 2
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 2
   n = "p"
   scrut1 = false
-  get_InterpreterFun_sp_8(rest8, name)
+  get_InterpreterFun_sp_3(rest8, name)
 fun get_InterpreterFun_sp_8(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 5
-  n = "x"
-  scrut1 = true
-  new Some(v3)
-fun get_InterpreterFun_sp_9(env, name) =
-  let {n, rest8, v3, scrut1, arg_Cons_0_11, arg_Cons_1_11, element1_3, element0_3}
-  arg_Cons_0_11 = env.x
-  arg_Cons_1_11 = env.xs
-  element0_3 = arg_Cons_0_11.0
-  element1_3 = arg_Cons_0_11.1
-  rest8 = arg_Cons_1_11
-  v3 = 2
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 2
   n = "p"
   scrut1 = false
-  get_InterpreterFun_sp_10(rest8, name)
+  get_InterpreterFun_sp_5(rest8, name)
+fun get_InterpreterFun_sp_9(env, name) =
+  let {n, rest8, v4, scrut1, arg_Cons_0_12, arg_Cons_1_12, element1_2, element0_2}
+  arg_Cons_0_12 = env.x
+  arg_Cons_1_12 = env.xs
+  element0_2 = arg_Cons_0_12.0
+  element1_2 = arg_Cons_0_12.1
+  rest8 = arg_Cons_1_12
+  v4 = 1
+  n = "p"
+  scrut1 = true
+  new Some(v4)
 fun eval_Push_sp_0(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_1(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_2(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_3(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_4(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_5(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_6(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_7(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_8(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Push_sp_9(self, s, e) =
-  let {tmp, tmp1}
-  tmp = new None()
-  tmp1 = new Cons(self.v, s)
-  [tmp, tmp1, e]
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e]
 fun eval_Sub_sp_0(self, s, e) =
-  let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp5, tmp6, tmp7, tmp8}
+  let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp3, tmp4}
   arg_Cons_0_1 = s.x
   arg_Cons_1_1 = s.xs
   arg_Cons_0_2 = arg_Cons_1_1.x
@@ -1399,11 +1289,11 @@ fun eval_Sub_sp_0(self, s, e) =
   rest1 = arg_Cons_1_2
   y = 3
   x3 = 1
-  tmp5 = 2
-  tmp6 = new Some(tmp5)
-  [tmp6, rest1, e]
+  tmp3 = 2
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e]
 fun eval_Sub_sp_1(self, s, e) =
-  let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp5, tmp6, tmp7, tmp8}
+  let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp3, tmp4}
   arg_Cons_0_1 = s.x
   arg_Cons_1_1 = s.xs
   arg_Cons_0_2 = arg_Cons_1_1.x
@@ -1411,11 +1301,11 @@ fun eval_Sub_sp_1(self, s, e) =
   rest1 = arg_Cons_1_2
   y = 2
   x3 = 1
-  tmp5 = 1
-  tmp6 = new Some(tmp5)
-  [tmp6, rest1, e]
+  tmp3 = 1
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e]
 fun eval_Sub_sp_2(self, s, e) =
-  let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp5, tmp6, tmp7, tmp8}
+  let {x3, y, rest1, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp3, tmp4}
   arg_Cons_0_1 = s.x
   arg_Cons_1_1 = s.xs
   arg_Cons_0_2 = arg_Cons_1_1.x
@@ -1423,11 +1313,11 @@ fun eval_Sub_sp_2(self, s, e) =
   rest1 = arg_Cons_1_2
   y = 1
   x3 = 1
-  tmp5 = 0
-  tmp6 = new Some(tmp5)
-  [tmp6, rest1, e]
+  tmp3 = 0
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e]
 fun eval_Mult_sp_0(self, s, e) =
-  let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp9, tmp10, tmp11, tmp12}
+  let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp5, tmp6}
   arg_Cons_0_3 = s.x
   arg_Cons_1_3 = s.xs
   arg_Cons_0_4 = arg_Cons_1_3.x
@@ -1435,11 +1325,11 @@ fun eval_Mult_sp_0(self, s, e) =
   rest2 = arg_Cons_1_4
   y1 = 1
   x4 = 5
-  tmp9 = 5
-  tmp10 = new Some(tmp9)
-  [tmp10, rest2, e]
+  tmp5 = 5
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e]
 fun eval_Mult_sp_1(self, s, e) =
-  let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp9, tmp10, tmp11, tmp12}
+  let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp5, tmp6}
   arg_Cons_0_3 = s.x
   arg_Cons_1_3 = s.xs
   arg_Cons_0_4 = arg_Cons_1_3.x
@@ -1447,11 +1337,11 @@ fun eval_Mult_sp_1(self, s, e) =
   rest2 = arg_Cons_1_4
   y1 = 5
   x4 = 5
-  tmp9 = 25
-  tmp10 = new Some(tmp9)
-  [tmp10, rest2, e]
+  tmp5 = 25
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e]
 fun eval_Mult_sp_2(self, s, e) =
-  let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp9, tmp10, tmp11, tmp12}
+  let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp5, tmp6}
   arg_Cons_0_3 = s.x
   arg_Cons_1_3 = s.xs
   arg_Cons_0_4 = arg_Cons_1_3.x
@@ -1459,11 +1349,11 @@ fun eval_Mult_sp_2(self, s, e) =
   rest2 = arg_Cons_1_4
   y1 = 25
   x4 = 5
-  tmp9 = 125
-  tmp10 = new Some(tmp9)
-  [tmp10, rest2, e]
+  tmp5 = 125
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e]
 fun eval_Comp_sp_0(self, s, e) =
-  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp13, tmp14, tmp15, tmp16}
+  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
   arg_Cons_0_5 = s.x
   arg_Cons_1_5 = s.xs
   arg_Cons_0_6 = arg_Cons_1_5.x
@@ -1472,11 +1362,11 @@ fun eval_Comp_sp_0(self, s, e) =
   y2 = 3
   x5 = 0
   scrut = self.le
-  tmp13 = false
-  tmp14 = new Some(tmp13)
-  [tmp14, rest3, e]
+  tmp7 = false
+  tmp8 = new Cons(tmp7, rest3)
+  [tmp8, e]
 fun eval_Comp_sp_1(self, s, e) =
-  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp13, tmp14, tmp15, tmp16}
+  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
   arg_Cons_0_5 = s.x
   arg_Cons_1_5 = s.xs
   arg_Cons_0_6 = arg_Cons_1_5.x
@@ -1485,11 +1375,11 @@ fun eval_Comp_sp_1(self, s, e) =
   y2 = 2
   x5 = 0
   scrut = self.le
-  tmp13 = false
-  tmp14 = new Some(tmp13)
-  [tmp14, rest3, e]
+  tmp7 = false
+  tmp8 = new Cons(tmp7, rest3)
+  [tmp8, e]
 fun eval_Comp_sp_2(self, s, e) =
-  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp13, tmp14, tmp15, tmp16}
+  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
   arg_Cons_0_5 = s.x
   arg_Cons_1_5 = s.xs
   arg_Cons_0_6 = arg_Cons_1_5.x
@@ -1498,11 +1388,11 @@ fun eval_Comp_sp_2(self, s, e) =
   y2 = 1
   x5 = 0
   scrut = self.le
-  tmp13 = false
-  tmp14 = new Some(tmp13)
-  [tmp14, rest3, e]
+  tmp7 = false
+  tmp8 = new Cons(tmp7, rest3)
+  [tmp8, e]
 fun eval_Comp_sp_3(self, s, e) =
-  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp13, tmp14, tmp15, tmp16}
+  let {x5, y2, rest3, scrut, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
   arg_Cons_0_5 = s.x
   arg_Cons_1_5 = s.xs
   arg_Cons_0_6 = arg_Cons_1_5.x
@@ -1511,201 +1401,242 @@ fun eval_Comp_sp_3(self, s, e) =
   y2 = 0
   x5 = 0
   scrut = self.le
-  tmp13 = true
-  tmp14 = new Some(tmp13)
-  [tmp14, rest3, e]
+  tmp7 = true
+  tmp8 = new Cons(tmp7, rest3)
+  [tmp8, e]
 fun eval_Branch_sp_0(self, s, e) =
-  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9, tmp21}
+  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9}
   arg_Cons_0_9 = s.x
   arg_Cons_1_9 = s.xs
   rest5 = arg_Cons_1_9
   c = false
-  evalAll_InterpreterFun_sp_8(self.f, rest5, e)
+  evalAll_InterpreterFun_sp_9(self.f, rest5, e)
 fun eval_Branch_sp_1(self, s, e) =
-  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9, tmp21}
+  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9}
   arg_Cons_0_9 = s.x
   arg_Cons_1_9 = s.xs
   rest5 = arg_Cons_1_9
   c = false
-  evalAll_InterpreterFun_sp_17(self.f, rest5, e)
+  evalAll_InterpreterFun_sp_19(self.f, rest5, e)
 fun eval_Branch_sp_2(self, s, e) =
-  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9, tmp21}
+  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9}
   arg_Cons_0_9 = s.x
   arg_Cons_1_9 = s.xs
   rest5 = arg_Cons_1_9
   c = false
-  evalAll_InterpreterFun_sp_26(self.f, rest5, e)
+  evalAll_InterpreterFun_sp_29(self.f, rest5, e)
 fun eval_Branch_sp_3(self, s, e) =
-  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9, tmp21}
+  let {rest5, c, arg_Cons_0_9, arg_Cons_1_9}
   arg_Cons_0_9 = s.x
   arg_Cons_1_9 = s.xs
   rest5 = arg_Cons_1_9
   c = true
-  evalAll_InterpreterFun_sp_35(self.t, rest5, e)
+  evalAll_InterpreterFun_sp_39(self.t, rest5, e)
 fun eval_Load_sp_0(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_0(e, self.name)
+  arg_Some_0_ = opt.x
+  v2 = arg_Some_0_
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_1(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
   opt = get_InterpreterFun_sp_1(e, self.name)
   arg_Some_0_ = opt.x
   v2 = 3
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
-fun eval_Load_sp_1(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_10(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_12(e, self.name)
+  arg_Some_0_ = opt.x
+  v2 = 0
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_11(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_10(e, self.name)
+  arg_Some_0_ = opt.x
+  v2 = 5
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_12(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_7(e, self.name)
+  arg_Some_0_ = opt.x
+  v2 = 5
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_13(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
   opt = get_InterpreterFun_sp_2(e, self.name)
   arg_Some_0_ = opt.x
   v2 = 5
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
 fun eval_Load_sp_2(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_2(e, self.name)
+  arg_Some_0_ = opt.x
+  v2 = 5
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_3(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_4(e, self.name)
+  arg_Some_0_ = opt.x
+  v2 = arg_Some_0_
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_4(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
   opt = get_InterpreterFun_sp_6(e, self.name)
   arg_Some_0_ = opt.x
   v2 = 2
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
-fun eval_Load_sp_3(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_5(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
   opt = get_InterpreterFun_sp_7(e, self.name)
   arg_Some_0_ = opt.x
   v2 = 5
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
-fun eval_Load_sp_4(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
-  opt = get_InterpreterFun_sp_11(e, self.name)
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_6(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_8(e, self.name)
+  arg_Some_0_ = opt.x
+  v2 = arg_Some_0_
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
+fun eval_Load_sp_7(self, s, e) =
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_9(e, self.name)
   arg_Some_0_ = opt.x
   v2 = 1
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
-fun eval_Load_sp_5(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
-  opt = get_InterpreterFun_sp_12(e, self.name)
-  arg_Some_0_ = opt.x
-  v2 = 5
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
-fun eval_Load_sp_6(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
-  opt = get_InterpreterFun_sp_16(e, self.name)
-  arg_Some_0_ = opt.x
-  v2 = 0
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
-fun eval_Load_sp_7(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
-  opt = get_InterpreterFun_sp_12(e, self.name)
-  arg_Some_0_ = opt.x
-  v2 = 5
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
 fun eval_Load_sp_8(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
-  opt = get_InterpreterFun_sp_7(e, self.name)
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_10(e, self.name)
   arg_Some_0_ = opt.x
   v2 = 5
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
 fun eval_Load_sp_9(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp26, tmp27, tmp28}
-  opt = get_InterpreterFun_sp_2(e, self.name)
+  let {opt, v2, arg_Some_0_, tmp13}
+  opt = get_InterpreterFun_sp_11(e, self.name)
   arg_Some_0_ = opt.x
-  v2 = 5
-  tmp26 = new None()
-  tmp27 = new Cons(v2, s)
-  [tmp26, tmp27, e]
+  v2 = arg_Some_0_
+  tmp13 = new Cons(v2, s)
+  [tmp13, e]
 fun eval_Fun_sp_0(self, s, e) =
-  let {tmp29, tmp30, tmp31, tmp32}
-  tmp29 = new None()
-  tmp30 = [self.ps, self.body]
-  tmp31 = [self.name, tmp30]
-  tmp32 = new Cons(tmp31, e)
-  [tmp29, s, tmp32]
+  let {tmp14, tmp15, tmp16}
+  tmp14 = new Closure(self.name, self.ps, self.body, e)
+  tmp15 = [self.name, tmp14]
+  tmp16 = new Cons(tmp15, e)
+  [s, tmp16]
 fun eval_Call_sp_0(self, s, e) =
-  let {f1, body1, ps1, t1, ss, ee, res, rest7, arg_Some_0_1, element1_, element0_, element1_1, element0_1, element2_, element1_2, element0_2, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38}
-  f1 = get_InterpreterFun_sp_0(e, self.name)
-  arg_Some_0_1 = f1.x
-  element0_ = arg_Some_0_1.0
-  element1_ = arg_Some_0_1.1
-  body1 = element1_
-  ps1 = element0_
-  t1 = bind_InterpreterFun_sp_0(ps1, s, e)
-  element0_1 = t1.0
-  element1_1 = t1.1
-  ee = element1_1
-  ss = element0_1
-  res = evalAll_InterpreterFun_sp_4(body1, ss, ee)
-  element0_2 = res.0
-  element1_2 = res.1
-  element2_ = res.2
-  rest7 = element1_2
-  tmp33 = new None()
-  [tmp33, rest7, e]
+  let {v3, s__, body2, name4, ps2, e__, t1, ss, ee, res, rest7, arg_Cons_0_11, arg_Cons_1_11, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, tmp17, tmp18, element1_, element0_, element1_1, element0_1}
+  arg_Cons_0_11 = s.x
+  arg_Cons_1_11 = s.xs
+  s__ = arg_Cons_1_11
+  v3 = arg_Cons_0_11
+  arg_Closure_0_ = v3.name
+  arg_Closure_1_ = v3.ps
+  arg_Closure_2_ = v3.body
+  arg_Closure_3_ = v3.env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name4 = "pow"
+  tmp17 = [name4, v3]
+  tmp18 = new Cons(tmp17, e__)
+  t1 = bind_InterpreterFun_sp_1(ps2, s__, tmp18)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_InterpreterFun_sp_5(body2, ss, ee)
+  element0_1 = res.0
+  element1_1 = res.1
+  rest7 = element0_1
+  [rest7, e]
 fun eval_Call_sp_1(self, s, e) =
-  let {f1, body1, ps1, t1, ss, ee, res, rest7, arg_Some_0_1, element1_, element0_, element1_1, element0_1, element2_, element1_2, element0_2, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38}
-  f1 = get_InterpreterFun_sp_4(e, self.name)
-  arg_Some_0_1 = f1.x
-  element0_ = arg_Some_0_1.0
-  element1_ = arg_Some_0_1.1
-  body1 = element1_
-  ps1 = element0_
-  t1 = bind_InterpreterFun_sp_3(ps1, s, e)
-  element0_1 = t1.0
-  element1_1 = t1.1
-  ee = element1_1
-  ss = element0_1
-  res = evalAll_InterpreterFun_sp_13(body1, ss, ee)
-  element0_2 = res.0
-  element1_2 = res.1
-  element2_ = res.2
-  rest7 = element1_2
-  tmp33 = new None()
-  [tmp33, rest7, e]
+  let {v3, s__, body2, name4, ps2, e__, t1, ss, ee, res, rest7, arg_Cons_0_11, arg_Cons_1_11, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, tmp17, tmp18, element1_, element0_, element1_1, element0_1}
+  arg_Cons_0_11 = s.x
+  arg_Cons_1_11 = s.xs
+  s__ = arg_Cons_1_11
+  v3 = arg_Cons_0_11
+  arg_Closure_0_ = v3.name
+  arg_Closure_1_ = v3.ps
+  arg_Closure_2_ = v3.body
+  arg_Closure_3_ = v3.env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name4 = "pow"
+  tmp17 = [name4, v3]
+  tmp18 = new Cons(tmp17, e__)
+  t1 = bind_InterpreterFun_sp_4(ps2, s__, tmp18)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_InterpreterFun_sp_15(body2, ss, ee)
+  element0_1 = res.0
+  element1_1 = res.1
+  rest7 = element0_1
+  [rest7, e]
 fun eval_Call_sp_2(self, s, e) =
-  let {f1, body1, ps1, t1, ss, ee, res, rest7, arg_Some_0_1, element1_, element0_, element1_1, element0_1, element2_, element1_2, element0_2, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38}
-  f1 = get_InterpreterFun_sp_9(e, self.name)
-  arg_Some_0_1 = f1.x
-  element0_ = arg_Some_0_1.0
-  element1_ = arg_Some_0_1.1
-  body1 = element1_
-  ps1 = element0_
-  t1 = bind_InterpreterFun_sp_6(ps1, s, e)
-  element0_1 = t1.0
-  element1_1 = t1.1
-  ee = element1_1
-  ss = element0_1
-  res = evalAll_InterpreterFun_sp_22(body1, ss, ee)
-  element0_2 = res.0
-  element1_2 = res.1
-  element2_ = res.2
-  rest7 = element1_2
-  tmp33 = new None()
-  [tmp33, rest7, e]
+  let {v3, s__, body2, name4, ps2, e__, t1, ss, ee, res, rest7, arg_Cons_0_11, arg_Cons_1_11, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, tmp17, tmp18, element1_, element0_, element1_1, element0_1}
+  arg_Cons_0_11 = s.x
+  arg_Cons_1_11 = s.xs
+  s__ = arg_Cons_1_11
+  v3 = arg_Cons_0_11
+  arg_Closure_0_ = v3.name
+  arg_Closure_1_ = v3.ps
+  arg_Closure_2_ = v3.body
+  arg_Closure_3_ = v3.env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name4 = "pow"
+  tmp17 = [name4, v3]
+  tmp18 = new Cons(tmp17, e__)
+  t1 = bind_InterpreterFun_sp_7(ps2, s__, tmp18)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_InterpreterFun_sp_25(body2, ss, ee)
+  element0_1 = res.0
+  element1_1 = res.1
+  rest7 = element0_1
+  [rest7, e]
 fun eval_Call_sp_3(self, s, e) =
-  let {f1, body1, ps1, t1, ss, ee, res, rest7, arg_Some_0_1, element1_, element0_, element1_1, element0_1, element2_, element1_2, element0_2, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38}
-  f1 = get_InterpreterFun_sp_14(e, self.name)
-  arg_Some_0_1 = f1.x
-  element0_ = arg_Some_0_1.0
-  element1_ = arg_Some_0_1.1
-  body1 = element1_
-  ps1 = element0_
-  t1 = bind_InterpreterFun_sp_9(ps1, s, e)
-  element0_1 = t1.0
-  element1_1 = t1.1
-  ee = element1_1
-  ss = element0_1
-  res = evalAll_InterpreterFun_sp_31(body1, ss, ee)
-  element0_2 = res.0
-  element1_2 = res.1
-  element2_ = res.2
-  rest7 = element1_2
-  tmp33 = new None()
-  [tmp33, rest7, e]
+  let {v3, s__, body2, name4, ps2, e__, t1, ss, ee, res, rest7, arg_Cons_0_11, arg_Cons_1_11, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, tmp17, tmp18, element1_, element0_, element1_1, element0_1}
+  arg_Cons_0_11 = s.x
+  arg_Cons_1_11 = s.xs
+  s__ = arg_Cons_1_11
+  v3 = arg_Cons_0_11
+  arg_Closure_0_ = v3.name
+  arg_Closure_1_ = v3.ps
+  arg_Closure_2_ = v3.body
+  arg_Closure_3_ = v3.env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name4 = "pow"
+  tmp17 = [name4, v3]
+  tmp18 = new Cons(tmp17, e__)
+  t1 = bind_InterpreterFun_sp_10(ps2, s__, tmp18)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_InterpreterFun_sp_35(body2, ss, ee)
+  element0_1 = res.0
+  element1_1 = res.1
+  rest7 = element0_1
+  [rest7, e]

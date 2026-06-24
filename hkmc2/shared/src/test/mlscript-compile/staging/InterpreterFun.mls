@@ -6,80 +6,81 @@ staged module InterpreterFun with
   class None
   class Error
 
+  class Closure(val name, val ps, val body, val env)
+
   staged class Instruction() with
     fun eval(s, e)
 
   staged class Push(val v) extends Instruction() with
-    fun eval(s, e) = [new None, new Cons(v, s), e]
+    fun eval(s, e) = [new Cons(v, s), e]
 
   staged class Neg() extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, rest) then [new Some(-x), rest, e]
-        else [new Error, s, e]
+        Cons(x, rest) then [new Cons(-x, rest), e]
+        else new Error
 
   staged class Sub() extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(y - x), rest, e]
-        else [new Error, s, e]
+        Cons(x, Cons(y, rest)) then [new Cons(y - x, rest), e]
+        else new Error
 
   staged class Mult() extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(x * y), rest, e]
-        else [new Error, s, e]
+        Cons(x, Cons(y, rest)) then [new Cons(x * y, rest), e]
+        else new Error
 
   staged class Comp(val le) extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(if le then x <= y else x >= y), rest, e]
-        else [new Error, s, e]
+        Cons(x, Cons(y, rest)) then [new Cons(if le then x <= y else x >= y, rest), e]
+        else new Error
 
   staged class And() extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(x and y), rest, e]
-        else [new Error, s, e]
+        Cons(x, Cons(y, rest)) then [new Cons(x and y, rest), e]
+        else new Error
 
   staged class Branch(val t, val f) extends Instruction() with
     fun eval(s, e) =
       if s is
         Cons(c, rest) then
           if c then evalAll(t, rest, e) else evalAll(f, rest, e)
-        else [new Error, s, e]
+        else new Error
 
   staged class Def(val name) extends Instruction() with
     fun eval(s, e) =
       if s is
-        Cons(v, rest) then [new None, rest, new Cons([name, v], e)]
-        else [new Error, s, e]
+        Cons(v, rest) then [rest, new Cons([name, v], e)]
+        else new Error
 
   staged class Load(val name) extends Instruction() with
     fun eval(s, e) =
       let opt = get(e, name)
       if opt is
-        Some(v) then [new None, new Cons(v, s), e]
-        else [new Error, s, e]
+        Some(v) then [new Cons(v, s), e]
+        else new Error
 
   staged class Fun(val name, val ps, val body) extends Instruction() with
     fun eval(s, e) =
-      [new None, s, new Cons([name, [ps, body]], e)]
+      [s, new Cons([name, new Closure(name, ps, body, e)], e)]
 
-  staged class Call(val name) extends Instruction() with
+  staged class Call() extends Instruction() with
     fun eval(s, e) =
-      let f = get(e, name)
-      if f is
-        Some([ps, body]) then
-          let t = bind(ps, s, e)
+      if s is
+        Cons(v, s') and v is Closure(name, ps, body, e') then
+          let t = bind(ps, s', new Cons([name, v], e'))
           if t is
             [ss, ee] then
               let res = evalAll(body, ss, ee)
               if res is
-                [None, rest, _] then [new None, rest, e]
-                else [new Error, s, e] 
-            else [new Error, s, e]
-        else [new Error, s, e]
+                [rest, _] then [rest, e]
+                else new Error 
+            else new Error
+        else new Error
 
   fun get(env, name) =
     if env is
@@ -98,16 +99,15 @@ staged module InterpreterFun with
       Cons(inst, rest) then
         let res = inst.eval(s, e)
         if res is
-          [Some(x), ss, ne] then evalAll(rest, new Cons(x, ss), ne)
-          [None, ss, ne] then evalAll(rest, ss, ne)
-          else [new Error, s, e]
-      else [new None, s, e]
+          [ss, ne] then evalAll(rest, ss, ne)
+          else res
+      else [s, e]
 
   fun exec(insts, s, e) =
     let ss = evalAll(insts, s, e)
     if ss is
-      [None, Cons(x, Nil), _] then new Some(x)
-      [None, Nil, _] then new None
+      [Cons(x, Nil), _] then new Some(x)
+      [Nil, _] then new None
       else new Error
 
   fun mkCube5() =
@@ -115,6 +115,6 @@ staged module InterpreterFun with
       new Cons(new Fun("pow", new Cons("x", new Cons("p", new Nil)),
         new Cons(new Load("p"), new Cons(new Push(0), new Cons(new Comp(false), new Cons(new Branch(
           new Cons(new Push(1), new Nil),
-            new Cons(new Load("p"), new Cons(new Push(1), new Cons(new Sub(), new Cons(new Load("x"), new Cons(new Call("pow"), new Cons(new Load("x"), new Cons(new Mult(), new Nil)))))))), new Nil))))),
-              new Cons(new Push(3), new Cons(new Push(5), new Cons(new Call("pow"), new Nil))))
+            new Cons(new Load("p"), new Cons(new Push(1), new Cons(new Sub(), new Cons(new Load("x"), new Cons(new Load("pow"), new Cons(new Call(), new Cons(new Load("x"), new Cons(new Mult(), new Nil))))))))), new Nil))))),
+              new Cons(new Push(3), new Cons(new Push(5), new Cons(new Load("pow"), new Cons(new Call(), new Nil)))))
     exec(insts, new Nil, new Nil)
