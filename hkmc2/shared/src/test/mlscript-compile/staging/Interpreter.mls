@@ -10,42 +10,41 @@ staged module Interpreter with
     fun eval(s)
 
   staged class Push(val v) extends Instruction() with
-    fun eval(s) = [new None, new Cons(v, s)]
+    fun eval(s) = new Cons(v, s)
 
   staged class Comp(val le) extends Instruction() with
     fun eval(s) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(if le then x <= y else x >= y), rest]
-        else [new Error, s]
+        Cons(x, Cons(y, rest)) then new Cons(if le then x <= y else x >= y, rest)
+        else new Error
 
   staged class And() extends Instruction() with
     fun eval(s) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Some(x and y), rest]
-        else [new Error, s]
+        Cons(x, Cons(y, rest)) then new Cons(x and y, rest)
+        else new Error
 
   staged class Branch(val t, val f) extends Instruction() with
     fun eval(s) =
       if s is
         Cons(c, rest) then
           if c then evalAll(t, rest) else evalAll(f, rest)
-        else [new Error, s]
+        else new Error
 
   fun evalAll(@specialize insts, s) =
     if insts is
       Cons(inst, rest) then
         let res = inst.eval(s)
         if res is
-          [Some(x), ss] then evalAll(rest, new Cons(x, ss))
-          [None, ss] then evalAll(rest, ss)
-          else [new Error, s]
-      else [new None, s]
+          Error then res
+          else evalAll(rest, res)
+      else s
 
   fun exec(insts, s) =
     let ss = evalAll(insts, s)
     if ss is
-      [None, Cons(x, Nil)] then new Some(x)
-      [None, Nil] then new None
+      Cons(x, Nil) then new Some(x)
+      Nil then new None
       else new Error
 
   fun mkInRange(x, r) =

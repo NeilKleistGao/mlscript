@@ -1,0 +1,27 @@
+:js
+:staging
+:noModuleCheck
+
+import "../../mlscript-compile/staging/InterpreterFun.mls"
+
+
+InterpreterFun."generate"("../InterpreterFun.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/InterpreterFun.mls")
+
+
+import "../../mlscript-compile/staging/out/InterpreterFun.mls"
+
+open InterpreterFun
+
+:expect Some(125)
+mkCube5()
+//│ = Some(125)
+
+
+:expect Some(0)
+test(1, "dec")
+//│ = Some(0)
+
+
+:expect Some(42)
+test(41, "inc")
+//│ = Some(42)

@@ -1,0 +1,137 @@
+open annotations { special, specialize }
+
+staged module InterpreterFun with
+  class Cons(val x, val xs)
+  class Nil
+
+  class Some(val x)
+  class None
+  class Error
+
+  class Closure(val name, val ps, val body, val env)
+
+  staged class Instruction() with
+    fun eval(s, e)
+
+  staged class Push(val v) extends Instruction() with
+    fun eval(s, e) = [new Cons(v, s), e]
+
+  staged class Neg() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, rest) then [new Cons(-x, rest), e]
+        else new Error
+
+  staged class Add() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(x + y, rest), e]
+        else new Error
+
+  staged class Sub() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(y - x, rest), e]
+        else new Error
+
+  staged class Mult() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(x * y, rest), e]
+        else new Error
+
+  staged class Comp(val le) extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(if le then x <= y else x >= y, rest), e]
+        else new Error
+
+  staged class And() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(x and y, rest), e]
+        else new Error
+
+  staged class Branch(val t, val f) extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(c, rest) then
+          if c then evalAll(t, rest, e) else evalAll(f, rest, e)
+        else new Error
+
+  staged class Def(val name) extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(v, rest) then [rest, new Cons([name, v], e)]
+        else new Error
+
+  staged class Load(val name) extends Instruction() with
+    fun eval(s, e) =
+      let opt = get(e, name)
+      if opt is
+        Some(v) then [new Cons(v, s), e]
+        else new Error
+
+  staged class Fun(val name, val ps, val body) extends Instruction() with
+    fun eval(s, e) =
+      [s, new Cons([name, (@special new Closure(name, ps, body, e))], e)]
+
+  staged class Call() extends Instruction() with
+    fun eval(s, e) =
+      if s is
+        Cons(v, s') and v is Closure(name, ps, body, e') then
+          let t = bind(ps, s', new Cons([name, v], e'))
+          if t is
+            [ss, ee] then
+              let res = evalAll(body, ss, ee)
+              if res is
+                [rest, _] then [rest, e]
+                else new Error 
+            else new Error
+        else new Error
+
+  fun get(@specialize env, name) =
+    if env is
+      Cons([n, v], rest) then
+        if n == name then new Some(v) else get(rest, name)
+      else new None
+
+  fun bind(ps, s, e) =
+    if [ps, s] is
+      [Cons(p, r1), Cons(v, r2)] then bind(r1, r2, new Cons([p, v], e))
+      [Nil, ss] then [ss, e]
+      else new Error
+
+  fun evalAll(@specialize insts, @specialize s, e) =
+    if insts is
+      Cons(inst, rest) then
+        let res = inst.eval(s, e)
+        if res is
+          [ss, ne] then evalAll(rest, ss, ne)
+          else res
+      else [s, e]
+
+  fun exec(insts, s, e) =
+    let ss = evalAll(insts, s, e)
+    if ss is
+      [Cons(x, Nil), _] then new Some(x)
+      [Nil, _] then new None
+      else new Error
+
+  fun mkCube5() =
+    let insts =
+      new Cons(new Fun("pow", new Cons("x", new Cons("p", new Nil)),
+        new Cons(new Load("p"), new Cons(new Push(0), new Cons(new Comp(false), new Cons(new Branch(
+          new Cons(new Push(1), new Nil),
+            new Cons(new Load("p"), new Cons(new Push(1), new Cons(new Sub(), new Cons(new Load("x"), new Cons(new Load("pow"), new Cons(new Call(), new Cons(new Load("x"), new Cons(new Mult(), new Nil))))))))), new Nil))))),
+              new Cons(new Push(3), new Cons(new Push(5), new Cons(new Load("pow"), new Cons(new Call(), new Nil)))))
+    exec(insts, new Nil, new Nil)
+
+  fun test(x, fn) =
+    let insts =
+      new Cons(new Fun("inc", new Cons("x", new Nil), new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Add(), new Nil)))),
+        new Cons(new Fun("dec", new Cons("x", new Nil), new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Sub(), new Nil)))),
+          new Cons(new Fun("f", new Cons("g", new Cons("x", new Nil)), new Cons(new Load("x"), new Cons(new Load("g"), new Cons(new Call(), new Nil)))),
+            new Cons(new Push(x), new Cons(new Load(fn), new Cons(new Call(), new Nil))))))
+    exec(insts, new Nil, new Nil)
+

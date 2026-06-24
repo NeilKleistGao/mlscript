@@ -12,7 +12,7 @@ class ReplHost(rootPath: Str)(using TL):
   
   private val builder = new java.lang.ProcessBuilder()
   // `--interactive` always enters the REPL even if stdin is not a terminal.
-  builder.command("node", "--interactive")
+  builder.command("node", "--stack-size=16384", "--interactive")
   private val proc = builder.start()
 
   private val stdin = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream))
