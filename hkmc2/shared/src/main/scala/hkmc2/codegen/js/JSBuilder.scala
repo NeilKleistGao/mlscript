@@ -663,13 +663,14 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       }"
       doc" # switch (${result(scrut)}) { #{ ${bodWithDflt} #}  # }" :: returningTerm(rest, endSemi)
     case Match(scrut, arms @ hd :: tl, els, rest) =>
-      val sd = result(scrut)
-      // * Parenthesize the scrutinee for property access when it's a numeric literal,
-      // * since things like `12.length` are invalid JS (the `.` is parsed as a decimal point).
-      def sdProp = scrut match
-        case Value.Lit(Tree.IntLit(_) | Tree.DecLit(_)) => doc"($sd)"
-        case _ => sd
-      def cond(cse: Case) = cse match
+      def cond(scrut: Path, cse: Case) =
+        val sd = result(scrut)
+        // * Parenthesize the scrutinee for property access when it's a numeric literal,
+        // * since things like `12.length` are invalid JS (the `.` is parsed as a decimal point).
+        def sdProp = scrut match
+          case Value.Lit(Tree.IntLit(_) | Tree.DecLit(_)) => doc"($sd)"
+          case _ => sd
+        cse match
         case Case.Lit(lit) => doc"$sd === ${lit.idStr}"
         case Case.Cls(cls, pth) => cls match
           // case _: semantics.ModuleSymbol => doc"=== ${result(pth)}"
@@ -692,9 +693,41 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
           doc"""typeof $sd === "object" && $sd !== null && "${n.name}" in $sd"""
         case Case.Field(name = n, safe = true) =>
           doc""""${n.name}" in $sd"""
-      val h = doc" # if (${ cond(hd._1) }) ${ braced(nonBracedScoped(hd._2)(res => returningTerm(res, endSemi = false))) }"
+
+      val (headCond, headBody) =
+        if tl.isEmpty && els.forall(_.isEmpty) then
+          // Nested single-arm matches with no fallback are short-circuit tests.
+          // Keep assignments and matches with alternative arms as block boundaries.
+          def nextConjunct(body: Block): Opt[Document -> Block] =
+            @tailrec
+            def rec(body: Block, assignments: Ls[Document]): Opt[Document -> Block] = body match
+              case Assign(lhs: (LocalVarSymbol | TermSymbol), rhs, rest) =>
+                val assignment =
+                  doc"${result(lhs.asPath.withLoc(N))} = ${result(rhs)}"
+                rec(rest, assignment :: assignments)
+              case Match(innerScrut, (innerCase -> innerBody) :: Nil, innerElse, innerRest)
+                  if innerElse.forall(_.isEmpty) && innerRest.isEmpty =>
+                val condition = cond(innerScrut, innerCase)
+                val conjunct =
+                  if assignments.isEmpty then condition
+                  else doc"(${(assignments.reverse :+ condition).mkDocument(", ")})"
+                S(conjunct -> innerBody)
+              case _ => N
+            rec(body, Nil)
+
+          @tailrec
+          def collect(body: Block, conditions: Ls[Document]): Ls[Document] -> Block =
+            nextConjunct(body) match
+            case S((condition, innerBody)) =>
+              collect(innerBody, condition :: conditions)
+            case N => conditions.reverse -> body
+          val (conditions, body) = collect(hd._2, cond(scrut, hd._1) :: Nil)
+          conditions.mkDocument(" && ") -> body
+        else cond(scrut, hd._1) -> hd._2
+
+      val h = doc" # if ($headCond) ${ braced(nonBracedScoped(headBody)(res => returningTerm(res, endSemi = false))) }"
       val t = tl.foldLeft(h)((acc, arm) =>
-        acc :: doc" else if (${ cond(arm._1) }) ${ braced(nonBracedScoped(arm._2)(res => returningTerm(res, endSemi = false))) }")
+        acc :: doc" else if (${ cond(scrut, arm._1) }) ${ braced(nonBracedScoped(arm._2)(res => returningTerm(res, endSemi = false))) }")
       val e = els match
         case S(End(_)) => doc""
         case S(el) if arms.forall(_._2.isAbortive) =>

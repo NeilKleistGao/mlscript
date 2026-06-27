@@ -1614,7 +1614,7 @@ object MergeMatchArmTransformer extends BlockTransformer(SymbolSubst.Id):
     case b => b
 
 
-/** Eliminates a one-arm match whose fallback is explicitly marked unreachable.
+/** Eliminates control flow that ends in an explicit `branch.unreachable`.
   * Declared builtins lower as selections, so identify the marker through its
   * canonical block-member symbol rather than relying on a particular path shape.
   * Keep the marker lazy because Prelude diff-tests lower declaration blocks before
@@ -1624,13 +1624,26 @@ final class FlattenUnreachableMatchTransformer(mkUnreachableBuiltin: => BlockMem
 extends BlockTransformer(SymbolSubst.Id):
   private lazy val unreachableBuiltin = mkUnreachableBuiltin
 
+  private final class ReplaceBreak(label: LabelSymbol, replacement: Unreachable)
+  extends BlockTransformerShallow(SymbolSubst.Id):
+    override def applyBlock(b: Block): Block = b match
+      case Break(target) if target is label => replacement
+      case _ => super.applyBlock(b)
+
+  private def isExplicitUnreachable(path: Path): Bool =
+    path.targetSymbol.flatMap(_.asBlkMember).exists(_ is unreachableBuiltin)
+
   private def isUnreachableBranch(body: Block): Bool = body match
-    case Return(path: Path) =>
-      path.targetSymbol.flatMap(_.asBlkMember).exists(_ is unreachableBuiltin)
+    case _: Unreachable => true
+    case Return(path: Path) => isExplicitUnreachable(path)
     case _ => false
 
   override def applyBlock(b: Block): Block = super.applyBlock(b) match
-    case Match(_, (_ -> body) :: Nil, Some(dflt), rest)
-        if isUnreachableBranch(dflt) =>
+    case Return(path: Path) if isExplicitUnreachable(path) =>
+      Unreachable("explicit branch.unreachable")
+    case Label(label, false, body, rest: Unreachable) =>
+      Begin(ReplaceBreak(label, rest).applyBlock(body), rest)
+    case Match(scrut, (_ -> body) :: Nil, dflt, rest)
+        if scrut.isPure && isUnreachableBranch(dflt.getOrElse(rest)) =>
       Begin(body, rest)
     case b => b

@@ -152,6 +152,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       liftDefns = Opt.when(liftDefns.isSet)(LiftDefns()),
       patMatConsequentSharingThreshold = patMatConsequentSharingThreshold.get
         .orElse(Config.default.patMatConsequentSharingThreshold),
+      noUCSNormal = false,
       stageCode = stageCode.isSet,
       target = if wasm.isSet then CompilationTarget.Wasm else CompilationTarget.JS,
       rewriteWhileLoops = rewriteWhile.isSet,

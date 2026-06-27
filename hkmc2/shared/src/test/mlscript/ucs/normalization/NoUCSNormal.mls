@@ -1,0 +1,141 @@
+:js
+
+
+class C(val x, val y)
+class D(val x)
+class E(val x, val y)
+class F(val x)
+class G()
+class H()
+
+:sjs
+fun check(x) =
+  if x is
+    C(E(_, _), F(G())) then 1
+    C(D(_), D(1)) then 2
+    C(D(_), F(H())) then 3
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let check;
+//│ check = function check(x) {
+//│   let arg$C$0$, arg$C$1$, arg$F$0$, arg$D$0$;
+//│   if (x instanceof C1.class) {
+//│     arg$C$0$ = x.x;
+//│     arg$C$1$ = x.y;
+//│     if (arg$C$0$ instanceof E1.class && arg$C$1$ instanceof F1.class && (arg$F$0$ = arg$C$1$.x, arg$F$0$ instanceof G1.class)) {
+//│       return 1
+//│     }
+//│     if (arg$C$0$ instanceof D1.class) {
+//│       if (arg$C$1$ instanceof D1.class) {
+//│         arg$D$0$ = arg$C$1$.x;
+//│         if (arg$D$0$ === 1) {
+//│           return 2
+//│         }
+//│         throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│       } else if (arg$C$1$ instanceof F1.class) {
+//│         arg$F$0$ = arg$C$1$.x;
+//│         if (arg$F$0$ instanceof H1.class) {
+//│           return 3
+//│         }
+//│         throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│       }
+//│       throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│     }
+//│     throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│   }
+//│   throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+:sjs
+fun check(x) =
+  if x is
+    C(E(_, _), F(G())) then 1
+    C(D(_), D(1)) then 2
+    C(D(_), F(H())) then 3
+    else branch.unreachable
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let check1;
+//│ check1 = function check(x) {
+//│   let arg$C$0$, arg$C$1$, arg$F$0$;
+//│   arg$C$0$ = x.x;
+//│   arg$C$1$ = x.y;
+//│   if (arg$C$0$ instanceof E1.class && arg$C$1$ instanceof F1.class && (arg$F$0$ = arg$C$1$.x, arg$F$0$ instanceof G1.class)) {
+//│     return 1
+//│   }
+//│   if (arg$C$1$ instanceof D1.class) {
+//│     return 2
+//│   } else if (arg$C$1$ instanceof F1.class) { arg$F$0$ = arg$C$1$.x; return 3 }
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+
+
+#config(noUCSNormal: true)
+
+:sjs
+fun check(x) =
+  if x is
+    C(E(_, _), F(G())) then 1
+    C(D(_), D(1)) then 2
+    C(D(_), F(H())) then 3
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let check2;
+//│ check2 = function check(x) {
+//│   let arg$C$0$, arg$C$1$, arg$F$0$, arg$D$0$;
+//│   if (x instanceof C1.class) {
+//│     arg$C$0$ = x.x;
+//│     arg$C$1$ = x.y;
+//│     if (arg$C$0$ instanceof E1.class && arg$C$1$ instanceof F1.class && (arg$F$0$ = arg$C$1$.x, arg$F$0$ instanceof G1.class)) {
+//│       return 1
+//│     }
+//│     if (arg$C$0$ instanceof D1.class) {
+//│       if (arg$C$1$ instanceof D1.class && (arg$D$0$ = arg$C$1$.x, arg$D$0$ === 1)) {
+//│         return 2
+//│       }
+//│       if (arg$C$1$ instanceof F1.class) {
+//│         arg$F$0$ = arg$C$1$.x;
+//│         if (arg$F$0$ instanceof H1.class) {
+//│           return 3
+//│         }
+//│         throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│       }
+//│       throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│     }
+//│     throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│   }
+//│   throw globalThis.Object.freeze(new globalThis.Error("match error"));
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+:sjs
+fun check(x) =
+  if x is
+    C(E(_, _), F(G())) then 1
+    C(D(_), D(1)) then 2
+    C(D(_), F(H())) then 3
+    else branch.unreachable
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ let check3;
+//│ check3 = function check(x) {
+//│   let arg$C$0$, arg$C$1$, arg$F$0$, arg$D$0$;
+//│   arg$C$0$ = x.x;
+//│   arg$C$1$ = x.y;
+//│   if (arg$C$0$ instanceof E1.class && arg$C$1$ instanceof F1.class && (arg$F$0$ = arg$C$1$.x, arg$F$0$ instanceof G1.class)) {
+//│     return 1
+//│   }
+//│   if (arg$C$1$ instanceof D1.class && (arg$D$0$ = arg$C$1$.x, arg$D$0$ === 1)) {
+//│     return 2
+//│   }
+//│   arg$F$0$ = arg$C$1$.x;
+//│   return 3
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+check(new C(new E(0, 0), new F(new G())))
+//│ = 1
+
+check(new C(new D(0), new D(1)))
+//│ = 2
+
+check(new C(new D(0), new F(new H())))
+//│ = 3

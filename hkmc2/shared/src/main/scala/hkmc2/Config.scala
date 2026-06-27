@@ -23,6 +23,7 @@ case class Config(
   effectHandlers: Opt[EffectHandlers],
   liftDefns: Opt[LiftDefns],
   patMatConsequentSharingThreshold: Opt[Int],
+  noUCSNormal: Bool,
   stageCode: Bool,
   target: CompilationTarget,
   rewriteWhileLoops: Bool,
@@ -66,6 +67,7 @@ object Config:
     effectHandlers = N,
     liftDefns = S(LiftDefns()),
     patMatConsequentSharingThreshold = default.patMatConsequentSharingThreshold, // minimum: 1
+    noUCSNormal = false,
     target = CompilationTarget.JS,
     rewriteWhileLoops = false,
     stageCode = false,
@@ -381,6 +383,9 @@ object ConfigParser:
   
   /** Parse a single field override like `tailRecOpt: false`. */
   private def parseField(name: Str, value: Tree)(using Raise): Config => Config = name match
+    case "noUCSNormal" => parseBool(value) match
+      case S(v) => _.copy(noUCSNormal = v)
+      case N => identity
     case "tailRecOpt" => parseBool(value) match
       case S(v) => _.copy(tailRecOpt = v)
       case N => identity
@@ -434,8 +439,8 @@ object ConfigParser:
         case S(v) => _.copy(sanityChecks = v)
         case N => identity
     case "patMatConsequentSharingThreshold" =>
-      parseInt(value) match
-        case S(v) => _.copy(patMatConsequentSharingThreshold = S(v))
+      parseOpt(value)(parseInt) match
+        case S(v) => _.copy(patMatConsequentSharingThreshold = v)
         case N => identity
     case "inlining" =>
       parseOpt(value)(parseInt) match
