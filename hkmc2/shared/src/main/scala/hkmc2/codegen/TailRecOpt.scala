@@ -563,7 +563,7 @@ class TailRecOpt(using State, TL, Raise):
         case None => (newFns, fns_ ::: fns)
     // preserve the order of function defns
     val fMap = fsOpt.map(f => (f.dSym, f)).toMap
-    val fsRet = fs.map(f => fMap(f.dSym))
+    val fsRet = fs.mapConserve(f => fMap(f.dSym))
     (newFsOpt, fsRet)
   
   def reportClassesTailrec(c: ClsLikeDefn) =
@@ -586,18 +586,27 @@ class TailRecOpt(using State, TL, Raise):
     
     if c.k is syntax.Cls then
       reportClassesTailrec(c)
-      val companion = c.companion.map: comp =>
+      val companion = c.companion.mapConserve: comp =>
         val cMtds = optFunctionsFlat(comp.methods, S(comp.isym))
-        comp.copy(methods = cMtds)
-      c.copy(companion = companion)(c.configOverride, c.annotations)
+        if cMtds is comp.methods
+        then comp
+        else comp.copy(methods = cMtds)
+      if (c.companion is companion)
+      then c
+      else c.copy(companion = companion)(c.configOverride, c.annotations)
     else
       val mtds = optFunctionsFlat(c.methods, S(c.isym))
-      val companion = c.companion.map: comp =>
+      val companion = c.companion.mapConserve: comp =>
         val cMtds = optFunctionsFlat(comp.methods, S(comp.isym))
-        comp.copy(methods = cMtds)
-      c.copy(methods = mtds, companion = companion)(c.configOverride, c.annotations)
+        if cMtds is comp.methods
+        then comp
+        else comp.copy(methods = cMtds)
+      if (c.methods is mtds) && (c.companion is companion)
+      then c
+      else c.copy(methods = mtds, companion = companion)(c.configOverride, c.annotations)
   
-  def transform(b: Block) =
+  def transform(prog: Program)(using Config): Program =
+    if !config.tailRecOpt then return prog
     /* To avoid `x` being overridden in the following when the lifter is not run:
      * 
      * let lam
@@ -608,7 +617,7 @@ class TailRecOpt(using State, TL, Raise):
      * we need to do some analysis on what nested functions use what variables. We
      * re-use the analysis from the lifter to do this.
      */
-    
+    val b = prog.main
     given (ScopeData, AccessMap) = 
       // IgnoredScoes can be an empty set, since that information is only relevant for lifting
       given IgnoredScopes = IgnoredScopes(S(Set.empty))
@@ -665,4 +674,6 @@ class TailRecOpt(using State, TL, Raise):
         case _ => super.applyDefn(defn)
     .applyBlock(result)
     
-    result
+    if result is b
+    then prog
+    else Program(prog.imports, result)
