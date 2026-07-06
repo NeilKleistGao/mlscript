@@ -1,4 +1,5 @@
-import Wart._
+// import Wart._
+
 import org.scalajs.linker.interface.OutputPatterns
 
 enablePlugins(ScalaJSPlugin)
@@ -20,6 +21,8 @@ ThisBuild / scalacOptions ++= Seq(
   if (insideCI.value) "-Wconf:any:error"
   else                "-Wconf:any:warning",
 )
+
+// ThisBuild / wartremoverWarnings ++= Warts.unsafe
 
 lazy val root = project.in(file("."))
   .aggregate(hkmc2JS, hkmc2JVM, hkmc2AllTests, coreJS, coreJVM)
