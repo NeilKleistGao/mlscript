@@ -1,0 +1,33 @@
+:js
+:staging
+:noModuleCheck
+
+import "../../mlscript-compile/staging/InterpreterPlug.mls"
+
+
+InterpreterPlug."generate"("../InterpreterPlug.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/InterpreterPlug.mls")
+
+
+import "../../mlscript-compile/staging/out/InterpreterPlug.mls"
+
+open InterpreterPlug
+
+
+:expect Some(1)
+mkInRange(0, 1)
+//│ = Some(1)
+
+
+:expect Some(0)
+mkInRange(1, 0)
+//│ = Some(0)
+
+
+:expect Some(1)
+mkInRange(4, [1, 5])
+//│ = Some(1)
+
+
+:expect Some(0)
+mkInRange(6, [1, 5])
+//│ = Some(0)

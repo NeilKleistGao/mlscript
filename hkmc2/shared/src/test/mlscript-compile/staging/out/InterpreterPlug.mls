@@ -1,0 +1,375 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+import "../InterpreterPlug.mls" as InterpreterPlug__Legacy
+module InterpreterPlug with
+    class Cons(val x, val xs)
+    class Nil
+    class Some(val x)
+    class None
+    class Error
+    class Instruction() with
+      ()
+    class Push(val v) extends Instruction() with
+      ()
+      fun eval(s) = new Cons(v, s)
+    class Comp(val le) extends Instruction() with
+      ()
+      fun eval(s) =
+        let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
+        if s is
+          Cons then
+            arg_Cons_0_ = s.x
+            arg_Cons_1_ = s.xs
+            if arg_Cons_1_ is
+              Cons then
+                arg_Cons_0_1 = arg_Cons_1_.x
+                arg_Cons_1_1 = arg_Cons_1_.xs
+                rest = arg_Cons_1_1
+                y = arg_Cons_0_1
+                x2 = arg_Cons_0_
+                scrut = le
+                if scrut is
+                  true then
+                    tmp = x2 <= y
+                    new Cons(tmp, rest)
+                  else
+                    tmp = x2 >= y
+                    new Cons(tmp, rest)
+              else new Error()
+          else new Error()
+    class And() extends Instruction() with
+      ()
+      fun eval(s) =
+        let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp1}
+        if s is
+          Cons then
+            arg_Cons_0_2 = s.x
+            arg_Cons_1_2 = s.xs
+            if arg_Cons_1_2 is
+              Cons then
+                arg_Cons_0_3 = arg_Cons_1_2.x
+                arg_Cons_1_3 = arg_Cons_1_2.xs
+                rest1 = arg_Cons_1_3
+                y1 = arg_Cons_0_3
+                x3 = arg_Cons_0_2
+                if x3 is
+                  true then
+                    if y1 is
+                      true then
+                        tmp1 = true
+                        new Cons(tmp1, rest1)
+                      else
+                        tmp1 = false
+                        new Cons(tmp1, rest1)
+                  else
+                    tmp1 = false
+                    new Cons(tmp1, rest1)
+              else new Error()
+          else new Error()
+    class Branch(val t, val f) extends Instruction() with
+      ()
+      fun eval(s) =
+        let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
+        if s is
+          Cons then
+            arg_Cons_0_4 = s.x
+            arg_Cons_1_4 = s.xs
+            rest2 = arg_Cons_1_4
+            c = arg_Cons_0_4
+            if c is
+              true then evalAll(t, rest2)
+              else evalAll(f, rest2)
+          else new Error()
+    fun evalAll(insts, s) =
+      let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+      if insts is
+        Cons then
+          arg_Cons_0_5 = insts.x
+          arg_Cons_1_5 = insts.xs
+          rest3 = arg_Cons_1_5
+          inst = arg_Cons_0_5
+          res = inst.eval(s)
+          if res is
+            Error then res
+            else evalAll(rest3, res)
+        else s
+    fun exec(insts, s) =
+      let {ss, x4, arg_Cons_0_6, arg_Cons_1_6}
+      ss = evalAll(insts, s)
+      if ss is
+        Cons then
+          arg_Cons_0_6 = ss.x
+          arg_Cons_1_6 = ss.xs
+          if arg_Cons_1_6 is
+            Nil then
+              x4 = arg_Cons_0_6
+              new Some(x4)
+            else new Error()
+        Nil then new None()
+        else new Error()
+    fun mkInRange(x, r) =
+      let {lb, ub, insts2, insts3, element1_, element0_, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22, tmp23, tmp24, tmp25, tmp26, tmp27, tmp28, tmp29, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38, tmp39}
+      if r is
+        [_, _] then
+          element0_ = r.0
+          element1_ = r.1
+          ub = element1_
+          lb = element0_
+          tmp2 = new Push(x)
+          tmp3 = new Push(lb)
+          tmp4 = new Comp(true)
+          tmp5 = new Push(x)
+          tmp6 = new Push(ub)
+          tmp7 = new Comp(false)
+          tmp8 = new And()
+          tmp9 = new Push(1)
+          tmp10 = new Nil()
+          tmp11 = new Cons(tmp9, tmp10)
+          tmp12 = new Push(0)
+          tmp13 = new Nil()
+          tmp14 = new Cons(tmp12, tmp13)
+          tmp15 = new Branch(tmp11, tmp14)
+          tmp16 = new Nil()
+          tmp17 = new Cons(tmp15, tmp16)
+          tmp18 = new Cons(tmp8, tmp17)
+          tmp19 = new Cons(tmp7, tmp18)
+          tmp20 = new Cons(tmp6, tmp19)
+          tmp21 = new Cons(tmp5, tmp20)
+          tmp22 = new Cons(tmp4, tmp21)
+          tmp23 = new Cons(tmp3, tmp22)
+          insts2 = new Cons(tmp2, tmp23)
+          tmp24 = new Nil()
+          exec_InterpreterPlug_sp_0(insts2, tmp24)
+        else
+          tmp25 = new Push(x)
+          tmp26 = new Push(r)
+          tmp27 = new Comp(false)
+          tmp28 = new Push(1)
+          tmp29 = new Nil()
+          tmp30 = new Cons(tmp28, tmp29)
+          tmp31 = new Push(0)
+          tmp32 = new Nil()
+          tmp33 = new Cons(tmp31, tmp32)
+          tmp34 = new Branch(tmp30, tmp33)
+          tmp35 = new Nil()
+          tmp36 = new Cons(tmp34, tmp35)
+          tmp37 = new Cons(tmp27, tmp36)
+          tmp38 = new Cons(tmp26, tmp37)
+          insts3 = new Cons(tmp25, tmp38)
+          tmp39 = new Nil()
+          exec_InterpreterPlug_sp_1(insts3, tmp39)
+open InterpreterPlug
+fun evalAll_InterpreterPlug_sp_0(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_0(inst, s)
+  evalAll_InterpreterPlug_sp_1(rest3, res)
+fun evalAll_InterpreterPlug_sp_1(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_1(inst, s)
+  evalAll_InterpreterPlug_sp_2(rest3, res)
+fun evalAll_InterpreterPlug_sp_10(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_4(inst, s)
+  evalAll_InterpreterPlug_sp_11(rest3, res)
+fun evalAll_InterpreterPlug_sp_11(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  s
+fun evalAll_InterpreterPlug_sp_12(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  s
+fun evalAll_InterpreterPlug_sp_13(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_0(inst, s)
+  evalAll_InterpreterPlug_sp_14(rest3, res)
+fun evalAll_InterpreterPlug_sp_14(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_1(inst, s)
+  evalAll_InterpreterPlug_sp_15(rest3, res)
+fun evalAll_InterpreterPlug_sp_15(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Comp_sp_2(inst, s)
+  evalAll_InterpreterPlug_sp_16(rest3, res)
+fun evalAll_InterpreterPlug_sp_16(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Branch_sp_1(inst, s)
+  evalAll_InterpreterPlug_sp_12(rest3, res)
+fun evalAll_InterpreterPlug_sp_2(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Comp_sp_0(inst, s)
+  evalAll_InterpreterPlug_sp_3(rest3, res)
+fun evalAll_InterpreterPlug_sp_3(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_1(inst, s)
+  evalAll_InterpreterPlug_sp_4(rest3, res)
+fun evalAll_InterpreterPlug_sp_4(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_2(inst, s)
+  evalAll_InterpreterPlug_sp_5(rest3, res)
+fun evalAll_InterpreterPlug_sp_5(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Comp_sp_1(inst, s)
+  evalAll_InterpreterPlug_sp_6(rest3, res)
+fun evalAll_InterpreterPlug_sp_6(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_And_sp_0(inst, s)
+  evalAll_InterpreterPlug_sp_7(rest3, res)
+fun evalAll_InterpreterPlug_sp_7(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Branch_sp_0(inst, s)
+  evalAll_InterpreterPlug_sp_12(rest3, res)
+fun evalAll_InterpreterPlug_sp_8(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  arg_Cons_0_5 = insts.x
+  arg_Cons_1_5 = insts.xs
+  rest3 = arg_Cons_1_5
+  inst = arg_Cons_0_5
+  res = eval_Push_sp_3(inst, s)
+  evalAll_InterpreterPlug_sp_9(rest3, res)
+fun evalAll_InterpreterPlug_sp_9(insts, s) =
+  let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
+  s
+fun exec_InterpreterPlug_sp_0(insts, s) =
+  let {ss, x4, arg_Cons_0_6, arg_Cons_1_6}
+  ss = evalAll_InterpreterPlug_sp_0(insts, s)
+  arg_Cons_0_6 = ss.x
+  arg_Cons_1_6 = ss.xs
+  x4 = arg_Cons_0_6
+  new Some(x4)
+fun exec_InterpreterPlug_sp_1(insts, s) =
+  let {ss, x4, arg_Cons_0_6, arg_Cons_1_6}
+  ss = evalAll_InterpreterPlug_sp_13(insts, s)
+  arg_Cons_0_6 = ss.x
+  arg_Cons_1_6 = ss.xs
+  x4 = arg_Cons_0_6
+  new Some(x4)
+fun eval_Push_sp_0(self, s) = new Cons(self.v, s)
+fun eval_Push_sp_1(self, s) = new Cons(self.v, s)
+fun eval_Push_sp_2(self, s) = new Cons(self.v, s)
+fun eval_Push_sp_3(self, s) = new Cons(self.v, s)
+fun eval_Push_sp_4(self, s) = new Cons(self.v, s)
+fun eval_Comp_sp_0(self, s) =
+  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
+  arg_Cons_0_ = s.x
+  arg_Cons_1_ = s.xs
+  arg_Cons_0_1 = arg_Cons_1_.x
+  arg_Cons_1_1 = arg_Cons_1_.xs
+  rest = arg_Cons_1_1
+  y = arg_Cons_0_1
+  x2 = arg_Cons_0_
+  scrut = self.le
+  tmp = x2 <= y
+  new Cons(tmp, rest)
+fun eval_Comp_sp_1(self, s) =
+  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
+  arg_Cons_0_ = s.x
+  arg_Cons_1_ = s.xs
+  arg_Cons_0_1 = arg_Cons_1_.x
+  arg_Cons_1_1 = arg_Cons_1_.xs
+  rest = arg_Cons_1_1
+  y = arg_Cons_0_1
+  x2 = arg_Cons_0_
+  scrut = self.le
+  tmp = x2 >= y
+  new Cons(tmp, rest)
+fun eval_Comp_sp_2(self, s) =
+  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
+  arg_Cons_0_ = s.x
+  arg_Cons_1_ = s.xs
+  arg_Cons_0_1 = arg_Cons_1_.x
+  arg_Cons_1_1 = arg_Cons_1_.xs
+  rest = arg_Cons_1_1
+  y = arg_Cons_0_1
+  x2 = arg_Cons_0_
+  scrut = self.le
+  tmp = x2 >= y
+  new Cons(tmp, rest)
+fun eval_And_sp_0(self, s) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp1}
+  arg_Cons_0_2 = s.x
+  arg_Cons_1_2 = s.xs
+  arg_Cons_0_3 = arg_Cons_1_2.x
+  arg_Cons_1_3 = arg_Cons_1_2.xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = arg_Cons_0_2
+  if x3 is
+    true then
+      if y1 is
+        true then
+          tmp1 = true
+          new Cons(tmp1, rest1)
+        else
+          tmp1 = false
+          new Cons(tmp1, rest1)
+    else
+      tmp1 = false
+      new Cons(tmp1, rest1)
+fun eval_Branch_sp_0(self, s) =
+  let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
+  arg_Cons_0_4 = s.x
+  arg_Cons_1_4 = s.xs
+  rest2 = arg_Cons_1_4
+  c = arg_Cons_0_4
+  if c is
+    true then evalAll_InterpreterPlug_sp_8(self.t, rest2)
+    else evalAll_InterpreterPlug_sp_10(self.f, rest2)
+fun eval_Branch_sp_1(self, s) =
+  let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
+  arg_Cons_0_4 = s.x
+  arg_Cons_1_4 = s.xs
+  rest2 = arg_Cons_1_4
+  c = arg_Cons_0_4
+  if c is
+    true then evalAll_InterpreterPlug_sp_8(self.t, rest2)
+    else evalAll_InterpreterPlug_sp_10(self.f, rest2)

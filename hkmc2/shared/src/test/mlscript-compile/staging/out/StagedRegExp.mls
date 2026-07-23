@@ -283,150 +283,153 @@ module StagedRegExp with
                 else false
             else false
         else false
-    fun match(p, s) = matchImpl_StagedRegExp_sp_0(p, s, "")
+    fun match(p, s) = matchImpl_StagedRegExp_sp_0(p, s, 0, 0)
     fun matchAll(p, s) =
-      let {tmp45}
-      tmp45 = []
-      matchAllImpl_StagedRegExp_sp_0(p, s, tmp45)
+      let {tmp46}
+      tmp46 = []
+      matchAllImpl_StagedRegExp_sp_0(p, s, 0, tmp46)
     fun matchAllEmail(s) =
-      let {p7, email, tmp46, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52, tmp53, tmp54, tup_7, tup_8}
+      let {p7, email, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52, tmp53, tmp54, tmp55, tup_7, tup_8}
       tup_7 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-      tmp46 = tup_7
-      tmp47 = ["-", "."]
+      tmp47 = tup_7
+      tmp48 = ["-", "."]
       tup_8 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "."]
-      tmp48 = tup_8
-      tmp49 = new In(tmp48)
-      p7 = plus_StagedRegExp_sp_0(tmp49)
-      tmp50 = new Exact("@")
-      tmp51 = new Exact(".")
-      tmp52 = new Concat(tmp51, p7)
-      tmp53 = new Concat(p7, tmp52)
-      tmp54 = new Concat(tmp50, tmp53)
-      email = new Concat(p7, tmp54)
+      tmp49 = tup_8
+      tmp50 = new In(tmp49)
+      p7 = plus_StagedRegExp_sp_0(tmp50)
+      tmp51 = new Exact("@")
+      tmp52 = new Exact(".")
+      tmp53 = new Concat(tmp52, p7)
+      tmp54 = new Concat(p7, tmp53)
+      tmp55 = new Concat(tmp51, tmp54)
+      email = new Concat(p7, tmp55)
       matchAll_StagedRegExp_sp_0(email, s)
     fun matchAllIPv4(s) =
-      let {fo, fi, segment, ipv4, tmp81, tmp82, tmp83, tmp84, tmp85, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91, tmp92, tmp93, tmp94, tmp95, tmp96, tmp97, tmp98, tmp99, tmp100, tmp101}
-      tmp81 = ["0", "1", "2", "3", "4"]
-      fo = new In(tmp81)
-      tmp82 = ["0", "1", "2", "3", "4", "5"]
-      fi = new In(tmp82)
-      tmp83 = new Exact("2")
-      tmp84 = new Exact("5")
-      tmp85 = new Concat(tmp84, fi)
-      tmp86 = new Concat(tmp83, tmp85)
-      tmp87 = new Exact("2")
-      tmp88 = digits()
-      tmp89 = new Concat(fo, tmp88)
-      tmp90 = new Concat(tmp87, tmp89)
-      tmp91 = new Exact("1")
-      tmp92 = question_StagedRegExp_sp_2(tmp91)
-      tmp93 = digits()
-      tmp94 = question_StagedRegExp_sp_3(tmp93)
-      tmp95 = digits()
-      tmp96 = new Concat(tmp94, tmp95)
-      tmp97 = new Concat(tmp92, tmp96)
-      tmp98 = new Altern(tmp90, tmp97)
-      segment = new Altern(tmp86, tmp98)
-      tmp99 = new Exact(".")
-      tmp100 = new Concat(segment, tmp99)
-      tmp101 = nTimes_StagedRegExp_sp_0(tmp100, 3)
-      ipv4 = new Concat(tmp101, segment)
+      let {fo, fi, segment, ipv4, tmp82, tmp83, tmp84, tmp85, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91, tmp92, tmp93, tmp94, tmp95, tmp96, tmp97, tmp98, tmp99, tmp100, tmp101, tmp102}
+      tmp82 = ["0", "1", "2", "3", "4"]
+      fo = new In(tmp82)
+      tmp83 = ["0", "1", "2", "3", "4", "5"]
+      fi = new In(tmp83)
+      tmp84 = new Exact("2")
+      tmp85 = new Exact("5")
+      tmp86 = new Concat(tmp85, fi)
+      tmp87 = new Concat(tmp84, tmp86)
+      tmp88 = new Exact("2")
+      tmp89 = digits()
+      tmp90 = new Concat(fo, tmp89)
+      tmp91 = new Concat(tmp88, tmp90)
+      tmp92 = new Exact("1")
+      tmp93 = question_StagedRegExp_sp_2(tmp92)
+      tmp94 = digits()
+      tmp95 = question_StagedRegExp_sp_3(tmp94)
+      tmp96 = digits()
+      tmp97 = new Concat(tmp95, tmp96)
+      tmp98 = new Concat(tmp93, tmp97)
+      tmp99 = new Altern(tmp91, tmp98)
+      segment = new Altern(tmp87, tmp99)
+      tmp100 = new Exact(".")
+      tmp101 = new Concat(segment, tmp100)
+      tmp102 = nTimes_StagedRegExp_sp_0(tmp101, 3)
+      ipv4 = new Concat(tmp102, segment)
       matchAll_StagedRegExp_sp_2(ipv4, s)
-    fun matchAllImpl(p, s, res) =
-      let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-      tmp38 = len(s)
-      scrut19 = tmp38 == 0
+    fun matchAllImpl(p, s, i, res) =
+      let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+      tmp39 = len(s)
+      scrut19 = tmp39 == i
       if scrut19 is
         true then res
         else
-          scrut20 = match(p, s)
+          scrut20 = matchImpl(p, s, i, i)
           if scrut20 is
             Some then
               arg_Some_0_ = scrut20.x
               ss = arg_Some_0_
-              tmp39 = len(ss)
-              scrut21 = tmp39 > 0
+              tmp40 = len(ss)
+              scrut21 = tmp40 > 0
               if scrut21 is
                 true then
-                  tmp40 = len(ss)
-                  tmp41 = s.slice(tmp40)
-                  tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-                  matchAllImpl(p, tmp41, tmp42)
+                  tmp41 = len(ss)
+                  tmp42 = i + tmp41
+                  tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+                  matchAllImpl(p, s, tmp42, tmp43)
                 else
-                  tmp43 = s.slice(1)
-                  matchAllImpl(p, tmp43, res)
+                  tmp44 = i + 1
+                  matchAllImpl(p, s, tmp44, res)
             else
-              tmp44 = s.slice(1)
-              matchAllImpl(p, tmp44, res)
+              tmp45 = i + 1
+              matchAllImpl(p, s, tmp45, res)
     fun matchAllURI(s) =
-      let {n1, n2, n3, w, d, p8, head, body, params, uri, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tup_9, tup_10, tup_11, tup_12}
-      tmp55 = ["/", "?", "#", " ", "\n", "\t", "\r"]
-      n1 = new Not(tmp55)
-      tmp56 = ["?", "#", " ", "\n", "\t", "\r"]
-      n2 = new Not(tmp56)
-      tmp57 = ["#", " ", "\n", "\t", "\r"]
-      n3 = new Not(tmp57)
+      let {n1, n2, n3, w, d, p8, head, body, params, uri, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tup_9, tup_10, tup_11, tup_12}
+      tmp56 = ["/", "?", "#", " ", "\n", "\t", "\r"]
+      n1 = new Not(tmp56)
+      tmp57 = ["?", "#", " ", "\n", "\t", "\r"]
+      n2 = new Not(tmp57)
+      tmp58 = ["#", " ", "\n", "\t", "\r"]
+      n3 = new Not(tmp58)
       w = words()
       d = digits()
       tup_9 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-      tmp58 = tup_9
+      tmp59 = tup_9
       tup_10 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-      tmp59 = tup_10
-      tmp60 = ["-", "_"]
+      tmp60 = tup_10
+      tmp61 = ["-", "_"]
       tup_11 = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
-      tmp61 = tup_11
+      tmp62 = tup_11
       tup_12 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "_"]
       p8 = tup_12
-      tmp62 = plus_StagedRegExp_sp_1(w)
-      tmp63 = new Exact(":")
-      tmp64 = new Exact("/")
+      tmp63 = plus_StagedRegExp_sp_1(w)
+      tmp64 = new Exact(":")
       tmp65 = new Exact("/")
-      tmp66 = new Concat(tmp64, tmp65)
-      tmp67 = new Concat(tmp63, tmp66)
-      head = new Concat(tmp62, tmp67)
-      tmp68 = plus_StagedRegExp_sp_2(n1)
-      tmp69 = plus_StagedRegExp_sp_3(n2)
-      body = new Concat(tmp68, tmp69)
-      tmp70 = new Exact("?")
-      tmp71 = new In(p8)
-      tmp72 = new Star(tmp71)
-      tmp73 = new Concat(tmp70, tmp72)
-      tmp74 = question_StagedRegExp_sp_0(tmp73)
-      tmp75 = new Exact("#")
-      tmp76 = new In(p8)
-      tmp77 = new Star(tmp76)
-      tmp78 = new Concat(tmp75, tmp77)
-      tmp79 = question_StagedRegExp_sp_1(tmp78)
-      params = new Concat(tmp74, tmp79)
-      tmp80 = new Concat(body, params)
-      uri = new Concat(head, tmp80)
+      tmp66 = new Exact("/")
+      tmp67 = new Concat(tmp65, tmp66)
+      tmp68 = new Concat(tmp64, tmp67)
+      head = new Concat(tmp63, tmp68)
+      tmp69 = plus_StagedRegExp_sp_2(n1)
+      tmp70 = plus_StagedRegExp_sp_3(n2)
+      body = new Concat(tmp69, tmp70)
+      tmp71 = new Exact("?")
+      tmp72 = new In(p8)
+      tmp73 = new Star(tmp72)
+      tmp74 = new Concat(tmp71, tmp73)
+      tmp75 = question_StagedRegExp_sp_0(tmp74)
+      tmp76 = new Exact("#")
+      tmp77 = new In(p8)
+      tmp78 = new Star(tmp77)
+      tmp79 = new Concat(tmp76, tmp78)
+      tmp80 = question_StagedRegExp_sp_1(tmp79)
+      params = new Concat(tmp75, tmp80)
+      tmp81 = new Concat(body, params)
+      uri = new Concat(head, tmp81)
       matchAll_StagedRegExp_sp_1(uri, s)
-    fun matchImpl(p, s, acc) =
-      let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37}
+    fun matchImpl(p, s, i, j) =
+      let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
       tmp34 = len(s)
-      scrut15 = tmp34 == 0
+      scrut15 = tmp34 == j
       if scrut15 is
         true then
           scrut16 = p.canBeEmpty()
           if scrut16 is
-            true then new Some(acc)
+            true then
+              tmp35 = s.substring(i, j)
+              new Some(tmp35)
             else new None()
         else
           if p is
             Nothing then new None()
             else
-              c18 = s.0
+              c18 = s.(j)
               scrut17 = p.startsWith(c18)
               if scrut17 is
                 true then
-                  tmp35 = p.derive(c18)
-                  tmp36 = s.slice(1)
-                  tmp37 = acc + c18
-                  matchImpl(tmp35, tmp36, tmp37)
+                  tmp36 = p.derive(c18)
+                  tmp37 = j + 1
+                  matchImpl(tmp36, s, i, tmp37)
                 else
                   scrut18 = p.canBeEmpty()
                   if scrut18 is
-                    true then new Some(acc)
+                    true then
+                      tmp38 = s.substring(i, j)
+                      new Some(tmp38)
                     else new None()
     fun mkUnion(ls) =
       let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp26}
@@ -616,229 +619,232 @@ fun concatUnique_StagedRegExp_sp_9(xs, ys) =
 fun has_StagedRegExp_sp_0(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
 fun has_StagedRegExp_sp_1(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
 fun has_StagedRegExp_sp_2(arr, ele) = StagedRegExp__Legacy."SeqHelper$StagedRegExp".has(arr, ele)
-fun matchAllImpl_StagedRegExp_sp_0(p, s, res) =
-  let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-  tmp38 = len(s)
-  scrut19 = tmp38 == 0
+fun matchAllImpl_StagedRegExp_sp_0(p, s, i, res) =
+  let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+  tmp39 = len(s)
+  scrut19 = tmp39 == 0
   if scrut19 is
     true then res
     else
-      scrut20 = match(p, s)
+      scrut20 = matchImpl_StagedRegExp_sp_0(p, s, i, i)
       if scrut20 is
         Some then
           arg_Some_0_ = scrut20.x
           ss = arg_Some_0_
-          tmp39 = len(ss)
-          scrut21 = tmp39 > 0
+          tmp40 = len(ss)
+          scrut21 = tmp40 > 0
           if scrut21 is
             true then
-              tmp40 = len(ss)
-              tmp41 = s.slice(tmp40)
-              tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-              matchAllImpl(p, tmp41, tmp42)
+              tmp41 = len(ss)
+              tmp42 = 0 + tmp41
+              tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl(p, s, tmp42, tmp43)
             else
-              tmp43 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_0(p, tmp43, res)
+              tmp44 = 1
+              matchAllImpl(p, s, tmp44, res)
         else
-          tmp44 = s.slice(1)
-          matchAllImpl_StagedRegExp_sp_0(p, tmp44, res)
-fun matchAllImpl_StagedRegExp_sp_1(p, s, res) =
-  let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-  tmp38 = len(s)
-  scrut19 = tmp38 == 0
+          tmp45 = 1
+          matchAllImpl(p, s, tmp45, res)
+fun matchAllImpl_StagedRegExp_sp_1(p, s, i, res) =
+  let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+  tmp39 = len(s)
+  scrut19 = tmp39 == 0
   if scrut19 is
     true then res
     else
-      scrut20 = match_StagedRegExp_sp_0(p, s)
+      scrut20 = matchImpl_StagedRegExp_sp_1(p, s, i, i)
       if scrut20 is
         Some then
           arg_Some_0_ = scrut20.x
           ss = arg_Some_0_
-          tmp39 = len(ss)
-          scrut21 = tmp39 > 0
+          tmp40 = len(ss)
+          scrut21 = tmp40 > 0
           if scrut21 is
             true then
-              tmp40 = len(ss)
-              tmp41 = s.slice(tmp40)
-              tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-              matchAllImpl_StagedRegExp_sp_2(p, tmp41, tmp42)
+              tmp41 = len(ss)
+              tmp42 = 0 + tmp41
+              tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_2(p, s, tmp42, tmp43)
             else
-              tmp43 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_1(p, tmp43, res)
+              tmp44 = 1
+              matchAllImpl_StagedRegExp_sp_2(p, s, tmp44, res)
         else
-          tmp44 = s.slice(1)
-          matchAllImpl_StagedRegExp_sp_1(p, tmp44, res)
-fun matchAllImpl_StagedRegExp_sp_2(p, s, res) =
-  let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-  tmp38 = len(s)
-  scrut19 = tmp38 == 0
+          tmp45 = 1
+          matchAllImpl_StagedRegExp_sp_2(p, s, tmp45, res)
+fun matchAllImpl_StagedRegExp_sp_2(p, s, i, res) =
+  let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+  tmp39 = len(s)
+  scrut19 = tmp39 == i
   if scrut19 is
     true then res
     else
-      scrut20 = match_StagedRegExp_sp_0(p, s)
+      scrut20 = matchImpl_StagedRegExp_sp_3(p, s, i, i)
       if scrut20 is
         Some then
           arg_Some_0_ = scrut20.x
           ss = arg_Some_0_
-          tmp39 = len(ss)
-          scrut21 = tmp39 > 0
+          tmp40 = len(ss)
+          scrut21 = tmp40 > 0
           if scrut21 is
             true then
-              tmp40 = len(ss)
-              tmp41 = s.slice(tmp40)
-              tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-              matchAllImpl_StagedRegExp_sp_2(p, tmp41, tmp42)
+              tmp41 = len(ss)
+              tmp42 = i + tmp41
+              tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_2(p, s, tmp42, tmp43)
             else
-              tmp43 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_2(p, tmp43, res)
+              tmp44 = i + 1
+              matchAllImpl_StagedRegExp_sp_2(p, s, tmp44, res)
         else
-          tmp44 = s.slice(1)
-          matchAllImpl_StagedRegExp_sp_2(p, tmp44, res)
-fun matchAllImpl_StagedRegExp_sp_3(p, s, res) =
-  let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-  tmp38 = len(s)
-  scrut19 = tmp38 == 0
+          tmp45 = i + 1
+          matchAllImpl_StagedRegExp_sp_2(p, s, tmp45, res)
+fun matchAllImpl_StagedRegExp_sp_3(p, s, i, res) =
+  let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+  tmp39 = len(s)
+  scrut19 = tmp39 == 0
   if scrut19 is
     true then res
     else
-      scrut20 = match_StagedRegExp_sp_1(p, s)
+      scrut20 = matchImpl_StagedRegExp_sp_4(p, s, i, i)
       if scrut20 is
         Some then
           arg_Some_0_ = scrut20.x
           ss = arg_Some_0_
-          tmp39 = len(ss)
-          scrut21 = tmp39 > 0
+          tmp40 = len(ss)
+          scrut21 = tmp40 > 0
           if scrut21 is
             true then
-              tmp40 = len(ss)
-              tmp41 = s.slice(tmp40)
-              tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-              matchAllImpl_StagedRegExp_sp_4(p, tmp41, tmp42)
+              tmp41 = len(ss)
+              tmp42 = 0 + tmp41
+              tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_4(p, s, tmp42, tmp43)
             else
-              tmp43 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_3(p, tmp43, res)
+              tmp44 = 1
+              matchAllImpl_StagedRegExp_sp_4(p, s, tmp44, res)
         else
-          tmp44 = s.slice(1)
-          matchAllImpl_StagedRegExp_sp_3(p, tmp44, res)
-fun matchAllImpl_StagedRegExp_sp_4(p, s, res) =
-  let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-  tmp38 = len(s)
-  scrut19 = tmp38 == 0
+          tmp45 = 1
+          matchAllImpl_StagedRegExp_sp_4(p, s, tmp45, res)
+fun matchAllImpl_StagedRegExp_sp_4(p, s, i, res) =
+  let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+  tmp39 = len(s)
+  scrut19 = tmp39 == i
   if scrut19 is
     true then res
     else
-      scrut20 = match_StagedRegExp_sp_1(p, s)
+      scrut20 = matchImpl_StagedRegExp_sp_5(p, s, i, i)
       if scrut20 is
         Some then
           arg_Some_0_ = scrut20.x
           ss = arg_Some_0_
-          tmp39 = len(ss)
-          scrut21 = tmp39 > 0
+          tmp40 = len(ss)
+          scrut21 = tmp40 > 0
           if scrut21 is
             true then
-              tmp40 = len(ss)
-              tmp41 = s.slice(tmp40)
-              tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-              matchAllImpl_StagedRegExp_sp_4(p, tmp41, tmp42)
+              tmp41 = len(ss)
+              tmp42 = i + tmp41
+              tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_4(p, s, tmp42, tmp43)
             else
-              tmp43 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_4(p, tmp43, res)
+              tmp44 = i + 1
+              matchAllImpl_StagedRegExp_sp_4(p, s, tmp44, res)
         else
-          tmp44 = s.slice(1)
-          matchAllImpl_StagedRegExp_sp_4(p, tmp44, res)
-fun matchAllImpl_StagedRegExp_sp_5(p, s, res) =
-  let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-  tmp38 = len(s)
-  scrut19 = tmp38 == 0
+          tmp45 = i + 1
+          matchAllImpl_StagedRegExp_sp_4(p, s, tmp45, res)
+fun matchAllImpl_StagedRegExp_sp_5(p, s, i, res) =
+  let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+  tmp39 = len(s)
+  scrut19 = tmp39 == 0
   if scrut19 is
     true then res
     else
-      scrut20 = match_StagedRegExp_sp_2(p, s)
+      scrut20 = matchImpl_StagedRegExp_sp_6(p, s, i, i)
       if scrut20 is
         Some then
           arg_Some_0_ = scrut20.x
           ss = arg_Some_0_
-          tmp39 = len(ss)
-          scrut21 = tmp39 > 0
+          tmp40 = len(ss)
+          scrut21 = tmp40 > 0
           if scrut21 is
             true then
-              tmp40 = len(ss)
-              tmp41 = s.slice(tmp40)
-              tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-              matchAllImpl_StagedRegExp_sp_6(p, tmp41, tmp42)
+              tmp41 = len(ss)
+              tmp42 = 0 + tmp41
+              tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_6(p, s, tmp42, tmp43)
             else
-              tmp43 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_5(p, tmp43, res)
+              tmp44 = 1
+              matchAllImpl_StagedRegExp_sp_6(p, s, tmp44, res)
         else
-          tmp44 = s.slice(1)
-          matchAllImpl_StagedRegExp_sp_5(p, tmp44, res)
-fun matchAllImpl_StagedRegExp_sp_6(p, s, res) =
-  let {scrut19, scrut20, ss, scrut21, tmp38, arg_Some_0_, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44}
-  tmp38 = len(s)
-  scrut19 = tmp38 == 0
+          tmp45 = 1
+          matchAllImpl_StagedRegExp_sp_6(p, s, tmp45, res)
+fun matchAllImpl_StagedRegExp_sp_6(p, s, i, res) =
+  let {scrut19, scrut20, ss, scrut21, tmp39, arg_Some_0_, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45}
+  tmp39 = len(s)
+  scrut19 = tmp39 == i
   if scrut19 is
     true then res
     else
-      scrut20 = match_StagedRegExp_sp_2(p, s)
+      scrut20 = matchImpl_StagedRegExp_sp_8(p, s, i, i)
       if scrut20 is
         Some then
           arg_Some_0_ = scrut20.x
           ss = arg_Some_0_
-          tmp39 = len(ss)
-          scrut21 = tmp39 > 0
+          tmp40 = len(ss)
+          scrut21 = tmp40 > 0
           if scrut21 is
             true then
-              tmp40 = len(ss)
-              tmp41 = s.slice(tmp40)
-              tmp42 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
-              matchAllImpl_StagedRegExp_sp_6(p, tmp41, tmp42)
+              tmp41 = len(ss)
+              tmp42 = i + tmp41
+              tmp43 = StagedRegExp__Legacy."SeqHelper$StagedRegExp".push(res, ss)
+              matchAllImpl_StagedRegExp_sp_6(p, s, tmp42, tmp43)
             else
-              tmp43 = s.slice(1)
-              matchAllImpl_StagedRegExp_sp_6(p, tmp43, res)
+              tmp44 = i + 1
+              matchAllImpl_StagedRegExp_sp_6(p, s, tmp44, res)
         else
-          tmp44 = s.slice(1)
-          matchAllImpl_StagedRegExp_sp_6(p, tmp44, res)
+          tmp45 = i + 1
+          matchAllImpl_StagedRegExp_sp_6(p, s, tmp45, res)
 fun matchAll_StagedRegExp_sp_0(p, s) =
-  let {tmp45}
-  tmp45 = []
-  matchAllImpl_StagedRegExp_sp_1(p, s, tmp45)
+  let {tmp46}
+  tmp46 = []
+  matchAllImpl_StagedRegExp_sp_1(p, s, 0, tmp46)
 fun matchAll_StagedRegExp_sp_1(p, s) =
-  let {tmp45}
-  tmp45 = []
-  matchAllImpl_StagedRegExp_sp_3(p, s, tmp45)
+  let {tmp46}
+  tmp46 = []
+  matchAllImpl_StagedRegExp_sp_3(p, s, 0, tmp46)
 fun matchAll_StagedRegExp_sp_2(p, s) =
-  let {tmp45}
-  tmp45 = []
-  matchAllImpl_StagedRegExp_sp_5(p, s, tmp45)
-fun matchImpl_StagedRegExp_sp_0(p, s, acc) =
-  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37}
+  let {tmp46}
+  tmp46 = []
+  matchAllImpl_StagedRegExp_sp_5(p, s, 0, tmp46)
+fun matchImpl_StagedRegExp_sp_0(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
   tmp34 = len(s)
   scrut15 = tmp34 == 0
   if scrut15 is
     true then
       scrut16 = p.canBeEmpty()
       if scrut16 is
-        true then new Some(acc)
+        true then
+          tmp35 = s.substring(i, j)
+          new Some(tmp35)
         else new None()
     else
       if p is
         Nothing then new None()
         else
-          c18 = s.0
+          c18 = s.(0)
           scrut17 = p.startsWith(c18)
           if scrut17 is
             true then
-              tmp35 = p.derive(c18)
-              tmp36 = s.slice(1)
-              tmp37 = "" + c18
-              matchImpl(tmp35, tmp36, tmp37)
+              tmp36 = p.derive(c18)
+              tmp37 = 1
+              matchImpl(tmp36, s, i, tmp37)
             else
               scrut18 = p.canBeEmpty()
               if scrut18 is
-                true then new Some(acc)
+                true then
+                  tmp38 = s.substring(i, j)
+                  new Some(tmp38)
                 else new None()
-fun matchImpl_StagedRegExp_sp_1(p, s, acc) =
-  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37}
+fun matchImpl_StagedRegExp_sp_1(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
   tmp34 = len(s)
   scrut15 = tmp34 == 0
   if scrut15 is
@@ -846,21 +852,20 @@ fun matchImpl_StagedRegExp_sp_1(p, s, acc) =
       scrut16 = canBeEmpty_Concat_sp_0(p)
       new None()
     else
-      c18 = s.0
+      c18 = s.(0)
       scrut17 = startsWith_Concat_sp_0(p, c18)
       if scrut17 is
         true then
-          tmp35 = derive_Concat_sp_0(p, c18)
-          tmp36 = s.slice(1)
-          tmp37 = "" + c18
-          matchImpl_StagedRegExp_sp_2(tmp35, tmp36, tmp37)
+          tmp36 = derive_Concat_sp_0(p, c18)
+          tmp37 = 1
+          matchImpl_StagedRegExp_sp_2(tmp36, s, i, tmp37)
         else
           scrut18 = canBeEmpty_Concat_sp_0(p)
           new None()
-fun matchImpl_StagedRegExp_sp_2(p, s, acc) =
-  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37}
+fun matchImpl_StagedRegExp_sp_2(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
   tmp34 = len(s)
-  scrut15 = tmp34 == 0
+  scrut15 = tmp34 == j
   if scrut15 is
     true then
       if p is
@@ -869,27 +874,49 @@ fun matchImpl_StagedRegExp_sp_2(p, s, acc) =
         Concat then
           scrut16 = canBeEmpty_Concat_sp_2(p)
       if scrut16 is
-        true then new Some(acc)
+        true then
+          tmp35 = s.substring(i, j)
+          new Some(tmp35)
         else new None()
     else
       if p is
         Nothing then new None()
         else
-          c18 = s.0
+          c18 = s.(j)
           scrut17 = startsWith_Concat_sp_2(p, c18)
           if scrut17 is
             true then
-              tmp35 = derive_Concat_sp_2(p, c18)
-              tmp36 = s.slice(1)
-              tmp37 = acc + c18
-              matchImpl(tmp35, tmp36, tmp37)
+              tmp36 = derive_Concat_sp_2(p, c18)
+              tmp37 = j + 1
+              matchImpl(tmp36, s, i, tmp37)
             else
               scrut18 = canBeEmpty_Concat_sp_2(p)
               if scrut18 is
-                true then new Some(acc)
+                true then
+                  tmp38 = s.substring(i, j)
+                  new Some(tmp38)
                 else new None()
-fun matchImpl_StagedRegExp_sp_3(p, s, acc) =
-  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37}
+fun matchImpl_StagedRegExp_sp_3(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
+  tmp34 = len(s)
+  scrut15 = tmp34 == j
+  if scrut15 is
+    true then
+      scrut16 = canBeEmpty_Concat_sp_0(p)
+      new None()
+    else
+      c18 = s.(j)
+      scrut17 = startsWith_Concat_sp_0(p, c18)
+      if scrut17 is
+        true then
+          tmp36 = derive_Concat_sp_0(p, c18)
+          tmp37 = j + 1
+          matchImpl_StagedRegExp_sp_2(tmp36, s, i, tmp37)
+        else
+          scrut18 = canBeEmpty_Concat_sp_0(p)
+          new None()
+fun matchImpl_StagedRegExp_sp_4(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
   tmp34 = len(s)
   scrut15 = tmp34 == 0
   if scrut15 is
@@ -897,19 +924,37 @@ fun matchImpl_StagedRegExp_sp_3(p, s, acc) =
       scrut16 = canBeEmpty_Concat_sp_3(p)
       new None()
     else
-      c18 = s.0
+      c18 = s.(0)
       scrut17 = startsWith_Concat_sp_3(p, c18)
       if scrut17 is
         true then
-          tmp35 = derive_Concat_sp_3(p, c18)
-          tmp36 = s.slice(1)
-          tmp37 = "" + c18
-          matchImpl(tmp35, tmp36, tmp37)
+          tmp36 = derive_Concat_sp_3(p, c18)
+          tmp37 = 1
+          matchImpl(tmp36, s, i, tmp37)
         else
           scrut18 = canBeEmpty_Concat_sp_3(p)
           new None()
-fun matchImpl_StagedRegExp_sp_4(p, s, acc) =
-  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37}
+fun matchImpl_StagedRegExp_sp_5(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
+  tmp34 = len(s)
+  scrut15 = tmp34 == j
+  if scrut15 is
+    true then
+      scrut16 = canBeEmpty_Concat_sp_3(p)
+      new None()
+    else
+      c18 = s.(j)
+      scrut17 = startsWith_Concat_sp_3(p, c18)
+      if scrut17 is
+        true then
+          tmp36 = derive_Concat_sp_3(p, c18)
+          tmp37 = j + 1
+          matchImpl(tmp36, s, i, tmp37)
+        else
+          scrut18 = canBeEmpty_Concat_sp_3(p)
+          new None()
+fun matchImpl_StagedRegExp_sp_6(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
   tmp34 = len(s)
   scrut15 = tmp34 == 0
   if scrut15 is
@@ -917,21 +962,20 @@ fun matchImpl_StagedRegExp_sp_4(p, s, acc) =
       scrut16 = canBeEmpty_Concat_sp_6(p)
       new None()
     else
-      c18 = s.0
+      c18 = s.(0)
       scrut17 = startsWith_Concat_sp_6(p, c18)
       if scrut17 is
         true then
-          tmp35 = derive_Concat_sp_6(p, c18)
-          tmp36 = s.slice(1)
-          tmp37 = "" + c18
-          matchImpl_StagedRegExp_sp_5(tmp35, tmp36, tmp37)
+          tmp36 = derive_Concat_sp_6(p, c18)
+          tmp37 = 1
+          matchImpl_StagedRegExp_sp_7(tmp36, s, i, tmp37)
         else
           scrut18 = canBeEmpty_Concat_sp_6(p)
           new None()
-fun matchImpl_StagedRegExp_sp_5(p, s, acc) =
-  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37}
+fun matchImpl_StagedRegExp_sp_7(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
   tmp34 = len(s)
-  scrut15 = tmp34 == 0
+  scrut15 = tmp34 == j
   if scrut15 is
     true then
       if p is
@@ -946,7 +990,7 @@ fun matchImpl_StagedRegExp_sp_5(p, s, acc) =
       if p is
         Nothing then new None()
         else
-          c18 = s.0
+          c18 = s.(j)
           if p is
             Altern then
               scrut17 = startsWith_Altern_sp_0(p, c18)
@@ -956,12 +1000,11 @@ fun matchImpl_StagedRegExp_sp_5(p, s, acc) =
             true then
               if p is
                 Altern then
-                  tmp35 = derive_Altern_sp_0(p, c18)
+                  tmp36 = derive_Altern_sp_0(p, c18)
                 Concat then
-                  tmp35 = derive_Concat_sp_13(p, c18)
-              tmp36 = s.slice(1)
-              tmp37 = acc + c18
-              matchImpl(tmp35, tmp36, tmp37)
+                  tmp36 = derive_Concat_sp_13(p, c18)
+              tmp37 = j + 1
+              matchImpl(tmp36, s, i, tmp37)
             else
               if p is
                 Altern then
@@ -969,9 +1012,25 @@ fun matchImpl_StagedRegExp_sp_5(p, s, acc) =
                 Concat then
                   scrut18 = canBeEmpty_Concat_sp_13(p)
               new None()
-fun match_StagedRegExp_sp_0(p, s) = matchImpl_StagedRegExp_sp_1(p, s, "")
-fun match_StagedRegExp_sp_1(p, s) = matchImpl_StagedRegExp_sp_3(p, s, "")
-fun match_StagedRegExp_sp_2(p, s) = matchImpl_StagedRegExp_sp_4(p, s, "")
+fun matchImpl_StagedRegExp_sp_8(p, s, i, j) =
+  let {scrut15, scrut16, c18, scrut17, scrut18, tmp34, tmp35, tmp36, tmp37, tmp38}
+  tmp34 = len(s)
+  scrut15 = tmp34 == j
+  if scrut15 is
+    true then
+      scrut16 = canBeEmpty_Concat_sp_6(p)
+      new None()
+    else
+      c18 = s.(j)
+      scrut17 = startsWith_Concat_sp_6(p, c18)
+      if scrut17 is
+        true then
+          tmp36 = derive_Concat_sp_6(p, c18)
+          tmp37 = j + 1
+          matchImpl_StagedRegExp_sp_7(tmp36, s, i, tmp37)
+        else
+          scrut18 = canBeEmpty_Concat_sp_6(p)
+          new None()
 fun mkUnion_StagedRegExp_sp_0(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp26}
   arg_Cons_0_4 = ls.x

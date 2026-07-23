@@ -180,28 +180,28 @@ staged module SpecialRegExpURI with
 
   fun plus(r) = (@special new Concat(r, (@special new Star(r))))
 
-  @specialize fun matchImpl(p, s, acc) = if
-    len(s) == 0 and
-      p.canBeEmpty() then new Some(acc)
+  fun matchImpl(@specialize p, s, i, j) = if
+    SeqHelper.len(s) == j and
+      p.canBeEmpty() then new Some(s.substring(i, j))
       else new None
     p is Nothing then new None
-    let c = s.0
-    p.startsWith(c) then matchImpl(p.derive(c), s.slice(1), acc + c)
-    p.canBeEmpty() then new Some(acc)
+    let c = s.(j)
+    p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
+    p.canBeEmpty() then new Some(s.substring(i, j))
     else new None
   fun match(p, s) =
-    matchImpl(p, s, "")
+    matchImpl(p, s, 0, 0)
 
-  @specialize fun matchAllImpl(p, s, res) =
-    if len(s) == 0 then res
+  fun matchAllImpl(@specialize p, s, i, res) =
+    if SeqHelper.len(s) == i then res
     else
-      if match(p, s) is
+      if matchImpl(p, s, i, i) is
         Some(ss) then
-          if len(ss) > 0 then matchAllImpl(p, s.slice(len(ss)), SeqHelper.push(res, ss))
-          else matchAllImpl(p, s.slice(1), res)
-        else matchAllImpl(p, s.slice(1), res)
+          if SeqHelper.len(ss) > 0 then matchAllImpl(p, s, i + SeqHelper.len(ss), SeqHelper.push(res, ss))
+          else matchAllImpl(p, s, i + 1, res)
+        else matchAllImpl(p, s, i + 1, res)
   fun matchAll(p, s) =
-    matchAllImpl(p, s, [])
+    matchAllImpl(p, s, 0, [])
 
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
   fun matchAllURI(s) =
