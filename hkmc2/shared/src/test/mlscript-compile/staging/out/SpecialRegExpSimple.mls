@@ -219,33 +219,36 @@ module SpecialRegExpSimple with
                 else false
             else false
         else false
-    fun match(p, s) = matchImpl_SpecialRegExpSimple_sp_0(p, s, "")
-    fun matchImpl(p, s, acc) =
-      let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25}
+    fun match(p, s) = matchImpl_SpecialRegExpSimple_sp_0(p, s, 0, 0)
+    fun matchImpl(p, s, i, j) =
+      let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25, tmp26}
       tmp22 = SpecialRegExpSimple__Legacy."SeqHelper$SpecialRegExpSimple".len(s)
-      scrut12 = tmp22 == 0
+      scrut12 = tmp22 == j
       if scrut12 is
         true then
           scrut13 = p.canBeEmpty()
           if scrut13 is
-            true then new Some(acc)
+            true then
+              tmp23 = s.substring(i, j)
+              new Some(tmp23)
             else new None()
         else
           if p is
             Nothing then new None()
             else
-              c12 = s.0
+              c12 = s.(j)
               scrut14 = p.startsWith(c12)
               if scrut14 is
                 true then
-                  tmp23 = p.derive(c12)
-                  tmp24 = s.slice(1)
-                  tmp25 = acc + c12
-                  matchImpl(tmp23, tmp24, tmp25)
+                  tmp24 = p.derive(c12)
+                  tmp25 = j + 1
+                  matchImpl(tmp24, s, i, tmp25)
                 else
                   scrut15 = p.canBeEmpty()
                   if scrut15 is
-                    true then new Some(acc)
+                    true then
+                      tmp26 = s.substring(i, j)
+                      new Some(tmp26)
                     else new None()
     fun mkUnion(ls) =
       let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
@@ -279,11 +282,11 @@ module SpecialRegExpSimple with
               new Cons(x2, tmp19)
         else new Cons(e, Nil)
     fun test(s) =
-      let {p5, tmp26, tmp27, tmp28}
-      tmp26 = new Exact("a")
-      tmp27 = new Star(tmp26)
-      tmp28 = new Exact("b")
-      p5 = new Concat(tmp27, tmp28)
+      let {p5, tmp27, tmp28, tmp29}
+      tmp27 = new Exact("a")
+      tmp28 = new Star(tmp27)
+      tmp29 = new Exact("b")
+      p5 = new Concat(tmp28, tmp29)
       match_SpecialRegExpSimple_sp_0(p5, s)
 open SpecialRegExpSimple
 fun concatUnique_SpecialRegExpSimple_sp_0(xs, ys) =
@@ -379,35 +382,38 @@ fun concatUnique_SpecialRegExpSimple_sp_8(xs, ys) =
 fun concatUnique_SpecialRegExpSimple_sp_9(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   xs
-fun matchImpl_SpecialRegExpSimple_sp_0(p, s, acc) =
-  let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25}
+fun matchImpl_SpecialRegExpSimple_sp_0(p, s, i, j) =
+  let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25, tmp26}
   tmp22 = SpecialRegExpSimple__Legacy."SeqHelper$SpecialRegExpSimple".len(s)
   scrut12 = tmp22 == 0
   if scrut12 is
     true then
       scrut13 = p.canBeEmpty()
       if scrut13 is
-        true then new Some(acc)
+        true then
+          tmp23 = s.substring(i, j)
+          new Some(tmp23)
         else new None()
     else
       if p is
         Nothing then new None()
         else
-          c12 = s.0
+          c12 = s.(0)
           scrut14 = p.startsWith(c12)
           if scrut14 is
             true then
-              tmp23 = p.derive(c12)
-              tmp24 = s.slice(1)
-              tmp25 = "" + c12
-              matchImpl(tmp23, tmp24, tmp25)
+              tmp24 = p.derive(c12)
+              tmp25 = 1
+              matchImpl(tmp24, s, i, tmp25)
             else
               scrut15 = p.canBeEmpty()
               if scrut15 is
-                true then new Some(acc)
+                true then
+                  tmp26 = s.substring(i, j)
+                  new Some(tmp26)
                 else new None()
-fun matchImpl_SpecialRegExpSimple_sp_1(p, s, acc) =
-  let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25}
+fun matchImpl_SpecialRegExpSimple_sp_1(p, s, i, j) =
+  let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25, tmp26}
   tmp22 = SpecialRegExpSimple__Legacy."SeqHelper$SpecialRegExpSimple".len(s)
   scrut12 = tmp22 == 0
   if scrut12 is
@@ -415,30 +421,31 @@ fun matchImpl_SpecialRegExpSimple_sp_1(p, s, acc) =
       scrut13 = canBeEmpty_Concat_sp_0(p)
       new None()
     else
-      c12 = s.0
+      c12 = s.(0)
       scrut14 = startsWith_Concat_sp_0(p, c12)
       if scrut14 is
         true then
-          tmp23 = derive_Concat_sp_0(p, c12)
-          tmp24 = s.slice(1)
-          tmp25 = "" + c12
-          matchImpl_SpecialRegExpSimple_sp_2(tmp23, tmp24, tmp25)
+          tmp24 = derive_Concat_sp_0(p, c12)
+          tmp25 = 1
+          matchImpl_SpecialRegExpSimple_sp_2(tmp24, s, i, tmp25)
         else
           scrut15 = canBeEmpty_Concat_sp_0(p)
           new None()
-fun matchImpl_SpecialRegExpSimple_sp_2(p, s, acc) =
-  let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25}
+fun matchImpl_SpecialRegExpSimple_sp_2(p, s, i, j) =
+  let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25, tmp26}
   tmp22 = SpecialRegExpSimple__Legacy."SeqHelper$SpecialRegExpSimple".len(s)
-  scrut12 = tmp22 == 0
+  scrut12 = tmp22 == j
   if scrut12 is
     true then
       if p is
         Altern(Concat(Star(Exact), Exact), _) then
           scrut13 = canBeEmpty_Altern_sp_0(p)
-          new Some(acc)
+          tmp23 = s.substring(i, j)
+          new Some(tmp23)
         Altern(Concat(Nothing, Exact), _) then
           scrut13 = canBeEmpty_Altern_sp_1(p)
-          new Some(acc)
+          tmp23 = s.substring(i, j)
+          new Some(tmp23)
         Concat(Star(Exact), _) then
           scrut13 = canBeEmpty_Concat_sp_1(p)
           new None()
@@ -449,41 +456,41 @@ fun matchImpl_SpecialRegExpSimple_sp_2(p, s, acc) =
     else
       if p is
         Altern(Concat(Star(Exact), Exact), _) then
-          c12 = s.0
+          c12 = s.(j)
           scrut14 = startsWith_Altern_sp_0(p, c12)
           if scrut14 is
             true then
-              tmp23 = derive_Altern_sp_0(p, c12)
-              tmp24 = s.slice(1)
-              tmp25 = acc + c12
-              matchImpl_SpecialRegExpSimple_sp_2(tmp23, tmp24, tmp25)
+              tmp24 = derive_Altern_sp_0(p, c12)
+              tmp25 = j + 1
+              matchImpl_SpecialRegExpSimple_sp_2(tmp24, s, i, tmp25)
             else
               scrut15 = canBeEmpty_Altern_sp_0(p)
-              new Some(acc)
+              tmp26 = s.substring(i, j)
+              new Some(tmp26)
         Altern(Concat(Nothing, Exact), _) then
-          c12 = s.0
+          c12 = s.(j)
           scrut14 = startsWith_Altern_sp_1(p, c12)
           scrut15 = canBeEmpty_Altern_sp_1(p)
-          new Some(acc)
+          tmp26 = s.substring(i, j)
+          new Some(tmp26)
         Concat(Star(Exact), _) then
-          c12 = s.0
+          c12 = s.(j)
           scrut14 = startsWith_Concat_sp_1(p, c12)
           if scrut14 is
             true then
-              tmp23 = derive_Concat_sp_1(p, c12)
-              tmp24 = s.slice(1)
-              tmp25 = acc + c12
-              matchImpl_SpecialRegExpSimple_sp_2(tmp23, tmp24, tmp25)
+              tmp24 = derive_Concat_sp_1(p, c12)
+              tmp25 = j + 1
+              matchImpl_SpecialRegExpSimple_sp_2(tmp24, s, i, tmp25)
             else
               scrut15 = canBeEmpty_Concat_sp_1(p)
               new None()
         Concat(Nothing, _) then
-          c12 = s.0
+          c12 = s.(j)
           scrut14 = startsWith_Concat_sp_2(p, c12)
           scrut15 = canBeEmpty_Concat_sp_2(p)
           new None()
         else branch.unreachable
-fun match_SpecialRegExpSimple_sp_0(p, s) = matchImpl_SpecialRegExpSimple_sp_1(p, s, "")
+fun match_SpecialRegExpSimple_sp_0(p, s) = matchImpl_SpecialRegExpSimple_sp_1(p, s, 0, 0)
 fun mkUnion_SpecialRegExpSimple_sp_0(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
   if ls is

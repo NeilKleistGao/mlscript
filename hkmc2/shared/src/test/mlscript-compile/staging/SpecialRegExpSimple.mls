@@ -119,17 +119,17 @@ staged module SpecialRegExpSimple with
     fun startsWith(c) = p.startsWith(c)
     fun flat() = (@special new Cons(this, Nil))
 
-  @specialize fun matchImpl(p, s, acc) = if
-    SeqHelper.len(s) == 0 and
-      p.canBeEmpty() then new Some(acc)
+  fun matchImpl(@specialize p, s, i, j) = if
+    SeqHelper.len(s) == j and
+      p.canBeEmpty() then new Some(s.substring(i, j))
       else new None
     p is Nothing then new None
-    let c = s.0
-    p.startsWith(c) then matchImpl(p.derive(c), s.slice(1), acc + c)
-    p.canBeEmpty() then new Some(acc)
+    let c = s.(j)
+    p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
+    p.canBeEmpty() then new Some(s.substring(i, j))
     else new None
   fun match(p, s) =
-    matchImpl(p, s, "")
+    matchImpl(p, s, 0, 0)
 
   fun test(s) =
     let p = new Concat(new Star(new Exact("a")), new Exact("b"))
