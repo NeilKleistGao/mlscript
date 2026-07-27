@@ -190,6 +190,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case c: ClassSymbol if c.defn.exists(_.owner.isDefined) => false
         // top-level user-defined staged classes
         case c: ClassSymbol if c.defn.exists(defn => defn.owner.isEmpty && defn.hasStagedModifier.isDefined) => false
+        // non-top-level objects
+        case o: ModuleOrObjectSymbol if o.asObj.isDefined && o.defn.exists(_.owner.isDefined) => false
+        // top-level user-defined staged objects
+        case o: ModuleOrObjectSymbol if o.asObj.isDefined && o.defn.exists(defn => defn.owner.isEmpty && defn.hasStagedModifier.isDefined) => false
         // avoid name collision
         case _: TempSymbol | _: LocalVarSymbol | _: BaseTypeSymbol => true
         // FIXME: there may be more types of symbols that need to be renamed during staging

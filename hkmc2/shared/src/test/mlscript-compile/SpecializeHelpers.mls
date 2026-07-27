@@ -264,6 +264,8 @@ fun sov(v): ShapeSet =
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   Some(s) then s
   None and p is 
+    ValueSimpleRef(clsSymb) | ValueMemberRef(clsSymb) and clsSymb is ObjectSymbol then
+      mkClass(clsSymb, [], false)
     Select(ValueThis(ModuleSymbol), clsSymb) and clsSymb is ConcreteClassSymbol and clsSymb.paramsOpt is None then
       mkClass(clsSymb, [], false)
     Select(ValueMemberRef(ModuleSymbol), clsSymb) and clsSymb is ConcreteClassSymbol and clsSymb.paramsOpt is None then
