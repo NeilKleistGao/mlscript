@@ -154,9 +154,11 @@ class FunCache(
     reserveName(name)
   fun printDefinitions() =
     let decl = if owner is
+      ObjectSymbol then "object "
       ConcreteClassSymbol then "class "
       ModuleSymbol then "module "
     let runtimeClass = if owner is
+      ObjectSymbol then owner.value.class
       ConcreteClassSymbol(_, _, Some, _, _) then owner.value.class
       else owner.value
     
@@ -195,7 +197,7 @@ class FunCache(
       End then ""
       else throw Error("unexpected Block type in constructor: " + b.toString())
     
-    let extendsClause = if owner is ConcreteClassSymbol then
+    let extendsClause = if owner is ObjectSymbol then "" else if owner is ConcreteClassSymbol then
       let preCtor = runtimeClass."preCtor$_instr"().body
       assert preCtor is Block.Block
       inlineAssigments(new Map())(preCtor)
@@ -211,18 +213,23 @@ class FunCache(
       Scoped(symbols, rest) then Scoped(symbols, removeExtraValDefn(params, rest))
       Return | End then block
     
-    let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
-    assert ctor is FunDefn
-    let params = new Set(ctor.params.flat().map(_.sym))
-    let ctorBody = removeExtraValDefn(params, ctor.body)
+    let ctorBody = if owner is
+      ObjectSymbol then End()
+      else
+        let ctor = runtimeClass.((if owner is ConcreteClassSymbol then "class$" else "") + "ctor$_instr")()
+        assert ctor is FunDefn
+        let params = new Set(ctor.params.flat().map(_.sym))
+        removeExtraValDefn(params, ctor.body)
     let methodDefns = cache.values().map(e =>
       if not e.isPrivate then printer.showDefn(e.defn) else ""
     ).toArray().filter(_ != "").sort().join("\n")
     
     decl + owner.name + paramText
       + if extendsClause == "" then "" else (" extends " + extendsClause)
-      + if cache.length == 0 then "" else " with"
-      + indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
+      + if owner is ObjectSymbol then
+          if methodDefns == "" then "" else " with"
+        else if cache.length == 0 then "" else " with"
+      + if owner is ObjectSymbol then "" else indent("\n" + printer.showBlock(ctorBody)) // TODO: we can skip printing ctor that are just End()
       + (if methodDefns == "" then "" else indent("\n" + methodDefns))
   fun toString() =
     [printDefinitions(), printCachedPrivateCode(this)].filter(_ != "").join("\n")

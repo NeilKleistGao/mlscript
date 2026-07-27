@@ -8,7 +8,7 @@ import "./Shape.mls"
 import "./StrOps.mls"
 import "./Runtime.mls"
 
-open Block {ConcreteClassSymbol, Path, Symbol, Param}
+open Block {ConcreteClassSymbol, ObjectSymbol, Path, Symbol, Param}
 open Shape {Dyn, Lit, Arr, Class}
 open Predef
 open Option
@@ -176,6 +176,7 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOfSet(x))
+    Class(sym, [], _, _) and sym is ObjectSymbol then sym.value
     Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params, _, _) then new! value(...params.map(valOfSet))
     else throw Error("Unknown shape: " + s)
 
@@ -203,6 +204,8 @@ private fun shape2path(s: Shape, allocs) =
       let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
       [fullBlock, Block.ValueSimpleRef(tupSym)]
+    Class(sym, [], _, _) and sym is ObjectSymbol then
+      [Block.End(), Block.ValueMemberRef(sym)]
     Class(sym, fields, _, isSpecial) then
       let mapped = fields.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)

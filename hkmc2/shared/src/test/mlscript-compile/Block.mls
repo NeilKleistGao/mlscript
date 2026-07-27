@@ -62,6 +62,7 @@ class Symbol(val name: Str)
 class ClassSymbol(val name: Str) extends Symbol(name)
 class VirtualClassSymbol(val name: Str) extends ClassSymbol(name)
 class ConcreteClassSymbol(val name: Str, val value: Class, val paramsOpt: Opt[ParamList], val auxParams: Array[ParamList], val redirect: Bool) extends ClassSymbol(name)
+class ObjectSymbol(name: Str, value: Class, redirect: Bool) extends ConcreteClassSymbol(name, value, None, [], redirect)
 class ModuleSymbol(val name: Str, val value: Class, val redirect: Bool) extends Symbol(name)
 class NoSymbol() extends Symbol("$no_symbol$")
 
@@ -331,11 +332,14 @@ class Printer(val owner: Opt[Symbol]) with
     if d is
       FunDefn(sym, ps, body) then
         showFunDefn("", sym, ps, body)
-      ClsLikeDefn(sym, methods, _) and sym is ConcreteClassSymbol(_, v, _, _, _) and
-        isGeneratedStagedClass(sym) then getClassCache(v).printDefinitions()
-        else 
-          "class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
-            + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
+      ClsLikeDefn(sym, _, _) and isGeneratedStagedClass(sym) then
+        getClassCache(sym.value).printDefinitions()
+      ClsLikeDefn(sym, methods, _) and sym is ObjectSymbol then
+        "object " + showDefnSymbol(sym)
+          + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
+      ClsLikeDefn(sym, methods, _) then
+        "class " + showDefnSymbol(sym) + showParamsOpt(sym.paramsOpt) + sym.auxParams.map(showParams(_)).join("")
+          + indent((if methods is [] then "" else " with\n") + methods.map(showDefn(_)).join("\n"))
       // TODO: used to represent assignments in constructors, which still need some adjustments
       ValDefn(owner, sym, rhs) then
         "val " + showSymbol(sym) + " = " + showPath(rhs)

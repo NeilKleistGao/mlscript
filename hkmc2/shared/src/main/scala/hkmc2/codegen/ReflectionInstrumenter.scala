@@ -228,6 +228,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                 auxParams.map(ps => ctx => transformParamList(ps, Nil)(using ctx)).chainContext: (auxParams, ctx) =>
                   tuple(auxParams): auxParams =>
                     blockCtor("ConcreteClassSymbol", Ls(toValue(name), path, paramsOpt, auxParams, toValue(rename)), symName)(checkMap("checkClassMap", path, _, ctx))
+            case objSym: ModuleOrObjectSymbol if objSym.tree.k is syntax.Obj =>
+              blockCtor("ObjectSymbol", Ls(toValue(name), path, toValue(rename)), symName)(checkMap("checkClassMap", path.selSN("class"), _, ctx))
             case _: ModuleOrObjectSymbol =>
               blockCtor("ModuleSymbol", Ls(toValue(name), path, toValue(rename)), symName)(checkMap("checkModuleMap", path, _, ctx))
         case _ =>
@@ -652,6 +654,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         override def applySymbol(sym: Symbol) = sym match
           case c: ClassSymbol if c.defn.exists(defn => defn.hasStagedModifier.isDefined && defn.owner.isEmpty) =>
             used += c.defn.get.bsym
+          case o: ModuleOrObjectSymbol if o.asObj.isDefined && o.defn.exists(defn => defn.hasStagedModifier.isDefined && defn.owner.isEmpty) =>
+            used += o.defn.get.bsym
           case _ => ()
       val collector = (new UsedStagedClassesCollector)
       collector.applyCompanionModule(companion)
@@ -663,6 +667,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       val nestedPropagates = defn.body.blk.stats.collect:
         case cls: ClassDef if cls.hasStagedModifier.isDefined =>
           modSym.asPath.sel(Tree.Ident(cls.sym.nme), cls.sym)
+        case obj: ModuleOrObjectDef if (obj.kind is syntax.Obj) && obj.hasStagedModifier.isDefined =>
+          modSym.asPath.sel(Tree.Ident(obj.sym.nme), obj.sym).selSN("class")
       
       val cfg = new StagingCfg(companion.isym, modSym, nestedPropagates, codegenClasses.toList)
       val (entryFun, newMethods, cont) = stageMethods(cfg)(methods)
@@ -706,13 +712,14 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       
       val modSym = companion.isym
 
-      val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), ctorParams, preCtor)(N, Nil)
-      val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(N, Nil)
-      val newPreCtorFun = stageCtor(preCtorFun)
-      val newCtorFun = stageCtor(ctorFun)
-      
       val cfg = new StagingCfg(defn.isym, modSym, Nil, Nil)
       val (entryFun, newMethods, cont) = stageMethods(cfg)(methods)
+      // An object is already constructed and has no instance fields to propagate. Its staged
+      // representation therefore only needs the method instrumenters and generators.
+      val constructorMethods = if defn.k is syntax.Obj then Nil else
+        val preCtorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("preCtor$", Nil, false), ctorParams, preCtor)(N, Nil)
+        val ctorFun = FunDefn.withFreshSymbol(S(modSym), BlockMemberSymbol("class$ctor$", Nil, false), ctorParams, ctor)(N, Nil)
+        stageCtor(preCtorFun) :: stageCtor(ctorFun) :: Nil
       val (companionEntryFun, companionMethods) = companion.methods.partition(_.sym.nme == "generate")
       val combinedEntryFun: FunDefn = companionEntryFun match
         case Nil => entryFun
@@ -729,7 +736,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       
       // used for staging classes inside modules
       val newCompanion = companion.copy(
-        methods = combinedEntryFun :: newPreCtorFun :: newCtorFun :: newMethods ++ companionMethods,
+        methods = combinedEntryFun :: constructorMethods ++ newMethods ++ companionMethods,
         ctor = Begin(companion.ctor, cont(End())),
       )
       val newModule = defn.copy(sym = sym, companion = S(newCompanion), ctor = applyBlock(ctor))(defn.configOverride, defn.annotations.filter:
