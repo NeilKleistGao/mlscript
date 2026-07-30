@@ -26,10 +26,10 @@ module CharSet with
 
 staged module StagedRegExp with
   class Some(val x)
-  class None
+  object None
 
   class Cons(val x, val xs)
-  class Nil
+  object Nil
 
   @specialize fun pushUnique(ls, e) =
     if ls is
@@ -62,16 +62,16 @@ staged module StagedRegExp with
     fun startsWith(c)
     fun flat()
 
-  staged class Nothing() extends RegExp() with
+  staged object Nothing extends RegExp() with
     fun derive(c) = this
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) = other is Nothing
     fun startsWith(c) = false
-    fun flat() = new Nil
+    fun flat() = Nil
 
-  staged class Empty() extends RegExp() with
-    fun derive(c) = new Nothing()
+  staged object Empty extends RegExp() with
+    fun derive(c) = Nothing
     fun canBeEmpty() = true
     fun normalize() = this
     fun eq(other) = other is Empty
@@ -80,8 +80,8 @@ staged module StagedRegExp with
 
   staged class Exact(val ch) extends RegExp() with
     fun derive(c) =
-      if startsWith(c) then new Empty()
-      else new Nothing()
+      if startsWith(c) then Empty
+      else Nothing
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) =
@@ -90,16 +90,16 @@ staged module StagedRegExp with
     fun flat() = new Cons(this, Nil)
 
   staged class Any() extends RegExp() with
-    fun derive(c) = new Empty()
+    fun derive(c) = Empty
     fun canBeEmpty() = false
     fun normalize() = this
-    fun eq(other) = other is Any()
+    fun eq(other) = other is Any
     fun startsWith(c) = true
     fun flat() = new Cons(this, Nil)
 
   staged class Not(val chars) extends RegExp() with
     fun derive(c) =
-      if startsWith(c) then new Empty() else new Nothing()
+      if startsWith(c) then Empty else Nothing
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) =
@@ -115,7 +115,7 @@ staged module StagedRegExp with
     if ls is
       Cons(x, Nil) then x
       Cons(x, xs) then new Altern(x, mkUnion(xs))
-      else new Nothing()
+      else Nothing
 
   staged class Altern(val p1, val p2) extends RegExp() with
     fun derive(c) = (new Altern(p1.derive(c), p2.derive(c))).normalize()
@@ -131,13 +131,13 @@ staged module StagedRegExp with
     fun flat() =
       let p1' = p1.flat()
       let p2' = p2.flat()
-      concatUnique(concatUnique(new Nil, p1'), p2')
+      concatUnique(concatUnique(Nil, p1'), p2')
 
-  fun question(r) = new Altern(r, new Empty())
+  fun question(r) = new Altern(r, Empty)
 
   staged class In(val chars) extends RegExp() with
     fun derive(c) =
-      if startsWith(c) then new Empty() else new Nothing()
+      if startsWith(c) then Empty else Nothing
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) =
@@ -160,8 +160,8 @@ staged module StagedRegExp with
     fun normalize() =
       let p1' = p1.normalize()
       if p1' is
-        Empty() then p2.normalize()
-        Nothing() then p1'
+        Empty then p2.normalize()
+        Nothing then p1'
         else new Concat(p1', p2.normalize())
     fun eq(other) =
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
@@ -186,12 +186,12 @@ staged module StagedRegExp with
   fun matchImpl(@specialize p, s, i, j) = if
     len(s) == j and
       p.canBeEmpty() then new Some(s.substring(i, j))
-      else new None
-    p is Nothing then new None
+      else None
+    p is Nothing then None
     let c = s.(j)
     p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
     p.canBeEmpty() then new Some(s.substring(i, j))
-    else new None
+    else None
   fun match(p, s) =
     matchImpl(p, s, 0, 0)
 

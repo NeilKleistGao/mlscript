@@ -1,0 +1,22 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+import "../StagedObject.mls" as StagedObject__Legacy
+module StagedObject with
+    object Foo with
+      fun bar(x) = x + 1
+      fun foo(x, y) =
+        let {tmp, tmp1}
+        tmp = bar(x)
+        tmp1 = bar(y)
+        tmp + tmp1
+    fun bar(x, y) =
+      let {f}
+      f = foo()
+      foo_Foo_sp_0(f, x, y)
+    fun foo() = Foo
+open StagedObject
+fun bar_Foo_sp_0(self, x) = x + 1
+fun foo_Foo_sp_0(self, x, y) =
+  let {tmp, tmp1}
+  tmp = bar_Foo_sp_0(self, x)
+  tmp1 = bar_Foo_sp_0(self, y)
+  tmp + tmp1
