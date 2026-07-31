@@ -181,3 +181,17 @@ directory), and `upsert` is synchronized like `upsertPrelude`. Test harnesses th
 across many files pin `rootConfig`, which additionally makes an imported unit lower the same way the
 compile tests build the corresponding `.mjs` — so source locations baked into inlined bodies agree
 with the ones in the separately compiled module.
+
+Since nothing mutates the root configuration during a compilation session, a cached artifact was
+necessarily built under the one being asked for. Rather than comparing configurations and silently
+re-elaborating on a mismatch — which made every field of `Config` an implicit part of a compilation
+unit's identity — the caches now `softAssert` that they agree and keep the cached artifact. Reusing a
+single identity is the lesser evil if it ever fails, and the diagnostic makes the misuse (two contexts
+with different root configurations sharing one cache) visible rather than silent.
+
+The same "one spelling per file" requirement applies to the cache keys. On the JVM it comes free from
+`os.Path`, which is normalized by construction; the JS `VirtualPath` only normalized paths built with
+`/`, so a path built from a string — which is how the web entry point receives one — could denote the
+same file under a second key. That would both split its elaboration and defeat `InMemoryFileSystem`,
+which documents that it assumes normalized paths. `VirtualPath` now normalizes on construction and
+compares by the normalized form.

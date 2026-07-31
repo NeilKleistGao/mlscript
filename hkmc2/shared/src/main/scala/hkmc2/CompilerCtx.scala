@@ -189,9 +189,16 @@ class CompilerCtx(
     cache.upsert(file):
       case N => mk
       case cur @ S(art) =>
+        // * The root configuration is fixed for a whole compilation session — nothing mutates it —
+        // * so a cached artifact was necessarily built with the one we are asking for now.
+        // * A mismatch means two contexts with different root configurations share a cache, which
+        // * would give the same source file two elaborations and hence two sets of symbols.
+        // * We keep the cached artifact rather than re-elaborating: reusing one identity is the
+        // * lesser evil, and the diagnostic makes the misuse visible instead of silent.
+        softAssert(art.rootConfig === compilationUnitConfig,
+          s"Cached artifact for $file was elaborated under a different root configuration")
         val requestedLowering = paths.map(p => p.runtimeFile -> p.termFile)
         if art.lastChangedTimestamp < lastMod
-          || art.rootConfig =/= compilationUnitConfig
           || requestedLowering.exists(rp => art.ir.isEmpty || art.loweredPaths =/= S(rp))
         then mk
         else art
@@ -211,7 +218,10 @@ class CompilerCtx(
     val preludeConfig = rootConfig.getOrElse(Config.default(file.up))
     val lastMod = fs.getLastChangedTimestamp(file)
     cache.upsertPrelude(file):
-      case cur @ S(art) if !dbgParsing && art.lastChangedTimestamp >= lastMod && art.config === preludeConfig =>
+      case cur @ S(art) if !dbgParsing && art.lastChangedTimestamp >= lastMod =>
+        // * See the corresponding assertion in `getElaboratedBlock` above.
+        softAssert(art.config === preludeConfig,
+          s"Cached prelude for $file was elaborated under a different root configuration")
         art
       case _ =>
         val state = new Elaborator.State
