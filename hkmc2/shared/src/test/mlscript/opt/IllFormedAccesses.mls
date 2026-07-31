@@ -10,8 +10,12 @@ let x in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x, scrut;
-//│ set scrut = Predef⁰.hide⁰(false);
+//│ let x, scrut, x1, inlinedVal;
+//│ set x1 = false;
+//│ block inlinedLbl:
+//│   set inlinedVal = x1;
+//│   break inlinedLbl
+//│ set scrut = inlinedVal;
 //│ match scrut
 //│   true =>
 //│     set x = 1;

@@ -32,7 +32,7 @@ class FirstClassFunctionTransformer
     val callDef = FunDefn.withFreshSymbol(Some(clsSym), new BlockMemberSymbol("call", Nil, true), params :: Nil,
       Return(Call(p, args ne_:: Nil)(CallMetadata.defaultMlsFun)))(N, annotations = Nil)
     ClsLikeDefn(None, clsSym, defSym, None, syntax.Cls, None, Nil,
-      Some(Select(State.globalThisSymbol.asThis, Tree.Ident("Function"))(Some(ctx.builtins.Function))),
+      Some(Select(State.globalThisSymbol.asThis, Tree.Ident("Function"))(Some(ctx.builtins.Function))(false)),
       callDef :: Nil, Nil, Nil, Assign.discard(
         Call(State.builtinOpsMap("super").asSimpleRef, Nil ne_:: Nil)(CallMetadata.defaultFun),
         End()), End(), None, None)(N, annotations = Nil)
@@ -91,7 +91,10 @@ class FirstClassFunctionTransformer
 
   override def applyResult(r: Result)(k: Result => Block): Block = r match
     case c @ Call(fun, argss) => applyListOf(argss, (args, k2) => applyArgs(args)(k2)): argss2 =>
-      def call(f: Path) = Call(f, argss2.ne_!)(c.metadata)
+      def call(f: Path) =
+        if (f is fun) && (argss is argss2)
+        then c
+        else Call(f, argss2.ne_!)(c.metadata)
       fun match
         case ref @ Value.SimpleRef(sym) => sym match
           case _: VarSymbol |  _: TempSymbol => k(call(ref.selSN("call")))

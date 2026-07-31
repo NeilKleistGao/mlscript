@@ -29,6 +29,11 @@ class BlockSimplifier
   val MaxIterations = 10
   val MaxDCEIterationsPerIter = 10
   val MinInlineFuelInThresholdUnits = 100
+  // * The inlining growth budget is granted on the first application and then retained across
+  // * later ones: the compilation pipeline applies the same simplifier more than once to a given
+  // * compilation unit, and the budget is meant to bound code growth per file, not per pass.
+  // * These are only ever written by `apply` and `spendInlineFuel` below.
+  private var inlineFuelGranted = false
   private var remainingInlineFuel = 0
   
   
@@ -40,9 +45,11 @@ class BlockSimplifier
     // proportional to its initial IR size, with a threshold-based floor so tiny
     // files can still benefit from ordinary cross-file inlining. Explicit
     // `@inline` and no-duplication inline elimination do not spend from this budget.
-    remainingInlineFuel = config.inlining match
-      case S(cfg) => prog.main.size max (cfg.inlineThreshold * MinInlineFuelInThresholdUnits)
-      case N => 0
+    if !inlineFuelGranted then
+      inlineFuelGranted = true
+      remainingInlineFuel = config.inlining match
+        case S(cfg) => prog.main.size max (cfg.inlineThreshold * MinInlineFuelInThresholdUnits)
+        case N => 0
 
     var res = prog
     def printRes = printer(res)
@@ -59,25 +66,27 @@ class BlockSimplifier
       
       log(s"⬤ Simplif. iter. $iteration")
       
-      // * Running DCE once sometimes produces more DCE opportunities;
-      // * it is important to apply all of them so that later passes, such as COC,
-      // * are not impeded by things like unused labels from inlining.
-      var dceIteration = 0
-      while
-        val dce = new DeadCodeElim()
-        res = dce.apply(res)
-        changed ||= dce.changed
-        if dce.changed then
-          log("▶ DCE:\n" + printRes)
-          dceIteration += 1
-          dceIteration < MaxDCEIterationsPerIter
-        else false
-      do ()
+      if summon[Config].optimizer.deadCodeElim then
+        // * Running DCE once sometimes produces more DCE opportunities;
+        // * it is important to apply all of them so that later passes, such as COC,
+        // * are not impeded by things like unused labels from inlining.
+        var dceIteration = 0
+        while
+          val dce = new DeadCodeElim()
+          res = dce.apply(res)
+          changed ||= dce.changed
+          if dce.changed then
+            log("▶ DCE:\n" + printRes)
+            dceIteration += 1
+            dceIteration < MaxDCEIterationsPerIter
+          else false
+        do ()
       
-      val vp = new DataFlowAnalysis(LocalVars.analyze(res.main))
-      res = vp.apply(res)
-      changed ||= vp.changed
-      if vp.changed then log("▶ VP:\n" + printRes)
+      if summon[Config].optimizer.dataFlowAnalysis then
+        val vp = new DataFlowAnalysis(LocalVars.analyze(res.main))
+        res = vp.apply(res)
+        changed ||= vp.changed
+        if vp.changed then log("▶ VP:\n" + printRes)
       
       summon[Config].inlining.foreach: cfg =>
         
@@ -113,14 +122,21 @@ class BlockSimplifier
   end Helper
   
   
+  // * Only such variables can be assigned directly in the IR
   type LocalVar = LocalVarSymbol
   
   object LocalVars extends CachedAnalysis[Block, Set[LocalVar]]:
     
-    def analyzeUncached(block: Block): Set[LocalVar] = block match
+    def analyzeUncached(block: Block): Set[LocalVar] =
+      def default =
+        block.subBlocks.iterator.flatMap(analyze).toSet
+      block match
+      case Define(fd: FunDefn, rest) =>
+        fd.params.iterator.flatMap(_.params).collect {
+          case Param(sym = v: LocalVar) => v }.toSet ++ default
       case Scoped(syms, rest) =>
         rest.analyze ++ syms.iterator.collect { case v: LocalVar => v }
-      case _ => block.subBlocks.iterator.flatMap(analyze).toSet
+      case _ => default
     
   end LocalVars
   
@@ -391,13 +407,19 @@ class BlockSimplifier
   
   /** Basic intraprocedural flow-sensitive analysis to figure out which assignments may flow into which variables,
     * at each point of the program.
+    * 
     * For loops, it is enough to pass through the loop body once without transforming it ("dry run")
     * to get the data flow information from loop-back edges, and then to actually transform the loop.
     * When in dry-run mode, nested loops are also traversed in dry-run mode,
     * so overall each Block is traversed at most twice.
+    * 
     * We keep track of a tree of assignments where, if the RHS was a local variable, we also store its analysis value
     * that was in effect at this point, which allows us to eliminate useless transitive assignments.
-    * We keep track of variables going out of scope to avoid using them afterwards. */
+    * We keep track of variables going out of scope to avoid using them afterwards.
+    * 
+    * Note that if the program tree is changed, it is imperative to register the change,
+    * otherwise dead assignment removal (which runs when no change was detected) will not work correctly,
+    * as it relies on object identity. */
   class DataFlowAnalysis(localVars: Set[LocalVar]) extends BlockTransformer(SymbolSubst.Id), Helper:
     
     
@@ -406,6 +428,15 @@ class BlockSimplifier
     //    so we should compute that instead in the future.
     //    Note that the capturing definitions won't see the assignments of the captured variable anyway
     //    because that variable will be treated as unknown, since nested definitions start from an empty environment.
+    
+    
+    val liveAssignInfosUntilChangeTriggered: Buffer[AssignInfo] = Buffer.empty
+    
+    // * We might need to opt out of tracking some locals, such as those that are assigned
+    // * in places with observable non-local control flow, such as in a `try` block.
+    // * We can't remove assignments to these variables even if they locally look dead,
+    // * as they might in fact not be.
+    val impreciselyTrackedVars: MutSet[LocalVar] = MutSet.empty
     
     
     def apply(prog: Program): Program =
@@ -433,28 +464,52 @@ class BlockSimplifier
       
       cur = applyProgram(prog)
       
-      // * [Future: dead assignment removal]
-      // * Technically, if nothing in the program changed, we could remove dead assignments using a simple flag.
-      /*
-      if !changed then cur =
+      // * Dead assignment removal: if nothing in the program changed, we can remove dead assignments.
+      // * We mark live assignments by traversing all live AssignInfo objects that were observed during the analysis.
+      if !changed && {
+        val ok = cur is prog
+        softAssert(ok, "A change in the program was not properly registered during data-flow analysis")
+        ok
+      } then cur =
+        
+        import scala.jdk.CollectionConverters._
+        import java.util.IdentityHashMap
+        
+        val traversedAssignedInfos: IdentityHashMap[AssignInfo, Unit] = new IdentityHashMap()
+        
+        val liveAssigns: IdentityHashMap[Assign, Unit] = new IdentityHashMap()
+        
+        def rec(assnd: AssignInfo): Unit =
+          if traversedAssignedInfos.put(assnd, ()) is null then
+            assnd match
+            case ass @ AssignInfo.Assigned(_, _, varAsst, rhsRequirements) =>
+              liveAssigns.put(ass.originalAssignment, ())
+            case AssignInfo.Merge(l, r) =>
+              rec(l)
+              rec(r)
+            case AssignInfo.Uninitialized | AssignInfo.Unknown => ()
+        
+        liveAssignInfosUntilChangeTriggered.foreach(rec)
+        
+        // log(s"Live assignments: ${liveAssigns.keySet.asScala.toList.map(a =>
+        //   s"${a.lhs.showDbg} := ${a.rhs.showDbg}").sorted}")
+        // log(s"Imprecisely accessed: ${impreciselyReadVars.toList.map(_.toString).sorted}")
+        
         (new BlockTransformer(SymbolSubst.Id):
           
           override def applyBlock(b: Block): Block =
             b match
             case ass @ Assign(lhs: LocalVar, rhs, rst)
-            if localVars(lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs) && !liveAssignments.containsKey(ass)
+            if localVars(lhs) && !capturedVars(lhs) && !symbolsToPreserve(lhs)
+              && !impreciselyTrackedVars(lhs) && !liveAssigns.containsKey(ass)
             =>
-              import scala.jdk.CollectionConverters._
-              log(s"Live assignments: ${liveAssignments.keySet.asScala.toList.sortBy(_.toString)
-                  .map(a => a.showDbg + System.identityHashCode(a))
-                }")
               registerChange(s"rm ass ${lhs.showDbg} = ${rhs.showDbg}")
-              registerChange(s"rm id ${System.identityHashCode(this)}")
               Assign.discard(rhs, applyBlock(rst))
             case _ => super.applyBlock(b)
           
         ).applyProgram(cur)
-      */
+      
+      end if
       
       cur
       
@@ -526,7 +581,7 @@ class BlockSimplifier
         rhs: Result,
         varAsst: Opt[Value.RefLike -> AssignInfo],
         rhsRequirements: Set[LocalVar -> AssignInfo],
-      )
+      )(val originalAssignment: Assign)
       case Merge(asst1: AssignInfo, asst2: AssignInfo)
       
       override def toString: String = this match
@@ -539,16 +594,28 @@ class BlockSimplifier
         case Merge(a1, a2) => s"{${a1.toString} | ${a2.toString}}"
       
       def merge(that: AssignInfo): AssignInfo =
+        // * Important note: we intentionally do not simplify merges with Unknown,
+        // * although it would be logically valid to simplify them to Unknown.
+        // * We can't do that here, though, as it would lose information which is currently
+        // * used to determine whether a variable has changed or not:
+        // * when a variable is reassigned, we always map it to a fresh Assigned node;
+        // * the analysis then checks whether a variable has changed by comparing the object identity
+        // * of the node that was originally assigned to the variable with the variable's current node.
+        // * Now, if the original node was Unknown and we have a control-flow split leading to a merged
+        // * of, eg, (Unknown, Assigned(...)), then simplifying that to Unknown would leave the object
+        // * identity unchanged, wrongly indicating that the variable has not changed,
+        // * when in fact it may have been reassigned (in one of the two control-flow paths).
         if this is that then this
-        else that match
-          case Unknown => that
+        else this match
+        case Uninitialized => that
+        case Unknown =>
+          if that is Uninitialized then this
+          else Merge(this, that)
+        case _: Assigned | _: Merge =>
+          that match
           case Uninitialized => this
-          // case Merge(l, r) => Merge(merge(this, l), r)
-          case _: Assigned | _: Merge =>
-            this match
-              case Unknown => this
-              case Uninitialized => that
-              case _: Assigned | _: Merge => Merge(this, that)
+          case Unknown => Merge(this, that)
+          case _: Assigned | _: Merge => Merge(this, that)
       
       // * This lazy val is used to avoid retraversing the DAG and to deduplicate entries.
       // * There are more efficient ways of traversing the DAG (e.g. using a mutable visited set),
@@ -562,7 +629,7 @@ class BlockSimplifier
           case N => N
           case S(set1) =>
             asst2.assigns match
-            case N => S(set1)
+            case N => N
             case S(set2) => S(set1 ++ set2)
         case Uninitialized => S(Set.empty)
         case Unknown => N
@@ -637,8 +704,14 @@ class BlockSimplifier
       assignedResults = impossible
       res
     
-    // *** ASSUMPTION (should be an invariant of the IR): only LocalVar symbols can be Assign'ed ***
     var assignedResults: AssignedResults = emptyAssignedResults
+    
+    def accessAssignedResults(sym: LocalVar): AssignInfo =
+      val res = assignedResults(sym)
+      if !changed then
+        liveAssignInfosUntilChangeTriggered += res
+      res
+    
     var inDryRun = false // for traversing loop bodies once before actually transforming the program
     
     def withFreshAssignedResults[T](thunk: => T): T =
@@ -662,10 +735,6 @@ class BlockSimplifier
         )
         .toMap
         .withDefaultValue(Unknown)
-    
-    
-    // * [Future: dead assignment removal]
-    // val liveAssignments: IdentityHashMap[Block, Unit] = new IdentityHashMap()
     
     
     override def applyDefn(defn: Defn)(k: Defn => Block): Block =
@@ -713,32 +782,41 @@ class BlockSimplifier
         softAssert(false, s"Expected local assignment lhs ${lhs.showDbg}, got ${other.showDbg}")
         lhs
 
-    private def recordAssignmentFact(lhs: LocalVar, rhs: Result): LocalVar =
+    // * `originalAssignment` is the `Assign` node this fact originates from; it is used by
+    // * dead-assignment removal to identify the live assignments by object identity,
+    // * which is only sound when the program was left unchanged by this analysis.
+    private def recordAssignmentFact(lhs: LocalVar, rhs: Result, originalAssignment: Assign): LocalVar =
       val lhs2 = applyLocalAssignLhs(lhs)
       val varAsst = rhs.match
         case r @ Value.SimpleRef(sym: LocalVar) =>
           if capturedVars(sym) then N
-          else S(r -> assignedResults(sym))
+          else S(r -> accessAssignedResults(sym))
         case r: Value.RefLike => S(r -> Unknown)
         case _ => N
       val rhsRequirements = rhs.freeVars.iterator.collect:
         case sym: LocalVar if !capturedVars(sym) =>
-          sym -> assignedResults(sym)
-      assignedResults += lhs2 -> Assigned(lhs2, rhs, varAsst, rhsRequirements.toSet)
+          sym -> accessAssignedResults(sym)
+      assignedResults += lhs2 -> Assigned(lhs2, rhs, varAsst, rhsRequirements.toSet)(originalAssignment)
       lhs2
 
+    override def applySimpleSymbol(sym: SimpleSymbol): SimpleSymbol = sym match
+      case sym: LocalVar =>
+        accessAssignedResults(sym)
+        super.applySimpleSymbol(sym)
+      case _ => super.applySimpleSymbol(sym)
+    
     override def applyBlock(b: Block): Block =
     // trace[Block](s"Applying block: ${b.showDbg.abbreviate} with map:\n${showMap}", res => s"|= ${showMap}"):
       b match
       
       // * Collapse immediately-invoked path aliases.
       // * This can often arise due to inlining and forwarding functions like `fun i = id`.
-      case Assign(lhs: LocalVar, path: Path, Assign(nextLhs, call @ Call(Value.SimpleRef(fun: LocalVar), argss), rst))
+      case ass @ Assign(lhs: LocalVar, path: Path, Assign(nextLhs, call @ Call(Value.SimpleRef(fun: LocalVar), argss), rst))
         if canCollapseImmediateCallPrefix(lhs, path, fun, argss) && path.isPure
       =>
           registerChange(s"immediate assigned call prefix ${lhs.showDbg} ~> ${path.showDbg}")
           applyPath(path): path2 =>
-            val lhs2 = recordAssignmentFact(lhs, path2)
+            val lhs2 = recordAssignmentFact(lhs, path2, ass)
             val combined = Call(path2, argss)(call.metadata).withLocOf(call)
             val res = applyBlock(Assign(nextLhs, combined, rst))
             // * Note that it is incorrect to eliminate the `lhs` assignment even if `!rst.freeVars(lhs)`,
@@ -748,12 +826,12 @@ class BlockSimplifier
       // * Note the following case does not necessarily assume evaluating the path is pure.
       // * Since there is no intervening statement and the local has no other use,
       // * this preserves both the number and order of evaluations.
-      case Assign(lhs: LocalVar, path: Path, Return(call @ Call(Value.SimpleRef(fun: LocalVar), argss)))
+      case ass @ Assign(lhs: LocalVar, path: Path, Return(call @ Call(Value.SimpleRef(fun: LocalVar), argss)))
         if canCollapseImmediateCallPrefix(lhs, path, fun, argss) && (path.isPure || !symbolsToPreserve(lhs))
       =>
           registerChange(s"immediate returned call prefix ${lhs.showDbg} ~> ${path.showDbg}")
           applyPath(path): path2 =>
-            val lhs2 = recordAssignmentFact(lhs, path2)
+            val lhs2 = recordAssignmentFact(lhs, path2, ass)
             val combined = Call(path2, argss)(call.metadata).withLocOf(call)
             val res = applyBlock(Return(combined))
             if symbolsToPreserve(lhs) then Assign(lhs2, path2, res) else res
@@ -771,7 +849,7 @@ class BlockSimplifier
         
         applyResult(rhs): rhs2 =>
         
-          val lhs2 = recordAssignmentFact(lhs, rhs2)
+          val lhs2 = recordAssignmentFact(lhs, rhs2, ass)
           val rst2 = applyBlock(rst)
           if (lhs2 is lhs) && (rhs2 is rhs) && (rst2 is rst) then ass else Assign(lhs, rhs2, rst2)
         
@@ -791,10 +869,10 @@ class BlockSimplifier
         // * (not exponentially many times).
         if loop then
           atLabelBegin.put(label, assignedResults)
-          // * Would seem to make sense to make the below `impossible`, but it doesn't work,
-          // * even if we add `atLabelEnd.put(label, merge(atLabelEnd(label), assignedResults))`
-          // * after the `applyBlock` call. Not entirely sure why.
-          atLabelEnd.put(label, emptyAssignedResults)
+          // * Initially, we treat this loop's rest block as unreachable.
+          // * Then, when non-abortive loops are found to either `break` or fall-through,
+          // * we will get merges that make the rest recognized as reachable.
+          atLabelEnd.put(label, impossible)
           val oldDryRun = inDryRun
           inDryRun = true
           applyBlock(body)
@@ -828,9 +906,19 @@ class BlockSimplifier
       case TryBlock(sub, finallyDo, rest) =>
         val sub2 = applyBlock(sub)
         val finallyDo2 =
-          // * This block might be executed from an unknown point in the previous block,
+          // * This block might be executed from an unknown point in `sub` (where the first exception is thrown),
           // * so we have to be conservative and not propagate any information.
+          if !changed then
+            assignedResults.valuesIterator.foreach(liveAssignInfosUntilChangeTriggered += _)
+            // * ^ all assigned infos are still to be considered live, even though we reset `assignedResults`
           assignedResults = emptyAssignedResults
+          // * Moreover, we have to special-case all assigned local variables, as the corresponding assignments
+          // * might end up being live even though local flow analysis would think they are not.
+          sub.definedVars.foreach:
+            case sym: LocalVar =>
+              log(s"Variable ${sym.showDbg} is written in a `finally` block; marking it as imprecise tracked")
+              impreciselyTrackedVars += sym
+            case _ =>
           applyBlock(finallyDo)
         val rest2 = applySubBlock(rest)
         if (sub2 is sub) && (finallyDo2 is finallyDo) && (rest2 is rest) then b
@@ -915,11 +1003,18 @@ class BlockSimplifier
             case Merge(asst1, asst2) =>
               canEscapeBranch(asst1) && canEscapeBranch(asst2)
           def mergeBranchInfos(infos: List[AssignInfo]): AssignInfo =
-            if infos.exists(_ is Unknown) then Unknown
+            // * Unlike `AssignInfo.merge`, which retains the merged facts precisely so that later
+            // * reads can still reach them, giving up here *discards* them: a read after the match
+            // * would only see `Unknown`, so dead assignment removal could no longer tell that the
+            // * discarded assignments are in fact live. We therefore mark them live explicitly.
+            def giveUp: AssignInfo =
+              infos.foreach(liveAssignInfosUntilChangeTriggered += _)
+              Unknown
+            if infos.exists(_ is Unknown) then giveUp
             else if infos.exists(_ is Uninitialized) && !infos.forall(_ is Uninitialized) then
               val initializedInfos = infos.filterNot(_ is Uninitialized)
               if initializedInfos.forall(canEscapeBranch) then initializedInfos.reduce(_.merge(_))
-              else Unknown
+              else giveUp
             else infos.reduce(_.merge(_))
           
           val arms2 = if gaveUp then arms else arms.filterConserve: (pat, body) =>
@@ -941,11 +1036,22 @@ class BlockSimplifier
           
           val newArms = arms2.mapConserve:
             case arm @ (cse, body) =>
+              // * We need to visit the symbols of the cases to register the liveness of their AssignedInfo.
+              // * Normally, the Match case uses `applyCase`, which uses `applyPath`, and they both take a continuation,
+              // * making things unnecessarily awkward for the data-flow analysis.
+              cse.freeVars.foreach:
+                case sym: SimpleSymbol => applySimpleSymbol(sym)
+                case _ =>
               val newBody = applyBlock(body)
               recordBranch(newBody)
               if newBody is body then arm else cse -> newBody
-          val newDflt = if !gaveUp && shapes.isEmpty
-            then S(Unreachable("exhaustive match"))
+          val newDflt =
+            if !gaveUp && shapes.isEmpty
+            then
+              val res = S(Unreachable("exhaustive match"))
+              if dflt === res then dflt else
+                registerChange(s"Default arm is unreachable because all shapes are covered")
+                res
             else dflt.mapConserve:
               case body =>
                 val newBody = applyBlock(body)
@@ -995,11 +1101,10 @@ class BlockSimplifier
       v match
       case Value.SimpleRef(loc: LocalVar) if !inDryRun && !capturedVars(loc) =>
         
-        val rs = assignedResults(loc)
+        val rs = accessAssignedResults(loc)
         // log(s"Ref ${loc.showDbg} ${rs} ${localVars(loc)} ${capturedVars(loc)}")
         
         val analysis = rs.valueAnalysis
-        val refs = analysis.refs.iterator.filter(_.isCurrent).map(_.ref).toList
         
         // log(s"Analysis: litValue: ${analysis.litValue}, unchanged vars: ${refs}")
         
@@ -1011,6 +1116,7 @@ class BlockSimplifier
           registerChange(s"${loc.showDbg} ~> ${lit.showDbg}")
           return k(lit)
         case false =>
+          def refs = analysis.refs.iterator.filter(_.isCurrent).map(_.ref)
           refs.minByOption(_.symbol.uid) match
           case N => k(v)
           case S(v2) =>
@@ -1061,6 +1167,7 @@ class BlockSimplifier
       case Call(Value.SimpleRef(sym: BuiltinSymbol), (arg1 :: arg2 :: Nil) :: Nil)
         if sym.nme === "," && arg1.spread.isEmpty && arg2.spread.isEmpty
         =>
+          registerChange(s"rm comma ${arg1.value.showDbg}, ${arg2.value.showDbg}")
           Assign.discard(arg1.value, k(arg2.value))
       
       case r =>

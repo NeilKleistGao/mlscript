@@ -128,6 +128,21 @@ class CompilerCtx(
         val resolver = Resolver(rtl)
         resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
 
+      // Runs the compilation pipeline on a freshly lowered compilation unit.
+      // The unit's own top-level symbols are preserved as a private ABI, because other
+      // compilation units may inline bodies of this one that still refer to them.
+      // Note that this must run the *whole* pipeline (and not just the lowering proper),
+      // as the `irDefn` fields the inliner reads are owned by the latest rewrite of each definition,
+      // and only fully-transformed definitions are valid to splice into another unit.
+      def optimize(lowered: codegen.Program): codegen.Program =
+        given Config = artifactConfig
+        val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
+        val pipeline = new codegen.CompilationPipeline:
+          override def extraSymbolsToPreserve(prog: codegen.Program): Set[codegen.BoundSymbol] =
+            collectCompilationUnitSymbols(prog).toSet
+        ltl.givenIn:
+          pipeline.run(lowered, printer, exportedSymbol.toSet, dtl)
+
       // Imported compilation units are lowered even in worksheet mode so their
       // symbols carry IR definitions that the caller's inliner can inspect.
       if paths.isEmpty then
@@ -135,8 +150,7 @@ class CompilerCtx(
           given Elaborator.State = state
           val low = ltl.givenIn:
             new codegen.Lowering()(using artifactConfig, ltl, summon[Raise], state, artifactCtx, summon[SymbolPrinter])
-              with codegen.LoweringSelSanityChecks
-          low.program(blk0, Set.empty)
+          optimize(low.program(blk0, Set.empty))
       val ir = paths.map: compilerPaths =>
         artifactConfig.givenIn:
           given Elaborator.State = state
@@ -158,21 +172,7 @@ class CompilerCtx(
           if hasQuote then state.noteImportedModule(State.termSymbol, compilerPaths.termFile.toString)
           val low = ltl.givenIn:
             new codegen.Lowering()(using artifactConfig, ltl, summon[Raise], state, artifactCtx, summon[SymbolPrinter])
-              with codegen.LoweringSelSanityChecks
-          val jsb = ltl.givenIn:
-            codegen.js.JSBuilder()
-          val lowered = low.program(blk, Set.empty)
-          val compilationUnitSymbols = collectCompilationUnitSymbols(lowered)
-          var optimized = lowered
-          val symbolsToPreserve: Set[codegen.BoundSymbol] =
-            compilationUnitSymbols.toSet[codegen.BoundSymbol] ++ exportedSymbol.toSet
-          optimized =
-            val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
-            optimized = codegen.WorkerWrapper(symbolsToPreserve, dtl, printer)(optimized)
-            codegen.BlockSimplifier(symbolsToPreserve, dtl, printer)(optimized)
-          ltl.givenIn:
-            optimized = codegen.DeadParamElim(optimized)
-          optimized
+          optimize(low.program(blk, Set.empty))
 
       val loweredPaths = paths.map(p => p.runtimeFile -> p.termFile)
       Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, loweredPaths, compilationUnitConfig, lastMod)

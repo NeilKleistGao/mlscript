@@ -82,9 +82,6 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   override def processTerm(blk: semantics.Term.Blk, inImport: Bool)(using Config, Raise): Unit =
     super.processTerm(blk, inImport)
     
-    val outerRaise: Raise = summon
-    val reportedMessages = mutable.Set.empty[Str]
-    
     val importAliases = blk.stats.collect:
         case Import(sym = sym: VarSymbol) => sym
       .toSet
@@ -122,83 +119,55 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
       loweringState.initRuntimeSymbolsFromFile(runtimeSourceFile, prelude)(
         using summon[TL], summon[Raise], summon[Config], cctx.withPaths(compilerPaths))
     
-    if showJS.isSet then config.copy(sanityChecks = N).givenIn:
-      given Raise =
-        case d @ ErrorReport(source = Source.Compilation) =>
-          reportedMessages += d.mainMsg
-          outerRaise(d)
-        case d => outerRaise(d)
-      given Elaborator.Ctx = curCtx
-      val low = ltl.givenIn:
-        codegen.Lowering()(using summon[Config], ltl, summon[Raise], loweringState, curCtx, summon[SymbolPrinter])
-      val jsb = ltl.givenIn:
-        new JSBuilder
-      var lowered = low.program(blk, symbolsToPreserve = Set.empty)
-      if noOptimizations.isUnset then
-        lowered = BlockSimplifier(symbolsToPreserve, dtl, print)(lowered)
-        ltl.givenIn:
-          lowered = DeadParamElim(lowered)
-      val nestedScp = baseScp.nest
-      val je = nestedScp.givenIn:
-        jsb.programBody(lowered, N, wd)
-      val jsStr = je.stripBreaks.mkString(output.ColWidth)
-      outputSeparator("JS (unsanitized)")
-      output(jsStr)
-    
     if noCodeGen.isUnset then
       given Elaborator.Ctx = curCtx
-      given Raise =
-        case e: ErrorReport if reportedMessages.contains(e.mainMsg) =>
-          if verbose.isSet then
-            output(s"Skipping already reported diagnostic: ${e.mainMsg}")
-        case d => outerRaise(d)
       val low = ltl.givenIn:
         new codegen.Lowering()(using summon[Config], ltl, summon[Raise], loweringState, curCtx, summon[SymbolPrinter])
-          with codegen.LoweringSelSanityChecks
           with codegen.LoweringTraceLog(traceJS.isSet)
       
-      var lowered = low.program(blk, symbolsToPreserve = symbolsToPreserve)
+      val lowered = ltl.givenIn:
+        low.program(blk, symbolsToPreserve = symbolsToPreserve)
       
-      var optimized = lowered
+      val optimized = ltl.givenIn:
+        val customPipeline = new CompilationPipeline:
+          override def passHook(passName: Str, before: Program, after: Program) =
+            // TODO: Preserve object identity in Lifter
+            if (passName =/= "Lifter") && (before isnt after) && (before === after) then
+              output(s"/!\\ Warning: object identity between equal objects was not preserved by ${passName}")
+              def rec(lhs: Product, rhs: Product): Bool =
+                (lhs is rhs) || {
+                  if
+                    lhs.productIterator.zip(rhs.productIterator).forall:
+                      case (s1: Product, s2: Product) => rec(s1, s2)
+                      case (s1, s2) => (s1 is s2) || {
+                        output(s"/!\\ Offending is part of: ${lhs.showAsTree}")
+                        false
+                      }
+                  then
+                    output(s"/!\\ Offending: ${lhs.showAsTree}") 
+                    false
+                  else false
+                }
+              rec(before.main, after.main)
+          override def preOptimizeHook(prog: Program) =
+            if showLoweredTree.isSet then
+              outputSeparator("Lowered IR Tree")
+              output(prog.showAsTree)
+            if showIR.isSet || showIRLines.isSet then
+              given ShowCfg = ShowCfg(
+                showExpansionMappings = false,
+                showFlowSymbols = true,
+                debug = debug.isSet,
+              )
+              val irStr = Printer().worksheet(prog)(using irPrintingScp).mkString(output.ColWidth)
+              val sloc = irStr.count(_ == '\n') + 1
+              if showIRLines.isSet then output(s"Lines of IR: ${sloc}")
+              if showIR.isSet then
+                outputSeparator("Lowered IR")
+                output(irStr)
+            super.preOptimizeHook(prog)
+        customPipeline.run(lowered, print, symbolsToPreserve, dtl)
       
-      if showLoweredTree.isSet then
-        outputSeparator("Lowered IR Tree")
-        output(optimized.showAsTree)
-      
-      if showIR.isSet || showIRLines.isSet then
-        given ShowCfg = ShowCfg(
-          showExpansionMappings = false,
-          showFlowSymbols = true,
-          debug = debug.isSet,
-        )
-        val irStr = Printer().worksheet(optimized)(using irPrintingScp).mkString(output.ColWidth)
-        val sloc = irStr.count(_ == '\n') + 1
-        if showIRLines.isSet then output(s"Lines of IR: ${sloc}")
-        if showIR.isSet then
-          outputSeparator("Lowered IR")
-          output(irStr)
-      
-      if noOptimizations.isUnset then
-        optimized = WorkerWrapper(symbolsToPreserve, dtl, print)(optimized)
-        
-        optimized = BlockSimplifier(symbolsToPreserve, dtl, print)(optimized)
-        ltl.givenIn:
-          optimized = DeadParamElim(optimized)
-      
-      // TODO: Test that transformers retain object identity when there are no changes
-      if (optimized isnt lowered) && (optimized === lowered) then
-        output("/!\\ Warning: object identity between equal objects was not preserved by BlockSimplifier or DeadParamElim")
-        def rec(lhs: Block, rhs: Block): Bool =
-          (lhs is rhs) || {
-            if
-              lhs.subBlocks.iterator.zip(rhs.subBlocks.iterator).forall:
-                case (s1: Block, s2: Block) => rec(s1, s2)
-            then
-              output(s"/!\\ Offending subblock: ${lhs.showAsTree}") 
-              false
-            else false
-          }
-        rec(optimized.main, lowered.main)
       if checkIR.isSet then
         BlockChecker().applyProgram(optimized)
       
@@ -244,6 +213,16 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
         case Return(res) =>
           Assign(resSym, res, End())
       ))
+    
+      if showJS.isSet then config.copy(sanityChecks = N).givenIn:
+        val jsb = ltl.givenIn:
+          new JSBuilder
+        val je = nestedScp.nest.givenIn:
+          jsb.programBody(pgrm.copy(main = Scoped(exportedScoped, pgrm.main)), N, wd)
+        val jsStr = je.stripBreaks.mkString(output.ColWidth)
+        outputSeparator("JS (unsanitized)")
+        output(jsStr)
+      
       val jsb = ltl.givenIn:
         new JSBuilder
           with JSBuilderArgNumSanityChecks

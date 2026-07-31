@@ -6,6 +6,7 @@ import hkmc2.utils.*, shorthands.*
 import hkmc2.io
 import utils.*
 
+import hkmc2.codegen.CompilationPipeline
 import hkmc2.semantics.*
 import hkmc2.syntax.Keyword.`override`
 import semantics.Elaborator.{Ctx, State}
@@ -118,19 +119,15 @@ class MLsCompiler
       )
       val low = ltl.givenIn:
         new codegen.Lowering()
-          with codegen.LoweringSelSanityChecks
       val jsb = ltl.givenIn:
         codegen.js.JSBuilder()
-      val lowered = low.program(blk, symbolsToPreserve = Set.empty)
-      var optimized = lowered
+      val lowered = ltl.givenIn:
+        low.program(blk, symbolsToPreserve = Set.empty)
       val nme = file.baseName
       val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
-      optimized =
-        val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
-        optimized = codegen.WorkerWrapper(exportedSymbol.toSet, dtl, printer)(optimized)
-        codegen.BlockSimplifier(exportedSymbol.toSet, dtl, printer)(optimized)
-      ltl.givenIn:
-        optimized = codegen.DeadParamElim(optimized)
+      val optimized = ltl.givenIn:
+        val printer = (p: codegen.Program) => p.showAsTree
+        CompilationPipeline().run(lowered, printer, exportedSymbol.toSet, dtl)
       */
       val artifact = compilerCtx.getElaboratedBlock(file, preludeCtx, config)(using etl)
       val optimized = artifact.ir.getOrElse:

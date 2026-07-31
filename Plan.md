@@ -130,3 +130,28 @@ cross-unit body; `SymbolRefresher` applies that mapping to class-match discrimin
 During regression testing, first-class function adapters exposed one additional issue: generated
 `call` methods copied a rest parameter without forwarding it. They now eagerly spread the rest argument
 when invoking the wrapped function.
+
+
+## Integrating with the `CompilationPipeline` refactoring
+
+Upstream moved the post-lowering passes out of `Lowering.program` into `codegen.CompilationPipeline`.
+`CompilerCtx.getElaboratedBlock` now runs that pipeline itself, for both statically compiled modules
+and worksheet-mode imports: the `irDefn` fields the inliner reads are owned by the *latest* rewrite of
+each definition, so only fully-transformed definitions are valid to splice into another unit.
+
+Two properties of this work were previously implicit in the pass ordering and are now explicit:
+
+* The compilation unit's private ABI is collected through `CompilationPipeline.extraSymbolsToPreserve`,
+  which sees the program as it enters the optimization passes — after the mandatory lowering passes and
+  the first tail-call optimization, once the definitions making up the unit are settled. Collecting it
+  from the freshly lowered program instead over-preserves: forwarders such as the ones `TailRecOpt`
+  leaves behind then survive into the emitted module, which costs a stack frame per iteration and
+  overflows deeply recursive programs.
+* The automatic-inlining fuel is a budget per *file*, not per pass. Since the pipeline applies the
+  simplifier twice, `CompilationPipeline` instantiates a single `BlockSimplifier` and applies it twice
+  so both passes draw from one budget; `BlockSimplifier` grants the budget on first application only.
+
+Upstream's new dead-assignment removal marks an assignment live when a data-flow fact reaching it is
+read. The branch's `Match` handling merges branch facts more precisely than upstream's and sometimes
+gives up and drops them; where it does, it now explicitly marks the dropped facts live, since a read
+after the match can no longer reach them and the assignments would otherwise look dead.
