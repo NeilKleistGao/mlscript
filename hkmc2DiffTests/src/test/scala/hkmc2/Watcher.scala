@@ -34,7 +34,10 @@ class Watcher(dirs: Ls[File]):
   val completionTime = mutable.Map.empty[File, LocalDateTime]
   val fileHasher = FileHasher.DEFAULT_FILE_HASHER
   
+  // * Pinned to the same root configuration the compile path below uses, so that compilation units
+  // * cached in this long-lived context do not depend on which watched file first imported them.
   given cctx: CompilerCtx = CompilerCtx.fresh(FileSystem.default)
+    .withRootConfig(Config.default(os.pwd/os.up/"hkmc2"/"shared"/"src"/"test"))
   
   val watcher: DirectoryWatcher = DirectoryWatcher.builder()
     .logger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)

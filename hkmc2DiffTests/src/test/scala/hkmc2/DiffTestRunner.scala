@@ -22,8 +22,6 @@ object DiffTestRunner:
   
   class State:
     
-    val cctx: CompilerCtx = CompilerCtx.fresh(io.FileSystem.default)
-    
     val pwd = os.pwd
     
     // println(s"INITIALIZING DiffTestRunner.State in ${pwd}")
@@ -34,6 +32,14 @@ object DiffTestRunner:
     // val dir = workingDir/"hkmc2"/"shared"/"src"/"test"/"mlscript"
     
     val dir = workingDir/"hkmc2"/"shared"/"src"/"test"
+    
+    // * All diff tests in a run share this context, and therefore the compilation units they
+    // * import. Pinning the root configuration keeps those units independent of whichever
+    // * worksheet happens to reach them first, and makes them come out the same as when the
+    // * compile tests build the corresponding `.mjs` modules — which use this same base
+    // * directory, so that source locations baked into generated code agree.
+    val cctx: CompilerCtx = CompilerCtx.fresh(io.FileSystem.default)
+      .withRootConfig(Config.default(dir))
     
     // To be overridden in subproject-specific State classes
     def testDir: os.Path = dir

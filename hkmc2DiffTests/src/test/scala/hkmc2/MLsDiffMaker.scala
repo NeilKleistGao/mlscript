@@ -460,7 +460,7 @@ abstract class MLsDiffMaker extends DiffMaker:
     given Config = Config.extractConfigFromStats(trm)
     if file.toString =/= runtimeSourceFile.toString && file.toString =/= preludeFile.toString then
       summon[Elaborator.State].initRuntimeSymbolsFromFile(runtimeSourceFile, prelude)(
-        using summon[TL], summon[Raise], summon[Config], cctx.withPaths(compilerPaths))
+        using summon[TL], summon[Raise], cctx.withPaths(compilerPaths))
     val resolver = Resolver(rtl)
     curICtx = resolver.traverseBlock(trm)(using curICtx)
     

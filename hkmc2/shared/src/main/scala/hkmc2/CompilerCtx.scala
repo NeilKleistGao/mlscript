@@ -41,15 +41,24 @@ class CompilerCtx(
   def withRootConfig(newRootConfig: Config): CompilerCtx =
     CompilerCtx(importing, beingCompiled, fs, cache, paths, S(newRootConfig))
   
+  /** Elaborate (and, when compiler paths are set, lower) a compilation unit, caching the result.
+    *
+    * Note that the importer's configuration is deliberately not a parameter: a compilation unit's
+    * elaboration must depend only on the unit itself, or importers would keep invalidating each
+    * other's cached artifact — and a single worksheet could then observe symbols from two different
+    * elaborations of the same file (say, `State.tupleSymbol` from one and the symbols reached
+    * through an `import` statement from another), which is silently inconsistent. */
   def getElaboratedBlock
-        (file: io.Path, prelude: Ctx, importerCfg: Config)
+        (file: io.Path, prelude: Ctx)
         (using TL, Raise)
         : Artifact =
     
     // println(s"Cache has: ${cache.elabCache.contains(file)} ${cache.elabCache.keys}")
     
     val lastMod = fs.getLastChangedTimestamp(file)
-    val compilationUnitConfig = rootConfig.getOrElse(Config.default(importerCfg.baseDir))
+    // * `baseDir` only determines how this unit's own source locations are rendered,
+    // * so the unit's own directory is both the meaningful and the stable choice.
+    val compilationUnitConfig = rootConfig.getOrElse(Config.default(file.up))
     
     def mk =
       val state = new Elaborator.State
@@ -119,7 +128,7 @@ class CompilerCtx(
         if file.toString === compilerPaths.runtimeSourceFile.toString then
           state.initRuntimeSymbolsFromBlock(blk0)
         else
-          state.initRuntimeSymbolsFromFile(compilerPaths.runtimeSourceFile, prelude)(using tl, summon[Raise], compilationUnitConfig, this)
+          state.initRuntimeSymbolsFromFile(compilerPaths.runtimeSourceFile, prelude)(using tl, summon[Raise], this)
 
       val artifactConfig = Config.extractConfigFromStats(blk0)
       state.compilationUnitConfig = S(artifactConfig)
@@ -189,24 +198,31 @@ class CompilerCtx(
 
   def getPrelude
         (file: io.Path, dbgParsing: Bool)
-        (using tl: TL, raise: Raise, config: Config)
+        (using tl: TL, raise: Raise)
         : PreludeArtifact =
     // The prelude context is shared so every compilation unit sees the same prelude
     // symbols. Callers still elaborate their own files with a fresh State; the frozen
     // State remains the owner captured by the prelude symbols themselves.
+    // For that sharing to actually happen, the prelude's own configuration must not depend on
+    // the file that happens to request it first — see `getElaboratedBlock` above. Otherwise the
+    // prelude is re-elaborated per requester while cached compilation units keep referring to
+    // whichever elaboration came first, and a body inlined across units then carries prelude
+    // symbols that the importing file does not recognize.
+    val preludeConfig = rootConfig.getOrElse(Config.default(file.up))
     val lastMod = fs.getLastChangedTimestamp(file)
     cache.upsertPrelude(file):
-      case cur @ S(art) if !dbgParsing && art.lastChangedTimestamp >= lastMod && art.config === config =>
+      case cur @ S(art) if !dbgParsing && art.lastChangedTimestamp >= lastMod && art.config === preludeConfig =>
         art
       case _ =>
         val state = new Elaborator.State
         given Elaborator.State = state
+        given Config = preludeConfig
         given CompilerCtx = this
         val parse = ParserSetup(file, dbgParsing)
         val elab = Elaborator(tl, file.up, Ctx.empty)
         val initCtx = State.init.nestLocal("prelude")
         val (blk, ctx) = elab.importFrom(parse.resultBlk)(using initCtx)
-        PreludeArtifact(parse.resultBlk, blk, ctx, state, config, lastMod)
+        PreludeArtifact(parse.resultBlk, blk, ctx, state, preludeConfig, lastMod)
   
   
 object CompilerCtx:
@@ -252,15 +268,23 @@ trait CompilerCache:
 
   private val preludeCache: MutMap[io.Path, PreludeArtifact] = MutMap.empty
   
-  /** Create or update an artifact at the given path in the cache. */
+  /** Create or update an artifact at the given path in the cache.
+    *
+    * Synchronized for the same reason as `upsertPrelude` below, and additionally because the
+    * artifact's symbols are shared: without atomicity, concurrent requesters each elaborate the
+    * file and each walk away with a *different* set of symbols for it, only one of which is
+    * retained in the cache. A later requester then disagrees with an earlier one about the
+    * identity of the very same source-level definition. Elaboration is reentrant here — `update`
+    * elaborates imports, which come back through this method on the same thread. */
   def upsert(path: io.Path)(update: Option[Artifact] => Artifact): Artifact =
-    elabCache
-      .updateWith(path):
-        case N => S(update(N))
-        case cur @ S(oldArt) =>
-          val newArt = update(cur)
-          if newArt is oldArt then cur else S(newArt)
-      .get // * above, we always returns Some
+    this.synchronized:
+      elabCache
+        .updateWith(path):
+          case N => S(update(N))
+          case cur @ S(oldArt) =>
+            val newArt = update(cur)
+            if newArt is oldArt then cur else S(newArt)
+        .get // * above, we always returns Some
 
   /** Synchronized because diff-test and compile-test runners compile files in parallel.
     *

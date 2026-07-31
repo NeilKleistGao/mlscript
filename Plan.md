@@ -155,3 +155,26 @@ Upstream's new dead-assignment removal marks an assignment live when a data-flow
 read. The branch's `Match` handling merges branch facts more precisely than upstream's and sometimes
 gives up and drops them; where it does, it now explicitly marks the dropped facts live, since a read
 after the match can no longer reach them and the assignments would otherwise look dead.
+
+
+## Caching compilation units is only sound if their identity is importer-independent
+
+Sharing symbols across compilation units means a cached artifact *is* the identity of its definitions.
+That only works if every requester agrees on which artifact a file has, so the cache must not be keyed
+on anything belonging to the requester. Two ways it was, both of which produced silently inconsistent
+symbols rather than a visible failure:
+
+* `getElaboratedBlock` and `getPrelude` derived a unit's effective configuration from the *importing*
+  file's config, whose `baseDir` is that file's own directory. Importers from different directories
+  therefore invalidated each other's artifacts constantly (~2800 re-elaborations over one diff-test
+  run, against 33 files). A worksheet could then capture `State.tupleSymbol` from one elaboration of
+  `Runtime.mls` and reach a different elaboration through its own `import` statement — the two print
+  as `Tuple⁰` and `Tuple¹`, and which one appeared depended on what else was running.
+* `CompilerCache.upsert` was not atomic, so concurrent requesters each elaborated the file and each
+  kept a *different* set of symbols, only one of which stayed in the cache.
+
+Both now use a configuration that depends only on the unit itself (`rootConfig`, else the unit's own
+directory), and `upsert` is synchronized like `upsertPrelude`. Test harnesses that share one context
+across many files pin `rootConfig`, which additionally makes an imported unit lower the same way the
+compile tests build the corresponding `.mjs` — so source locations baked into inlined bodies agree
+with the ones in the separately compiled module.

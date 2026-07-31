@@ -85,7 +85,7 @@ class MLsCompiler
     // val ltl = new TraceLogger{override def doTrace: Bool = true}
     val rtl = new TraceLogger{override def doTrace: Bool = false}
     
-    val preludeArtifact = compilerCtx.getPrelude(preludeFile, dbgParsing)(using etl, summon[Raise], config)
+    val preludeArtifact = compilerCtx.getPrelude(preludeFile, dbgParsing)(using etl, summon[Raise])
     val preludeCtx = preludeArtifact.ctx
     val mainParse = ParserSetup(file, dbgParsing)
     
@@ -99,7 +99,7 @@ class MLsCompiler
       if file.toString === runtimeSourceFile.toString then
         State.initRuntimeSymbolsFromBlock(blk0)
       else
-        State.initRuntimeSymbolsFromFile(runtimeSourceFile, preludeCtx)(using etl, summon[Raise], config, summon[CompilerCtx])
+        State.initRuntimeSymbolsFromFile(runtimeSourceFile, preludeCtx)(using etl, summon[Raise], summon[CompilerCtx])
       Config.extractConfigFromStats(blk0).givenIn {
       val resolver = Resolver(rtl)
       resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
@@ -129,7 +129,7 @@ class MLsCompiler
         val printer = (p: codegen.Program) => p.showAsTree
         CompilationPipeline().run(lowered, printer, exportedSymbol.toSet, dtl)
       */
-      val artifact = compilerCtx.getElaboratedBlock(file, preludeCtx, config)(using etl)
+      val artifact = compilerCtx.getElaboratedBlock(file, preludeCtx)(using etl)
       val optimized = artifact.ir.getOrElse:
         lastWords(s"Compiler artifact for $file does not contain lowered IR")
 

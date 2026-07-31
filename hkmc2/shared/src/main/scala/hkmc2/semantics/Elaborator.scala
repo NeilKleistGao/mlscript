@@ -435,9 +435,9 @@ object Elaborator:
     private var cachedRuntimeSymbols: Opt[RuntimeSymbols] = N
     def initRuntimeSymbolsFromBlock(blk: Term.Blk): Unit =
       cachedRuntimeSymbols = S(RuntimeSymbols.fromBlock(blk))
-    def initRuntimeSymbolsFromFile(file: io.Path, prelude: Ctx)(using TL, Raise, Config, CompilerCtx): Unit =
+    def initRuntimeSymbolsFromFile(file: io.Path, prelude: Ctx)(using TL, Raise, CompilerCtx): Unit =
       if cachedRuntimeSymbols.isEmpty then
-        cachedRuntimeSymbols = S(RuntimeSymbols.fromBlock(CompilerCtx.get.getElaboratedBlock(file, prelude, summon[Config]).term))
+        cachedRuntimeSymbols = S(RuntimeSymbols.fromBlock(CompilerCtx.get.getElaboratedBlock(file, prelude).term))
     private def runtimeSymbols: RuntimeSymbols =
       cachedRuntimeSymbols.getOrElse:
         lastWords("Runtime symbols have not been initialized from Runtime.mls.")
