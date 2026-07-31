@@ -1402,9 +1402,6 @@ class BlockSimplifier
           case _ => continue = false
         mapping
 
-      def buildAmbientSymbolMapping(callee: TermSymbol)(using State): Map[Symbol, Symbol] =
-        Map.empty
-
       def accessesPrivateMembers(blk: Block): Bool =
         var found = false
         (new BlockTraverser:
@@ -1812,7 +1809,7 @@ class BlockSimplifier
                     case (sym, value) :: argRest =>
                       val newSym = VarSymbol(sym.id)
                       go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
-                  go(blockBuilder, matchedArgs, buildAmbientSymbolMapping(ts))
+                  go(blockBuilder, matchedArgs, Map.empty)
 
           case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
             if shouldDeferCrossUnitInline(m(ts)) then return super.applyResult(r)(k)
@@ -1858,7 +1855,7 @@ class BlockSimplifier
                     case (sym, value) :: argRest =>
                       val newSym = VarSymbol(sym.id)
                       go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
-                  go(blockBuilder, matchedArgs, buildAmbientSymbolMapping(ts))
+                  go(blockBuilder, matchedArgs, Map.empty)
           case _ => super.applyResult(r)(k)
       
       def replace(m: InlinerMap, prog: Program): Program =

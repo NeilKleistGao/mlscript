@@ -122,10 +122,13 @@ Imported compilation units are lowered in worksheet mode so their symbols have `
 inliner to inspect. Their effective root configuration is stabilized in `CompilerCtx`, rather than
 depending on whichever parallel test happens to import the artifact first.
 
-Each imported artifact also records the Prelude context used during lowering. Cached IR can otherwise
-contain builtin symbols from the first importing worksheet, while later worksheets have distinct
-Prelude symbols. The inliner now rebinds ambient compiler symbols and Prelude builtins while copying a
-cross-unit body; `SymbolRefresher` applies that mapping to class-match discriminants as well as paths.
+Cached IR used to be able to contain builtin symbols from the first importing worksheet while later
+worksheets had distinct Prelude symbols, so the inliner seeded `SymbolRefresher` with a mapping that
+rebound ambient compiler symbols and Prelude builtins onto the importer's equivalents. That mapping is
+gone: every compilation unit now genuinely shares one Prelude and one `Runtime.mls` elaboration (see
+the section on importer-independent caching below), so a cross-unit body already refers to the symbols
+the importing file knows. Copying such a body needs no rebinding beyond the ordinary refreshing of the
+definitions it introduces.
 
 During regression testing, first-class function adapters exposed one additional issue: generated
 `call` methods copied a rest parameter without forwarding it. They now eagerly spread the rest argument
