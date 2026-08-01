@@ -1,0 +1,967 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+import "../InterpreterFib.mls" as InterpreterFib__Legacy
+module InterpreterFib with
+    class Cons(val x, val xs)
+    object Nil
+    class Some(val x)
+    object None
+    object Error
+    class Closure(val name, val ps, val body, val env)
+    class Instruction() with
+      ()
+    class Push(val v) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {tmp}
+        tmp = new Cons(v, s)
+        [tmp, e, d]
+    object Add with
+      fun eval(s, e, d) =
+        let {x2, y, rest, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp1, tmp2}
+        if s is
+          Cons then
+            arg_Cons_0_ = s.x
+            arg_Cons_1_ = s.xs
+            if arg_Cons_1_ is
+              Cons then
+                arg_Cons_0_1 = arg_Cons_1_.x
+                arg_Cons_1_1 = arg_Cons_1_.xs
+                rest = arg_Cons_1_1
+                y = arg_Cons_0_1
+                x2 = arg_Cons_0_
+                tmp1 = x2 + y
+                tmp2 = new Cons(tmp1, rest)
+                [tmp2, e, d]
+              else Error
+          else Error
+    object Sub with
+      fun eval(s, e, d) =
+        let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+        if s is
+          Cons then
+            arg_Cons_0_2 = s.x
+            arg_Cons_1_2 = s.xs
+            if arg_Cons_1_2 is
+              Cons then
+                arg_Cons_0_3 = arg_Cons_1_2.x
+                arg_Cons_1_3 = arg_Cons_1_2.xs
+                rest1 = arg_Cons_1_3
+                y1 = arg_Cons_0_3
+                x3 = arg_Cons_0_2
+                tmp3 = y1 - x3
+                tmp4 = new Cons(tmp3, rest1)
+                [tmp4, e, d]
+              else Error
+          else Error
+    class Comp(val le) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {x4, y2, rest2, scrut, arg_Cons_0_4, arg_Cons_1_4, arg_Cons_0_5, arg_Cons_1_5, tmp5, tmp6}
+        if s is
+          Cons then
+            arg_Cons_0_4 = s.x
+            arg_Cons_1_4 = s.xs
+            if arg_Cons_1_4 is
+              Cons then
+                arg_Cons_0_5 = arg_Cons_1_4.x
+                arg_Cons_1_5 = arg_Cons_1_4.xs
+                rest2 = arg_Cons_1_5
+                y2 = arg_Cons_0_5
+                x4 = arg_Cons_0_4
+                scrut = le
+                if scrut is
+                  true then
+                    tmp5 = x4 <= y2
+                  else
+                    tmp5 = x4 >= y2
+                tmp6 = new Cons(tmp5, rest2)
+                [tmp6, e, d]
+              else Error
+          else Error
+    class Branch(val t, val f) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {rest3, c, arg_Cons_0_6, arg_Cons_1_6}
+        if s is
+          Cons then
+            arg_Cons_0_6 = s.x
+            arg_Cons_1_6 = s.xs
+            rest3 = arg_Cons_1_6
+            c = arg_Cons_0_6
+            if c is
+              true then evalAll(t, rest3, e, d)
+              else evalAll(f, rest3, e, d)
+          else Error
+    class Load(val name) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+        opt = get(e, name)
+        if opt is
+          Some then
+            arg_Some_0_ = opt.x
+            v1 = arg_Some_0_
+            tmp7 = new Cons(v1, s)
+            [tmp7, e, d]
+          else
+            f1 = get(d, name)
+            if f1 is
+              Some then
+                arg_Some_0_1 = f1.x
+                g = arg_Some_0_1
+                tmp8 = new Cons(g, s)
+                [tmp8, e, d]
+              else Error
+    class Fun(val name, val ps, val body) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {tmp9, tmp10, tmp11}
+        tmp9 = new Closure(name, ps, body, e)
+        tmp10 = [name, tmp9]
+        tmp11 = new Cons(tmp10, d)
+        [s, e, tmp11]
+    object Call with
+      fun eval(s, e, d) =
+        let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+        if s is
+          Cons then
+            arg_Cons_0_7 = s.x
+            arg_Cons_1_7 = s.xs
+            s__ = arg_Cons_1_7
+            v2 = arg_Cons_0_7
+            if v2 is
+              Closure then
+                arg_Closure_0_ = v2.name
+                arg_Closure_1_ = v2.ps
+                arg_Closure_2_ = v2.body
+                arg_Closure_3_ = v2.env
+                e__ = arg_Closure_3_
+                body2 = arg_Closure_2_
+                ps2 = arg_Closure_1_
+                name3 = arg_Closure_0_
+                t1 = bind(ps2, s__, e__)
+                if t1 is
+                  [_, _] then
+                    element0_ = t1.0
+                    element1_ = t1.1
+                    ee = element1_
+                    ss = element0_
+                    res = evalAll(body2, ss, ee, d)
+                    if res is
+                      [_, _, _] then
+                        element0_1 = res.0
+                        element1_1 = res.1
+                        element2_ = res.2
+                        nd = element2_
+                        rest4 = element0_1
+                        [rest4, e, nd]
+                      else Error
+                  else Error
+              else Error
+          else Error
+    fun bind(ps, s, e) =
+      let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp12, tmp13}
+      scrut2 = [ps, s]
+      element0_3 = scrut2.0
+      element1_3 = scrut2.1
+      if element0_3 is
+        Cons then
+          arg_Cons_0_9 = element0_3.x
+          arg_Cons_1_9 = element0_3.xs
+          if element1_3 is
+            Cons then
+              arg_Cons_0_10 = element1_3.x
+              arg_Cons_1_10 = element1_3.xs
+              r2 = arg_Cons_1_10
+              v4 = arg_Cons_0_10
+              r1 = arg_Cons_1_9
+              p = arg_Cons_0_9
+              tmp12 = [p, v4]
+              tmp13 = new Cons(tmp12, e)
+              bind(r1, r2, tmp13)
+            else Error
+        Nil then
+          ss1 = element1_3
+          [ss1, e]
+        else Error
+    fun evalAll(insts, s, e, d) =
+      let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+      if insts is
+        Cons then
+          arg_Cons_0_11 = insts.x
+          arg_Cons_1_11 = insts.xs
+          rest6 = arg_Cons_1_11
+          inst = arg_Cons_0_11
+          res1 = inst.eval(s, e, d)
+          if res1 is
+            [_, _, _] then
+              element0_4 = res1.0
+              element1_4 = res1.1
+              element2_1 = res1.2
+              nd1 = element2_1
+              ne = element1_4
+              ss2 = element0_4
+              evalAll(rest6, ss2, ne, nd1)
+            else res1
+        else [s, e, d]
+    fun exec(insts, s, e, d) =
+      let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+      ss3 = evalAll(insts, s, e, d)
+      if ss3 is
+        [_, _, _] then
+          element0_5 = ss3.0
+          element1_5 = ss3.1
+          element2_2 = ss3.2
+          if element0_5 is
+            Cons then
+              arg_Cons_0_12 = element0_5.x
+              arg_Cons_1_12 = element0_5.xs
+              if arg_Cons_1_12 is
+                Nil then
+                  x5 = arg_Cons_0_12
+                  new Some(x5)
+                else Error
+            Nil then None
+            else Error
+        else Error
+    fun get(env, name) =
+      let {n, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+      if env is
+        Cons then
+          arg_Cons_0_8 = env.x
+          arg_Cons_1_8 = env.xs
+          if arg_Cons_0_8 is
+            [_, _] then
+              element0_2 = arg_Cons_0_8.0
+              element1_2 = arg_Cons_0_8.1
+              rest5 = arg_Cons_1_8
+              v3 = element1_2
+              n = element0_2
+              scrut1 = n == name
+              if scrut1 is
+                true then new Some(v3)
+                else get(rest5, name)
+            else None
+        else None
+    fun mkFib(n) =
+      let {insts2, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22, tmp23, tmp24, tmp25, tmp26, tmp27, tmp28, tmp29, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47}
+      tmp14 = new Cons("x", Nil)
+      tmp15 = new Load("x")
+      tmp16 = new Push(1)
+      tmp17 = new Comp(false)
+      tmp18 = new Push(1)
+      tmp19 = new Cons(tmp18, Nil)
+      tmp20 = new Load("x")
+      tmp21 = new Push(1)
+      tmp22 = new Load("fib")
+      tmp23 = new Load("x")
+      tmp24 = new Push(2)
+      tmp25 = new Load("fib")
+      tmp26 = new Cons(Add, Nil)
+      tmp27 = new Cons(Call, tmp26)
+      tmp28 = new Cons(tmp25, tmp27)
+      tmp29 = new Cons(Sub, tmp28)
+      tmp30 = new Cons(tmp24, tmp29)
+      tmp31 = new Cons(tmp23, tmp30)
+      tmp32 = new Cons(Call, tmp31)
+      tmp33 = new Cons(tmp22, tmp32)
+      tmp34 = new Cons(Sub, tmp33)
+      tmp35 = new Cons(tmp21, tmp34)
+      tmp36 = new Cons(tmp20, tmp35)
+      tmp37 = new Branch(tmp19, tmp36)
+      tmp38 = new Cons(tmp37, Nil)
+      tmp39 = new Cons(tmp17, tmp38)
+      tmp40 = new Cons(tmp16, tmp39)
+      tmp41 = new Cons(tmp15, tmp40)
+      tmp42 = new Fun("fib", tmp14, tmp41)
+      tmp43 = new Push(n)
+      tmp44 = new Load("fib")
+      tmp45 = new Cons(Call, Nil)
+      tmp46 = new Cons(tmp44, tmp45)
+      tmp47 = new Cons(tmp43, tmp46)
+      insts2 = new Cons(tmp42, tmp47)
+      exec_InterpreterFib_sp_0(insts2, Nil, Nil, Nil)
+open InterpreterFib
+fun bind_InterpreterFib_sp_0(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp12, tmp13}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_9 = element0_3.x
+  arg_Cons_1_9 = element0_3.xs
+  arg_Cons_0_10 = element1_3.x
+  arg_Cons_1_10 = element1_3.xs
+  r2 = arg_Cons_1_10
+  v4 = arg_Cons_0_10
+  r1 = arg_Cons_1_9
+  p = "x"
+  tmp12 = [p, v4]
+  tmp13 = new Cons(tmp12, e)
+  bind_InterpreterFib_sp_1(r1, r2, tmp13)
+fun bind_InterpreterFib_sp_1(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp12, tmp13}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  ss1 = element1_3
+  [ss1, e]
+fun bind_InterpreterFib_sp_2(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp12, tmp13}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  if element0_3 is
+    Cons then
+      arg_Cons_0_9 = element0_3.x
+      arg_Cons_1_9 = element0_3.xs
+      arg_Cons_0_10 = element1_3.x
+      arg_Cons_1_10 = element1_3.xs
+      r2 = arg_Cons_1_10
+      v4 = arg_Cons_0_10
+      r1 = arg_Cons_1_9
+      p = arg_Cons_0_9
+      tmp12 = [p, v4]
+      tmp13 = new Cons(tmp12, e)
+      bind(r1, r2, tmp13)
+    Nil then
+      ss1 = element1_3
+      [ss1, e]
+    else Error
+fun evalAll_InterpreterFib_sp_0(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Fun_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_1(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_1(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_2(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_10(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_11(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_11(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_12(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_12(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_13(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_13(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_14(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_14(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_1(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_InterpreterFib_sp_15(rest6, ss2, ne, nd1)
+    else res1
+fun evalAll_InterpreterFib_sp_15(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_3(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_InterpreterFib_sp_16(rest6, ss2, ne, nd1)
+    else res1
+fun evalAll_InterpreterFib_sp_16(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_3(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_17(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_17(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_18(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_18(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_4(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_InterpreterFib_sp_19(rest6, ss2, ne, nd1)
+    else res1
+fun evalAll_InterpreterFib_sp_19(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_2(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_InterpreterFib_sp_20(rest6, ss2, ne, nd1)
+    else res1
+fun evalAll_InterpreterFib_sp_2(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_3(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_20(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Add_sp_0(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_InterpreterFib_sp_21(rest6, ss2, ne, nd1)
+    else res1
+fun evalAll_InterpreterFib_sp_21(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+fun evalAll_InterpreterFib_sp_22(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+fun evalAll_InterpreterFib_sp_3(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_0(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_InterpreterFib_sp_22(rest6, ss2, ne, nd1)
+    else res1
+fun evalAll_InterpreterFib_sp_4(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_5(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_5(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_6(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_6(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Comp_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_7(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_7(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Branch_sp_0(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_InterpreterFib_sp_22(rest6, ss2, ne, nd1)
+    else res1
+fun evalAll_InterpreterFib_sp_8(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.x
+  arg_Cons_1_11 = insts.xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_InterpreterFib_sp_9(rest6, ss2, ne, nd1)
+fun evalAll_InterpreterFib_sp_9(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+fun exec_InterpreterFib_sp_0(insts, s, e, d) =
+  let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+  ss3 = evalAll_InterpreterFib_sp_0(insts, s, e, d)
+  if ss3 is
+    [_, _, _] then
+      element0_5 = ss3.0
+      element1_5 = ss3.1
+      element2_2 = ss3.2
+      arg_Cons_0_12 = element0_5.x
+      arg_Cons_1_12 = element0_5.xs
+      if arg_Cons_1_12 is
+        Nil then
+          x5 = arg_Cons_0_12
+          new Some(x5)
+        else Error
+    else Error
+fun get_InterpreterFib_sp_0(env, name) =
+  let {n, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  None
+fun get_InterpreterFib_sp_1(env, name) =
+  let {n, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.x
+  arg_Cons_1_8 = env.xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n = "fib"
+  scrut1 = true
+  new Some(v3)
+fun get_InterpreterFib_sp_2(env, name) =
+  let {n, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.x
+  arg_Cons_1_8 = env.xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n = "x"
+  scrut1 = true
+  new Some(v3)
+fun get_InterpreterFib_sp_3(env, name) =
+  let {n, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.x
+  arg_Cons_1_8 = env.xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n = "x"
+  scrut1 = false
+  get_InterpreterFib_sp_0(rest5, name)
+fun get_InterpreterFib_sp_4(env, name) =
+  let {n, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  if env is
+    Cons then
+      arg_Cons_0_8 = env.x
+      arg_Cons_1_8 = env.xs
+      if arg_Cons_0_8 is
+        [_, _] then
+          element0_2 = arg_Cons_0_8.0
+          element1_2 = arg_Cons_0_8.1
+          rest5 = arg_Cons_1_8
+          v3 = element1_2
+          n = element0_2
+          scrut1 = n == "x"
+          if scrut1 is
+            true then new Some(v3)
+            else get(rest5, name)
+        else None
+    else None
+fun get_InterpreterFib_sp_5(env, name) =
+  let {n, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  if env is
+    Cons then
+      arg_Cons_0_8 = env.x
+      arg_Cons_1_8 = env.xs
+      if arg_Cons_0_8 is
+        [_, _] then
+          element0_2 = arg_Cons_0_8.0
+          element1_2 = arg_Cons_0_8.1
+          rest5 = arg_Cons_1_8
+          v3 = element1_2
+          n = element0_2
+          scrut1 = n == "fib"
+          if scrut1 is
+            true then new Some(v3)
+            else get(rest5, name)
+        else None
+    else None
+fun eval_Push_sp_0(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e, d]
+fun eval_Push_sp_1(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e, d]
+fun eval_Push_sp_2(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e, d]
+fun eval_Push_sp_3(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.v, s)
+  [tmp, e, d]
+fun eval_Add_sp_0(self, s, e, d) =
+  let {x2, y, rest, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp1, tmp2}
+  if s is
+    Cons then
+      arg_Cons_0_ = s.x
+      arg_Cons_1_ = s.xs
+      if arg_Cons_1_ is
+        Cons then
+          arg_Cons_0_1 = arg_Cons_1_.x
+          arg_Cons_1_1 = arg_Cons_1_.xs
+          rest = arg_Cons_1_1
+          y = arg_Cons_0_1
+          x2 = arg_Cons_0_
+          tmp1 = x2 + y
+          tmp2 = new Cons(tmp1, rest)
+          [tmp2, e, d]
+        else Error
+    else Error
+fun eval_Sub_sp_0(self, s, e, d) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+  arg_Cons_0_2 = s.x
+  arg_Cons_1_2 = s.xs
+  arg_Cons_0_3 = arg_Cons_1_2.x
+  arg_Cons_1_3 = arg_Cons_1_2.xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = 1
+  tmp3 = y1 - 1
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e, d]
+fun eval_Sub_sp_1(self, s, e, d) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+  arg_Cons_0_2 = s.x
+  arg_Cons_1_2 = s.xs
+  arg_Cons_0_3 = arg_Cons_1_2.x
+  arg_Cons_1_3 = arg_Cons_1_2.xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = 2
+  tmp3 = y1 - 2
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e, d]
+fun eval_Comp_sp_0(self, s, e, d) =
+  let {x4, y2, rest2, scrut, arg_Cons_0_4, arg_Cons_1_4, arg_Cons_0_5, arg_Cons_1_5, tmp5, tmp6}
+  arg_Cons_0_4 = s.x
+  arg_Cons_1_4 = s.xs
+  arg_Cons_0_5 = arg_Cons_1_4.x
+  arg_Cons_1_5 = arg_Cons_1_4.xs
+  rest2 = arg_Cons_1_5
+  y2 = arg_Cons_0_5
+  x4 = 1
+  scrut = self.le
+  tmp5 = 1 >= y2
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e, d]
+fun eval_Branch_sp_0(self, s, e, d) =
+  let {rest3, c, arg_Cons_0_6, arg_Cons_1_6}
+  arg_Cons_0_6 = s.x
+  arg_Cons_1_6 = s.xs
+  rest3 = arg_Cons_1_6
+  c = arg_Cons_0_6
+  if c is
+    true then evalAll_InterpreterFib_sp_8(self.t, rest3, e, d)
+    else evalAll_InterpreterFib_sp_10(self.f, rest3, e, d)
+fun eval_Load_sp_0(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_InterpreterFib_sp_0(e, self.name)
+  f1 = get_InterpreterFib_sp_1(d, self.name)
+  arg_Some_0_1 = f1.x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+fun eval_Load_sp_1(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_InterpreterFib_sp_2(e, self.name)
+  arg_Some_0_ = opt.x
+  v1 = arg_Some_0_
+  tmp7 = new Cons(v1, s)
+  [tmp7, e, d]
+fun eval_Load_sp_2(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_InterpreterFib_sp_3(e, self.name)
+  f1 = get_InterpreterFib_sp_1(d, self.name)
+  arg_Some_0_1 = f1.x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+fun eval_Load_sp_3(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_InterpreterFib_sp_4(e, self.name)
+  if opt is
+    Some then
+      arg_Some_0_ = opt.x
+      v1 = arg_Some_0_
+      tmp7 = new Cons(v1, s)
+      [tmp7, e, d]
+    else
+      f1 = get_InterpreterFib_sp_4(d, self.name)
+      if f1 is
+        Some then
+          arg_Some_0_1 = f1.x
+          g = arg_Some_0_1
+          tmp8 = new Cons(g, s)
+          [tmp8, e, d]
+        else Error
+fun eval_Load_sp_4(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_InterpreterFib_sp_5(e, self.name)
+  if opt is
+    Some then
+      arg_Some_0_ = opt.x
+      v1 = arg_Some_0_
+      tmp7 = new Cons(v1, s)
+      [tmp7, e, d]
+    else
+      f1 = get_InterpreterFib_sp_5(d, self.name)
+      if f1 is
+        Some then
+          arg_Some_0_1 = f1.x
+          g = arg_Some_0_1
+          tmp8 = new Cons(g, s)
+          [tmp8, e, d]
+        else Error
+fun eval_Fun_sp_0(self, s, e, d) =
+  let {tmp9, tmp10, tmp11}
+  tmp9 = new Closure(self.name, self.ps, self.body, e)
+  tmp10 = [self.name, tmp9]
+  tmp11 = new Cons(tmp10, d)
+  [s, e, tmp11]
+fun eval_Call_sp_0(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.x
+  arg_Cons_1_7 = s.xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.name
+  arg_Closure_1_ = v2.ps
+  arg_Closure_2_ = v2.body
+  arg_Closure_3_ = v2.env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "fib"
+  t1 = bind_InterpreterFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_InterpreterFib_sp_4(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+fun eval_Call_sp_1(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.x
+  arg_Cons_1_7 = s.xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.name
+  arg_Closure_1_ = v2.ps
+  arg_Closure_2_ = v2.body
+  arg_Closure_3_ = v2.env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "fib"
+  t1 = bind_InterpreterFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_InterpreterFib_sp_4(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+fun eval_Call_sp_2(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.x
+  arg_Cons_1_7 = s.xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  if v2 is
+    Closure then
+      arg_Closure_0_ = v2.name
+      arg_Closure_1_ = v2.ps
+      arg_Closure_2_ = v2.body
+      arg_Closure_3_ = v2.env
+      e__ = arg_Closure_3_
+      body2 = arg_Closure_2_
+      ps2 = arg_Closure_1_
+      name3 = arg_Closure_0_
+      t1 = bind_InterpreterFib_sp_2(ps2, s__, e__)
+      if t1 is
+        [_, _] then
+          element0_ = t1.0
+          element1_ = t1.1
+          ee = element1_
+          ss = element0_
+          res = evalAll(body2, ss, ee, d)
+          if res is
+            [_, _, _] then
+              element0_1 = res.0
+              element1_1 = res.1
+              element2_ = res.2
+              nd = element2_
+              rest4 = element0_1
+              [rest4, e, nd]
+            else Error
+        else Error
+    else Error

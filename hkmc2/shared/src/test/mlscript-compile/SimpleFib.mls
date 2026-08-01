@@ -1,0 +1,107 @@
+module SimpleFib with
+  class Cons(val x, val xs)
+  object Nil
+
+  class Some(val x)
+  object None
+  object Error
+
+  class Closure(val name, val ps, val body, val env)
+
+  class Instruction() with
+    fun eval(s, e, d)
+
+  class Push(val v) extends Instruction() with
+    fun eval(s, e, d) = [new Cons(v, s), e, d]
+
+  object Add extends Instruction() with
+    fun eval(s, e, d) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(x + y, rest), e, d]
+        else Error
+
+  object Sub extends Instruction() with
+    fun eval(s, e, d) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(y - x, rest), e, d]
+        else Error
+
+  class Comp(val le) extends Instruction() with
+    fun eval(s, e, d) =
+      if s is
+        Cons(x, Cons(y, rest)) then [new Cons(if le then x <= y else x >= y, rest), e, d]
+        else Error
+
+  class Branch(val t, val f) extends Instruction() with
+    fun eval(s, e, d) =
+      if s is
+        Cons(c, rest) then
+          if c then evalAll(t, rest, e, d) else evalAll(f, rest, e, d)
+        else Error
+
+  class Load(val name) extends Instruction() with
+    fun eval(s, e, d) =
+      let opt = get(e, name)
+      if opt is
+        Some(v) then [new Cons(v, s), e, d]
+        else
+          let f = get(d, name)
+          if f is
+            Some(g) then [new Cons(g, s), e, d]
+            else Error
+
+  class Fun(val name, val ps, val body) extends Instruction() with
+    fun eval(s, e, d) =
+      [s, e, new Cons([name, new Closure(name, ps, body, e)], d)]
+
+  object Call extends Instruction() with
+    fun eval(s, e, d) =
+      if s is
+        Cons(v, s') and v is Closure(name, ps, body, e') then
+          let t = bind(ps, s', e')
+          if t is
+            [ss, ee] then
+              let res = evalAll(body, ss, ee, d)
+              if res is
+                [rest, _, nd] then [rest, e, nd]
+                else Error 
+            else Error
+        else Error
+
+  fun get(env, name) =
+    if env is
+      Cons([n, v], rest) then
+        if n == name then new Some(v) else get(rest, name)
+      else None
+
+  fun bind(ps, s, e) =
+    if [ps, s] is
+      [Cons(p, r1), Cons(v, r2)] then bind(r1, r2, new Cons([p, v], e))
+      [Nil, ss] then [ss, e]
+      else Error
+
+  fun evalAll(insts, s, e, d) =
+    if insts is
+      Cons(inst, rest) then
+        let res = inst.eval(s, e, d)
+        if res is
+          [ss, ne, nd] then evalAll(rest, ss, ne, nd)
+          else res
+      else [s, e, d]
+
+  fun exec(insts, s, e, d) =
+    let ss = evalAll(insts, s, e, d)
+    if ss is
+      [Cons(x, Nil), _, _] then new Some(x)
+      [Nil, _, _] then None
+      else Error
+
+  fun mkFib(n) =
+    let insts =
+      new Cons(new Fun("fib", new Cons("x", Nil),
+        new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Comp(false),
+          new Cons(new Branch(new Cons(new Push(1), Nil), new Cons(
+            new Load("x"), new Cons(new Push(1), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call,
+              new Cons(new Load("x"), new Cons(new Push(2), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call, new Cons(Add, Nil))))))))))
+          )), Nil))))), new Cons(new Push(n), new Cons(new Load("fib"), new Cons(Call, Nil))))
+    exec(insts, Nil, Nil, Nil)
