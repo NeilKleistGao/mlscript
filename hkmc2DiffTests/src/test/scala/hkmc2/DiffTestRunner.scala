@@ -26,9 +26,7 @@ object DiffTestRunner:
     
     // println(s"INITIALIZING DiffTestRunner.State in ${pwd}")
     
-    val workingDir = if pwd.last == "hkmc2DiffTests"
-      then pwd/up // For some reason, when run from ~hkmc2JVM/Test/run in sbt, the pwd is ".../hkmc2/jvm"
-      else pwd
+    val workingDir = DiffMaker.projectRoot(pwd)
     // val dir = workingDir/"hkmc2"/"shared"/"src"/"test"/"mlscript"
     
     val dir = workingDir/"hkmc2"/"shared"/"src"/"test"
