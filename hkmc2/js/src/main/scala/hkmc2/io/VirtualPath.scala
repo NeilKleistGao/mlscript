@@ -96,14 +96,16 @@ private[io] object VirtualPath:
       val isAbs = path.startsWith(sep)
       
       // Resolve . and .. segments
-      val normalized = segments.foldLeft(List.empty[String]): (acc, seg) =>
+      val normalizedRev = segments.foldLeft(List.empty[String]): (acc, seg) =>
         seg match
           case "." => acc  // Current directory, skip it
           case ".." =>
             // Parent directory, pop the last segment if possible
-            if acc.isEmpty || acc.last == ".." then acc :+ seg
-            else acc.dropRight(1)
-          case _ => acc :+ seg
+            if acc.isEmpty || acc.last == ".." then seg :: acc
+            else acc.drop(1)
+          case _ => seg :: acc
+      
+      val normalized = normalizedRev.reverse
       
       if isAbs then sep + normalized.mkString(sep)
       else if normalized.isEmpty then "."

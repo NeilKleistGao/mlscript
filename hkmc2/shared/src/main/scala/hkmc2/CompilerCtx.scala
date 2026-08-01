@@ -239,7 +239,8 @@ object CompilerCtx:
   
   inline def get(using cctx: CompilerCtx) = cctx
   
-  def fresh(fs: io.FileSystem): CompilerCtx = CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N, N)
+  def fresh(fs: io.FileSystem): CompilerCtx =
+    CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N, N)
   
 end CompilerCtx
 
