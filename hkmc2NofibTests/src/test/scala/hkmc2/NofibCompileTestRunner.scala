@@ -14,7 +14,10 @@ end NofibCompileTestRunner
 
 object NofibCompileTestRunner:
   
-  given cctx: CompilerCtx = CompilerCtx.fresh(io.FileSystem.default)
+  // * Fixed for the whole run: the compilation units cached in this context are shared
+  // * between tests, so they must not depend on which test reaches them first.
+  given cctx: CompilerCtx =
+    CompilerCtx.fresh(io.FileSystem.default, Config.default(TestFolders.mainTestDir(os.pwd)))
 
 end NofibCompileTestRunner
 

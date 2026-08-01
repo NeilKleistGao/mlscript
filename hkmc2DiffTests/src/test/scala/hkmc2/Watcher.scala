@@ -36,8 +36,8 @@ class Watcher(dirs: Ls[File]):
   
   // * Pinned to the same root configuration the compile path below uses, so that compilation units
   // * cached in this long-lived context do not depend on which watched file first imported them.
-  given cctx: CompilerCtx = CompilerCtx.fresh(FileSystem.default)
-    .withRootConfig(Config.default(os.pwd/os.up/"hkmc2"/"shared"/"src"/"test"))
+  given cctx: CompilerCtx =
+    CompilerCtx.fresh(FileSystem.default, Config.default(os.pwd/os.up/"hkmc2"/"shared"/"src"/"test"))
   
   val watcher: DirectoryWatcher = DirectoryWatcher.builder()
     .logger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
@@ -109,7 +109,6 @@ class Watcher(dirs: Ls[File]):
       val isModuleFile = path.segments.contains("mlscript-compile")
       if isModuleFile
       then
-        given Config = Config.default(testBasePath)
         MLsCompiler(
           paths = new MLsCompiler.Paths:
             val preludeFile = preludePath

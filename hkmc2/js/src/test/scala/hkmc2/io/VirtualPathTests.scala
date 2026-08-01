@@ -154,4 +154,11 @@ class VirtualPathTests extends AnyFunSuite:
     assert(Path("/a") / RelPath("./b.mls") == Path("/a/b.mls"))
     assert(Path("/a/b") / RelPath("../c.mls") == Path("/a/c.mls"))
 
+  test("'..' is resolved against the most recent segment, not the first one"):
+    // * Only unresolvable leading `..` may be kept; a `..` following a real segment must pop it,
+    // * even when the path starts with `..`.
+    assert(Path("../a/..").toString == "..")
+    assert(Path("../a/b/../..").toString == "..")
+    assert(Path("../../a/..").toString == "../..")
+
 

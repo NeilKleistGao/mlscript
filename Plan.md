@@ -176,13 +176,15 @@ symbols rather than a visible failure:
 * `CompilerCache.upsert` was not atomic, so concurrent requesters each elaborated the file and each
   kept a *different* set of symbols, only one of which stayed in the cache.
 
-Both now use a configuration that depends only on the unit itself (`rootConfig`, else the unit's own
-directory), and `upsert` is synchronized like `upsertPrelude`. Test harnesses that share one context
-across many files pin `rootConfig`, which additionally makes an imported unit lower the same way the
-compile tests build the corresponding `.mjs` — so source locations baked into inlined bodies agree
-with the ones in the separately compiled module.
+Both now elaborate under `CompilerCtx.rootConfig`, which is required when the context is created and
+cannot be changed afterwards, and `upsert` is synchronized like `upsertPrelude`. Whoever owns a context
+therefore also fixes the configuration of everything cached in it; the test harnesses that share one
+context across many files set it to the same base directory the compile tests use, so an imported unit
+lowers exactly as those tests build the corresponding `.mjs`, and source locations baked into inlined
+bodies agree with the ones in the separately compiled module. `MLsCompiler` reads its configuration
+from the context rather than taking its own, so the two cannot disagree.
 
-Since nothing mutates the root configuration during a compilation session, a cached artifact was
+Since the root configuration cannot change during a compilation session, a cached artifact was
 necessarily built under the one being asked for. Rather than comparing configurations and silently
 re-elaborating on a mismatch — which made every field of `Config` an implicit part of a compilation
 unit's identity — the caches now `softAssert` that they agree and keep the cached artifact. Reusing a

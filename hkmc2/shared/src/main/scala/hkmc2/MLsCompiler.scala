@@ -47,12 +47,14 @@ object MLsCompiler:
   *
   * @param paths required paths needed by the compiler
   * @param mkRaise generates a separate `Raise` function for each file.
-  * @param config the compiler's configuration object
   * @param fs the file system interface
   */
 class MLsCompiler
     (paths: MLsCompiler.Paths, mkRaise: io.Path => Raise)
-    (using cctx: CompilerCtx, config: Config):
+    (using cctx: CompilerCtx):
+  
+  // * The configuration is a property of the compilation session, carried by the context.
+  private given Config = cctx.rootConfig
   import paths.*
   
   
@@ -62,7 +64,7 @@ class MLsCompiler
   
   
   def compileModule(file: io.Path): Unit =
-    val compilerCtx = cctx.withPaths(paths).withRootConfig(config)
+    val compilerCtx = cctx.withPaths(paths)
     
     val wd = file.up
     

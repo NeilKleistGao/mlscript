@@ -38,8 +38,7 @@ object DiffTestRunner:
     // * worksheet happens to reach them first, and makes them come out the same as when the
     // * compile tests build the corresponding `.mjs` modules — which use this same base
     // * directory, so that source locations baked into generated code agree.
-    val cctx: CompilerCtx = CompilerCtx.fresh(io.FileSystem.default)
-      .withRootConfig(Config.default(dir))
+    val cctx: CompilerCtx = CompilerCtx.fresh(io.FileSystem.default, Config.default(dir))
     
     // To be overridden in subproject-specific State classes
     def testDir: os.Path = dir

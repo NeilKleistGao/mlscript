@@ -101,7 +101,8 @@ private[io] object VirtualPath:
           case "." => acc  // Current directory, skip it
           case ".." =>
             // Parent directory, pop the last segment if possible
-            if acc.isEmpty || acc.last == ".." then seg :: acc
+            // (`acc` is in reverse order, so the last segment added is its head)
+            if acc.isEmpty || acc.head == ".." then seg :: acc
             else acc.drop(1)
           case _ => seg :: acc
       

@@ -26,7 +26,7 @@ class CompilerTest extends AnyFunSuite:
   private def createCompiler(): (InMemoryFileSystem, Compiler) =
     val stdLib = loadStandardLibrary()
     val fs = new InMemoryFileSystem(stdLib)
-    given CompilerCtx = CompilerCtx.fresh(fs)
+    given CompilerCtx = CompilerCtx.fresh(fs, Config.default(io.Path("/")))
     (fs, new Compiler(paths))
   
   test("compiler can compile a simple program"):

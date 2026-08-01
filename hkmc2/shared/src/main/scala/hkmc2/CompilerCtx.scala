@@ -24,7 +24,11 @@ class CompilerCtx(
     val fs: io.FileSystem,
     cache: CompilerCache,
     val paths: Opt[MLsCompiler.Paths],
-    val rootConfig: Opt[Config],
+    /** The configuration of the whole compilation session, under which every compilation unit
+      * reached through this context is elaborated. It is fixed when the context is created:
+      * the units cached here are shared, so their elaboration — and hence the identity of the
+      * symbols they define — must not depend on which of them is compiled or imported first. */
+    val rootConfig: Config,
 ):
   
   def allFilesBeingImported: Ls[io.Path] =
@@ -37,9 +41,6 @@ class CompilerCtx(
 
   def withPaths(newPaths: MLsCompiler.Paths): CompilerCtx =
     CompilerCtx(importing, beingCompiled, fs, cache, S(newPaths), rootConfig)
-
-  def withRootConfig(newRootConfig: Config): CompilerCtx =
-    CompilerCtx(importing, beingCompiled, fs, cache, paths, S(newRootConfig))
   
   /** Elaborate (and, when compiler paths are set, lower) a compilation unit, caching the result.
     *
@@ -56,9 +57,6 @@ class CompilerCtx(
     // println(s"Cache has: ${cache.elabCache.contains(file)} ${cache.elabCache.keys}")
     
     val lastMod = fs.getLastChangedTimestamp(file)
-    // * `baseDir` only determines how this unit's own source locations are rendered,
-    // * so the unit's own directory is both the meaningful and the stable choice.
-    val compilationUnitConfig = rootConfig.getOrElse(Config.default(file.up))
     
     def mk =
       val state = new Elaborator.State
@@ -66,7 +64,7 @@ class CompilerCtx(
 
       // * Later, we can draw this from a global root configuration,
       // * which is set for a whole application.
-      given Config = compilationUnitConfig
+      given Config = rootConfig
 
       /*
       val parse =
@@ -184,7 +182,7 @@ class CompilerCtx(
           optimize(low.program(blk, Set.empty))
 
       val loweredPaths = paths.map(p => p.runtimeFile -> p.termFile)
-      Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, loweredPaths, compilationUnitConfig, lastMod)
+      Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, loweredPaths, rootConfig, lastMod)
     
     cache.upsert(file):
       case N => mk
@@ -195,7 +193,7 @@ class CompilerCtx(
         // * would give the same source file two elaborations and hence two sets of symbols.
         // * We keep the cached artifact rather than re-elaborating: reusing one identity is the
         // * lesser evil, and the diagnostic makes the misuse visible instead of silent.
-        softAssert(art.rootConfig === compilationUnitConfig,
+        softAssert(art.rootConfig === rootConfig,
           s"Cached artifact for $file was elaborated under a different root configuration")
         val requestedLowering = paths.map(p => p.runtimeFile -> p.termFile)
         if art.lastChangedTimestamp < lastMod
@@ -210,37 +208,35 @@ class CompilerCtx(
     // The prelude context is shared so every compilation unit sees the same prelude
     // symbols. Callers still elaborate their own files with a fresh State; the frozen
     // State remains the owner captured by the prelude symbols themselves.
-    // For that sharing to actually happen, the prelude's own configuration must not depend on
-    // the file that happens to request it first — see `getElaboratedBlock` above. Otherwise the
-    // prelude is re-elaborated per requester while cached compilation units keep referring to
-    // whichever elaboration came first, and a body inlined across units then carries prelude
-    // symbols that the importing file does not recognize.
-    val preludeConfig = rootConfig.getOrElse(Config.default(file.up))
+    // The prelude is elaborated once per context, under its root configuration: were it
+    // elaborated per requester, cached compilation units would keep referring to whichever
+    // elaboration came first, and a body inlined across units would then carry prelude symbols
+    // that the importing file does not recognize.
     val lastMod = fs.getLastChangedTimestamp(file)
     cache.upsertPrelude(file):
       case cur @ S(art) if !dbgParsing && art.lastChangedTimestamp >= lastMod =>
         // * See the corresponding assertion in `getElaboratedBlock` above.
-        softAssert(art.config === preludeConfig,
+        softAssert(art.config === rootConfig,
           s"Cached prelude for $file was elaborated under a different root configuration")
         art
       case _ =>
         val state = new Elaborator.State
         given Elaborator.State = state
-        given Config = preludeConfig
+        given Config = rootConfig
         given CompilerCtx = this
         val parse = ParserSetup(file, dbgParsing)
         val elab = Elaborator(tl, file.up, Ctx.empty)
         val initCtx = State.init.nestLocal("prelude")
         val (blk, ctx) = elab.importFrom(parse.resultBlk)(using initCtx)
-        PreludeArtifact(parse.resultBlk, blk, ctx, state, preludeConfig, lastMod)
+        PreludeArtifact(parse.resultBlk, blk, ctx, state, rootConfig, lastMod)
   
   
 object CompilerCtx:
   
   inline def get(using cctx: CompilerCtx) = cctx
   
-  def fresh(fs: io.FileSystem): CompilerCtx =
-    CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N, N)
+  def fresh(fs: io.FileSystem, rootConfig: Config): CompilerCtx =
+    CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N, rootConfig)
   
 end CompilerCtx
 
