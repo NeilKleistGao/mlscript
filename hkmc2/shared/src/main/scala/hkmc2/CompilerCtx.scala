@@ -23,7 +23,11 @@ class CompilerCtx(
     val beingCompiled: Set[io.Path],
     val fs: io.FileSystem,
     cache: CompilerCache,
-    val paths: Opt[MLsCompiler.Paths],
+    /** Where the prelude and runtime of this compilation session live. Fixed alongside
+      * `rootConfig`, and for the same reason: they take part in lowering — the lowered program
+      * imports the runtime by path — so a unit lowered against different ones is a different
+      * artifact, and the units cached here are shared. */
+    val paths: MLsCompiler.Paths,
     /** The configuration of the whole compilation session, under which every compilation unit
       * reached through this context is elaborated. It is fixed when the context is created:
       * the units cached here are shared, so their elaboration — and hence the identity of the
@@ -38,9 +42,6 @@ class CompilerCtx(
   
   def derive(newFile: io.Path): CompilerCtx =
     CompilerCtx(S(newFile, this), beingCompiled + newFile, fs, cache, paths, rootConfig)
-
-  def withPaths(newPaths: MLsCompiler.Paths): CompilerCtx =
-    CompilerCtx(importing, beingCompiled, fs, cache, S(newPaths), rootConfig)
   
   /** Elaborate (and, when compiler paths are set, lower) a compilation unit, caching the result.
     *
@@ -122,11 +123,10 @@ class CompilerCtx(
           .toSet
         case _ => Set.empty
       val (blk0, _) = elab.importFrom(parsed)
-      paths.foreach: compilerPaths =>
-        if file.toString === compilerPaths.runtimeSourceFile.toString then
-          state.initRuntimeSymbolsFromBlock(blk0)
-        else
-          state.initRuntimeSymbolsFromFile(compilerPaths.runtimeSourceFile, prelude)(using tl, summon[Raise], this)
+      if file.toString === paths.runtimeSourceFile.toString then
+        state.initRuntimeSymbolsFromBlock(blk0)
+      else
+        state.initRuntimeSymbolsFromFile(paths.runtimeSourceFile, prelude)(using tl, summon[Raise], this)
 
       val artifactConfig = Config.extractConfigFromStats(blk0)
       state.compilationUnitConfig = S(artifactConfig)
@@ -150,15 +150,10 @@ class CompilerCtx(
         ltl.givenIn:
           pipeline.run(lowered, printer, exportedSymbol.toSet, dtl)
 
-      // Imported compilation units are lowered even in worksheet mode so their
-      // symbols carry IR definitions that the caller's inliner can inspect.
-      if paths.isEmpty then
-        artifactConfig.givenIn:
-          given Elaborator.State = state
-          val low = ltl.givenIn:
-            new codegen.Lowering()(using artifactConfig, ltl, summon[Raise], state, artifactCtx, summon[SymbolPrinter])
-          optimize(low.program(blk0, Set.empty))
-      val ir = paths.map: compilerPaths =>
+      // Every compilation unit is lowered, so that its symbols carry the IR definitions an
+      // importer's inliner may splice in — and so that the importer never has to lower it itself,
+      // which it could only do by elaborating it afresh, under symbols nobody else would share.
+      val ir =
         artifactConfig.givenIn:
           given Elaborator.State = state
           def findQuote(t: semantics.Statement): Bool = t match
@@ -167,22 +162,21 @@ class CompilerCtx(
             case _ => t.subTerms.exists(findQuote)
           val hasQuote = findQuote(blk0)
           val blk = new Term.Blk(
-            Import(State.runtimeSymbol, compilerPaths.runtimeFile.toString, compilerPaths.runtimeFile) ::
+            Import(State.runtimeSymbol, paths.runtimeFile.toString, paths.runtimeFile) ::
               // Only import `Term.mls` when necessary.
               (if hasQuote then
-                Import(State.termSymbol, compilerPaths.termFile.toString, compilerPaths.termFile) :: blk0.stats
+                Import(State.termSymbol, paths.termFile.toString, paths.termFile) :: blk0.stats
               else
                 blk0.stats),
             blk0.res
           )
-          state.noteImportedModule(State.runtimeSymbol, compilerPaths.runtimeFile.toString)
-          if hasQuote then state.noteImportedModule(State.termSymbol, compilerPaths.termFile.toString)
+          state.noteImportedModule(State.runtimeSymbol, paths.runtimeFile.toString)
+          if hasQuote then state.noteImportedModule(State.termSymbol, paths.termFile.toString)
           val low = ltl.givenIn:
             new codegen.Lowering()(using artifactConfig, ltl, summon[Raise], state, artifactCtx, summon[SymbolPrinter])
           optimize(low.program(blk, Set.empty))
 
-      val loweredPaths = paths.map(p => p.runtimeFile -> p.termFile)
-      Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, loweredPaths, rootConfig, lastMod)
+      Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, rootConfig, lastMod)
     
     cache.upsert(file):
       case N => mk
@@ -195,11 +189,7 @@ class CompilerCtx(
         // * lesser evil, and the diagnostic makes the misuse visible instead of silent.
         softAssert(art.rootConfig === rootConfig,
           s"Cached artifact for $file was elaborated under a different root configuration")
-        val requestedLowering = paths.map(p => p.runtimeFile -> p.termFile)
-        if art.lastChangedTimestamp < lastMod
-          || requestedLowering.exists(rp => art.ir.isEmpty || art.loweredPaths =/= S(rp))
-        then mk
-        else art
+        if art.lastChangedTimestamp < lastMod then mk else art
 
   def getPrelude
         (file: io.Path, dbgParsing: Bool)
@@ -235,8 +225,8 @@ object CompilerCtx:
   
   inline def get(using cctx: CompilerCtx) = cctx
   
-  def fresh(fs: io.FileSystem, rootConfig: Config): CompilerCtx =
-    CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N, rootConfig)
+  def fresh(fs: io.FileSystem, paths: MLsCompiler.Paths, rootConfig: Config): CompilerCtx =
+    CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, paths, rootConfig)
   
 end CompilerCtx
 
@@ -247,11 +237,10 @@ object CompilerCache:
   class Artifact(
     val tree: syntax.Tree.Block,
     val term: semantics.Term.Blk,
-    val ir: Opt[codegen.Program],
+    val ir: codegen.Program,
     val config: Config,
     val ctx: Elaborator.Ctx,
     val state: Elaborator.State,
-    val loweredPaths: Opt[(io.Path, io.Path)],
     val rootConfig: Config,
     val lastChangedTimestamp: Long,
   )

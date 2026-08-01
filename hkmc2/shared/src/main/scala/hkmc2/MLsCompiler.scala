@@ -45,17 +45,17 @@ object MLsCompiler:
 /**
   * The compiler that compiles MLscript code into JavaScript modules.
   *
-  * @param paths required paths needed by the compiler
   * @param mkRaise generates a separate `Raise` function for each file.
   * @param fs the file system interface
   */
 class MLsCompiler
-    (paths: MLsCompiler.Paths, mkRaise: io.Path => Raise)
+    (mkRaise: io.Path => Raise)
     (using cctx: CompilerCtx):
   
-  // * The configuration is a property of the compilation session, carried by the context.
+  // * The paths and the configuration are properties of the compilation session,
+  // * carried by the context so that nothing can disagree with what is cached in it.
   private given Config = cctx.rootConfig
-  import paths.*
+  import cctx.paths.*
   
   
   
@@ -64,7 +64,6 @@ class MLsCompiler
   
   
   def compileModule(file: io.Path): Unit =
-    val compilerCtx = cctx.withPaths(paths)
     
     val wd = file.up
     
@@ -87,12 +86,12 @@ class MLsCompiler
     // val ltl = new TraceLogger{override def doTrace: Bool = true}
     val rtl = new TraceLogger{override def doTrace: Bool = false}
     
-    val preludeArtifact = compilerCtx.getPrelude(preludeFile, dbgParsing)(using etl, summon[Raise])
+    val preludeArtifact = cctx.getPrelude(preludeFile, dbgParsing)(using etl, summon[Raise])
     val preludeCtx = preludeArtifact.ctx
     val mainParse = ParserSetup(file, dbgParsing)
     
     preludeCtx.nestLocal("file:"+file.baseName).givenIn:
-      given CompilerCtx = compilerCtx.derive(file)
+      given CompilerCtx = cctx.derive(file)
       /*
       val elab = Elaborator(etl, wd, newCtx)
       val elab = Elaborator(etl, wd, preludeCtx)
@@ -131,9 +130,8 @@ class MLsCompiler
         val printer = (p: codegen.Program) => p.showAsTree
         CompilationPipeline().run(lowered, printer, exportedSymbol.toSet, dtl)
       */
-      val artifact = compilerCtx.getElaboratedBlock(file, preludeCtx)(using etl)
-      val optimized = artifact.ir.getOrElse:
-        lastWords(s"Compiler artifact for $file does not contain lowered IR")
+      val artifact = cctx.getElaboratedBlock(file, preludeCtx)(using etl)
+      val optimized = artifact.ir
 
       val nme = file.baseName
       val parsed = artifact.tree

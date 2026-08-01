@@ -184,6 +184,14 @@ lowers exactly as those tests build the corresponding `.mjs`, and source locatio
 bodies agree with the ones in the separately compiled module. `MLsCompiler` reads its configuration
 from the context rather than taking its own, so the two cannot disagree.
 
+The compiler paths are fixed on the context for the same reason, since they take part in lowering —
+the lowered program imports the runtime by path. That makes every compilation unit lowered, so
+`Artifact.ir` is no longer optional and the `loweredPaths` it was compared against is gone: an
+importer can never be handed a unit without IR, which it could only have supplied by elaborating that
+unit a second time, under symbols nobody else shares. `MLsCompiler` takes both the paths and the
+configuration from the context rather than its own parameters, so nothing can disagree with what the
+context has already cached.
+
 Since the root configuration cannot change during a compilation session, a cached artifact was
 necessarily built under the one being asked for. Rather than comparing configurations and silently
 re-elaborating on a mismatch — which made every field of `Config` an implicit part of a compilation

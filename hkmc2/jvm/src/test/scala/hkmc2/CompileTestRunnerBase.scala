@@ -55,14 +55,7 @@ abstract class CompileTestRunnerBase(
         // Synchronize diagnostic output to avoid interleaving since the compiler tests run in parallel.
         val wrap: (=> Unit) => Unit = body => this.synchronized(body)
         val report = ReportFormatter(System.out.println, colorize = true, wrap = Some(wrap))
-        val compiler = MLsCompiler(
-          paths = new MLsCompiler.Paths:
-            val preludeFile = mainTestDir / "mlscript" / "decls" / "Prelude.mls"
-            val runtimeFile = mainTestDir / "mlscript-compile" / "Runtime.mjs"
-            val runtimeSourceFile = mainTestDir / "mlscript-compile" / "Runtime.mls"
-            val termFile = mainTestDir / "mlscript-compile" / "Term.mjs",
-          mkRaise = report.mkRaise
-        )
+        val compiler = MLsCompiler(mkRaise = report.mkRaise)
         compiler.compileModule(file)
         
         if report.badLines.nonEmpty then

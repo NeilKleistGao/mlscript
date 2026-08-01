@@ -23,18 +23,6 @@ abstract class MLsDiffMaker extends DiffMaker:
   val optionFile: io.Path = predefFile.up / "Option.mjs" // * Contains MLscipt runtime option definition
   
   val wd = file.up
-
-  protected lazy val compilerPaths = new MLsCompiler.Paths:
-    def preludeFile: io.Path = MLsDiffMaker.this.preludeFile
-    def runtimeFile: io.Path = MLsDiffMaker.this.runtimeFile
-    def runtimeSourceFile: io.Path = MLsDiffMaker.this.runtimeSourceFile
-    def termFile: io.Path = MLsDiffMaker.this.termFile
-  
-  /** The context every compilation unit of this file is reached through — the prelude included.
-    * Requests must agree on the compiler paths, as a unit elaborated without them carries no
-    * lowered IR and would have to be elaborated again, under fresh symbols, for a later request
-    * that needs it. */
-  protected lazy val compilerCtx = cctx.withPaths(compilerPaths)
   
   val silent = NullaryCommand("silent")
   val dbgElab = NullaryCommand("de")
@@ -304,7 +292,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       given Raise = d =>
         output(s"Error: $d")
         ()
-      val preludeArtifact = compilerCtx.getPrelude(preludeFile, dbgParsing.isSet)
+      val preludeArtifact = cctx.getPrelude(preludeFile, dbgParsing.isSet)
       curCtx = preludeArtifact.ctx
       prelude = preludeArtifact.ctx
     super.run()
@@ -376,7 +364,6 @@ abstract class MLsDiffMaker extends DiffMaker:
       val resBlk = new syntax.Tree.Block(res)
       val (e, newCtx) = elab.importFrom(resBlk)
       if file.toString === runtimeSourceFile.toString then
-        given CompilerCtx = compilerCtx
         summon[Elaborator.State].initRuntimeSymbolsFromBlock(e)
       val ctxWithImports = newCtx.withMembers(resBlk.definedSymbols)
       if verbose then
@@ -432,7 +419,6 @@ abstract class MLsDiffMaker extends DiffMaker:
   private var blockNum = 0
   
   def processTrees(trees: Ls[syntax.Tree])(using Config, Raise): Unit =
-    given CompilerCtx = compilerCtx
     val elab = Elaborator(etl, file.up, prelude)
     // val blockSymbol =
     //   semantics.TopLevelSymbol("block#"+blockNum)
@@ -466,7 +452,7 @@ abstract class MLsDiffMaker extends DiffMaker:
     given Config = Config.extractConfigFromStats(trm)
     if file.toString =/= runtimeSourceFile.toString && file.toString =/= preludeFile.toString then
       summon[Elaborator.State].initRuntimeSymbolsFromFile(runtimeSourceFile, prelude)(
-        using summon[TL], summon[Raise], compilerCtx)
+        using summon[TL], summon[Raise], cctx)
     val resolver = Resolver(rtl)
     curICtx = resolver.traverseBlock(trm)(using curICtx)
     

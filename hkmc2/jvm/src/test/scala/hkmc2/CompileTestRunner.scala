@@ -20,8 +20,8 @@ object CompileTestRunner:
   // * Stack safety relies on the fact that runtime uses while loops for resumption
   // * and does not create extra stack depth. Hence, while loop rewriting should be disabled here.
   // * (It used to be on by default, but now is off by default, so nothing to do.)
-  given cctx: CompilerCtx =
-    CompilerCtx.fresh(io.FileSystem.default, Config.default(TestFolders.mainTestDir(os.pwd)))
+  given cctx: CompilerCtx = CompilerCtx.fresh(io.FileSystem.default,
+    TestFolders.compilerPaths(os.pwd), Config.default(TestFolders.mainTestDir(os.pwd)))
   
 end CompileTestRunner
 
