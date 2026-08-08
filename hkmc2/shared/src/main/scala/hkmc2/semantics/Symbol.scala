@@ -391,7 +391,7 @@ sealed abstract case class LitSymbol(lit: Literal)(using State) extends CtorSymb
   def toLoc: Option[Loc] = lit.toLoc
   override def prefix: Str = "lit:"
 object LitSymbol:
-  val cache: mutable.Map[Literal, LitSymbol] = mutable.Map.empty
+  val cache: scala.collection.concurrent.Map[Literal, LitSymbol] = scala.collection.concurrent.TrieMap.empty
   def apply(lit: Literal)(using State): LitSymbol =
     cache.getOrElseUpdate(lit, new LitSymbol(lit){})
 
