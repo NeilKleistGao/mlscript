@@ -1778,12 +1778,12 @@ class BlockSimplifier
               info.inlineCost(blk, threshold) match
               case N =>
                 super.applyResult(r)(k)
-              case S(cost) if !spendInlineFuel(cost) =>
-                super.applyResult(r)(k)
-              case S(_) =>
+              case S(cost) =>
                 val matchedArgs = matchAllArgs(argss, info.defn.params)
                 matchedArgs match
                 case N =>
+                  super.applyResult(r)(k)
+                case S(_) if !spendInlineFuel(cost) =>
                   super.applyResult(r)(k)
                 case S(matchedArgs) =>
                   registerChange(s"inline call ${ts.showDbg}")
@@ -1827,12 +1827,12 @@ class BlockSimplifier
               info.inlineCost(blk, threshold) match
               case N =>
                 super.applyResult(r)(k)
-              case S(cost) if !spendInlineFuel(cost) =>
-                super.applyResult(r)(k)
-              case S(_) =>
+              case S(cost) =>
                 val matchedArgs = matchAllArgs(argss, info.defn.params)
                 matchedArgs match
                 case N =>
+                  super.applyResult(r)(k)
+                case S(_) if !spendInlineFuel(cost) =>
                   super.applyResult(r)(k)
                 case S(matchedArgs) =>
                   registerChange(s"inline call ${ts.showDbg}")

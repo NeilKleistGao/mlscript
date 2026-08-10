@@ -92,6 +92,35 @@ class CompilerTest extends AnyFunSuite:
     
     assert(fs.exists(Path("/Foo.mjs")), "First output should exist")
     assert(fs.exists(Path("/Bar.mjs")), "Second output should exist")
+
+  test("changing an imported file invalidates cached importers"):
+    val (fs, compiler) = createCompiler()
+
+    def source(prefix: String): String =
+      s"""|$prefix
+          |fun helper() = "This body is deliberately too large for automatic inlining."
+          |module A with
+          |  fun exposed() = helper()
+          |""".stripMargin
+
+    fs.write("/A.mls", source(""))
+    fs.write("/B.mls", """import "./A.mls"
+                           |A.exposed()
+                           |""".stripMargin)
+    compiler.compile("/A.mls")
+    compiler.compile("/B.mls")
+
+    // Introducing an earlier symbol changes `helper`'s private-ABI name. A cached `B` must not
+    // retain the old symbol after `A` is re-elaborated, or its named import will no longer exist.
+    fs.write("/A.mls", source("fun shiftsFollowingSymbolIds() = 0"))
+    compiler.compile("/B.mls")
+    compiler.compile("/A.mls")
+
+    val privateName = """_\$_modulePrivate_\$_helper_\$_\d+""".r
+    val aExport = privateName.findFirstIn(fs.read("/A.mjs"))
+    val bImport = privateName.findFirstIn(fs.read("/B.mjs"))
+    assert(aExport.nonEmpty, "The defining module should export the referenced private helper")
+    assert(bImport == aExport, "The importer should be regenerated with the helper's current ABI name")
   
   test("compiler can report errors"):
     val (fs, compiler) = createCompiler()

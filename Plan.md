@@ -205,3 +205,21 @@ The same "one spelling per file" requirement applies to the cache keys. On the J
 same file under a second key. That would both split its elaboration and defeat `InMemoryFileSystem`,
 which documents that it assumes normalized paths. `VirtualPath` now normalizes on construction and
 compares by the normalized form.
+
+
+## Review follow-up
+
+The final review found three more cache/inlining edge cases and one test-hygiene issue:
+
+* Absolute virtual paths now clamp `..` at the root, and the JavaScript-facing string APIs of
+  `InMemoryFileSystem` normalize their keys too. Otherwise `/../a`, `/a`, and a host-written
+  `/x/../a` could still denote the same file under different cache/file-system keys.
+* Replacing a cached compilation-unit artifact or prelude now invalidates every dependent artifact.
+  Cached terms and IR retain the old symbols, and private-ABI names contain their UIDs, so updating
+  only the changed file could leave an unchanged importer requesting an export that no longer exists.
+  Cache lookup checks all published source timestamps so requesting the importer itself also notices
+  a changed dependency. A Scala.js regression test changes a dependency in a way that shifts the
+  private helper's UID and verifies that the importer is rebuilt with the current export name.
+* Automatic-inlining fuel is spent only after all argument lists have matched. A call that could not
+  be inlined previously consumed budget and could prevent an unrelated later call from being inlined.
+* Temporary experiments were removed from `HkScratch.mls`, as required by the diff-test workflow.

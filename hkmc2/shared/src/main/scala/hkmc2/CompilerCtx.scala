@@ -178,9 +178,8 @@ class CompilerCtx(
 
       Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, rootConfig, lastMod)
     
-    cache.upsert(file):
-      case N => mk
-      case cur @ S(art) =>
+    cache.upsert(file)(
+      isCurrent = (cachedFile, art) =>
         // * The root configuration is fixed for a whole compilation session — nothing mutates it —
         // * so a cached artifact was necessarily built with the one we are asking for now.
         // * A mismatch means two contexts with different root configurations share a cache, which
@@ -188,8 +187,11 @@ class CompilerCtx(
         // * We keep the cached artifact rather than re-elaborating: reusing one identity is the
         // * lesser evil, and the diagnostic makes the misuse visible instead of silent.
         softAssert(art.rootConfig === rootConfig,
-          s"Cached artifact for $file was elaborated under a different root configuration")
-        if art.lastChangedTimestamp < lastMod then mk else art
+          s"Cached artifact for $cachedFile was elaborated under a different root configuration")
+        try art.lastChangedTimestamp >= fs.getLastChangedTimestamp(cachedFile)
+        catch case _: io.FileSystem.FileNotFoundException => false,
+      create = mk,
+    )
 
   def getPrelude
         (file: io.Path, dbgParsing: Bool)
@@ -203,13 +205,13 @@ class CompilerCtx(
     // elaboration came first, and a body inlined across units would then carry prelude symbols
     // that the importing file does not recognize.
     val lastMod = fs.getLastChangedTimestamp(file)
-    cache.upsertPrelude(file):
-      case cur @ S(art) if !dbgParsing && art.lastChangedTimestamp >= lastMod =>
+    cache.upsertPrelude(file)(
+      isCurrent = art =>
         // * See the corresponding assertion in `getElaboratedBlock` above.
         softAssert(art.config === rootConfig,
           s"Cached prelude for $file was elaborated under a different root configuration")
-        art
-      case _ =>
+        !dbgParsing && art.lastChangedTimestamp >= lastMod,
+      create =
         val state = new Elaborator.State
         given Elaborator.State = state
         given Config = rootConfig
@@ -218,7 +220,8 @@ class CompilerCtx(
         val elab = Elaborator(tl, file.up, Ctx.empty)
         val initCtx = State.init.nestLocal("prelude")
         val (blk, ctx) = elab.importFrom(parse.resultBlk)(using initCtx)
-        PreludeArtifact(parse.resultBlk, blk, ctx, state, rootConfig, lastMod)
+        PreludeArtifact(parse.resultBlk, blk, ctx, state, rootConfig, lastMod),
+    )
   
   
 object CompilerCtx:
@@ -264,36 +267,43 @@ trait CompilerCache:
 
   private val preludeCache: MutMap[io.Path, PreludeArtifact] = MutMap.empty
   
-  /** Create or update an artifact at the given path in the cache.
+  /** Return the current artifact at `path`, or atomically invalidate and rebuild the cache.
     *
     * Synchronized for the same reason as `upsertPrelude` below, and additionally because the
     * artifact's symbols are shared: without atomicity, concurrent requesters each elaborate the
     * file and each walk away with a *different* set of symbols for it, only one of which is
     * retained in the cache. A later requester then disagrees with an earlier one about the
-    * identity of the very same source-level definition. Elaboration is reentrant here — `update`
-    * elaborates imports, which come back through this method on the same thread. */
-  def upsert(path: io.Path)(update: Option[Artifact] => Artifact): Artifact =
+    * identity of the very same source-level definition. Elaboration is reentrant here — `create`
+    * elaborates imports, which come back through this method on the same thread.
+    *
+    * Replacing one artifact invalidates every cached dependent: their terms and IR refer to the
+    * old artifact's symbols, and private-ABI export names incorporate those symbol identities. */
+  def upsert(path: io.Path)(isCurrent: (io.Path, Artifact) => Bool, create: => Artifact): Artifact =
     this.synchronized:
-      elabCache
-        .updateWith(path):
-          case N => S(update(N))
-          case cur @ S(oldArt) =>
-            val newArt = update(cur)
-            if newArt is oldArt then cur else S(newArt)
-        .get // * above, we always returns Some
+      // A requester may itself be unchanged while one of the imported artifacts captured in its
+      // term/IR has changed. Check all published identities before returning any one of them.
+      if elabCache.exists((cachedPath, art) => !isCurrent(cachedPath, art)) then
+        elabCache.clear()
+      elabCache.get(path) match
+      case S(art) => art
+      case N =>
+        val art = create
+        elabCache(path) = art
+        art
 
   /** Synchronized because diff-test and compile-test runners compile files in parallel.
     *
     * Only the first requester elaborates the prelude; concurrent requesters block and reuse
     * the same frozen artifact once it is available. */
-  def upsertPrelude(path: io.Path)(update: Option[PreludeArtifact] => PreludeArtifact): PreludeArtifact =
+  def upsertPrelude(path: io.Path)(isCurrent: PreludeArtifact => Bool, create: => PreludeArtifact): PreludeArtifact =
     this.synchronized:
-      preludeCache
-        .updateWith(path):
-          case N => S(update(N))
-          case cur @ S(oldArt) =>
-            val newArt = update(cur)
-            if newArt is oldArt then cur else S(newArt)
-        .get
+      preludeCache.get(path) match
+      case S(art) if isCurrent(art) => art
+      case stale =>
+        // Every elaborated artifact captures symbols from this frozen prelude.
+        if stale.nonEmpty then elabCache.clear()
+        val art = create
+        preludeCache(path) = art
+        art
   
 end CompilerCache

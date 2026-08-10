@@ -1,61 +1,11 @@
 :js
+// :de
+// :sjs
+// :pt
+// :elt
 
-:sjs
-fun test(thing) =
-  if thing is [] then 0
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let test;
-//│ test = function test(thing) {
-//│   if (runtime.Tuple.isArrayLike(thing) && thing.length === 0) {
-//│     return 0
-//│   }
-//│   throw globalThis.Object.freeze(new globalThis.Error("match error"));
-//│ };
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-
-:re
-:sjs
-test(12)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ if (runtime.Tuple.isArrayLike(12) && (12).length === 0) {
-//│   return 0
-//│ }
-//│ throw globalThis.Object.freeze(new globalThis.Error("match error"));
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ ═══[RUNTIME ERROR] Error: match error
-
-
-fun i(x) = x
-
-fun f = i
-
-:sjs
-f(123)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return 123
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 123
-
-:sjs
-f(123) + 1
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return 124
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 124
-
-
-fun f = id
-
-:sjs
-let tmp = f
-tmp(1)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let tmp, inlinedVal;
-//│ inlinedVal = Predef.id;
-//│ tmp = inlinedVal;
-//│ return runtime.safeCall(inlinedVal(1))
-//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
-//│ = 1
-//│ tmp = fun id
+:global
+// :d
+// :todo
 
 

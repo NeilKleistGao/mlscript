@@ -161,4 +161,12 @@ class VirtualPathTests extends AnyFunSuite:
     assert(Path("../a/b/../..").toString == "..")
     assert(Path("../../a/..").toString == "../..")
 
+  test("absolute paths cannot escape above the root"):
+    assert(Path("/../a").toString == "/a")
+    assert(Path("/a/../..").toString == "/")
 
+  test("in-memory filesystem string paths use the same normalized keys"):
+    val fs = new InMemoryFileSystem(Map("/a/./b.mls" -> "initial"))
+    assert(fs.read("/a/b.mls") == "initial")
+    fs.write("/a/c/../b.mls", "updated")
+    assert(fs.read("/a/./b.mls") == "updated")
