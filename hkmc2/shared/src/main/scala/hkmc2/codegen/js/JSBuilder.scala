@@ -175,6 +175,29 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     val originState = sym.getState
     originState.compilationUnitModulePath.filter(_ => !originState.isCompilationUnitExport(sym))
 
+  private def symbolModulePath(sym: Symbol): Opt[Str] =
+    val importPath = sym match
+      case sym: TempSymbol => defaultImportPath(sym)
+      case sym: VarSymbol => defaultImportPath(sym)
+      case sym: BlockMemberSymbol => defaultImportPath(sym) orElse compilationUnitPath(sym)
+      case _ => N
+    importPath orElse sym.getState.compilationUnitModulePath
+
+  /** UIDs are unique only within one elaboration state. Module provenance must therefore come
+    * first whenever symbols from independently elaborated compilation units are ordered. */
+  private def stableSymbolSortKey(sym: Symbol, modulePath: Opt[Str]): (Str, Int, Str) =
+    val normalizedPath = modulePath.map: path =>
+      if path.startsWith("/") then io.Path(path).toString
+      else if path.startsWith(".") then io.RelPath(path).toString
+      else path // Bare JavaScript module specifiers such as "fs" or "binaryen" are not paths.
+    (normalizedPath.getOrElse(""), sym.uid.asInt, sym.nme)
+
+  private def orderedExternalSymbols[S <: Symbol](symbols: collection.Map[S, Str]): Ls[S] =
+    symbols.iterator.toList
+      .sortBy:
+        case (sym, path) => stableSymbolSortKey(sym, S(path))
+      .map(_._1)
+
   /** Collect symbols that JS emits as values. Resolved field metadata is handled while
     * rendering its qualifier and must not create a standalone module dependency. */
   private class ImportDependencyTraverser extends BlockTraverser:
@@ -191,26 +214,28 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
   private def externalCompilationUnitSymbols(p: Program, currentModulePath: Opt[Str]): Ls[BlockMemberSymbol] =
     val importedSymbols = p.imports.iterator.map(_._1).toSet
     val localSymbols = locallyDefinedSymbols(p)
-    val externalSymbols = collection.mutable.Set.empty[BlockMemberSymbol]
+    val externalSymbols = collection.mutable.Map.empty[BlockMemberSymbol, Str]
     (new ImportDependencyTraverser:
       override def applySymbol(sym: Symbol): Unit = sym match
         case sym: BlockMemberSymbol
           if !importedSymbols(sym)
             && !localSymbols(sym)
             && defaultImportPath(sym).isEmpty
-            && compilationUnitPath(sym).exists(path => !currentModulePath.contains(path))
         =>
-          externalSymbols += sym
+          compilationUnitPath(sym).filter(path => !currentModulePath.contains(path)).foreach: path =>
+            externalSymbols(sym) = path
         case _ =>
     ).applyBlock(p.main)
-    externalSymbols.toList.sortBy(_.uid)
+    orderedExternalSymbols(externalSymbols)
 
   private def externalDefaultImportSymbols(p: Program): Ls[ImportSymbol] =
     val importedSymbols = p.imports.iterator.map(_._1).toSet
     val localSymbols = locallyDefinedSymbols(p)
-    val externalSymbols = collection.mutable.Set.empty[ImportSymbol]
+    val externalSymbols = collection.mutable.Map.empty[ImportSymbol, Str]
     def note(sym: ImportSymbol): Unit =
-      if !importedSymbols(sym) && !localSymbols(sym) && defaultImportPath(sym).nonEmpty then externalSymbols += sym
+      if !importedSymbols(sym) && !localSymbols(sym) then
+        defaultImportPath(sym).foreach: path =>
+          externalSymbols(sym) = path
     (new ImportDependencyTraverser:
       override def applySymbol(sym: Symbol): Unit = sym match
         case sym: TempSymbol => note(sym)
@@ -218,7 +243,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
         case sym: BlockMemberSymbol => note(sym)
         case _ =>
     ).applyBlock(p.main)
-    externalSymbols.toList.sortBy(_.uid)
+    orderedExternalSymbols(externalSymbols)
 
   private def ownCompilationUnitSymbols(p: Program, currentModulePath: Str): Ls[BlockMemberSymbol] =
     p.main match
@@ -1007,7 +1032,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       :: doc";"
   
   def blockPreamble(ss: Iterable[Symbol], preallocatedSymbols: Set[Symbol])(using Raise, Scope): Document =
-    val vars = ss.toArray.sortBy(_.uid).iterator.map: l =>
+    val vars = ss.toArray.sortBy(sym => stableSymbolSortKey(sym, symbolModulePath(sym))).iterator.map: l =>
       if preallocatedSymbols(l) then l -> scope.lookup_!(l, N)
       else
         whenValidatingIR:

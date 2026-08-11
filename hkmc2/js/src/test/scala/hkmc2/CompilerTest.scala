@@ -162,6 +162,40 @@ class CompilerTest extends AnyFunSuite:
     assert(aExport == initialExport, "Shifting symbol UIDs should not change private ABI names")
     assert(bImport == aExport, "The importer and exporter should use the same private ABI name")
     assert(bJs.contains("after"), "The cached importer should be rebuilt after its dependency changes")
+
+  test("cross-state import dependencies use deterministic module-path ordering"):
+    val (fs, compiler) = createCompiler()
+
+    def source(moduleName: String, importedName: String): String =
+      s"""|import "./nested/../$importedName.js"
+          |fun helper() = "This body is deliberately too large for automatic inlining."
+          |module $moduleName with
+          |  fun exposed() = helper() + $importedName
+          |""".stripMargin
+
+    fs.write("/Z.mls", source("Z", "Alpha"))
+    fs.write("/A.mls", source("A", "Zulu"))
+    // Reverse source order makes UID-only ordering expose state-local UID ties from the two
+    // equivalently-shaped imported units. Module paths must decide both import and alias order.
+    fs.write("/B.mls", """import "./Z.mls"
+                           |import "./A.mls"
+                           |A.exposed() + Z.exposed()
+                           |""".stripMargin)
+
+    compiler.compile("/B.mls")
+
+    val js = fs.read("/B.mjs")
+    val defaultDependencies = js.linesIterator.filter: line =>
+      line.startsWith("import Alpha") || line.startsWith("import Zulu")
+    val privateDependencies = js.linesIterator.filter(_.contains("modulePrivate")).toList
+    assert(defaultDependencies.toList == List(
+      "import Alpha from \"./Alpha.js\";",
+      "import Zulu from \"./Zulu.js\";",
+    ))
+    assert(privateDependencies == List(
+      "import { _$_modulePrivate_$_helper as helper } from \"./A.mjs\";",
+      "import { _$_modulePrivate_$_helper as helper1 } from \"./Z.mjs\";",
+    ))
   
   test("compiler can report errors"):
     val (fs, compiler) = createCompiler()
