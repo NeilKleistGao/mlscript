@@ -2,6 +2,7 @@ package hkmc2
 
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
+import collection.concurrent.TrieMap
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.*
 
@@ -15,8 +16,11 @@ class CompilerCacheTest extends AnyFunSuite:
 
   private final class Entry
 
+  private def newCache(): ArtifactCache[Entry] =
+    new ArtifactCache[Entry](TrieMap.empty, TrieMap.empty)
+
   test("artifact cache evaluates independent paths concurrently"):
-    val cache = new ArtifactCache[Entry]
+    val cache = newCache()
     val bothStarted = new CountDownLatch(2)
     val release = new CountDownLatch(1)
 
@@ -37,7 +41,7 @@ class CompilerCacheTest extends AnyFunSuite:
     assert(overlapped, "Building one path should not hold the cache monitor while it evaluates")
 
   test("artifact cache publishes one identity for concurrent requests to the same path"):
-    val cache = new ArtifactCache[Entry]
+    val cache = newCache()
     val buildStarted = new CountDownLatch(1)
     val release = new CountDownLatch(1)
     val buildCount = new AtomicInteger

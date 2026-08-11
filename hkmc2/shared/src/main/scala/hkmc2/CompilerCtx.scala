@@ -207,7 +207,7 @@ object CompilerCtx:
   inline def get(using cctx: CompilerCtx) = cctx
   
   def fresh(fs: io.FileSystem, paths: MLsCompiler.Paths, rootConfig: Config): CompilerCtx =
-    CompilerCtx(N, Set.empty, fs, new CompilerCache, N, paths, rootConfig)
+    CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N, paths, rootConfig)
 
   private[hkmc2] final class DependencyRecorder:
     // Keep the timestamp in the set element rather than mapping paths to timestamps. If a source
@@ -253,40 +253,34 @@ object CompilerCache:
 
   /** A cache whose expensive computations are serialized per path rather than globally.
     *
-    * The monitor on this object protects only the two mutable maps. It is never held while
-    * validating or creating an entry, so independent paths can be evaluated concurrently.
-    * Keeping a stable lock per path makes every successful requester observe the same published
-    * artifact — and therefore the same symbol identities — for that path. */
-  private[hkmc2] final class ArtifactCache[A <: AnyRef]:
-    private val entries: MutMap[io.Path, A] = MutMap.empty
-    private val pathLocks: MutMap[io.Path, AnyRef] = MutMap.empty
-
-    private def pathLock(path: io.Path): AnyRef = this.synchronized:
+    * The supplied maps provide the platform's concurrency semantics: JVM uses `TrieMap`, while
+    * JavaScript uses ordinary mutable maps on its single execution thread. Keeping a stable lock
+    * per path makes every successful requester observe the same published artifact — and therefore
+    * the same symbol identities — without a cache-wide monitor. */
+  private[hkmc2] final class ArtifactCache[A <: AnyRef](
+      entries: MutMap[io.Path, A],
+      pathLocks: MutMap[io.Path, AnyRef],
+  ):
+    private def pathLock(path: io.Path): AnyRef =
       pathLocks.getOrElseUpdate(path, new Object)
-
-    private def get(path: io.Path): Opt[A] = this.synchronized:
-      entries.get(path)
-
-    private def put(path: io.Path, entry: A): Unit = this.synchronized:
-      entries(path) = entry
 
     def getOrCreate(path: io.Path)(isCurrent: A => Bool, create: => A): A =
       pathLock(path).synchronized:
-        get(path) match
+        entries.get(path) match
         case S(entry) if isCurrent(entry) => entry
         case _ =>
           val entry = create
-          put(path, entry)
+          entries(path) = entry
           entry
   
 end CompilerCache
 
 
-class CompilerCache:
+trait CompilerCache:
   // TODO also use hash comparison to avoid needless re-parses?
 
-  private val elabCache = new CompilerCache.ArtifactCache[Artifact]
-  private val preludeCache = new CompilerCache.ArtifactCache[PreludeArtifact]
+  protected def elabCache: CompilerCache.ArtifactCache[Artifact]
+  protected def preludeCache: CompilerCache.ArtifactCache[PreludeArtifact]
   
   /** Return the current artifact at `path`, or atomically rebuild that artifact.
     *
