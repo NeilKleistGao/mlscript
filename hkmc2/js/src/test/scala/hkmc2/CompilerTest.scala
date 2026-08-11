@@ -8,6 +8,16 @@ import scala.scalajs.js.annotation._
 import scala.scalajs.js.Dynamic.global
 
 class CompilerTest extends AnyFunSuite:
+  private class CountingFileSystem(initialFiles: Map[String, String])
+      extends InMemoryFileSystem(initialFiles):
+    private val readCounts = scala.collection.mutable.Map.empty[Path, Int]
+
+    override def read(path: Path): String =
+      readCounts.updateWith(path)(_.map(_ + 1).orElse(Some(1)))
+      super.read(path)
+
+    def readCount(path: Path): Int = readCounts.getOrElse(path, 0)
+
   private def loadStandardLibrary(): Map[String, String] =
     val projectRoot = node.process.cwd()
     val compilePath = node.path.join(projectRoot, "hkmc2", "shared", "src", "test", "mlscript-compile")
@@ -30,16 +40,6 @@ class CompilerTest extends AnyFunSuite:
     (fs, new Compiler)
 
   test("compiler parses each compilation unit only once"):
-    class CountingFileSystem(initialFiles: Map[String, String])
-        extends InMemoryFileSystem(initialFiles):
-      private val readCounts = scala.collection.mutable.Map.empty[Path, Int]
-
-      override def read(path: Path): String =
-        readCounts.updateWith(path)(_.map(_ + 1).orElse(Some(1)))
-        super.read(path)
-
-      def readCount(path: Path): Int = readCounts.getOrElse(path, 0)
-
     val fs = new CountingFileSystem(loadStandardLibrary())
     given CompilerCtx = CompilerCtx.fresh(fs, paths, Config.default(io.Path("/")))
     val compiler = new Compiler
@@ -162,6 +162,42 @@ class CompilerTest extends AnyFunSuite:
     assert(aExport == initialExport, "Shifting symbol UIDs should not change private ABI names")
     assert(bImport == aExport, "The importer and exporter should use the same private ABI name")
     assert(bJs.contains("after"), "The cached importer should be rebuilt after its dependency changes")
+
+  test("cached artifacts validate only their transitive dependencies"):
+    val fs = new CountingFileSystem(loadStandardLibrary())
+    given CompilerCtx = CompilerCtx.fresh(fs, paths, Config.default(io.Path("/")))
+    val compiler = new Compiler
+
+    fs.write("/A.mls", """fun helper() = "before"
+                           |module A with
+                           |  fun value() = helper()
+                           |""".stripMargin)
+    fs.write("/B.mls", """import "./A.mls"
+                           |module B with
+                           |  fun value() = A.value()
+                           |""".stripMargin)
+    fs.write("/C.mls", """import "./B.mls"
+                           |let result = B.value()
+                           |""".stripMargin)
+    fs.write("/Unrelated.mls", "let result = 0")
+
+    compiler.compile("/C.mls")
+    compiler.compile("/Unrelated.mls")
+    val initialReads = List("/A.mls", "/B.mls", "/C.mls", "/Unrelated.mls")
+      .map(path => Path(path) -> fs.readCount(Path(path))).toMap
+
+    fs.write("/A.mls", """fun helper() = "after"
+                           |module A with
+                           |  fun value() = helper()
+                           |""".stripMargin)
+    compiler.compile("/C.mls")
+    compiler.compile("/Unrelated.mls")
+
+    List("/A.mls", "/B.mls", "/C.mls").foreach: path =>
+      assert(fs.readCount(Path(path)) == initialReads(Path(path)) + 1,
+        s"Changing A should rebuild the transitive importer $path exactly once")
+    assert(fs.readCount(Path("/Unrelated.mls")) == initialReads(Path("/Unrelated.mls")),
+      "Changing A should not rebuild an unrelated cached artifact")
 
   test("cross-state import dependencies use deterministic module-path ordering"):
     val (fs, compiler) = createCompiler()

@@ -219,13 +219,15 @@ The final review found three more cache/inlining edge cases and one test-hygiene
 * Absolute virtual paths now clamp `..` at the root, and the JavaScript-facing string APIs of
   `InMemoryFileSystem` normalize their keys too. Otherwise `/../a`, `/a`, and a host-written
   `/x/../a` could still denote the same file under different cache/file-system keys.
-* Replacing a cached compilation-unit artifact or prelude now invalidates every dependent artifact.
-  Cached terms and IR retain the old symbols, so updating only the changed file could leave an
-  unchanged importer referring to definitions from the previous artifact.
-  Cache lookup checks all published source timestamps so requesting the importer itself also notices
-  a changed dependency. A Scala.js regression test changes a dependency in a way that shifts a private
-  helper's UID and verifies both that its scope-allocated ABI name remains stable and that the importer
-  is rebuilt with the changed inlined body.
+* Each cached compilation-unit artifact stores the source timestamps of all of its transitive
+  dependencies. Cached terms and IR retain imported artifacts' symbols, so an artifact is reused only
+  while its own source, its Prelude identity, and every recorded dependency remain current. Detecting
+  a stale dependency rebuilds the requested importer; its normal import traversal then requests and,
+  if necessary, rebuilds that dependency. Cache entries use per-path locks, so concurrent requesters
+  share one symbol identity for a file without serializing unrelated rebuilding chains. A Scala.js
+  regression test changes a dependency in a way that shifts a private helper's UID and verifies both
+  that its scope-allocated ABI name remains stable and that the importer is rebuilt with the changed
+  inlined body.
 * Automatic-inlining fuel is spent only after all argument lists have matched. A call that could not
   be inlined previously consumed budget and could prevent an unrelated later call from being inlined.
 * Temporary experiments were removed from `HkScratch.mls`, as required by the diff-test workflow.

@@ -1,6 +1,6 @@
 package hkmc2
 
-import collection.mutable.Map as MutMap
+import collection.mutable.{Map as MutMap, Set as MutSet}
 
 import hkmc2.utils.*, shorthands.*
 import hkmc2.io
@@ -18,6 +18,8 @@ class CompilerCtx(
     val beingCompiled: Set[io.Path],
     val fs: io.FileSystem,
     cache: CompilerCache,
+    /** Build-local sink for artifacts requested while elaborating the caller, if any. */
+    private val dependencyRecorder: Opt[CompilerCtx.DependencyRecorder],
     /** Where the prelude and runtime of this compilation session live. Fixed alongside
       * `rootConfig`, and for the same reason: they take part in lowering — the lowered program
       * imports the runtime by path — so a unit lowered against different ones is a different
@@ -35,8 +37,8 @@ class CompilerCtx(
     case S((path, parent)) => path :: parent.allFilesBeingImported
     case N => Nil
   
-  def derive(newFile: io.Path): CompilerCtx =
-    CompilerCtx(S(newFile, this), beingCompiled + newFile, fs, cache, paths, rootConfig)
+  private def derive(newFile: io.Path, recorder: CompilerCtx.DependencyRecorder): CompilerCtx =
+    CompilerCtx(S(newFile, this), beingCompiled + newFile, fs, cache, S(recorder), paths, rootConfig)
   
   /** Elaborate (and, when compiler paths are set, lower) a compilation unit, caching the result.
     *
@@ -53,6 +55,7 @@ class CompilerCtx(
     val lastMod = fs.getLastChangedTimestamp(file)
     
     def mk =
+      val dependencies = new CompilerCtx.DependencyRecorder
       val state = new Elaborator.State
       given Elaborator.State = state
 
@@ -72,8 +75,9 @@ class CompilerCtx(
         given CompilerCtx = this
         ParserSetup(file)
       given Elaborator.Ctx = prelude
+      val artifactCtx = derive(parse.origin.fileName, dependencies)
       val elab =
-        given CompilerCtx = derive(parse.origin.fileName)
+        given CompilerCtx = artifactCtx
         Elaborator(tl, file.up, prelude)
 
       val parsed = parse.resultBlk
@@ -91,7 +95,8 @@ class CompilerCtx(
       if file.toString === paths.runtimeSourceFile.toString then
         state.initRuntimeSymbolsFromBlock(blk0)
       else
-        state.initRuntimeSymbolsFromFile(paths.runtimeSourceFile, prelude)(using tl, summon[Raise], this)
+        state.initRuntimeSymbolsFromFile(paths.runtimeSourceFile, prelude)(
+          using tl, summon[Raise], artifactCtx)
 
       val artifactConfig = Config.extractConfigFromStats(blk0)
       state.compilationUnitConfig = S(artifactConfig)
@@ -143,9 +148,9 @@ class CompilerCtx(
 
       state.initializeCompilationUnitPrivateNames:
         codegen.js.JSBuilder.allocateModulePrivateExportNames(ir)(using state, summon[Raise])
-      Artifact(parsed, blk0, ir, artifactConfig, prelude, state, rootConfig, lastMod)
+      Artifact(parsed, blk0, ir, artifactConfig, prelude, state, rootConfig, dependencies.result, lastMod)
     
-    cache.upsert(file)(
+    val artifact = cache.upsert(file)(
       isCurrent = (cachedFile, art) =>
         // * The root configuration is fixed for a whole compilation session — nothing mutates it —
         // * so a cached artifact was necessarily built with the one we are asking for now.
@@ -155,10 +160,16 @@ class CompilerCtx(
         // * lesser evil, and the diagnostic makes the misuse visible instead of silent.
         softAssert(art.rootConfig === rootConfig,
           s"Cached artifact for $cachedFile was elaborated under a different root configuration")
-        try art.lastChangedTimestamp >= fs.getLastChangedTimestamp(cachedFile)
-        catch case _: io.FileSystem.FileNotFoundException => false,
+        def sourceIsCurrent(path: io.Path, timestamp: Long): Bool =
+          try timestamp >= fs.getLastChangedTimestamp(path)
+          catch case _: io.FileSystem.FileNotFoundException => false
+        (art.ctx is prelude)
+          && sourceIsCurrent(cachedFile, art.lastChangedTimestamp)
+          && art.dependencies.forall(dep => sourceIsCurrent(dep.path, dep.lastChangedTimestamp)),
       create = mk,
     )
+    dependencyRecorder.foreach(_.note(file, artifact))
+    artifact
 
   def getPrelude
         (file: io.Path)
@@ -196,7 +207,19 @@ object CompilerCtx:
   inline def get(using cctx: CompilerCtx) = cctx
   
   def fresh(fs: io.FileSystem, paths: MLsCompiler.Paths, rootConfig: Config): CompilerCtx =
-    CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, paths, rootConfig)
+    CompilerCtx(N, Set.empty, fs, new CompilerCache, N, paths, rootConfig)
+
+  private[hkmc2] final class DependencyRecorder:
+    // Keep the timestamp in the set element rather than mapping paths to timestamps. If a source
+    // changes while one artifact is being built and two branches observe different versions, both
+    // versions remain in the snapshot; the older one then makes the artifact immediately stale.
+    private val dependencies = MutSet.empty[SourceDependency]
+
+    def note(path: io.Path, artifact: Artifact): Unit =
+      dependencies += SourceDependency(path, artifact.lastChangedTimestamp)
+      dependencies ++= artifact.dependencies
+
+    def result: Set[SourceDependency] = dependencies.toSet
   
 end CompilerCtx
 
@@ -212,8 +235,12 @@ object CompilerCache:
     val ctx: Elaborator.Ctx,
     val state: Elaborator.State,
     val rootConfig: Config,
+    val dependencies: Set[SourceDependency],
     val lastChangedTimestamp: Long,
   )
+
+  /** The version of one transitive source dependency observed while building an artifact. */
+  final case class SourceDependency(path: io.Path, lastChangedTimestamp: Long)
 
   class PreludeArtifact(
     val tree: syntax.Tree.Block,
@@ -223,54 +250,60 @@ object CompilerCache:
     val config: Config,
     val lastChangedTimestamp: Long,
   )
+
+  /** A cache whose expensive computations are serialized per path rather than globally.
+    *
+    * The monitor on this object protects only the two mutable maps. It is never held while
+    * validating or creating an entry, so independent paths can be evaluated concurrently.
+    * Keeping a stable lock per path makes every successful requester observe the same published
+    * artifact — and therefore the same symbol identities — for that path. */
+  private[hkmc2] final class ArtifactCache[A <: AnyRef]:
+    private val entries: MutMap[io.Path, A] = MutMap.empty
+    private val pathLocks: MutMap[io.Path, AnyRef] = MutMap.empty
+
+    private def pathLock(path: io.Path): AnyRef = this.synchronized:
+      pathLocks.getOrElseUpdate(path, new Object)
+
+    private def get(path: io.Path): Opt[A] = this.synchronized:
+      entries.get(path)
+
+    private def put(path: io.Path, entry: A): Unit = this.synchronized:
+      entries(path) = entry
+
+    def getOrCreate(path: io.Path)(isCurrent: A => Bool, create: => A): A =
+      pathLock(path).synchronized:
+        get(path) match
+        case S(entry) if isCurrent(entry) => entry
+        case _ =>
+          val entry = create
+          put(path, entry)
+          entry
   
 end CompilerCache
 
 
-trait CompilerCache:
+class CompilerCache:
   // TODO also use hash comparison to avoid needless re-parses?
-  
-  def elabCache: MutMap[io.Path, Artifact]
 
-  private val preludeCache: MutMap[io.Path, PreludeArtifact] = MutMap.empty
+  private val elabCache = new CompilerCache.ArtifactCache[Artifact]
+  private val preludeCache = new CompilerCache.ArtifactCache[PreludeArtifact]
   
-  /** Return the current artifact at `path`, or atomically invalidate and rebuild the cache.
+  /** Return the current artifact at `path`, or atomically rebuild that artifact.
     *
-    * Synchronized for the same reason as `upsertPrelude` below, and additionally because the
-    * artifact's symbols are shared: without atomicity, concurrent requesters each elaborate the
-    * file and each walk away with a *different* set of symbols for it, only one of which is
-    * retained in the cache. A later requester then disagrees with an earlier one about the
-    * identity of the very same source-level definition. Elaboration is reentrant here — `create`
-    * elaborates imports, which come back through this method on the same thread.
-    *
-    * Replacing one artifact invalidates every cached dependent because their terms and IR refer
-    * directly to the old artifact's symbols. */
+    * The artifact records all of its transitive source dependencies, so `isCurrent` can decide
+    * whether this particular artifact must be rebuilt without scanning or clearing unrelated
+    * cache entries. `create` runs under a lock dedicated to `path`: concurrent requesters reuse
+    * one symbol identity for the same file, while unrelated files remain free to elaborate in
+    * parallel. Imports recursively acquire their own path locks rather than holding a cache-wide
+    * monitor through the entire rebuilding chain. */
   def upsert(path: io.Path)(isCurrent: (io.Path, Artifact) => Bool, create: => Artifact): Artifact =
-    this.synchronized:
-      // A requester may itself be unchanged while one of the imported artifacts captured in its
-      // term/IR has changed. Check all published identities before returning any one of them.
-      if elabCache.exists((cachedPath, art) => !isCurrent(cachedPath, art)) then
-        elabCache.clear()
-      elabCache.get(path) match
-      case S(art) => art
-      case N =>
-        val art = create
-        elabCache(path) = art
-        art
+    elabCache.getOrCreate(path)(isCurrent(path, _), create)
 
-  /** Synchronized because diff-test and compile-test runners compile files in parallel.
+  /** Diff-test and compile-test runners request the Prelude in parallel.
     *
-    * Only the first requester elaborates the prelude; concurrent requesters block and reuse
-    * the same frozen artifact once it is available. */
+    * Only the first requester for this path elaborates it; concurrent requesters block on that
+    * path alone and reuse the same frozen artifact once it is available. */
   def upsertPrelude(path: io.Path)(isCurrent: PreludeArtifact => Bool, create: => PreludeArtifact): PreludeArtifact =
-    this.synchronized:
-      preludeCache.get(path) match
-      case S(art) if isCurrent(art) => art
-      case stale =>
-        // Every elaborated artifact captures symbols from this frozen prelude.
-        if stale.nonEmpty then elabCache.clear()
-        val art = create
-        preludeCache(path) = art
-        art
+    preludeCache.getOrCreate(path)(isCurrent, create)
   
 end CompilerCache
