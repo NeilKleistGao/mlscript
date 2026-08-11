@@ -1757,105 +1757,70 @@ class BlockSimplifier
             case S(S(blk)) =>
               if blk is fun.body then fun else
               FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, blk)(fun.configOverride, fun.annotations)
+
+        private def inlineCall(
+            call: Call,
+            callee: TermSymbol,
+            argss: NELs[Ls[Arg]],
+            thisMapping: => Map[InnerSymbol, Path],
+        )(k: Result => Block): Block =
+          val info = m(callee)
+          if shouldDeferCrossUnitInline(info) || info.isLoopBreaker then
+            return super.applyResult(call)(k)
+          newFunctionBody.get(callee)
+          .getOrElse:
+            newFunctionBody(callee) = N
+            val newBdy = enterFunctionBody(info.defn, applyBlock(info.defn.body))
+            newFunctionBody(callee) = S(newBdy)
+            S(newBdy)
+          .fold(super.applyResult(call)(k)): blk =>
+            val cfg = summon[Config.Inliner]
+            val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
+            info.inlineCost(blk, threshold) match
+            case N =>
+              super.applyResult(call)(k)
+            case S(cost) =>
+              matchAllArgs(argss, info.defn.params) match
+              case N =>
+                super.applyResult(call)(k)
+              case S(_) if !spendInlineFuel(cost) =>
+                super.applyResult(call)(k)
+              case S(matchedArgs) =>
+                registerChange(s"inline call ${callee.showDbg}")
+                log(s"Inline call for ${callee}, with args ${argss}")
+                val extraArgss = argss.drop(info.defn.params.length)
+                def go(acc: Block => Block, args: List[(VarSymbol, Result)], mapping: Map[Symbol, Symbol]): Block =
+                  args match
+                  case Nil =>
+                    val resSym = TempSymbol(N, "inlinedVal")
+                    val copier = Copier(resSym, mapping, thisMapping)
+                    val newBlk = copier.applyBlock(blk)
+                    if extraArgss.isEmpty then
+                      acc(Scoped(Set.single(resSym), newBlk(k(resSym.asSimpleRef))))
+                    else
+                      acc(Scoped(Set(resSym), newBlk(
+                        k(Call(resSym.asSimpleRef, extraArgss.ne_!)(
+                          call.metadata.copy(
+                            annotations = call.metadata.annotations.filterNot(_ == Annot.TailCall),
+                          ))))))
+                  case (sym, value) :: argRest =>
+                    val newSym = VarSymbol(sym.id)
+                    go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
+                go(blockBuilder, matchedArgs, Map.empty)
         
         override def applyResult(r: Result)(k: Result => Block): Block = r match
           case c @ Call(MethodCallQualifier(qual, ts), argss) if m.contains(ts) && argss.nonEmpty =>
             // `this.method()` calls inside constructors/methods are deliberately left alone:
             // inlining them can bypass runtime checks and resolve forward references too early.
-            if shouldDeferCrossUnitInline(m(ts)) then return super.applyResult(r)(k)
             if qual.isInstanceOf[Value.This] then return super.applyResult(r)(k)
-            if m(ts).isLoopBreaker then return super.applyResult(r)(k)
-            newFunctionBody.get(ts)
-            .getOrElse:
-              newFunctionBody(ts) = N
-              val newBdy = enterFunctionBody(m(ts).defn, applyBlock(m(ts).defn.body))
-              newFunctionBody(ts) = S(newBdy)
-              S(newBdy)
-            .fold(super.applyResult(r)(k)): blk =>
-              val info = m(ts)
-              val cfg = summon[Config.Inliner]
-              val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
-              info.inlineCost(blk, threshold) match
-              case N =>
-                super.applyResult(r)(k)
-              case S(cost) =>
-                val matchedArgs = matchAllArgs(argss, info.defn.params)
-                matchedArgs match
-                case N =>
-                  super.applyResult(r)(k)
-                case S(_) if !spendInlineFuel(cost) =>
-                  super.applyResult(r)(k)
-                case S(matchedArgs) =>
-                  registerChange(s"inline call ${ts.showDbg}")
-                  log(s"Inline call for ${ts}, with args ${argss}")
-                  val extraArgss = argss.drop(info.defn.params.length)
-                  val thisMap = ts.owner match
-                    case S(ownerSym: InnerSymbol) => buildThisMapping(qual, ownerSym)
-                    case _ => Map.empty[InnerSymbol, Path]
-                  def go(acc: Block => Block, args: List[(VarSymbol, Result)], mapping: Map[Symbol, Symbol]): Block =
-                    args match
-                    case Nil =>
-                      val resSym = TempSymbol(N, "inlinedVal")
-                      val copier = Copier(resSym, mapping, thisMap)
-                      val newBlk = copier.applyBlock(blk)
-                      if extraArgss.isEmpty then
-                        acc(Scoped(Set.single(resSym), newBlk(k(resSym.asSimpleRef))))
-                      else
-                        acc(Scoped(Set(resSym), newBlk(
-                          k(Call(resSym.asSimpleRef, extraArgss.ne_!)(
-                            c.metadata.copy(
-                              annotations = c.metadata.annotations.filterNot(_ == Annot.TailCall),
-                            ))))))
-                    case (sym, value) :: argRest =>
-                      val newSym = VarSymbol(sym.id)
-                      go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
-                  go(blockBuilder, matchedArgs, Map.empty)
+            inlineCall(c, ts, argss,
+              ts.owner match
+              case S(ownerSym: InnerSymbol) => buildThisMapping(qual, ownerSym)
+              case _ => Map.empty,
+            )(k)
 
           case c @ Call(TermSymbolPath(ts), argss) if m.contains(ts) && argss.nonEmpty =>
-            if shouldDeferCrossUnitInline(m(ts)) then return super.applyResult(r)(k)
-            if m(ts).isLoopBreaker then return super.applyResult(r)(k)
-            newFunctionBody.get(ts)
-            .getOrElse:
-              newFunctionBody(ts) = N
-              val newBdy = enterFunctionBody(m(ts).defn, applyBlock(m(ts).defn.body))
-              newFunctionBody(ts) = S(newBdy)
-              S(newBdy)
-            .fold(super.applyResult(r)(k)): blk =>
-              val info = m(ts)
-              val cfg = summon[Config.Inliner]
-              val threshold = if insideInlineAnnotatedFunction then cfg.altSmallThreshold else cfg.inlineThreshold
-              info.inlineCost(blk, threshold) match
-              case N =>
-                super.applyResult(r)(k)
-              case S(cost) =>
-                val matchedArgs = matchAllArgs(argss, info.defn.params)
-                matchedArgs match
-                case N =>
-                  super.applyResult(r)(k)
-                case S(_) if !spendInlineFuel(cost) =>
-                  super.applyResult(r)(k)
-                case S(matchedArgs) =>
-                  registerChange(s"inline call ${ts.showDbg}")
-                  log(s"Inline call for ${ts}, with args ${argss}")
-                  val extraArgss = argss.drop(info.defn.params.length)
-                  def go(acc: Block => Block, args: List[(VarSymbol, Result)], mapping: Map[Symbol, Symbol]): Block =
-                    args match
-                    case Nil =>
-                      val resSym = TempSymbol(N, "inlinedVal")
-                      val copier = Copier(resSym, mapping, Map.empty)
-                      val newBlk = copier.applyBlock(blk)
-                      if extraArgss.isEmpty then
-                        acc(Scoped(Set.single(resSym), newBlk(k(resSym.asSimpleRef))))
-                      else
-                        acc(Scoped(Set(resSym), newBlk(
-                          k(Call(resSym.asSimpleRef, extraArgss.ne_!)(
-                            c.metadata.copy(
-                              annotations = c.metadata.annotations.filterNot(_ == Annot.TailCall),
-                            ))))))
-                    case (sym, value) :: argRest =>
-                      val newSym = VarSymbol(sym.id)
-                      go(acc.assignScoped(newSym, value), argRest, mapping + (sym -> newSym))
-                  go(blockBuilder, matchedArgs, Map.empty)
+            inlineCall(c, ts, argss, Map.empty)(k)
           case _ => super.applyResult(r)(k)
       
       def replace(m: InlinerMap, prog: Program): Program =
