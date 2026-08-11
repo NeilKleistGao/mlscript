@@ -28,6 +28,29 @@ class CompilerTest extends AnyFunSuite:
     val fs = new InMemoryFileSystem(stdLib)
     given CompilerCtx = CompilerCtx.fresh(fs, paths, Config.default(io.Path("/")))
     (fs, new Compiler)
+
+  test("compiler parses each compilation unit only once"):
+    class CountingFileSystem(initialFiles: Map[String, String])
+        extends InMemoryFileSystem(initialFiles):
+      private val readCounts = scala.collection.mutable.Map.empty[Path, Int]
+
+      override def read(path: Path): String =
+        readCounts.updateWith(path)(_.map(_ + 1).orElse(Some(1)))
+        super.read(path)
+
+      def readCount(path: Path): Int = readCounts.getOrElse(path, 0)
+
+    val fs = new CountingFileSystem(loadStandardLibrary())
+    given CompilerCtx = CompilerCtx.fresh(fs, paths, Config.default(io.Path("/")))
+    val compiler = new Compiler
+    val inputPath = Path("/singleParse.mls")
+    fs.write(inputPath, "fun answer() = 42")
+
+    compiler.compile(inputPath.toString)
+    compiler.compile(inputPath.toString)
+
+    assert(fs.readCount(inputPath) == 1,
+      "The first compilation should parse the source once and the second should reuse its artifact")
   
   test("compiler can compile a simple program"):
     val (fs, compiler) = createCompiler()

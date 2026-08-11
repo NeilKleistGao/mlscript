@@ -1,18 +1,13 @@
 package hkmc2
 
-import scala.collection.mutable
-import scala.annotation.tailrec
 import collection.mutable.Map as MutMap
 
 import hkmc2.utils.*, shorthands.*
-import hkmc2.utils.*
-import hkmc2.Message.MessageContext
 import hkmc2.io
 import utils.TraceLogger
 
 import semantics.*
 import Elaborator.*
-import hkmc2.syntax.LetBind
 
 
 import CompilerCache.*
@@ -55,37 +50,14 @@ class CompilerCtx(
         (using TL, Raise)
         : Artifact =
     
-    // println(s"Cache has: ${cache.elabCache.contains(file)} ${cache.elabCache.keys}")
-    
     val lastMod = fs.getLastChangedTimestamp(file)
     
     def mk =
       val state = new Elaborator.State
       given Elaborator.State = state
 
-      // * Later, we can draw this from a global root configuration,
-      // * which is set for a whole application.
       given Config = rootConfig
 
-      /*
-      val parse =
-        given CompilerCtx = this
-        ParserSetup(file, dbgParsing = false)
-      val resBlk = parse.resultBlk
-      given Elaborator.Ctx = prelude.copy(mode = Mode.Light).nestLocal("prelude")
-      val elab =
-        given CompilerCtx = derive(parse.origin.fileName)
-        Elaborator(tl, file.up, prelude)
-      val elabbed = elab.importFrom(resBlk)
-
-      // val
-      */
-
-
-
-
-      // TODO: !CLEANUP!
-      // TODO adapt logic
       given SymbolPrinter = new SymbolPrinter(
         Scope.empty(Scope.Cfg.default.copy(
           escapeChars = false,
@@ -93,28 +65,21 @@ class CompilerCtx(
           includeZero = true,
         ))
       )
-      val etl = new TraceLogger{override def doTrace: Bool = false}
-      val ltl = new TraceLogger{override def doTrace: Bool = false}
-      val dtl = new TraceLogger{override def doTrace: Bool = false}
-      // val ltl = new TraceLogger{override def doTrace: Bool = true}
-      val rtl = new TraceLogger{override def doTrace: Bool = false}
+      val backendTL = new TraceLogger:
+        override def doTrace: Bool = false
 
-
-      val mainParse =
+      val parse =
         given CompilerCtx = this
-        ParserSetup(file, dbgParsing = false)
-      // given Elaborator.Ctx = prelude.copy(mode = Mode.Light).nestLocal("prelude")
-      val artifactCtx = prelude
-      given Elaborator.Ctx = artifactCtx
+        ParserSetup(file)
+      given Elaborator.Ctx = prelude
       val elab =
-        given CompilerCtx = derive(mainParse.origin.fileName)
+        given CompilerCtx = derive(parse.origin.fileName)
         Elaborator(tl, file.up, prelude)
 
-      // val elab = Elaborator(etl, wd, newCtx)
-      val parsed = mainParse.resultBlk
+      val parsed = parse.resultBlk
       val nme = file.baseName
       val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
-      state.initializeCompilationUnit(mainParse.origin, exportedSymbol)
+      state.initializeCompilationUnit(parse.origin, exportedSymbol)
       def collectCompilationUnitSymbols(program: codegen.Program): Set[BlockMemberSymbol] =
         program.main match
         case codegen.Scoped(syms, _) =>
@@ -132,7 +97,7 @@ class CompilerCtx(
       state.compilationUnitConfig = S(artifactConfig)
       artifactConfig.givenIn:
         given Elaborator.State = state
-        val resolver = Resolver(rtl)
+        val resolver = Resolver(backendTL)
         resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
 
       // Runs the compilation pipeline on a freshly lowered compilation unit.
@@ -147,8 +112,8 @@ class CompilerCtx(
         val pipeline = new codegen.CompilationPipeline:
           override def extraSymbolsToPreserve(prog: codegen.Program): Set[codegen.BoundSymbol] =
             collectCompilationUnitSymbols(prog).toSet
-        ltl.givenIn:
-          pipeline.run(lowered, printer, exportedSymbol.toSet, dtl)
+        backendTL.givenIn:
+          pipeline.run(lowered, printer, exportedSymbol.toSet, backendTL)
 
       // Every compilation unit is lowered, so that its symbols carry the IR definitions an
       // importer's inliner may splice in — and so that the importer never has to lower it itself,
@@ -172,11 +137,11 @@ class CompilerCtx(
           )
           state.noteImportedModule(State.runtimeSymbol, paths.runtimeFile.toString)
           if hasQuote then state.noteImportedModule(State.termSymbol, paths.termFile.toString)
-          val low = ltl.givenIn:
-            new codegen.Lowering()(using artifactConfig, ltl, summon[Raise], state, artifactCtx, summon[SymbolPrinter])
+          val low = backendTL.givenIn:
+            new codegen.Lowering()(using artifactConfig, backendTL, summon[Raise], state, prelude, summon[SymbolPrinter])
           optimize(low.program(blk, Set.empty))
 
-      Artifact(parsed, blk0, ir, artifactConfig, artifactCtx, state, rootConfig, lastMod)
+      Artifact(parsed, blk0, ir, artifactConfig, prelude, state, rootConfig, lastMod)
     
     cache.upsert(file)(
       isCurrent = (cachedFile, art) =>
@@ -194,7 +159,7 @@ class CompilerCtx(
     )
 
   def getPrelude
-        (file: io.Path, dbgParsing: Bool)
+        (file: io.Path)
         (using tl: TL, raise: Raise)
         : PreludeArtifact =
     // The prelude context is shared so every compilation unit sees the same prelude
@@ -210,13 +175,13 @@ class CompilerCtx(
         // * See the corresponding assertion in `getElaboratedBlock` above.
         softAssert(art.config === rootConfig,
           s"Cached prelude for $file was elaborated under a different root configuration")
-        !dbgParsing && art.lastChangedTimestamp >= lastMod,
+        art.lastChangedTimestamp >= lastMod,
       create =
         val state = new Elaborator.State
         given Elaborator.State = state
         given Config = rootConfig
         given CompilerCtx = this
-        val parse = ParserSetup(file, dbgParsing)
+        val parse = ParserSetup(file)
         val elab = Elaborator(tl, file.up, Ctx.empty)
         val initCtx = State.init.nestLocal("prelude")
         val (blk, ctx) = elab.importFrom(parse.resultBlk)(using initCtx)
