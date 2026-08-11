@@ -116,34 +116,52 @@ class CompilerTest extends AnyFunSuite:
     assert(fs.exists(Path("/Foo.mjs")), "First output should exist")
     assert(fs.exists(Path("/Bar.mjs")), "Second output should exist")
 
-  test("changing an imported file invalidates cached importers"):
+  test("private ABI allocation avoids existing top-level names"):
+    given state: semantics.Elaborator.State = new semantics.Elaborator.State
+    given Raise = diagnostic => fail(diagnostic.toString)
+    val existing = semantics.BlockMemberSymbol("_$_modulePrivate_$_helper", Nil)
+    val helper = semantics.BlockMemberSymbol("helper", Nil)
+    val program = codegen.Program(Nil, codegen.Scoped(Set(existing, helper), codegen.End()))
+
+    val names = codegen.js.JSBuilder.allocateModulePrivateExportNames(program)
+
+    assert(names(helper) == "_$_modulePrivate_$_helper1",
+      "The private name should receive the normal scope collision suffix")
+
+  test("private ABI names survive UID shifts and invalidate cached importers"):
     val (fs, compiler) = createCompiler()
 
-    def source(prefix: String): String =
+    def source(prefix: String, suffix: String): String =
       s"""|$prefix
           |fun helper() = "This body is deliberately too large for automatic inlining."
           |module A with
-          |  fun exposed() = helper()
+          |  fun exposed() = helper() + "$suffix"
           |""".stripMargin
 
-    fs.write("/A.mls", source(""))
+    fs.write("/A.mls", source("", "before"))
     fs.write("/B.mls", """import "./A.mls"
                            |A.exposed()
                            |""".stripMargin)
     compiler.compile("/A.mls")
     compiler.compile("/B.mls")
 
-    // Introducing an earlier symbol changes `helper`'s private-ABI name. A cached `B` must not
-    // retain the old symbol after `A` is re-elaborated, or its named import will no longer exist.
-    fs.write("/A.mls", source("fun shiftsFollowingSymbolIds() = 0"))
+    val privateExport = """export \{ helper as (\S*modulePrivate\S*) \};""".r
+    val privateImport = """import \{ (\S*modulePrivate\S*) as helper \}""".r
+    val initialExport = privateExport.findFirstMatchIn(fs.read("/A.mjs")).map(_.group(1))
+
+    // The extra definition shifts `helper`'s UID, but its scope-allocated ABI name stays stable.
+    // Changing the inlined suffix also verifies that requesting cached `B` notices the stale `A`.
+    fs.write("/A.mls", source("fun shiftsFollowingSymbolIds() = 0", "after"))
     compiler.compile("/B.mls")
     compiler.compile("/A.mls")
 
-    val privateName = """_\$_modulePrivate_\$_helper_\$_\d+""".r
-    val aExport = privateName.findFirstIn(fs.read("/A.mjs"))
-    val bImport = privateName.findFirstIn(fs.read("/B.mjs"))
-    assert(aExport.nonEmpty, "The defining module should export the referenced private helper")
-    assert(bImport == aExport, "The importer should be regenerated with the helper's current ABI name")
+    val aExport = privateExport.findFirstMatchIn(fs.read("/A.mjs")).map(_.group(1))
+    val bJs = fs.read("/B.mjs")
+    val bImport = privateImport.findFirstMatchIn(bJs).map(_.group(1))
+    assert(initialExport.nonEmpty, "The defining module should export the referenced private helper")
+    assert(aExport == initialExport, "Shifting symbol UIDs should not change private ABI names")
+    assert(bImport == aExport, "The importer and exporter should use the same private ABI name")
+    assert(bJs.contains("after"), "The cached importer should be rebuilt after its dependency changes")
   
   test("compiler can report errors"):
     val (fs, compiler) = createCompiler()

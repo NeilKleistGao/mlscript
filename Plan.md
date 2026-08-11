@@ -85,7 +85,7 @@ we need to change this.
 The scheme I propose is to export top-level functions like `inaccessibleFunction` under a mangled name, such as:
 
 ```js
-export _$_modulePrivate_$_inaccessibleFunction;
+export { inaccessibleFunction as _$_modulePrivate_$_inaccessibleFunction };
 ```
 
 Moreover, when compiling the importing file,
@@ -103,9 +103,11 @@ The test for this is at `hkmc2/shared/src/test/mlscript/opt/InlineAcrossFiles.ml
 
 Implemented in `JSBuilder`, with provenance recorded on symbols during import resolution and lowering.
 
-Compiled modules now export referenced file-private top-level symbols under stable
-`_$_modulePrivate_$_...` names, including a symbol UID suffix so same-named generated helpers remain
-distinct. Before rendering a module or worksheet, `JSBuilder` traverses the IR,
+Compiled modules now export referenced file-private top-level symbols under fresh
+`_$_modulePrivate_$_...` names. The defining compilation unit allocates these names through the normal
+JavaScript `Scope`, which escapes them and resolves collisions without exposing unstable symbol UIDs;
+importers reuse the resulting immutable name table from the defining state. Before rendering a module
+or worksheet, `JSBuilder` traverses the IR,
 detects external compilation-unit symbols exposed by inlining, allocates their names, and synthesizes
 the corresponding named imports. The same pre-pass recreates default imports when an inlined body
 introduces references such as `runtime`, `Term`, or a source-level imported module.
@@ -215,11 +217,12 @@ The final review found three more cache/inlining edge cases and one test-hygiene
   `InMemoryFileSystem` normalize their keys too. Otherwise `/../a`, `/a`, and a host-written
   `/x/../a` could still denote the same file under different cache/file-system keys.
 * Replacing a cached compilation-unit artifact or prelude now invalidates every dependent artifact.
-  Cached terms and IR retain the old symbols, and private-ABI names contain their UIDs, so updating
-  only the changed file could leave an unchanged importer requesting an export that no longer exists.
+  Cached terms and IR retain the old symbols, so updating only the changed file could leave an
+  unchanged importer referring to definitions from the previous artifact.
   Cache lookup checks all published source timestamps so requesting the importer itself also notices
-  a changed dependency. A Scala.js regression test changes a dependency in a way that shifts the
-  private helper's UID and verifies that the importer is rebuilt with the current export name.
+  a changed dependency. A Scala.js regression test changes a dependency in a way that shifts a private
+  helper's UID and verifies both that its scope-allocated ABI name remains stable and that the importer
+  is rebuilt with the changed inlined body.
 * Automatic-inlining fuel is spent only after all argument lists have matched. A call that could not
   be inlined previously consumed budget and could prevent an unrelated later call from being inlined.
 * Temporary experiments were removed from `HkScratch.mls`, as required by the diff-test workflow.

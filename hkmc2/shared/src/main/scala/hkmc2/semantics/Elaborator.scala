@@ -399,6 +399,7 @@ object Elaborator:
     given State = this
     private var _compilationUnitOrigin: Opt[Origin] = N
     private var _compilationUnitExport: Opt[BlockMemberSymbol] = N
+    private var _compilationUnitPrivateNames: Opt[Map[BlockMemberSymbol, Str]] = N
     private val importedModulePaths = mutable.Map.empty[ImportSymbol, Str]
     /** Records the source file represented by this state and its default module export.
       *
@@ -415,6 +416,17 @@ object Elaborator:
         (file.up / io.RelPath(file.baseName + ".mjs")).toString
     def isCompilationUnitExport(sym: Symbol): Bool =
       _compilationUnitExport.contains(sym)
+    /** Publish the private export names allocated for this compilation unit.
+      *
+      * The table is initialized before the artifact is cached and is immutable afterwards. Keeping
+      * it on the owning state lets separately emitted importers and exporters agree on names without
+      * putting mutable code-generation metadata on shared symbols. */
+    def initializeCompilationUnitPrivateNames(names: Map[BlockMemberSymbol, Str]): Unit =
+      assert(_compilationUnitPrivateNames.isEmpty)
+      assert(names.keysIterator.forall(_.getState is this))
+      _compilationUnitPrivateNames = S(names)
+    def compilationUnitPrivateName(sym: BlockMemberSymbol): Opt[Str] =
+      _compilationUnitPrivateNames.flatMap(_.get(sym))
     /** Records imports whose symbols are owned by this state.
       *
       * Imports of `.mls` files normally reuse the exported symbol owned by the imported state;

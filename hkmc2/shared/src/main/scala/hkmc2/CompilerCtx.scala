@@ -141,6 +141,8 @@ class CompilerCtx(
             new codegen.Lowering()(using artifactConfig, backendTL, summon[Raise], state, prelude, summon[SymbolPrinter])
           optimize(low.program(blk, Set.empty))
 
+      state.initializeCompilationUnitPrivateNames:
+        codegen.js.JSBuilder.allocateModulePrivateExportNames(ir)(using state, summon[Raise])
       Artifact(parsed, blk0, ir, artifactConfig, prelude, state, rootConfig, lastMod)
     
     cache.upsert(file)(
@@ -241,8 +243,8 @@ trait CompilerCache:
     * identity of the very same source-level definition. Elaboration is reentrant here — `create`
     * elaborates imports, which come back through this method on the same thread.
     *
-    * Replacing one artifact invalidates every cached dependent: their terms and IR refer to the
-    * old artifact's symbols, and private-ABI export names incorporate those symbol identities. */
+    * Replacing one artifact invalidates every cached dependent because their terms and IR refer
+    * directly to the old artifact's symbols. */
   def upsert(path: io.Path)(isCurrent: (io.Path, Artifact) => Bool, create: => Artifact): Artifact =
     this.synchronized:
       // A requester may itself be unchanged while one of the imported artifacts captured in its

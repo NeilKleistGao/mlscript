@@ -146,12 +146,15 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
           body.methods.foreach(applyDefn)
     collector.applyBlock(p.main)
 
-  private def modulePrivateExportName(sym: BlockMemberSymbol): Str =
-    val encodedName = sym.nme.iterator.map:
-      case c if c <= '\u007f' && (c.isLetterOrDigit || c === '_') => c.toString
-      case c => s"$$${c.toInt.toHexString}$$"
-    .mkString
-    s"_$$_modulePrivate_$$_${encodedName}_$$_${sym.uid.asInt}"
+  private def modulePrivateExportName(sym: BlockMemberSymbol)(using Raise): Str =
+    sym.getState.compilationUnitPrivateName(sym).getOrElse:
+      raise:
+        InternalError(
+          msg"No private export name was allocated for '${sym.nme}'" -> sym.toLoc :: Nil,
+          extraInfo = Some(sym),
+          source = Diagnostic.Source.Compilation,
+        )
+      "‹MISSING_PRIVATE_EXPORT_NAME›"
 
   private def relativeImportPath(path: Str, wd: io.Path): Str =
     if path.startsWith("/")
@@ -1050,6 +1053,25 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
 
 
 object JSBuilder:
+  private val modulePrivatePrefix = "_$_modulePrivate_$_"
+
+  /** Allocate the defining unit's private export namespace once so all importers reuse it.
+    *
+    * Ordinary top-level names are reserved first, then the private aliases are allocated with a
+    * distinctive prefix. `Scope` handles escaping and collision suffixes exactly as it does for
+    * other generated JavaScript names; symbol UIDs influence traversal order only and never become
+    * part of the external name. */
+  def allocateModulePrivateExportNames(p: Program)(using State, Raise): Map[BlockMemberSymbol, Str] =
+    p.main match
+    case Scoped(syms, _) =>
+      val orderedSymbols = syms.toList.sortBy(_.uid)
+      val privateNameScope = Scope.empty(Scope.Cfg.default)
+      orderedSymbols.foreach(privateNameScope.allocateName(_))
+      orderedSymbols.collect:
+        case sym: BlockMemberSymbol =>
+          sym -> privateNameScope.allocateName(sym, prefix = modulePrivatePrefix, shadow = true)
+      .toMap
+    case _ => Map.empty
   
   def isValidIdentifier(s: Str): Bool = identifierPattern.matches(s) && !keywords.contains(s)
   
