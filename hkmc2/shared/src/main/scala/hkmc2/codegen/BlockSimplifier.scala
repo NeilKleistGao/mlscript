@@ -1492,6 +1492,9 @@ class BlockSimplifier
         private[InlinerAnalyzer] var _isLoopBreaker: Bool,
       ):
         def isPrivate = !symbolsToPreserve.contains(defn.sym)
+        private lazy val isPatternHelper = defn.owner.exists(_.isInstanceOf[PatternSymbol])
+        private lazy val hasDuplicateBindings = hasDuplicateBoundSymbols(defn)
+        private lazy val hasPrivateMemberAccesses = accessesPrivateMembers(defn.body)
         
         inline def isLoopBreaker = _isLoopBreaker
         
@@ -1505,7 +1508,7 @@ class BlockSimplifier
         // i.e. the original definition can be removed and there is only one usage.
         def canBeInlineEliminated: Bool =
           isPrivate && !isMethod && !defn.noInline && useCount <= 1 && !disallowElimination && !isLoopBreaker
-            && !defn.owner.exists(_.isInstanceOf[PatternSymbol]) && !hasDuplicateBoundSymbols(defn)
+            && !isPatternHelper && !hasDuplicateBindings
           // false
         
         def inlineCost(newBlk: Block, threshold: Int): Opt[Int] =
@@ -1513,8 +1516,7 @@ class BlockSimplifier
           // Pattern compiler helpers may intentionally reuse source pattern variables across
           // mutually-exclusive generated blocks. Symbol-refreshing them as ordinary inline
           // bodies is not sound, so keep those helpers in place.
-          if defn.owner.exists(_.isInstanceOf[PatternSymbol]) then return N
-          if hasDuplicateBoundSymbols(defn) then return N
+          if isPatternHelper || hasDuplicateBindings then return N
           // Instance methods access instance state via `this`, so they must not be
           // inlined as if they were static calls. True modules are safe because
           // their `this` references can be replaced by call-site qualifier paths.
@@ -1528,7 +1530,7 @@ class BlockSimplifier
           // definition and its out-of-owner references within one emitted module.
           // There is deliberately no cross-module accessor ABI, so keep such accesses
           // in the compilation unit that defines them.
-          if (defn.dSym.getState isnt State) && accessesPrivateMembers(newBlk)
+          if (defn.dSym.getState isnt State) && hasPrivateMemberAccesses
           then return N
           // `import.meta.url` denotes the file containing the generated code.
           // Moving it into a caller would silently change its meaning.
