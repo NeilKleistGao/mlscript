@@ -33,6 +33,12 @@ object TestFolders:
       val runtimeFile: io.Path = compileTestDir(wd)/"Runtime.mjs"
       val runtimeSourceFile: io.Path = compileTestDir(wd)/"Runtime.mls"
       val termFile: io.Path = compileTestDir(wd)/"Term.mjs"
+
+  /** A fresh context for compile tests. Its root configuration is fixed because cached
+    * compilation units are shared between tests and must not depend on test order. */
+  def compilerCtx(wd: os.Path): CompilerCtx =
+    import io.PlatformPath.given
+    CompilerCtx.fresh(io.FileSystem.default, compilerPaths(wd), Config.default(mainTestDir(wd)))
   
   // ——— Diff test subdirectories excluded from the main DiffTestRunner ———
   
@@ -91,4 +97,3 @@ object TestFolders:
     compileTestDir(wd)/"wasm" :: Nil
   
 end TestFolders
-
