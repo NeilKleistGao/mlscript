@@ -12,7 +12,7 @@ import Elaborator.{Ctx, State, ctx}, utils.TL
 import ucs.{TermSynthesizer, FlatPattern, safeRef}
 import Message.MessageContext, ucs.error
 
-import collection.mutable.{Queue, Map as MutMap}, collection.immutable.{Set, Map}
+import collection.mutable.{Queue, Map as MutMap, LinkedHashMap}, collection.immutable.{Set, Map}
 import scala.annotation.tailrec
 
 /** The compiler for pattern definitions. It compiles instantiated patterns into
@@ -111,8 +111,10 @@ class Compiler(using Context)(using tl: TL)(using Ctx, State, Raise) extends Ter
   
   val multiMatchers: MutMap[Set[Label], LocalVarSymbol] = MutMap.empty
   
-  /** The built multi-matcher functions. */
-  val implementations: MutMap[LocalVarSymbol, (ParamList, Term)] = MutMap.empty
+  /** The built multi-matcher functions, in their deterministic build-queue
+    * order. This order is observable in generated code, so a hash map would
+    * make golden output depend on identity hash codes. */
+  val implementations: LinkedHashMap[LocalVarSymbol, (ParamList, Term)] = LinkedHashMap.empty
   
   val buildQueue: Queue[(LocalVarSymbol, Set[Pat])] = Queue.empty
   
