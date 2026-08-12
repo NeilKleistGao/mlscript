@@ -128,6 +128,8 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     getBuiltinOpt(moduleName)
       .flatMap(_.symbol)
       .flatMap(_.asBlkMember)
+  private lazy val virtualModuleSymbols: Set[BlockMemberSymbol] =
+    Set("source", "js", "wasm", "debug", "annotations").flatMap(builtinModuleSymbol)
   private lazy val wasmIntrinsicSymbols: Set[BlockMemberSymbol] = Set(
     "plus_impl",
     "minus_impl",
@@ -595,8 +597,6 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     def warnStmt = if inStmtPos then warnPureExprInStmtPos(ref.toLoc, S(ref))
     
     val sym = ref.sym
-    val virtualModuleSymbols = Set("source", "js", "wasm", "debug", "annotations")
-      .flatMap(builtinModuleSymbol)
     sym match
       case sym: BlockMemberSymbol if virtualModuleSymbols.exists(_ is sym) =>
         return fail:

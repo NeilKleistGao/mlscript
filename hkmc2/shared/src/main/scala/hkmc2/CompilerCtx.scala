@@ -84,7 +84,7 @@ class CompilerCtx(
       val nme = file.baseName
       val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
       state.initializeCompilationUnit(parse.origin, exportedSymbol)
-      def collectCompilationUnitSymbols(program: codegen.Program): Set[BlockMemberSymbol] =
+      def collectCompilationUnitSymbols(program: codegen.Program): Set[codegen.BoundSymbol] =
         program.main match
         case codegen.Scoped(syms, _) =>
           syms.iterator.collect:
@@ -116,7 +116,7 @@ class CompilerCtx(
         val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
         val pipeline = new codegen.CompilationPipeline:
           override def extraSymbolsToPreserve(prog: codegen.Program): Set[codegen.BoundSymbol] =
-            collectCompilationUnitSymbols(prog).toSet
+            collectCompilationUnitSymbols(prog)
         backendTL.givenIn:
           pipeline.run(lowered, printer, exportedSymbol.toSet, backendTL)
 
