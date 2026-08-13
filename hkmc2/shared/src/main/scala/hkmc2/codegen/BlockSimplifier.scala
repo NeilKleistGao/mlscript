@@ -1585,6 +1585,8 @@ class BlockSimplifier
       )
       
       class Traverser extends BlockTraverser:
+        import InlinerBodySummary.Entry
+
         var map: InlinerMap = Map.empty
         val useCnt = MutMap.WithDefault(MutMap.empty[TermSymbol, Int], _ => 0)
         val usages = MutMap.WithDefault(MutMap.empty[TermSymbol, List[(Option[TermSymbol], Call)]], _ => Nil)
@@ -1599,10 +1601,15 @@ class BlockSimplifier
         val cfg = summon[Config.Inliner]
         val maxAutomaticThreshold = cfg.inlineThreshold max cfg.altSmallThreshold
         var contextList: List[FunLikeContext] = FunLikeContext(N, false, false) :: Nil
+        // * A marker is pushed for every function traversal, including cache replays, so events
+        // * from a nested function can never leak into the enclosing function's summary.
+        var summaryRecorders: List[Opt[Buffer[Entry]]] = N :: Nil
         
         def currentContext = contextList.head
         
         def currentCallGraphSource = currentContext.callGraphSource
+
+        def currentSummaryRecorder = summaryRecorders.head
         
         def nested(callGraphSource: Option[TermSymbol], hasInlineAnnot: Bool, isNonLocal: Bool)(thunk: => Unit) =
           contextList = FunLikeContext(callGraphSource, hasInlineAnnot, isNonLocal) :: contextList
@@ -1610,6 +1617,11 @@ class BlockSimplifier
           val res = contextList.head
           contextList = contextList.tail
           res
+
+        def recordingSummary(recorder: Opt[Buffer[Entry]])(thunk: => Unit): Unit =
+          summaryRecorders = recorder :: summaryRecorders
+          thunk
+          summaryRecorders = summaryRecorders.tail
         
         def registerFunction(f: FunDefn, isMethod: Bool, isNonLocal: Bool): Bool =
           if !map.contains(f.dSym) then
@@ -1635,12 +1647,30 @@ class BlockSimplifier
               info.disallowElimination = false
             false
 
+        def replayBodySummary(summary: InlinerBodySummary): Unit =
+          summary.entries.foreach:
+            case Entry.DirectCall(call, hasCallGraphSource) =>
+              val source = currentCallGraphSource.filter(_ => hasCallGraphSource)
+              observeCall(call, source)
+            case Entry.NestedFunction(defn, isMethod) =>
+              addFunctionAndApplyBody(defn, isMethod)
+
         def applyFunctionBody(f: FunDefn, isNonLocal: Bool): Unit =
           if analyzedFunctionBodies.add(f.dSym) then
             nested(S(f.dSym), f.inline, isNonLocal):
-              applyBlock(f.body)
+              f.inlinerBodySummary match
+              case S(summary) if isNonLocal =>
+                recordingSummary(N):
+                  replayBodySummary(summary)
+              case cachedSummary =>
+                val recorder = cachedSummary.fold(S(Buffer.empty[Entry]))(_ => N)
+                recordingSummary(recorder):
+                  applyBlock(f.body)
+                recorder.foreach: entries =>
+                  f.publishInlinerBodySummary(InlinerBodySummary(entries.toList))
 
         def addFunctionAndApplyBody(f: FunDefn, isMethod: Bool): Unit =
+          currentSummaryRecorder.foreach(_ += Entry.NestedFunction(f, isMethod))
           if currentContext.isNonLocal then
             if registerFunction(f, isMethod, true) then applyFunctionBody(f, true)
           else
@@ -1679,15 +1709,21 @@ class BlockSimplifier
               applySubBlock(m.ctor)
           case _ => super.applyDefn(defn)
         
+        def observeCall(call: Call, source: Opt[TermSymbol]): Unit =
+          val Call(TermSymbolPath(ts), _) = call: @unchecked
+          if !currentContext.isNonLocal then
+            if currentContext.hasInlineAnnot then
+              // Not eligible for inline elimination
+              disallowElimination(ts) = true
+            useCnt(ts) += 1
+          usages(ts) ::= (source, call)
+          registerNonLocalFunction(ts)
+
         override def applyResult(r: Result): Unit = r match
           case c @ Call(TermSymbolPath(ts), argss) =>
-            if !currentContext.isNonLocal then
-              if currentContext.hasInlineAnnot then
-                // Not eligible for inline elimination
-                disallowElimination(ts) = true
-              useCnt(ts) += 1
-            usages(ts) ::= (currentCallGraphSource, c)
-            registerNonLocalFunction(ts)
+            currentSummaryRecorder.foreach:
+              _ += Entry.DirectCall(c, currentCallGraphSource.nonEmpty)
+            observeCall(c, currentCallGraphSource)
             argss.foreach(_.foreach(applyArg))
           case _ => super.applyResult(r)
         

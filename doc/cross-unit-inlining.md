@@ -66,11 +66,20 @@ therefore computes the candidate closure without rescanning symbols. A separate 
 ensures that every local or eligible non-local body is traversed exactly once. Calls in non-local
 bodies contribute graph edges but not local use counts.
 
+Each traversed `FunDefn` publishes an immutable `InlinerBodySummary` containing its direct call
+occurrences and nested function definitions. The summary belongs to that exact immutable IR node,
+so replacing a definition naturally invalidates it. Later importing units replay the summary rather
+than walking the body, while still applying their own eligibility checks and rebuilding their own
+candidate closure and SCCs. Publication uses an unsynchronized reference slot: computing a summary
+is pure, JVM reference writes are atomic, and racing threads may harmlessly compute and publish the
+same immutable value more than once.
+
 This is not incremental SCC maintenance. SCC and loop-breaker analysis starts only after the
-worklist is exhausted and the candidate graph is complete. The worklist phase is linear in the
-eligible reachable IR and call edges, plus computing the lazy sizes of non-local automatic-inline
-candidates, with expected constant-time symbol lookup. Generic inline fuel remains a defense
-against excessive acyclic growth, not a substitute for recursion detection.
+worklist is exhausted and the candidate graph is complete. With populated body summaries, its work
+is linear in the eligible reachable functions and call edges, plus computing the lazy sizes of
+non-local automatic-inline candidates, with expected constant-time symbol lookup. A summary miss
+adds one structural traversal of that function body. Generic inline fuel remains a defense against
+excessive acyclic growth, not a substitute for recursion detection.
 
 
 ## Safe bodies

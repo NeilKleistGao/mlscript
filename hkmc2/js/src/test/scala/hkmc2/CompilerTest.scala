@@ -232,6 +232,44 @@ class CompilerTest extends AnyFunSuite:
       "import { _$_modulePrivate_$_helper as helper } from \"./A.mjs\";",
       "import { _$_modulePrivate_$_helper as helper1 } from \"./Z.mjs\";",
     ))
+
+  test("importers reuse immutable inliner body summaries"):
+    val stdLib = loadStandardLibrary()
+    val fs = new InMemoryFileSystem(stdLib)
+    given cctx: CompilerCtx = CompilerCtx.fresh(fs, paths, Config.default(io.Path("/")))
+    val compiler = new Compiler
+
+    fs.write("/A.mls", """module A with
+                           |  fun value(n) = n + 1
+                           |""".stripMargin)
+    fs.write("/B.mls", """import "./A.mls"
+                           |A.value(1)
+                           |""".stripMargin)
+    fs.write("/C.mls", """import "./A.mls"
+                           |A.value(2)
+                           |""".stripMargin)
+
+    compiler.compile("/B.mls")
+
+    given DebugPrinter = new DebugPrinter
+    given TL = new TraceLogger:
+      override def doTrace = false
+    given Raise = diagnostic => fail(diagnostic.toString)
+    val prelude = cctx.getPrelude(paths.preludeFile).ctx
+    val artifact = cctx.getElaboratedBlock(Path("/A.mls"), prelude)
+    var valueDefn: Opt[codegen.FunDefn] = N
+    (new codegen.BlockTraverser:
+      override def applyFunDefn(fun: codegen.FunDefn): Unit =
+        if fun.dSym.nme === "value" then valueDefn = S(fun)
+        super.applyFunDefn(fun)
+    ).applyProgram(artifact.ir)
+    val summary = valueDefn.flatMap(_.inlinerBodySummary).getOrElse:
+      fail("The imported function definition should carry a body summary")
+
+    compiler.compile("/C.mls")
+
+    assert(valueDefn.flatMap(_.inlinerBodySummary).exists(_ is summary),
+      "The second importer should reuse the published summary instead of replacing it")
   
   test("compiler can report errors"):
     val (fs, compiler) = createCompiler()

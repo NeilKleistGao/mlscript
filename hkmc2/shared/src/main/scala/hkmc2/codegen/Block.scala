@@ -680,6 +680,14 @@ final case class FunDefn(
   lazy val affineInfo: Ls[Int] =
     annotations.collect:
       case Annot.Affine(whichParamList) => whichParamList
+
+  // * This deliberately is not a lazy val: its initialization would synchronize on the JVM.
+  // * Computing the summary is pure, and a reference write is atomic, so concurrent traversals may
+  // * harmlessly compute equal immutable summaries and overwrite this slot in either order.
+  private var _inlinerBodySummary: Opt[InlinerBodySummary] = N
+  private[hkmc2] def inlinerBodySummary: Opt[InlinerBodySummary] = _inlinerBodySummary
+  private[codegen] def publishInlinerBodySummary(summary: InlinerBodySummary): Unit =
+    _inlinerBodySummary = S(summary)
   
   // `configOverride` and `annotations` live in a secondary constructor list,
   // so case-class equality would otherwise ignore them.
@@ -697,6 +705,23 @@ final case class FunDefn(
     case _ => false
   override def hashCode: Int =
     (owner, sym, dSym, params, body, configOverride, annotations).hashCode
+
+
+/** Configuration-independent facts collected by one structural traversal of a function body.
+  * Importing units replay these entries to rebuild their candidate graph without walking the body.
+  */
+private[codegen] final case class InlinerBodySummary(entries: Ls[InlinerBodySummary.Entry])
+
+private[codegen] object InlinerBodySummary:
+  enum Entry:
+    /** A direct call found in the summarized body.
+      *
+      * `hasCallGraphSource` is false for calls in nested constructor bodies: those calls can expose
+      * more inline candidates, but constructors are not function vertices and add no graph edge.
+      */
+    case DirectCall(call: Call, hasCallGraphSource: Bool)
+    /** A nested function definition, replayed through the importing unit's eligibility checks. */
+    case NestedFunction(defn: FunDefn, isMethod: Bool)
 
 object FunDefn:
   def withFreshSymbol(owner: Opt[InnerSymbol], sym: BlockMemberSymbol, params: Ls[ParamList], body: Block)(configOverride: Opt[Config], annotations: Ls[Annot])(using State) =
