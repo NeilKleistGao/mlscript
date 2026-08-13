@@ -213,24 +213,15 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
               privateImports(sym) = path
           case _ =>
     
-    /** Collect symbols that JS emits as values. Resolved field metadata is handled while
-      * rendering its qualifier and must not create a standalone module dependency. */
-    object ImportDependencyTraverser extends BlockTraverser:
-      override def applyPath(p: Path): Unit = p match
-        case Select(qual, _) => applyPath(qual)
-        case _ => super.applyPath(p)
-      override def applyBlock(b: Block): Unit = b match
-        case AssignField(lhs, _, rhs, rest) =>
-          applyPath(lhs)
-          applyResult(rhs)
-          applySubBlock(rest)
-        case _ => super.applyBlock(b)
-      override def applySymbol(sym: Symbol): Unit = sym match
-        case sym: TempSymbol => note(sym)
-        case sym: VarSymbol => note(sym)
-        case sym: BlockMemberSymbol => note(sym)
+    /** Collect symbols that JS emits as values. Imported local symbols may occur here when an
+      * inlined body refers to one of its defining compilation unit's default imports. */
+    (new BlockTraverser:
+      override def applyValue(value: Value): Unit = value match
+        case Value.SimpleRef(sym: TempSymbol) => note(sym)
+        case Value.SimpleRef(sym: VarSymbol) => note(sym)
+        case Value.MemberRef(sym, _) => note(sym)
         case _ =>
-    ImportDependencyTraverser.applyBlock(p.main)
+    ).applyBlock(p.main)
     
     Imports(
       orderedExternalImports(defaultImports),
