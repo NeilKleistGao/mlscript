@@ -10,12 +10,8 @@ let x in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x, scrut, x1, inlinedVal;
-//│ set x1 = false;
-//│ block inlinedLbl:
-//│   set inlinedVal = x1;
-//│   break inlinedLbl
-//│ set scrut = inlinedVal;
+//│ let x, scrut;
+//│ set scrut = Predef⁰.hide⁰(false);
 //│ match scrut
 //│   true =>
 //│     set x = 1;
@@ -35,7 +31,7 @@ let x in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ do Predef⁰.print⁰("don't inline cont."); return Predef⁰.print⁰(1)
+//│ do Predef⁰.hide⁰(false); do Predef⁰.print⁰("don't inline cont."); return Predef⁰.print⁰(1)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > don't inline cont.
 //│ > 1
@@ -48,9 +44,10 @@ let x = undefined in
   print("don't inline cont.")
   print(x)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let x;
+//│ let x, scrut;
 //│ set x = undefined;
-//│ match false
+//│ set scrut = Predef⁰.hide⁰(false);
+//│ match scrut
 //│   true =>
 //│     set x = 1;
 //│     end

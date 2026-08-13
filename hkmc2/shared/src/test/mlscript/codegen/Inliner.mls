@@ -319,13 +319,32 @@ module A with
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
+:soir
+:inlineThreshold 10
+fun f() = if id(false) do f() + 1
+f()
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ define f²² as fun f²³() { return runtime⁰.Unit⁰ }; return runtime⁰.Unit⁰
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
 // Inlining limits
 :soir
 :inlineThreshold 10
 fun f() = if hide(false) do f() + 1
 f()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ define f²² as fun f²³() { return runtime⁰.Unit⁰ }; return runtime⁰.Unit⁰
+//│ define f²⁴ as fun f²⁵() {
+//│   let scrut;
+//│   set scrut = Predef⁰.hide⁰(false);
+//│   match scrut
+//│     true =>
+//│       do f²⁵();
+//│       return runtime⁰.Unit⁰
+//│     else
+//│       return runtime⁰.Unit⁰
+//│   end
+//│ };
+//│ return f²⁵()
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 
@@ -335,7 +354,7 @@ fun g() =
   fun f() = f()
   f()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ define g⁴ as fun g⁵() { let f; define f as fun f²⁴() { return f²⁴() }; return f²⁴() }; end
+//│ define g⁴ as fun g⁵() { let f; define f as fun f²⁶() { return f²⁶() }; return f²⁶() }; end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
 

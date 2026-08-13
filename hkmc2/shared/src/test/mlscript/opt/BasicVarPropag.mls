@@ -343,8 +343,10 @@ print(res)
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
-//│     set res¹ = 1;
-//│     return Predef⁰.print⁰(1)
+//│     let y;
+//│     set y = Predef⁰.hide⁰(1);
+//│     set res¹ = y;
+//│     return Predef⁰.print⁰(y)
 //│   else
 //│     do Predef⁰.notImplementedError⁰;
 //│     return Predef⁰.print⁰(res¹)
@@ -376,23 +378,31 @@ hide of print(res)
 //│ set tmp = Predef⁰.print⁰(res²);
 //│ return Predef⁰.hide⁰(tmp)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let scrut;
+//│ let scrut, tmp;
 //│ set scrut = Predef⁰.maybe⁰;
 //│ match scrut
 //│   true =>
-//│     set res² = 1;
-//│     return Predef⁰.print⁰(1)
+//│     let y;
+//│     set y = Predef⁰.hide⁰(1);
+//│     set res² = y;
+//│     end
 //│   else
 //│     do Predef⁰.notImplementedError⁰;
-//│     return Predef⁰.print⁰(res²)
-//│ end
+//│     end
+//│ set tmp = Predef⁰.print⁰(res²);
+//│ return Predef⁰.hide⁰(tmp)
 //│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
-//│ let res2, scrut5;
+//│ let res2, scrut5, tmp3;
 //│ scrut5 = Predef.maybe;
 //│ if (scrut5 === true) {
-//│   res2 = 1;
-//│   block$res23 = runtime.checkCall(Predef.print(1));
-//│ } else { Predef.notImplementedError; block$res23 = runtime.checkCall(Predef.print(res2)); }
+//│   let y3;
+//│   y3 = runtime.checkCall(Predef.hide(1));
+//│   res2 = y3;
+//│ } else {
+//│   Predef.notImplementedError;
+//│ }
+//│ tmp3 = runtime.checkCall(Predef.print(res2));
+//│ block$res23 = runtime.checkCall(Predef.hide(tmp3));
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > 1
 //│ res = 1
