@@ -1573,15 +1573,15 @@ class BlockSimplifier
       /** @param callGraphSource the function whose outgoing call-graph edges are being collected;
         *   absent in the program's root block and in constructor bodies, which do not correspond
         *   to an inlineable function and therefore cannot be an edge source.
-        * @param isAnalyzingReferencedDefn whether the current function body was obtained through
+        * @param isForeign whether the current function body was obtained through
         *   a referenced symbol's `irDefn`, rather than encountered as a local `Define` in the block
-        *   being simplified. Such bodies contribute call-graph edges, but their references must
+        *   being simplified. Such bodies contribute call-graph edges, but their references do
         *   not affect use counts or elimination decisions for the local block.
         */
       case class FunLikeContext(
         callGraphSource: Opt[TermSymbol],
         hasInlineAnnot: Bool,
-        isAnalyzingReferencedDefn: Bool,
+        isForeign: Bool,
       )
       
       class Traverser extends BlockTraverser:
@@ -1592,10 +1592,10 @@ class BlockSimplifier
         // * Referenced definitions not encountered in the local block are registered before being
         // * appended to this worklist. Recursive references therefore terminate immediately, while
         // * advancing an index discovers the transitive closure without rescanning symbols.
-        val pendingReferencedFunctionBodies = Buffer.empty[FunDefn]
-        var nextReferencedFunctionBody = 0
+        val pendingForeignFunctionBodies = Buffer.empty[FunDefn]
+        var nextForeignFunctionBody = 0
         val analyzedFunctionBodies = MutSet.empty[TermSymbol]
-        val rejectedReferencedFunctions = MutSet.empty[TermSymbol]
+        val rejectedForeignFunctions = MutSet.empty[TermSymbol]
         val cfg = summon[Config.Inliner]
         val maxAutomaticThreshold = cfg.inlineThreshold max cfg.altSmallThreshold
         var contextList: List[FunLikeContext] = FunLikeContext(N, false, false) :: Nil
@@ -1604,20 +1604,20 @@ class BlockSimplifier
         
         def currentCallGraphSource = currentContext.callGraphSource
         
-        def nested(ts: Option[TermSymbol], hasInlineAnnot: Bool, isAnalyzingReferencedDefn: Bool)(thunk: => Unit) =
-          contextList = FunLikeContext(ts, hasInlineAnnot, isAnalyzingReferencedDefn) :: contextList
+        def nested(ts: Option[TermSymbol], hasInlineAnnot: Bool, isForeign: Bool)(thunk: => Unit) =
+          contextList = FunLikeContext(ts, hasInlineAnnot, isForeign) :: contextList
           thunk
           val res = contextList.head
           contextList = contextList.tail
           res
         
-        def registerFunction(f: FunDefn, isMethod: Bool, isReferenced: Bool): Bool =
+        def registerFunction(f: FunDefn, isMethod: Bool, isForeign: Bool): Bool =
           if !map.contains(f.dSym) then
-            val info = InlinerFunInfo(f, isMethod, 0, isReferenced, false)
-            val canAnalyze = !isReferenced || info.passesStaticRequirements &&
+            val info = InlinerFunInfo(f, isMethod, 0, isForeign, false)
+            val canAnalyze = !isForeign || info.passesStaticRequirements &&
               (f.inline || f.body.size <= maxAutomaticThreshold)
             if !canAnalyze then
-              rejectedReferencedFunctions += f.dSym
+              rejectedForeignFunctions += f.dSym
               return false
             // * A referenced definition cannot be eliminated from the local block. This is based
             // * on where the definition was encountered, rather than symbol state: incremental
@@ -1628,36 +1628,36 @@ class BlockSimplifier
             val info = map(f.dSym)
             softAssert((info.defn is f) && info.isMethod === isMethod,
               s"Inconsistent definitions registered for ${f.dSym.showDbg}")
-            if !isReferenced then
+            if !isForeign then
               // * A forward reference may have registered this definition before its local
               // * `Define` node was reached. Its local occurrence makes elimination eligible again.
               info.disallowElimination = false
             false
 
-        def applyFunctionBody(f: FunDefn, isReferenced: Bool): Unit =
+        def applyFunctionBody(f: FunDefn, isForeign: Bool): Unit =
           if analyzedFunctionBodies.add(f.dSym) then
-            nested(S(f.dSym), f.inline, isReferenced):
+            nested(S(f.dSym), f.inline, isForeign):
               applyBlock(f.body)
 
         def addFunctionAndApplyBody(f: FunDefn, isMethod: Bool): Unit =
-          if currentContext.isAnalyzingReferencedDefn then
+          if currentContext.isForeign then
             if registerFunction(f, isMethod, true) then applyFunctionBody(f, true)
           else
             applyFunctionBody(f, false)
             registerFunction(f, isMethod, false)
 
-        def registerReferencedFunction(sym: TermSymbol): Unit =
-          if !map.contains(sym) && !rejectedReferencedFunctions(sym) then
+        def registerForeignFunction(sym: TermSymbol): Unit =
+          if !map.contains(sym) && !rejectedForeignFunctions(sym) then
             sym.irDefn.foreach:
               case fd: FunDefn =>
                 if registerFunction(fd, fd.owner.nonEmpty, true) then
-                  pendingReferencedFunctionBodies.append(fd)
+                  pendingForeignFunctionBodies.append(fd)
               case _ =>
 
-        def applyPendingReferencedFunctionBodies(): Unit =
-          while nextReferencedFunctionBody < pendingReferencedFunctionBodies.size do
-            val f = pendingReferencedFunctionBodies(nextReferencedFunctionBody)
-            nextReferencedFunctionBody += 1
+        def applyPendingForeignFunctionBodies(): Unit =
+          while nextForeignFunctionBody < pendingForeignFunctionBodies.size do
+            val f = pendingForeignFunctionBodies(nextForeignFunctionBody)
+            nextForeignFunctionBody += 1
             applyFunctionBody(f, true)
         
         override def applyDefn(defn: Defn): Unit = defn match
@@ -1668,7 +1668,7 @@ class BlockSimplifier
             c.methods.foreach: f =>
               addFunctionAndApplyBody(f, true)
             // Note: no tracking, since `Instantiate` will not be inlined and won't cause cycles.
-            nested(N, false, currentContext.isAnalyzingReferencedDefn):
+            nested(N, false, currentContext.isForeign):
               applySubBlock(c.preCtor)
               applySubBlock(c.ctor)
             c.companion.foreach: m =>
@@ -1680,33 +1680,33 @@ class BlockSimplifier
         
         override def applyResult(r: Result): Unit = r match
           case c @ Call(TermSymbolPath(ts), argss) =>
-            if !currentContext.isAnalyzingReferencedDefn then
+            if !currentContext.isForeign then
               if currentContext.hasInlineAnnot then
                 // Not eligible for inline elimination
                 disallowElimination(ts) = true
               useCnt(ts) += 1
             usages(ts) ::= (currentCallGraphSource, c)
-            registerReferencedFunction(ts)
+            registerForeignFunction(ts)
             argss.foreach(_.foreach(applyArg))
           case _ => super.applyResult(r)
         
         override def applyValue(v: Value): Unit = v match
           case Value.MemberRef(bms, ts: TermSymbol) =>
             applySymbol(bms)
-            if !currentContext.isAnalyzingReferencedDefn then
+            if !currentContext.isForeign then
               useCnt(ts) += 1
               disallowElimination(ts) = true
           case _ => super.applyValue(v)
 
         override def applySymbol(sym: Symbol): Unit =
-          if !currentContext.isAnalyzingReferencedDefn then
+          if !currentContext.isForeign then
             sym.asTrm.foreach: ts =>
               useCnt(ts) += 1
               disallowElimination(ts) = true
         
         def analyze(blk: Block): InlinerMap =
           applyBlock(blk)
-          applyPendingReferencedFunctionBodies()
+          applyPendingForeignFunctionBodies()
           map.foreach: (sym, info) =>
             info.useCount = useCnt(sym)
             info.disallowElimination = info.disallowElimination || disallowElimination(sym)
