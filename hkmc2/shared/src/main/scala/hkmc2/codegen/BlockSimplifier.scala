@@ -1500,6 +1500,8 @@ class BlockSimplifier
         
         // Whether this method belongs to a true module (as opposed to a class or
         // an instance-based singleton object).
+        // Inlining non-virtual (ie final) methods might be done in the future,
+        // but will need to be careful about `super` calls and `this` references.
         def isModuleMethod: Bool = defn.dSym.owner match
           case S(owner: ModuleOrObjectSymbol) => owner.tree.k is syntax.Mod
           case _ => false
