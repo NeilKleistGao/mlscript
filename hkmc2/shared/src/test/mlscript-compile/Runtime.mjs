@@ -830,7 +830,7 @@ lambda3 = (undefined, function (Runtime2, EffectHandle1, value) {
       }
       return msg;
     }
-    return msg;
+    return header;
   }
   static showFunctionContChain(cont, hl, vis, reps) {
     let scrut, scrut1, scrut2, tmp, tmp1, tmp2, tmp3, tmp4, scope30$cap, lambda$here;

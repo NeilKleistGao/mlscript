@@ -53,3 +53,16 @@ FilePrivateFunctions.mutuallyRecursiveEven(4)
 //│ return FilePrivateFunctions.mutuallyRecursiveEven_mutuallyRecursiveOdd(0, 4)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = true
+
+
+// Automatic inlining rejects a large referenced body using a threshold-bounded size check,
+// without traversing that body's call graph.
+:sjs
+:soir
+FilePrivateFunctions.largeFunction(0)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ return FilePrivateFunctions⁰.largeFunction⁰(0)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ return FilePrivateFunctions.largeFunction(0)
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 0
