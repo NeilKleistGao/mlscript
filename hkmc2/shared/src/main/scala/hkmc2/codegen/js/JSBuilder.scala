@@ -168,8 +168,17 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     def symbols: Ls[ImportSymbol] = defaults.map(_._1) ::: privates.map(_._1)
   
   
+  /** Recovers imports that are not necessarily recorded in `p.imports`.
+    *
+    * Optimization may copy IR from one compilation unit into another. The copied references keep
+    * their original symbols, whose elaboration states retain the module provenance that is absent
+    * from the receiving program's direct import table. This pass follows that provenance after all
+    * such transformations have run and adds the imports needed by the emitted JavaScript.
+    */
   private def externalImports(p: Program): Imports =
     
+    // Top-level scoped symbols are defined by this program, even when their states carry module
+    // metadata. In particular, its own default export must not be recovered as an import.
     val localSymbols: collection.Set[ScopedSymbol] =
       p.main match
       case Scoped(syms, _) => syms
@@ -192,6 +201,17 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     val defaultImports = collection.mutable.Map.empty[ImportSymbol, Str]
     val privateImports = collection.mutable.Map.empty[BlockMemberSymbol, Str]
     
+    /** Import provenance has two sources:
+      *
+      *  - `importedModulePath` records default imports introduced while elaborating the symbol's
+      *    compilation unit. These include user imports and compiler-provided `TempSymbol`s.
+      *  - `compilationUnitModulePath` identifies symbols defined by another MLscript unit. Its
+      *    declared export is imported as the module default; other block members use the stable
+      *    private names allocated when that unit was compiled.
+      *
+      * State identity, rather than equal path strings, is the compilation-unit ownership invariant:
+      * all symbols belonging to the current artifact were created by this builder's `State`.
+      */
     def note(sym: ImportSymbol): Unit =
       if !localSymbols(sym) then
         val originState = sym.getState
@@ -204,8 +224,10 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
             case sym: BlockMemberSymbol if originState isnt State => privateImports(sym) = path
             case _ =>
     
-    /** Collect symbols that JS emits as values. Imported local symbols may occur here when an
-      * inlined body refers to one of its defining compilation unit's default imports. */
+    /** Only value references require JavaScript bindings. In particular, symbols occurring solely
+      * in definitions, assignments, or metadata must not become imports. `VarSymbol` and
+      * `TempSymbol` references can be transitive default imports left in copied IR, while member
+      * references can denote either the default export or a private member of a foreign unit. */
     (new BlockTraverser:
       override def applyValue(value: Value): Unit = value match
         case Value.SimpleRef(sym: TempSymbol) => note(sym)
@@ -214,6 +236,8 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
         case _ =>
     ).applyBlock(p.main)
     
+    // Maps deduplicate repeated references; sorting makes output deterministic across independently
+    // elaborated states, where symbol UIDs alone are not globally unique.
     Imports(
       orderedExternalImports(defaultImports),
       orderedExternalImports(privateImports),
