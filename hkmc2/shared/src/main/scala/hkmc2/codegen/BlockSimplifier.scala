@@ -3,7 +3,6 @@ package codegen
 
 import scala.collection.mutable.{Map => MutMap, Set => MutSet, Buffer}
 import scala.annotation.tailrec
-import scala.util.boundary
 import sourcecode.{Line, FileName}
 
 import hkmc2.utils.*, shorthands.*
@@ -129,23 +128,22 @@ class BlockSimplifier
   object LocalVars extends CachedAnalysis[Block, Set[LocalVar]]:
     
     def analyzeUncached(block: Block): Set[LocalVar] =
-      def paramsOf(paramLists: IterableOnce[ParamList]): Set[LocalVar] =
+      def paramsOf(paramLists: IterableOnce[ParamList]): Iterator[LocalVar] =
         paramLists.iterator.flatMap(_.paramSyms).collect:
           case v: LocalVar => v
-        .toSet
       def default =
-        block.subBlocks.iterator.flatMap(analyze).toSet
+        block.subBlocks.iterator.flatMap(analyze)
       block match
       case Define(fd: FunDefn, rest) =>
-        paramsOf(fd.params) ++ default
+        (paramsOf(fd.params) ++ default).toSet
       case Define(cd: ClsLikeDefn, rest) =>
-        paramsOf(cd.paramsOpt.iterator ++ cd.auxParams.iterator) ++
+        (paramsOf(cd.paramsOpt.iterator ++ cd.auxParams.iterator) ++
           paramsOf(cd.methods.iterator.flatMap(_.params)) ++
           paramsOf(cd.companion.iterator.flatMap(_.methods).flatMap(_.params)) ++
-          default
+          default).toSet
       case Scoped(syms, rest) =>
-        rest.analyze ++ syms.iterator.collect { case v: LocalVar => v }
-      case _ => default
+        (rest.analyze.iterator ++ syms.iterator.collect { case v: LocalVar => v }).toSet
+      case _ => default.toSet
     
   end LocalVars
   
@@ -1518,10 +1516,23 @@ class BlockSimplifier
           case S(owner: ModuleOrObjectSymbol) => owner.tree.k is syntax.Mod
           case _ => false
 
-        /** Requirements that can reject a referenced body without traversing it. */
+        /** Requirements that can reject a referenced body without inspecting its body. */
         def passesStaticRequirements: Bool =
-          !defn.noInline && !isPatternHelper && (!isMethod || isModuleMethod) &&
-            !defn.dSym.getState.compilationUnitConfig.exists(_.noFreeze =/= config.noFreeze)
+          if defn.noInline then return false
+          // Pattern compiler helpers may intentionally reuse source pattern variables across
+          // mutually-exclusive generated blocks. Symbol-refreshing them as ordinary inline
+          // bodies is not sound, so keep those helpers in place.
+          if isPatternHelper then return false
+          // Instance methods access instance state via `this`, so they must not be
+          // inlined as if they were static calls. True modules are safe because
+          // their `this` references can be replaced by call-site qualifier paths.
+          if isMethod && !isModuleMethod then return false
+          // Instantiate nodes are rendered according to the receiving JS builder's
+          // freezing policy. Moving a body across compilation units with a different
+          // policy could silently turn mutable values into frozen values, or vice versa.
+          if defn.dSym.getState.compilationUnitConfig.exists(_.noFreeze =/= config.noFreeze)
+          then return false
+          true
 
         // Whether this function can be inlined without causing any code duplication,
         // i.e. the original definition can be removed and there is only one usage.
@@ -1534,7 +1545,7 @@ class BlockSimplifier
           if !passesStaticRequirements then return N
           // Pattern compiler helpers may intentionally reuse source pattern variables across
           // mutually-exclusive generated blocks. Symbol-refreshing them as ordinary inline
-          // bodies is not sound, so keep those helpers in place.
+          // bodies is not sound, so reject the same shape wherever duplicate bindings occur.
           if hasDuplicateBindings then return N
           // Accessors for JS-private members use a fresh Symbol shared by the owner
           // definition and its out-of-owner references within one emitted module.
@@ -1559,50 +1570,18 @@ class BlockSimplifier
         
       type InlinerMap = Map[TermSymbol, InlinerFunInfo]
 
-      /** Test the ordinary inline-size metric without walking past the threshold.
-        * Large referenced bodies are rejected as soon as this counter exceeds the largest
-        * automatic-inlining threshold, so their call graph is never traversed. */
-      private def bodySizeIsAtMost(body: Block, threshold: Int): Bool = boundary:
-        var size = 0
-        def spend(amount: Int): Unit =
-          size += amount
-          if size > threshold then boundary.break(false)
-        (new BlockTraverser:
-          override def applyBlock(block: Block): Unit = block match
-            case Scoped(_, body) => applySubBlock(body)
-            case _ =>
-              spend(1)
-              super.applyBlock(block)
-
-          override def applyFunDefn(fun: FunDefn): Unit =
-            spend(1)
-            super.applyFunDefn(fun)
-
-          override def applyValDefn(defn: ValDefn): Unit =
-            spend(1)
-
-          override def applyClsLikeDefn(defn: ClsLikeDefn): Unit =
-            spend(1)
-            super.applyClsLikeDefn(defn)
-
-          override def applyCompanionModule(body: ClsLikeBody): Unit =
-            spend(1)
-            super.applyCompanionModule(body)
-
-          override def applyResult(result: Result): Unit = result match
-            case Lambda(_, _) =>
-              spend(1)
-              super.applyResult(result)
-            case Value.Lit(lit: syntax.Tree.StrLit) =>
-              spend(lit.value.length / 4)
-            case _ => super.applyResult(result)
-        ).applyBlock(body)
-        true
-      
+      /** @param callGraphSource the function whose outgoing call-graph edges are being collected;
+        *   absent in the program's root block and in constructor bodies, which do not correspond
+        *   to an inlineable function and therefore cannot be an edge source.
+        * @param isAnalyzingReferencedDefn whether the current function body was obtained through
+        *   a referenced symbol's `irDefn`, rather than encountered as a local `Define` in the block
+        *   being simplified. Such bodies contribute call-graph edges, but their references must
+        *   not affect use counts or elimination decisions for the local block.
+        */
       case class FunLikeContext(
-        curFunSym: Opt[TermSymbol],
+        callGraphSource: Opt[TermSymbol],
         hasInlineAnnot: Bool,
-        isReferencedBody: Bool,
+        isAnalyzingReferencedDefn: Bool,
       )
       
       class Traverser extends BlockTraverser:
@@ -1623,10 +1602,10 @@ class BlockSimplifier
         
         def currentContext = contextList.head
         
-        def currentFunSym = currentContext.curFunSym
+        def currentCallGraphSource = currentContext.callGraphSource
         
-        def nested(ts: Option[TermSymbol], hasInlineAnnot: Bool, isReferencedBody: Bool)(thunk: => Unit) =
-          contextList = FunLikeContext(ts, hasInlineAnnot, isReferencedBody) :: contextList
+        def nested(ts: Option[TermSymbol], hasInlineAnnot: Bool, isAnalyzingReferencedDefn: Bool)(thunk: => Unit) =
+          contextList = FunLikeContext(ts, hasInlineAnnot, isAnalyzingReferencedDefn) :: contextList
           thunk
           val res = contextList.head
           contextList = contextList.tail
@@ -1636,7 +1615,7 @@ class BlockSimplifier
           if !map.contains(f.dSym) then
             val info = InlinerFunInfo(f, isMethod, 0, isReferenced, false)
             val canAnalyze = !isReferenced || info.passesStaticRequirements &&
-              (f.inline || bodySizeIsAtMost(f.body, maxAutomaticThreshold))
+              (f.inline || f.body.size <= maxAutomaticThreshold)
             if !canAnalyze then
               rejectedReferencedFunctions += f.dSym
               return false
@@ -1661,7 +1640,7 @@ class BlockSimplifier
               applyBlock(f.body)
 
         def addFunctionAndApplyBody(f: FunDefn, isMethod: Bool): Unit =
-          if currentContext.isReferencedBody then
+          if currentContext.isAnalyzingReferencedDefn then
             if registerFunction(f, isMethod, true) then applyFunctionBody(f, true)
           else
             applyFunctionBody(f, false)
@@ -1689,7 +1668,7 @@ class BlockSimplifier
             c.methods.foreach: f =>
               addFunctionAndApplyBody(f, true)
             // Note: no tracking, since `Instantiate` will not be inlined and won't cause cycles.
-            nested(N, false, currentContext.isReferencedBody):
+            nested(N, false, currentContext.isAnalyzingReferencedDefn):
               applySubBlock(c.preCtor)
               applySubBlock(c.ctor)
             c.companion.foreach: m =>
@@ -1701,12 +1680,12 @@ class BlockSimplifier
         
         override def applyResult(r: Result): Unit = r match
           case c @ Call(TermSymbolPath(ts), argss) =>
-            if !currentContext.isReferencedBody then
+            if !currentContext.isAnalyzingReferencedDefn then
               if currentContext.hasInlineAnnot then
                 // Not eligible for inline elimination
                 disallowElimination(ts) = true
               useCnt(ts) += 1
-            usages(ts) ::= (currentFunSym, c)
+            usages(ts) ::= (currentCallGraphSource, c)
             registerReferencedFunction(ts)
             argss.foreach(_.foreach(applyArg))
           case _ => super.applyResult(r)
@@ -1714,13 +1693,13 @@ class BlockSimplifier
         override def applyValue(v: Value): Unit = v match
           case Value.MemberRef(bms, ts: TermSymbol) =>
             applySymbol(bms)
-            if !currentContext.isReferencedBody then
+            if !currentContext.isAnalyzingReferencedDefn then
               useCnt(ts) += 1
               disallowElimination(ts) = true
           case _ => super.applyValue(v)
 
         override def applySymbol(sym: Symbol): Unit =
-          if !currentContext.isReferencedBody then
+          if !currentContext.isAnalyzingReferencedDefn then
             sym.asTrm.foreach: ts =>
               useCnt(ts) += 1
               disallowElimination(ts) = true
