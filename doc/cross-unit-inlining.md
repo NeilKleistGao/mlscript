@@ -53,22 +53,22 @@ across its simplification passes, and fuel is spent only after every argument li
 
 Loop-breaker selection uses the reachable graph of functions that are plausible inline candidates,
 including functions defined in other compilation units. Local definitions retain their established
-traversal order. A referenced definition is rejected before graph traversal when the available
+traversal order. A non-local definition is rejected before graph traversal when the available
 eligibility checks prove it ineligible: `noInline`, pattern-helper ownership, an unsupported method
 receiver, an incompatible compilation policy, or an automatic-inlining body larger than the
 applicable threshold. This uses the body's standard lazy `size` value; explicit `@inline` functions
 are not size-limited.
 
-An eligible referenced definition not already encountered is registered before being appended to a
+An eligible non-local definition not already encountered is registered before being appended to a
 worklist, so self- and mutual-recursive references terminate immediately. Traversing a body may
 append previously unseen eligible callees; advancing an index through the append-only worklist
 therefore computes the candidate closure without rescanning symbols. A separate visited-body set
-ensures that every local or eligible referenced body is traversed exactly once. Calls in referenced
+ensures that every local or eligible non-local body is traversed exactly once. Calls in non-local
 bodies contribute graph edges but not local use counts.
 
 This is not incremental SCC maintenance. SCC and loop-breaker analysis starts only after the
 worklist is exhausted and the candidate graph is complete. The worklist phase is linear in the
-eligible reachable IR and call edges, plus computing the lazy sizes of referenced automatic-inline
+eligible reachable IR and call edges, plus computing the lazy sizes of non-local automatic-inline
 candidates, with expected constant-time symbol lookup. Generic inline fuel remains a defense
 against excessive acyclic growth, not a substitute for recursion detection.
 
