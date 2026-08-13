@@ -263,12 +263,12 @@ class CompilerTest extends AnyFunSuite:
         if fun.dSym.nme === "value" then valueDefn = S(fun)
         super.applyFunDefn(fun)
     ).applyProgram(artifact.ir)
-    val summary = valueDefn.flatMap(_.inlinerBodySummary).getOrElse:
+    val summary = valueDefn.flatMap(_.inlinerBodySummary |> Option.apply).getOrElse:
       fail("The imported function definition should carry a body summary")
 
     compiler.compile("/C.mls")
 
-    assert(valueDefn.flatMap(_.inlinerBodySummary).exists(_ is summary),
+    assert(valueDefn.flatMap(_.inlinerBodySummary |> Option.apply).exists(_ is summary),
       "The second importer should reuse the published summary instead of replacing it")
   
   test("compiler can report errors"):

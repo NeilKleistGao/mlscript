@@ -686,15 +686,14 @@ final case class FunDefn(
   // * This deliberately is not a lazy val: its initialization would synchronize on the JVM.
   // * Computing the summary is pure, and a reference write is atomic, so concurrent traversals may
   // * harmlessly compute equal immutable summaries and overwrite this slot in either order.
-  private var _inlinerBodySummary: Opt[InlinerBodySummary] = N
-  private[hkmc2] def inlinerBodySummary: Opt[InlinerBodySummary] = _inlinerBodySummary
+  private var _inlinerBodySummary: InlinerBodySummary = null
+  private[hkmc2] def inlinerBodySummary: InlinerBodySummary = _inlinerBodySummary
   private[codegen] def getOrComputeInlinerBodySummary: InlinerBodySummary =
-    _inlinerBodySummary match
-      case S(summary) => summary
-      case N =>
-        val summary = InlinerBodySummary.compute(this)
-        _inlinerBodySummary = S(summary)
-        summary
+    if _inlinerBodySummary != null then _inlinerBodySummary
+    else
+      val summary = InlinerBodySummary.compute(this)
+      _inlinerBodySummary = summary
+      summary
   
   // `configOverride` and `annotations` live in a secondary constructor list,
   // so case-class equality would otherwise ignore them.
@@ -1200,7 +1199,7 @@ object Value:
       case _ => N
 
 /** Extracts the function symbol from either form of a direct function reference: `f` or `a.f`. */
-private[codegen] object TermSymbolPath:
+object TermSymbolPath:
   def unapply(path: Path): Opt[TermSymbol] = path match
     case Value.MemberRef(_, sym: TermSymbol) => S(sym)
     case selection: Select => selection.symbol match
