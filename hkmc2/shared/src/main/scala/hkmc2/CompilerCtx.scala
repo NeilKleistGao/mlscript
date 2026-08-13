@@ -36,6 +36,18 @@ class CompilerCtx(
     importing match
     case S((path, parent)) => path :: parent.allFilesBeingImported
     case N => Nil
+
+  /** Run a nested artifact request while publishing its dependency on the artifact currently
+    * being built. The cache owns this shared state because several root compilations may use
+    * distinct `CompilerCtx` chains while contending for the same artifact path locks. */
+  private[hkmc2] def withActiveDependency[A]
+        (file: io.Path)
+        (onCycle: Ls[io.Path] => A)
+        (request: => A)
+        : A =
+    importing match
+    case S((requester, _)) => cache.withActiveDependency(requester, file)(onCycle)(request)
+    case N => request
   
   private def derive(newFile: io.Path, recorder: CompilerCtx.DependencyRecorder): CompilerCtx =
     CompilerCtx(S(newFile, this), beingCompiled + newFile, fs, cache, S(recorder), paths, rootConfig)
@@ -251,6 +263,60 @@ object CompilerCache:
     val lastChangedTimestamp: Long,
   )
 
+  /** The dependencies between artifact builds that are active right now.
+    *
+    * Registering an edge and checking whether it closes a cycle are one short synchronized
+    * operation. The expensive artifact request runs outside this monitor, while its edge remains
+    * visible to other requesters. Edge counts make overlapping equal requests safe, and the
+    * scoped API guarantees cleanup when a request fails. */
+  private[hkmc2] final class ActiveDependencyGraph:
+    private val edges = MutMap.empty[io.Path, MutMap[io.Path, Int]]
+
+    private def pathBetween(from: io.Path, to: io.Path): Opt[Ls[io.Path]] =
+      def loop(current: io.Path, visited: Set[io.Path]): Opt[Ls[io.Path]] =
+        if current === to then S(current :: Nil)
+        else if visited.contains(current) then N
+        else
+          edges.get(current).iterator
+            .flatMap(_.keys)
+            .toArray
+            .sortBy(_.toString)
+            .iterator
+            .map(next => loop(next, visited + current).map(current :: _))
+            .collectFirst:
+              case S(path) => path
+      loop(from, Set.empty)
+
+    private def register(from: io.Path, to: io.Path): Either[Ls[io.Path], Unit] = synchronized:
+      pathBetween(to, from) match
+      case S(path) => Left(from :: path)
+      case N =>
+        val outgoing = edges.getOrElseUpdate(from, MutMap.empty)
+        outgoing(to) = outgoing.getOrElse(to, 0) + 1
+        Right(())
+
+    private def unregister(from: io.Path, to: io.Path): Unit = synchronized:
+      edges.get(from) match
+      case S(outgoing) =>
+        outgoing.get(to) match
+        case S(1) =>
+          outgoing.remove(to)
+          if outgoing.isEmpty then edges.remove(from)
+        case S(count) => outgoing(to) = count - 1
+        case N => assert(false, s"Inactive compiler dependency $from -> $to was released")
+      case N => assert(false, s"Inactive compiler dependency $from -> $to was released")
+
+    def withDependency[A]
+          (from: io.Path, to: io.Path)
+          (onCycle: Ls[io.Path] => A)
+          (request: => A)
+          : A =
+      register(from, to) match
+      case Left(cycle) => onCycle(cycle)
+      case Right(()) =>
+        try request
+        finally unregister(from, to)
+
   /** A cache whose expensive computations are serialized per path rather than globally.
     *
     * The supplied maps provide the platform's concurrency semantics: JVM uses `TrieMap`, while
@@ -281,6 +347,17 @@ trait CompilerCache:
 
   protected def elabCache: CompilerCache.ArtifactCache[Artifact]
   protected def preludeCache: CompilerCache.ArtifactCache[PreludeArtifact]
+
+  // This mutable graph belongs to one cache, just like the path locks it protects requesters
+  // from deadlocking on. It must not be moved to symbols or other globally shared compiler state.
+  private val activeDependencies = new ActiveDependencyGraph
+
+  private[hkmc2] def withActiveDependency[A]
+        (from: io.Path, to: io.Path)
+        (onCycle: Ls[io.Path] => A)
+        (request: => A)
+        : A =
+    activeDependencies.withDependency(from, to)(onCycle)(request)
   
   /** Return the current artifact at `path`, or atomically rebuild that artifact.
     *
