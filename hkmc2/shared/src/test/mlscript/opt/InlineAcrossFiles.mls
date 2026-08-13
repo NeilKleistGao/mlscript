@@ -27,3 +27,29 @@ FilePrivateFunctions.noInlineFunction()
 //│ return FilePrivateFunctions.noInlineFunction()
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = "This function should not be inlined."
+
+
+// Recursive cross-unit bodies must contribute their own call-graph edges. Otherwise each
+// simplification round peels another recursive layer until the generic inline fuel runs out.
+:sjs
+:soir
+FilePrivateFunctions.selfRecursive(3)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ return FilePrivateFunctions⁰.selfRecursive⁰(3)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ return FilePrivateFunctions.selfRecursive(3)
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 3
+
+
+// This additionally checks that discovery reaches transitive cross-unit callees before SCCs are
+// computed: the local program refers to the exported wrapper, but not its generated recursive worker.
+:sjs
+:soir
+FilePrivateFunctions.mutuallyRecursiveEven(4)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ return FilePrivateFunctions⁰.mutuallyRecursiveEven_mutuallyRecursiveOdd⁰(0, 4)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ return FilePrivateFunctions.mutuallyRecursiveEven_mutuallyRecursiveOdd(0, 4)
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = true

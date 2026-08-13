@@ -49,6 +49,22 @@ Automatic-inlining fuel is a budget per source file. The pipeline reuses one `Bl
 across its simplification passes, and fuel is spent only after every argument list matches.
 
 
+## Reachable call graph
+
+Loop-breaker selection uses the complete reachable call graph, including functions defined in
+other compilation units. Local definitions retain their established traversal order. A referenced
+definition not already encountered in the local block is registered before being appended to a
+worklist, so self- and mutual-recursive references terminate immediately. Traversing a body may
+append previously unseen cross-unit callees; advancing an index through the append-only worklist
+therefore computes the transitive closure without rescanning symbols. A separate visited-body set
+ensures that every local or reachable referenced body is traversed exactly once.
+
+This is not incremental SCC maintenance. SCC and loop-breaker analysis starts only after the
+worklist is exhausted and the reachable graph is complete. The worklist phase is linear in the
+reachable IR and call edges, with expected constant-time symbol lookup. Generic inline fuel remains
+a defense against excessive acyclic growth, not a substitute for recursion detection.
+
+
 ## Safe bodies
 
 Only methods owned by true `module` symbols may be inlined as module methods. Instance and `object`
