@@ -161,58 +161,48 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     then "./" + io.Path(path).relativeTo(wd).map(_.toString).getOrElse(path)
     else path
 
-  private def locallyDefinedSymbols(p: Program): collection.Set[ScopedSymbol] =
-    p.main match
-      case Scoped(syms, _) => syms
-      case _ => Set.empty
-
-  private def defaultImportPath(sym: ImportSymbol): Opt[Str] =
-    val originState = sym.getState
-    originState.importedModulePath(sym) orElse
-      originState.compilationUnitModulePath.filter(_ => originState.isCompilationUnitExport(sym))
-
-  private def compilationUnitPath(sym: BlockMemberSymbol): Opt[Str] =
-    val originState = sym.getState
-    originState.compilationUnitModulePath.filter(_ => !originState.isCompilationUnitExport(sym))
-
-  /** UIDs are unique only within one elaboration state. Module provenance must therefore come
-    * first whenever symbols from independently elaborated compilation units are ordered. */
-  private def externalImportSortKey(sym: ImportSymbol, modulePath: Str): (Str, Int, Str) =
-    val normalizedPath =
-      if modulePath.startsWith("/") then io.Path(modulePath).toString
-      else if modulePath.startsWith(".") then io.RelPath(modulePath).toString
-      else modulePath // Bare JavaScript module specifiers such as "fs" or "binaryen" are not paths.
-    (normalizedPath, sym.uid.asInt, sym.nme)
-
-  private def orderedExternalImports[S <: ImportSymbol](symbols: collection.Map[S, Str]): Ls[S -> Str] =
-    symbols.iterator.toList
-      .sortBy:
-        case (sym, path) => externalImportSortKey(sym, path)
-
   private case class Imports(
     defaults: Ls[ImportSymbol -> Str],
     privates: Ls[BlockMemberSymbol -> Str],
   ):
     def symbols: Ls[ImportSymbol] = defaults.map(_._1) ::: privates.map(_._1)
-
-  /** Collect symbols that JS emits as values. Resolved field metadata is handled while
-    * rendering its qualifier and must not create a standalone module dependency. */
-  private class ImportDependencyTraverser extends BlockTraverser:
-    override def applyPath(p: Path): Unit = p match
-      case Select(qual, _) => applyPath(qual)
-      case _ => super.applyPath(p)
-    override def applyBlock(b: Block): Unit = b match
-      case AssignField(lhs, _, rhs, rest) =>
-        applyPath(lhs)
-        applyResult(rhs)
-        applySubBlock(rest)
-      case _ => super.applyBlock(b)
-
+  
+  
   private def externalImports(p: Program, currentModulePath: Opt[Str]): Imports =
+    
+    def locallyDefinedSymbols(p: Program): collection.Set[ScopedSymbol] =
+      p.main match
+        case Scoped(syms, _) => syms
+        case _ => Set.empty
+    
+    def defaultImportPath(sym: ImportSymbol): Opt[Str] =
+      val originState = sym.getState
+      originState.importedModulePath(sym) orElse
+        originState.compilationUnitModulePath.filter(_ => originState.isCompilationUnitExport(sym))
+    
+    def compilationUnitPath(sym: BlockMemberSymbol): Opt[Str] =
+      val originState = sym.getState
+      originState.compilationUnitModulePath.filter(_ => !originState.isCompilationUnitExport(sym))
+    
+    /** UIDs are unique only within one elaboration state. Module provenance must therefore come
+      * first whenever symbols from independently elaborated compilation units are ordered. */
+    def externalImportSortKey(sym: ImportSymbol, modulePath: Str): (Str, Int, Str) =
+      val normalizedPath =
+        if modulePath.startsWith("/") then io.Path(modulePath).toString
+        else if modulePath.startsWith(".") then io.RelPath(modulePath).toString
+        else modulePath // Bare JavaScript module specifiers such as "fs" or "binaryen" are not paths.
+      (normalizedPath, sym.uid.asInt, sym.nme)
+    
+    def orderedExternalImports[S <: ImportSymbol](symbols: collection.Map[S, Str]): Ls[S -> Str] =
+      symbols.iterator.toList
+        .sortBy:
+          case (sym, path) => externalImportSortKey(sym, path)
+    
     val importedSymbols = p.imports.iterator.map(_._1).toSet
     val localSymbols = locallyDefinedSymbols(p)
     val defaultImports = collection.mutable.Map.empty[ImportSymbol, Str]
     val privateImports = collection.mutable.Map.empty[BlockMemberSymbol, Str]
+    
     def note(sym: ImportSymbol): Unit =
       if !importedSymbols(sym) && !localSymbols(sym) then
         defaultImportPath(sym) match
@@ -222,18 +212,33 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
             compilationUnitPath(sym).filter(path => !currentModulePath.contains(path)).foreach: path =>
               privateImports(sym) = path
           case _ =>
-    (new ImportDependencyTraverser:
+    
+    /** Collect symbols that JS emits as values. Resolved field metadata is handled while
+      * rendering its qualifier and must not create a standalone module dependency. */
+    object ImportDependencyTraverser extends BlockTraverser:
+      override def applyPath(p: Path): Unit = p match
+        case Select(qual, _) => applyPath(qual)
+        case _ => super.applyPath(p)
+      override def applyBlock(b: Block): Unit = b match
+        case AssignField(lhs, _, rhs, rest) =>
+          applyPath(lhs)
+          applyResult(rhs)
+          applySubBlock(rest)
+        case _ => super.applyBlock(b)
       override def applySymbol(sym: Symbol): Unit = sym match
         case sym: TempSymbol => note(sym)
         case sym: VarSymbol => note(sym)
         case sym: BlockMemberSymbol => note(sym)
         case _ =>
-    ).applyBlock(p.main)
+    ImportDependencyTraverser.applyBlock(p.main)
+    
     Imports(
       orderedExternalImports(defaultImports),
       orderedExternalImports(privateImports),
     )
-
+  end externalImports
+  
+  
   private def bindImports(p: Program, currentModulePath: Opt[Str])(using Raise, Scope): Imports =
     val defaults = p.imports.filter: (sym, path) =>
       scope.bindDefaultImport(sym, path)
