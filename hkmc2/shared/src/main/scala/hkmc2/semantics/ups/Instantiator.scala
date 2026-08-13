@@ -74,7 +74,7 @@ class Instantiator(using tl: TL)(using Ctx, State, Raise):
   
   /** Instantiate the given pattern with a substitution map. */
   def instantiate(pattern: SP)(using subst: Map[VarSymbol, Pat]): Pat = pattern match
-    case SP.Constructor(target, arguments) => target.resolvedSym.orElse(target.symbol) match
+    case SP.Constructor(target, arguments) => target.resolvedSym match
       // Look up the corresponding pattern from the substitution.
       case S(symbol: VarSymbol) => subst(symbol)
       // Recursively instantiate the arguments of constructor patterns.
