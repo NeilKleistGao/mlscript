@@ -168,21 +168,12 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     def symbols: Ls[ImportSymbol] = defaults.map(_._1) ::: privates.map(_._1)
   
   
-  private def externalImports(p: Program, currentModulePath: Opt[Str]): Imports =
+  private def externalImports(p: Program): Imports =
     
-    def locallyDefinedSymbols(p: Program): collection.Set[ScopedSymbol] =
+    val localSymbols: collection.Set[ScopedSymbol] =
       p.main match
-        case Scoped(syms, _) => syms
-        case _ => Set.empty
-    
-    def defaultImportPath(sym: ImportSymbol): Opt[Str] =
-      val originState = sym.getState
-      originState.importedModulePath(sym) orElse
-        originState.compilationUnitModulePath.filter(_ => originState.isCompilationUnitExport(sym))
-    
-    def compilationUnitPath(sym: BlockMemberSymbol): Opt[Str] =
-      val originState = sym.getState
-      originState.compilationUnitModulePath.filter(_ => !originState.isCompilationUnitExport(sym))
+      case Scoped(syms, _) => syms
+      case _ => Set.empty
     
     /** UIDs are unique only within one elaboration state. Module provenance must therefore come
       * first whenever symbols from independently elaborated compilation units are ordered. */
@@ -198,20 +189,20 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
         .sortBy:
           case (sym, path) => externalImportSortKey(sym, path)
     
-    val importedSymbols = p.imports.iterator.map(_._1).toSet
-    val localSymbols = locallyDefinedSymbols(p)
     val defaultImports = collection.mutable.Map.empty[ImportSymbol, Str]
     val privateImports = collection.mutable.Map.empty[BlockMemberSymbol, Str]
     
     def note(sym: ImportSymbol): Unit =
-      if !importedSymbols(sym) && !localSymbols(sym) then
-        defaultImportPath(sym) match
+      if !localSymbols(sym) then
+        val originState = sym.getState
+        originState.importedModulePath(sym) match
         case S(path) => defaultImports(sym) = path
-        case N => sym match
-          case sym: BlockMemberSymbol =>
-            compilationUnitPath(sym).filter(path => !currentModulePath.contains(path)).foreach: path =>
-              privateImports(sym) = path
-          case _ =>
+        case N => originState.compilationUnitModulePath.foreach: path =>
+          if originState.isCompilationUnitExport(sym) then
+            defaultImports(sym) = path
+          else sym match
+            case sym: BlockMemberSymbol if originState isnt State => privateImports(sym) = path
+            case _ =>
     
     /** Collect symbols that JS emits as values. Imported local symbols may occur here when an
       * inlined body refers to one of its defining compilation unit's default imports. */
@@ -230,10 +221,10 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
   end externalImports
   
   
-  private def bindImports(p: Program, currentModulePath: Opt[Str])(using Raise, Scope): Imports =
+  private def bindImports(p: Program)(using Raise, Scope): Imports =
     val defaults = p.imports.filter: (sym, path) =>
       scope.bindDefaultImport(sym, path)
-    val external = externalImports(p, currentModulePath)
+    val external = externalImports(p)
     val externalDefaults = external.defaults.filter: (sym, path) =>
       scope.bindDefaultImport(sym, path)
     val privates = external.privates.filter: (sym, _) =>
@@ -242,14 +233,12 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       scope.allocateName(sym)
     Imports(defaults ::: externalDefaults, privates)
 
-  private def ownCompilationUnitSymbols(p: Program, currentModulePath: Str): Ls[BlockMemberSymbol] =
+  private def ownCompilationUnitSymbols(p: Program): Ls[BlockMemberSymbol] =
     p.main match
     case Scoped(syms, body) =>
       val freeVars = body.freeVars
       syms.iterator.collect:
-        case sym: BlockMemberSymbol
-          if freeVars(sym) && sym.getState.compilationUnitModulePath.contains(currentModulePath)
-        =>
+        case sym: BlockMemberSymbol if freeVars(sym) && (sym.getState is State) =>
           sym
       .toList
       .sortBy(_.uid)
@@ -951,17 +940,17 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     scope.allocateName(State.prettyPrintSymbol)
     doc"""const ${scope.lookup_!(State.definitionMetadataSymbol, N)} = globalThis.Symbol.for("mlscript.definitionMetadata");"""
       :/: doc"""const ${scope.lookup_!(State.prettyPrintSymbol, N)} = globalThis.Symbol.for("mlscript.prettyPrint");"""
-      :/: programBodyImpl(p, exprt, modulePath.up, S(modulePath.toString))
+      :/: programBodyImpl(p, exprt, modulePath.up, exportPrivates = true)
   
   def programBody(p: Program, exprt: Opt[BlockMemberSymbol], wd: io.Path)(using Raise, Scope): Document =
-    programBodyImpl(p, exprt, wd, N)
+    programBodyImpl(p, exprt, wd, exportPrivates = false)
 
-  private def programBodyImpl(p: Program, exprt: Opt[BlockMemberSymbol], wd: io.Path, currentModulePath: Opt[Str])
+  private def programBodyImpl(p: Program, exprt: Opt[BlockMemberSymbol], wd: io.Path, exportPrivates: Bool)
       (using Raise, Scope): Document =
     collectExternalPrivateAccessors(p)
     allocatePrivateAccessorNames()
     reserveNames(p)
-    val imports = bindImports(p, currentModulePath)
+    val imports = bindImports(p)
     // Generate import statements.
     val imps = imports.defaults.map: (sym, path) =>
       val relPath = relativeImportPath(path, wd)
@@ -970,7 +959,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
       val relPath = relativeImportPath(path, wd)
       doc"""import { ${modulePrivateExportName(sym)} as ${scope.lookup_!(sym, N)} } from "${relPath}";"""
     val bodyDoc = nonNestedScoped(p.main)(block(_, endSemi = false)).stripBreaks
-    val privateExports = currentModulePath.toList.flatMap(ownCompilationUnitSymbols(p, _)).map: sym =>
+    val privateExports = (if exportPrivates then ownCompilationUnitSymbols(p) else Nil).map: sym =>
       doc"""export { ${scope.lookup_!(sym, sym.toLoc)} as ${modulePrivateExportName(sym)} };"""
     withPrivateAccessorDecls((imps ::: privateImps).mkDocument(doc" # "))
     :/: bodyDoc
@@ -985,7 +974,7 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     collectExternalPrivateAccessors(p)
     allocatePrivateAccessorNames()
     reserveNames(p)
-    val imports = bindImports(p, N)
+    val imports = bindImports(p)
     val importedScopedSymbols: Set[ScopedSymbol] =
       p.imports.iterator.map(_._1).toSet
     val importBindings: Ls[ImportSymbol -> Str] =
