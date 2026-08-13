@@ -1369,15 +1369,6 @@ class BlockSimplifier
     
     object Helpers:
       
-      // Reference to a function body can occur as a.f or f, this handles both cases.
-      object TermSymbolPath:
-        def unapply(p: Path) = p match
-          case Value.MemberRef(_, ts: TermSymbol) => S(ts)
-          case s: Select => s.symbol match
-            case S(ts: TermSymbol) => S(ts)
-            case _ => N
-          case _ => N
-      
       /** Match calls to methods selected through a qualifier, such as `Outer.Inner.f(x)`.
         *
         * The qualifier is later used to rewrite module `this` references in the copied body.
@@ -1601,15 +1592,10 @@ class BlockSimplifier
         val cfg = summon[Config.Inliner]
         val maxAutomaticThreshold = cfg.inlineThreshold max cfg.altSmallThreshold
         var contextList: List[FunLikeContext] = FunLikeContext(N, false, false) :: Nil
-        // * A marker is pushed for every function traversal, including cache replays, so events
-        // * from a nested function can never leak into the enclosing function's summary.
-        var summaryRecorders: List[Opt[Buffer[Entry]]] = N :: Nil
         
         def currentContext = contextList.head
         
         def currentCallGraphSource = currentContext.callGraphSource
-
-        def currentSummaryRecorder = summaryRecorders.head
         
         def nested(callGraphSource: Option[TermSymbol], hasInlineAnnot: Bool, isNonLocal: Bool)(thunk: => Unit) =
           contextList = FunLikeContext(callGraphSource, hasInlineAnnot, isNonLocal) :: contextList
@@ -1617,11 +1603,6 @@ class BlockSimplifier
           val res = contextList.head
           contextList = contextList.tail
           res
-
-        def recordingSummary(recorder: Opt[Buffer[Entry]])(thunk: => Unit): Unit =
-          summaryRecorders = recorder :: summaryRecorders
-          thunk
-          summaryRecorders = summaryRecorders.tail
         
         def registerFunction(f: FunDefn, isMethod: Bool, isNonLocal: Bool): Bool =
           if !map.contains(f.dSym) then
@@ -1649,28 +1630,20 @@ class BlockSimplifier
 
         def replayBodySummary(summary: InlinerBodySummary): Unit =
           summary.entries.foreach:
-            case Entry.DirectCall(call, hasCallGraphSource) =>
+            case Entry.DirectCall(callee, call, hasCallGraphSource) =>
               val source = currentCallGraphSource.filter(_ => hasCallGraphSource)
-              observeCall(call, source)
+              observeCall(callee, call, source)
             case Entry.NestedFunction(defn, isMethod) =>
               addFunctionAndApplyBody(defn, isMethod)
 
         def applyFunctionBody(f: FunDefn, isNonLocal: Bool): Unit =
           if analyzedFunctionBodies.add(f.dSym) then
+            val summary = f.getOrComputeInlinerBodySummary
             nested(S(f.dSym), f.inline, isNonLocal):
-              f.inlinerBodySummary match
-              case S(summary) if isNonLocal =>
-                recordingSummary(N):
-                  replayBodySummary(summary)
-              case cachedSummary =>
-                val recorder = cachedSummary.fold(S(Buffer.empty[Entry]))(_ => N)
-                recordingSummary(recorder):
-                  applyBlock(f.body)
-                recorder.foreach: entries =>
-                  f.publishInlinerBodySummary(InlinerBodySummary(entries.toList))
+              if isNonLocal then replayBodySummary(summary)
+              else applyBlock(f.body)
 
         def addFunctionAndApplyBody(f: FunDefn, isMethod: Bool): Unit =
-          currentSummaryRecorder.foreach(_ += Entry.NestedFunction(f, isMethod))
           if currentContext.isNonLocal then
             if registerFunction(f, isMethod, true) then applyFunctionBody(f, true)
           else
@@ -1709,8 +1682,7 @@ class BlockSimplifier
               applySubBlock(m.ctor)
           case _ => super.applyDefn(defn)
         
-        def observeCall(call: Call, source: Opt[TermSymbol]): Unit =
-          val Call(TermSymbolPath(ts), _) = call: @unchecked
+        def observeCall(ts: TermSymbol, call: Call, source: Opt[TermSymbol]): Unit =
           if !currentContext.isNonLocal then
             if currentContext.hasInlineAnnot then
               // Not eligible for inline elimination
@@ -1721,9 +1693,7 @@ class BlockSimplifier
 
         override def applyResult(r: Result): Unit = r match
           case c @ Call(TermSymbolPath(ts), argss) =>
-            currentSummaryRecorder.foreach:
-              _ += Entry.DirectCall(c, currentCallGraphSource.nonEmpty)
-            observeCall(c, currentCallGraphSource)
+            observeCall(ts, c, currentCallGraphSource)
             argss.foreach(_.foreach(applyArg))
           case _ => super.applyResult(r)
         

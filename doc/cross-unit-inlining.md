@@ -67,12 +67,14 @@ ensures that every local or eligible non-local body is traversed exactly once. C
 bodies contribute graph edges but not local use counts.
 
 Each traversed `FunDefn` publishes an immutable `InlinerBodySummary` containing its direct call
-occurrences and nested function definitions. The summary belongs to that exact immutable IR node,
-so replacing a definition naturally invalidates it. Later importing units replay the summary rather
-than walking the body, while still applying their own eligibility checks and rebuilding their own
-candidate closure and SCCs. Publication uses an unsynchronized reference slot: computing a summary
-is pure, JVM reference writes are atomic, and racing threads may harmlessly compute and publish the
-same immutable value more than once.
+occurrences and nested function definitions. A dedicated, configuration-independent traverser
+computes this value without sharing mutable state with the inliner analysis that consumes it.
+The summary belongs to that exact immutable IR node, so replacing a definition naturally
+invalidates it. Later importing units replay the summary rather than walking the body, while still
+applying their own eligibility checks and rebuilding their own candidate closure and SCCs.
+Publication uses an unsynchronized reference slot: computing a summary is pure, JVM reference
+writes are atomic, and racing threads may harmlessly compute and publish the same immutable value
+more than once.
 
 This is not incremental SCC maintenance. SCC and loop-breaker analysis starts only after the
 worklist is exhausted and the candidate graph is complete. With populated body summaries, its work

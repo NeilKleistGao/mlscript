@@ -1,6 +1,8 @@
 package hkmc2
 package codegen
 
+import scala.collection.mutable.Buffer
+
 import hkmc2.utils.*, shorthands.*
 import utils.*
 
@@ -686,8 +688,13 @@ final case class FunDefn(
   // * harmlessly compute equal immutable summaries and overwrite this slot in either order.
   private var _inlinerBodySummary: Opt[InlinerBodySummary] = N
   private[hkmc2] def inlinerBodySummary: Opt[InlinerBodySummary] = _inlinerBodySummary
-  private[codegen] def publishInlinerBodySummary(summary: InlinerBodySummary): Unit =
-    _inlinerBodySummary = S(summary)
+  private[codegen] def getOrComputeInlinerBodySummary: InlinerBodySummary =
+    _inlinerBodySummary match
+      case S(summary) => summary
+      case N =>
+        val summary = InlinerBodySummary.compute(this)
+        _inlinerBodySummary = S(summary)
+        summary
   
   // `configOverride` and `annotations` live in a secondary constructor list,
   // so case-class equality would otherwise ignore them.
@@ -719,9 +726,53 @@ private[codegen] object InlinerBodySummary:
       * `hasCallGraphSource` is false for calls in nested constructor bodies: those calls can expose
       * more inline candidates, but constructors are not function vertices and add no graph edge.
       */
-    case DirectCall(call: Call, hasCallGraphSource: Bool)
+    case DirectCall(callee: TermSymbol, call: Call, hasCallGraphSource: Bool)
     /** A nested function definition, replayed through the importing unit's eligibility checks. */
     case NestedFunction(defn: FunDefn, isMethod: Bool)
+
+  /** Computes the summary independently from the inliner analysis that will consume it.
+    * Nested function bodies get their own summaries when they are analyzed, so this traversal only
+    * records their definitions and does not enter them.
+    */
+  def compute(fun: FunDefn): InlinerBodySummary =
+    val entries = Buffer.empty[Entry]
+
+    (new BlockTraverser:
+      var hasCallGraphSource = true
+
+      def withoutCallGraphSource(thunk: => Unit): Unit =
+        val previous = hasCallGraphSource
+        hasCallGraphSource = false
+        try thunk
+        finally hasCallGraphSource = previous
+
+      def recordFunction(fun: FunDefn, isMethod: Bool): Unit =
+        entries += Entry.NestedFunction(fun, isMethod)
+
+      override def applyDefn(defn: Defn): Unit = defn match
+        case fun: FunDefn =>
+          recordFunction(fun, false)
+        case cls: ClsLikeDefn =>
+          cls.parentPath.foreach(applyPath)
+          cls.methods.foreach(recordFunction(_, true))
+          withoutCallGraphSource:
+            applySubBlock(cls.preCtor)
+            applySubBlock(cls.ctor)
+          cls.companion.foreach: module =>
+            module.methods.foreach(recordFunction(_, true))
+            // The module constructor is run with the enclosing constructor and therefore inherits
+            // whether its surrounding block has a call-graph source.
+            applySubBlock(module.ctor)
+        case _ => super.applyDefn(defn)
+
+      override def applyResult(result: Result): Unit = result match
+        case call @ Call(TermSymbolPath(callee), argss) =>
+          entries += Entry.DirectCall(callee, call, hasCallGraphSource)
+          argss.foreach(_.foreach(applyArg))
+        case _ => super.applyResult(result)
+    ).applyBlock(fun.body)
+
+    InlinerBodySummary(entries.toList)
 
 object FunDefn:
   def withFreshSymbol(owner: Opt[InnerSymbol], sym: BlockMemberSymbol, params: Ls[ParamList], body: Block)(configOverride: Opt[Config], annotations: Ls[Annot])(using State) =
@@ -1147,6 +1198,15 @@ object Value:
       case MemberRef(bms, disamb) => S(bms -> S(disamb))
       case This(sym) => S(sym -> N)
       case _ => N
+
+/** Extracts the function symbol from either form of a direct function reference: `f` or `a.f`. */
+private[codegen] object TermSymbolPath:
+  def unapply(path: Path): Opt[TermSymbol] = path match
+    case Value.MemberRef(_, sym: TermSymbol) => S(sym)
+    case selection: Select => selection.symbol match
+      case S(sym: TermSymbol) => S(sym)
+      case _ => N
+    case _ => N
 
 case class Arg(spread: Opt[SpreadKind], value: Path)
 
