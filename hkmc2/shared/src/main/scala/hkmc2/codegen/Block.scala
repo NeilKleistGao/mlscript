@@ -715,8 +715,13 @@ final case class FunDefn(
 
 /** Configuration-independent facts collected by one structural traversal of a function body.
   * Importing units replay these entries to rebuild their candidate graph without walking the body.
+  * `transitiveCallTargets` also includes calls under lexically nested function definitions because
+  * those bodies are copied when the enclosing function is inlined.
   */
-private[codegen] final case class InlinerBodySummary(entries: Ls[InlinerBodySummary.Entry])
+private[codegen] final case class InlinerBodySummary(
+  entries: Ls[InlinerBodySummary.Entry],
+  transitiveCallTargets: Set[TermSymbol],
+)
 
 private[codegen] object InlinerBodySummary:
   enum Entry:
@@ -735,6 +740,7 @@ private[codegen] object InlinerBodySummary:
     */
   def compute(fun: FunDefn): InlinerBodySummary =
     val entries = Buffer.empty[Entry]
+    var transitiveCallTargets = Set.empty[TermSymbol]
 
     (new BlockTraverser:
       var hasCallGraphSource = true
@@ -747,6 +753,7 @@ private[codegen] object InlinerBodySummary:
 
       def recordFunction(fun: FunDefn, isMethod: Bool): Unit =
         entries += Entry.NestedFunction(fun, isMethod)
+        transitiveCallTargets ++= fun.getOrComputeInlinerBodySummary.transitiveCallTargets
 
       override def applyDefn(defn: Defn): Unit = defn match
         case fun: FunDefn =>
@@ -767,11 +774,12 @@ private[codegen] object InlinerBodySummary:
       override def applyResult(result: Result): Unit = result match
         case call @ Call(TermSymbolPath(callee), argss) =>
           entries += Entry.DirectCall(callee, call, hasCallGraphSource)
+          if hasCallGraphSource then transitiveCallTargets += callee
           argss.foreach(_.foreach(applyArg))
         case _ => super.applyResult(result)
     ).applyBlock(fun.body)
 
-    InlinerBodySummary(entries.toList)
+    InlinerBodySummary(entries.toList, transitiveCallTargets)
 
 object FunDefn:
   def withFreshSymbol(owner: Opt[InnerSymbol], sym: BlockMemberSymbol, params: Ls[ParamList], body: Block)(configOverride: Opt[Config], annotations: Ls[Annot])(using State) =

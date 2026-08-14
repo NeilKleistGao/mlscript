@@ -1581,6 +1581,7 @@ class BlockSimplifier
         var map: InlinerMap = Map.empty
         val useCnt = MutMap.WithDefault(MutMap.empty[TermSymbol, Int], _ => 0)
         val usages = MutMap.WithDefault(MutMap.empty[TermSymbol, List[(Option[TermSymbol], Call)]], _ => Nil)
+        val summaryEdges = Buffer.empty[(TermSymbol, TermSymbol)]
         val disallowElimination = MutMap.WithDefault(MutMap.empty[TermSymbol, Bool], _ => false)
         // * Non-local definitions are registered before being appended to this worklist. Recursive
         // * references therefore terminate immediately, while advancing an index discovers the
@@ -1639,6 +1640,9 @@ class BlockSimplifier
         def applyFunctionBody(f: FunDefn, isNonLocal: Bool): Unit =
           if analyzedFunctionBodies.add(f.dSym) then
             val summary = f.getOrComputeInlinerBodySummary
+            summary.transitiveCallTargets.foreach: callee =>
+              summaryEdges.append((f.dSym, callee))
+              registerNonLocalFunction(callee)
             nested(S(f.dSym), f.inline, isNonLocal):
               if isNonLocal then replayBodySummary(summary)
               else applyBlock(f.body)
@@ -1717,7 +1721,7 @@ class BlockSimplifier
           map.foreach: (sym, info) =>
             info.useCount = useCnt(sym)
             info.disallowElimination = info.disallowElimination || disallowElimination(sym)
-          val edges: Buffer[(TermSymbol, TermSymbol)] = Buffer.empty
+          val edges = summaryEdges.filter((from, to) => map.contains(from) && map.contains(to))
           usages.foreach: (sym, calls) =>
             calls.foreach: (caller, call) =>
               if map.contains(sym) then
