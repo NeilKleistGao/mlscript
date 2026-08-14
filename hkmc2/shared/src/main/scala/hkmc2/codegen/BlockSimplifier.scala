@@ -1406,6 +1406,8 @@ class BlockSimplifier
         ).applyBlock(blk)
         found
 
+      // * TODO: once bad actors like the current pattern compiler stop duplicating symbols,
+      // *  we can remove this ugly workaround.
       def hasDuplicateBoundSymbols(fun: FunDefn): Bool =
         val seen = MutSet.empty[BoundSymbol | LabelSymbol | ClassCtorSymbol]
         var found = false
