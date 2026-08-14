@@ -4,14 +4,203 @@
 import "../../mlscript-compile/NestedFunctionsNoLift.mls"
 
 
-// The imported file disables lifting, so replaying the imported summary must inline `recursive`
-// while preserving the genuinely recursive nested `loop` and its self-reference.
-:sjs
+// FIXME:
+// The imported file disables lifting, so `loop` remains nested in `recursive` and must be
+// discovered by replaying the imported function's body summary. Its self-edge prevents peeling.
 :soir
 NestedFunctionsNoLift.recursive(4)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ match false
+//│   true =>
+//│     return 0
+//│   else
+//│     let inlinedVal;
+//│     match false
+//│       true =>
+//│         set inlinedVal = 0;
+//│         return 1
+//│       else
+//│         let inlinedVal1;
+//│         match false
+//│           true =>
+//│             set inlinedVal1 = 0;
+//│             end
+//│           else
+//│             let inlinedVal2;
+//│             match false
+//│               true =>
+//│                 set inlinedVal2 = 0;
+//│                 end
+//│               else
+//│                 let inlinedVal3;
+//│                 match true
+//│                   true =>
+//│                     set inlinedVal3 = 0;
+//│                     end
+//│                   else
+//│                     let inlinedVal4;
+//│                     match true
+//│                       true =>
+//│                         set inlinedVal4 = 0;
+//│                         end
+//│                       else
+//│                         let inlinedVal5;
+//│                         match true
+//│                           true =>
+//│                             set inlinedVal5 = 0;
+//│                             end
+//│                           else
+//│                             let inlinedVal6;
+//│                             match true
+//│                               true =>
+//│                                 set inlinedVal6 = 0;
+//│                                 end
+//│                               else
+//│                                 let inlinedVal7;
+//│                                 match true
+//│                                   true =>
+//│                                     set inlinedVal7 = 0;
+//│                                     end
+//│                                   else
+//│                                     let inlinedVal8;
+//│                                     match true
+//│                                       true =>
+//│                                         set inlinedVal8 = 0;
+//│                                         end
+//│                                       else
+//│                                         let inlinedVal9;
+//│                                         match true
+//│                                           true =>
+//│                                             set inlinedVal9 = 0;
+//│                                             end
+//│                                           else
+//│                                             let inlinedVal10;
+//│                                             match true
+//│                                               true =>
+//│                                                 set inlinedVal10 = 0;
+//│                                                 end
+//│                                               else
+//│                                                 let inlinedVal11;
+//│                                                 match true
+//│                                                   true =>
+//│                                                     set inlinedVal11 = 0;
+//│                                                     end
+//│                                                   else
+//│                                                     let inlinedVal12;
+//│                                                     match true
+//│                                                       true =>
+//│                                                         set inlinedVal12 = 0;
+//│                                                         end
+//│                                                       else
+//│                                                         let inlinedVal13;
+//│                                                         match true
+//│                                                           true =>
+//│                                                             set inlinedVal13 = 0;
+//│                                                             end
+//│                                                           else
+//│                                                             let inlinedVal14;
+//│                                                             match true
+//│                                                               true =>
+//│                                                                 set inlinedVal14 = 0;
+//│                                                                 end
+//│                                                               else
+//│                                                                 let inlinedVal15;
+//│                                                                 match true
+//│                                                                   true =>
+//│                                                                     set inlinedVal15 = 0;
+//│                                                                     end
+//│                                                                   else
+//│                                                                     let inlinedVal16, i, inlinedVal17, scrut, tmp, tmp1;
+//│                                                                     set i = -13;
+//│                                                                     set scrut = true;
+//│                                                                     match true
+//│                                                                       true =>
+//│                                                                         set inlinedVal17 = 0;
+//│                                                                         end
+//│                                                                       else
+//│                                                                         let n, inlinedVal18, loop, i1, inlinedVal19;
+//│                                                                         set tmp = -14;
+//│                                                                         set n = -14;
+//│                                                                         set i1 = -14;
+//│                                                                         block inlinedLbl:
+//│                                                                           let scrut1, tmp2, tmp3;
+//│                                                                           set scrut1 = <=⁰(i1, 0);
+//│                                                                           match scrut1
+//│                                                                             true =>
+//│                                                                               set inlinedVal19 = 0;
+//│                                                                               break inlinedLbl
+//│                                                                             else
+//│                                                                               let n1, inlinedVal20;
+//│                                                                               set tmp2 = -⁰(i1, 1);
+//│                                                                               set n1 = tmp2;
+//│                                                                               block inlinedLbl1:
+//│                                                                                 let loop1;
+//│                                                                                 define loop1 as fun loop⁰(i2) {
+//│                                                                                   let scrut2, tmp4, tmp5;
+//│                                                                                   set scrut2 = <=⁰(i2, 0);
+//│                                                                                   match scrut2
+//│                                                                                     true =>
+//│                                                                                       return 0
+//│                                                                                     else
+//│                                                                                       set tmp4 = -⁰(i2, 1);
+//│                                                                                       set tmp5 = NestedFunctionsNoLift⁰.recursive⁰(tmp4);
+//│                                                                                       return +⁰(tmp5, 1)
+//│                                                                                   end
+//│                                                                                 };
+//│                                                                                 set inlinedVal20 = loop⁰(n1);
+//│                                                                                 break inlinedLbl1
+//│                                                                               set tmp3 = inlinedVal20;
+//│                                                                               set inlinedVal19 = +⁰(tmp3, 1);
+//│                                                                               break inlinedLbl
+//│                                                                           end
+//│                                                                         set inlinedVal18 = inlinedVal19;
+//│                                                                         set tmp1 = inlinedVal18;
+//│                                                                         set inlinedVal17 = +⁰(inlinedVal18, 1);
+//│                                                                         end
+//│                                                                     set inlinedVal16 = inlinedVal17;
+//│                                                                     set inlinedVal15 = +⁰(inlinedVal17, 1);
+//│                                                                     end
+//│                                                                 set inlinedVal14 = +⁰(inlinedVal15, 1);
+//│                                                                 end
+//│                                                             set inlinedVal13 = +⁰(inlinedVal14, 1);
+//│                                                             end
+//│                                                         set inlinedVal12 = +⁰(inlinedVal13, 1);
+//│                                                         end
+//│                                                     set inlinedVal11 = +⁰(inlinedVal12, 1);
+//│                                                     end
+//│                                                 set inlinedVal10 = +⁰(inlinedVal11, 1);
+//│                                                 end
+//│                                             set inlinedVal9 = +⁰(inlinedVal10, 1);
+//│                                             end
+//│                                         set inlinedVal8 = +⁰(inlinedVal9, 1);
+//│                                         end
+//│                                     set inlinedVal7 = +⁰(inlinedVal8, 1);
+//│                                     end
+//│                                 set inlinedVal6 = +⁰(inlinedVal7, 1);
+//│                                 end
+//│                             set inlinedVal5 = +⁰(inlinedVal6, 1);
+//│                             end
+//│                         set inlinedVal4 = +⁰(inlinedVal5, 1);
+//│                         end
+//│                     set inlinedVal3 = +⁰(inlinedVal4, 1);
+//│                     end
+//│                 set inlinedVal2 = +⁰(inlinedVal3, 1);
+//│                 end
+//│             set inlinedVal1 = +⁰(inlinedVal2, 1);
+//│             end
+//│         set inlinedVal = +⁰(inlinedVal1, 1);
+//│         return +⁰(inlinedVal, 1)
+//│     end
+//│ end
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 4
+
+// We can still inline non-recursive functions that contain recursive functions.
+:soir
+NestedFunctionsNoLift.not_recursive(4)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ let loop;
-//│ define loop as fun loop⁰(i) {
+//│ define loop as fun loop¹(i) {
 //│   let scrut, tmp, tmp1;
 //│   set scrut = <=⁰(i, 0);
 //│   match scrut
@@ -19,21 +208,10 @@ NestedFunctionsNoLift.recursive(4)
 //│       return 0
 //│     else
 //│       set tmp = -⁰(i, 1);
-//│       set tmp1 = loop⁰(tmp);
+//│       set tmp1 = loop¹(tmp);
 //│       return +⁰(tmp1, 1)
 //│   end
 //│ };
-//│ return loop⁰(4)
-//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let loop;
-//│ loop = function loop(i) {
-//│   let scrut, tmp, tmp1;
-//│   scrut = i <= 0;
-//│   if (scrut === true) { return 0 }
-//│   tmp = i - 1;
-//│   tmp1 = loop(tmp);
-//│   return tmp1 + 1;
-//│ };
-//│ return loop(4)
+//│ return loop¹(4)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 4

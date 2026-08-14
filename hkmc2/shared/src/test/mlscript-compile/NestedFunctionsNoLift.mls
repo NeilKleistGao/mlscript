@@ -5,7 +5,11 @@ import "./Predef.mls"
 open annotations { inline }
 
 module NestedFunctionsNoLift with
-  @inline fun recursive(n) =
+  @inline fun not_recursive(n) =
     fun loop(i) =
       if i <= 0 then 0 else loop(i - 1) + 1
+    loop(n)
+  @inline fun recursive(n) =
+    fun loop(i) =
+      if i <= 0 then 0 else recursive(i - 1) + 1
     loop(n)
