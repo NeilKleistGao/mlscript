@@ -557,9 +557,6 @@ object Normalization:
     case (ClassLike(_, cs: ModuleOrObjectSymbol, _, _), ClassLike(symbol = blt.`Object`)) => true
     case (Tuple(n1, false), Tuple(n2, false)) if n1 === n2 => true
     case (Tuple(n1, _), Tuple(n2, true)) if n2 <= n1 => true
-    // Note: We don't make Int31 compatible with Num, since Int31 needs to know how it should be
-    // sign-extended in order to convert into a Num.
-    case (ClassLike(symbol = blt.`Int`), ClassLike(symbol = blt.`Num`)) => true
     // TODO(Derppening): Do we limit IntLit to (1 << 31) - 1 for `Int31`?
     case (Lit(Tree.IntLit(_)), ClassLike(symbol = blt.`Int` | blt.`Int31` | blt.`Num`)) => true
     case (Lit(Tree.StrLit(_)), ClassLike(symbol = blt.`Str`)) => true
@@ -576,7 +573,10 @@ object Normalization:
       entries.forall { (fieldName, _) => clsParams.exists {
         case Param(flags = FldFlags(isVal = isVal), sym = sym) => isVal && fieldName === sym.id
       }}
-    // Check user-defined class hierarchy via extends clauses.
+    // Check the class hierarchy via extends clauses. This includes virtual
+    // classes such as `Int <: Num`, whose relationship is declared in Prelude.
+    // `Int31` deliberately does not extend `Num`: converting it to a `Num`
+    // needs to know how the value should be sign-extended.
     case (ClassLike(_, lhsSym, _, _), ClassLike(_, rhsSym, _, _)) =>
       isSubclassOf(lhsSym, rhsSym)
     case (_: FlatPattern, _: FlatPattern) => false
@@ -602,9 +602,11 @@ object Normalization:
     // Under the single-inheritance restriction, two classes where neither is a
     // subclass of the other are provably disjoint. When we add matchable
     // class-like things with multiple inheritance (e.g., interfaces), this check
-    // will need to be refined.
+    // will need to be refined. `compareCasePattern` includes reflexive
+    // subtyping, so two occurrences of the same class are not considered
+    // disjoint.
     case (ClassLike(_, lhsSym, _, _), ClassLike(_, rhsSym, _, _)) =>
-      !isSubclassOf(lhsSym, rhsSym) && !isSubclassOf(rhsSym, lhsSym)
+      !compareCasePattern(lhs, rhs) && !compareCasePattern(rhs, lhs)
     case _ => false
   
   /** Get the parent class-like symbol from the extends clause of a class or module. */
@@ -616,7 +618,8 @@ object Normalization:
     ext.flatMap(nw => nw.cls.resolvedSym.flatMap(_.asClsOrMod))
   
   /** Check if `child` is a subclass of `parent` by traversing the class hierarchy.
-    * Uses a visited set to avoid infinite loops in case of cyclic inheritance. */
+    * Uses a visited set to avoid infinite loops in case of cyclic inheritance.
+    * TODO: Cache the subclasses set!! */
   private def isSubclassOf(
       child: ClassSymbol | ModuleOrObjectSymbol,
       parent: ClassSymbol | ModuleOrObjectSymbol
