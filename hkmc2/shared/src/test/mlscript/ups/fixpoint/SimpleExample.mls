@@ -19,242 +19,238 @@ pattern Steps = @compile (Step as Steps | _)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ define Steps⁰ as pattern Steps¹ {
 //│   method unapply⁰ = fun unapply¹(input) {
-//│     let fixedPointResult, output, lambda;
-//│     define lambda as fun lambda⁶(input1) {
-//│       let matcher0$, matcher1$, matcher2$, matcher3$, matcher4$, matcher__Lit$, mode, focus, stack, finalResult, lambda1, lambda2, lambda3, lambda4, lambda5, lambda6;
-//│       define lambda1 as fun lambda⁰(input2) {
-//│         let lhs, rhs, lhs1, rhs1, result2$, result1$, bindings, bindings1, tmp, tmp1, tmp2;
-//│         match input2
-//│           Add⁰ =>
-//│             set lhs = input2.lhs⁰;
-//│             set rhs = input2.rhs⁰;
-//│             set tmp = matcher1$(lhs);
-//│             set lhs1 = { "input": lhs, "result": tmp };
-//│             set tmp1 = matcher2$(rhs);
-//│             set rhs1 = { "input": rhs, "result": tmp1 };
-//│             set result1$ = lhs1.result﹖;
-//│             match result1$
-//│               MatchSuccess⁰ =>
-//│                 set bindings = result1$.bindings⁰;
-//│                 set result2$ = rhs1.result﹖;
-//│                 match result2$
-//│                   MatchSuccess⁰ =>
-//│                     let inlinedVal, a, b, c, tmp3, tmp4, tmp5, tmp6, tmp7;
-//│                     set bindings1 = result2$.bindings⁰;
-//│                     set tmp2 = { ...bindings, ...bindings1 };
-//│                     set a = tmp2.a﹖;
-//│                     set b = tmp2.b﹖;
-//│                     set c = +⁰(a, b);
-//│                     set tmp3 = +⁰("reduce ", a);
-//│                     set tmp4 = +⁰(tmp3, " + ");
-//│                     set tmp5 = +⁰(tmp4, b);
-//│                     set tmp6 = +⁰(tmp5, " = ");
-//│                     set tmp7 = +⁰(tmp6, c);
-//│                     do Predef⁰.print⁰(tmp7);
-//│                     set inlinedVal = Lit⁰(c);
-//│                     return new runtime⁰.MatchSuccess⁰(inlinedVal, null)
-//│                   else
-//│                     return new runtime⁰.MatchFailure⁰("topmost")
-//│                 end
-//│               else
-//│                 return new runtime⁰.MatchFailure⁰("topmost")
-//│             end
-//│           else
-//│             return new runtime⁰.MatchFailure⁰("never")
-//│         end
-//│       };
-//│       set matcher0$ = lambda⁰;
-//│       define lambda2 as fun lambda¹(input2) {
-//│         let value, value1, result3$, output3$, fieldBindings, bindings, tmp, tmp1;
-//│         match input2
-//│           Lit¹ =>
-//│             set value = input2.value⁰;
-//│             set tmp = matcher3$(value);
-//│             set value1 = { "input": value, "result": tmp };
-//│             set result3$ = value1.result﹖;
-//│             match result3$
-//│               MatchSuccess⁰ =>
-//│                 set output3$ = result3$.output⁰;
-//│                 set bindings = result3$.bindings⁰;
-//│                 set fieldBindings = { "a": output3$ };
-//│                 set tmp1 = { ...fieldBindings, ...bindings };
-//│                 return new runtime⁰.MatchSuccess⁰(input2, tmp1)
-//│               else
-//│                 return new runtime⁰.MatchFailure⁰("topmost")
-//│             end
-//│           else
-//│             return new runtime⁰.MatchFailure⁰("never")
-//│         end
-//│       };
-//│       set matcher1$ = lambda¹;
-//│       define lambda3 as fun lambda²(input2) {
-//│         let value, value1, result4$, output4$, fieldBindings, bindings, tmp, tmp1;
-//│         match input2
-//│           Lit¹ =>
-//│             set value = input2.value⁰;
-//│             set tmp = matcher4$(value);
-//│             set value1 = { "input": value, "result": tmp };
-//│             set result4$ = value1.result﹖;
-//│             match result4$
-//│               MatchSuccess⁰ =>
-//│                 set output4$ = result4$.output⁰;
-//│                 set bindings = result4$.bindings⁰;
-//│                 set fieldBindings = { "b": output4$ };
-//│                 set tmp1 = { ...fieldBindings, ...bindings };
-//│                 return new runtime⁰.MatchSuccess⁰(input2, tmp1)
-//│               else
-//│                 return new runtime⁰.MatchFailure⁰("topmost")
-//│             end
-//│           else
-//│             return new runtime⁰.MatchFailure⁰("never")
-//│         end
-//│       };
-//│       set matcher2$ = lambda²;
-//│       @private
-//│       define lambda5 as fun lambda³(input2) {
-//│         let tmp;
-//│         set tmp = { "a": input2 };
-//│         return new runtime⁰.MatchSuccess⁰(input2, tmp)
-//│       };
-//│       set matcher3$ = lambda³;
-//│       @private
-//│       define lambda6 as fun lambda⁴(input2) {
-//│         let tmp;
-//│         set tmp = { "b": input2 };
-//│         return new runtime⁰.MatchSuccess⁰(input2, tmp)
-//│       };
-//│       set matcher4$ = lambda⁴;
-//│       define lambda4 as fun lambda⁵(input2) {
-//│         match input2
-//│           Lit¹ =>
-//│             return true
-//│           else
-//│             return false
-//│         end
-//│       };
-//│       set matcher__Lit$ = lambda⁵;
-//│       set mode = 0;
-//│       set focus = input1;
-//│       set stack = null;
-//│       set finalResult = null;
-//│       loop lbl:
-//│         let scrut0, scrut1, redexResult, contractum, frameChild0, frameChild1, frameInert0, frameInert1, frameNode, frameTail, frameHole, unchanged, redexResult1, contractum1, sideOk, unchanged1, redexResult2, contractum2, tmp, tmp1, tmp2, tmp3, tmp4;
-//│         match mode
-//│           0 =>
-//│             set redexResult = matcher0$(focus);
-//│             match redexResult
-//│               MatchSuccess⁰ =>
-//│                 set contractum = redexResult.output⁰;
-//│                 set focus = contractum;
-//│                 continue lbl
-//│               else
-//│                 match focus
-//│                   Add⁰ =>
-//│                     set scrut0 = focus.lhs⁰;
-//│                     set scrut1 = focus.rhs⁰;
-//│                     set tmp = { "tag": 0, "c0": scrut0, "c1": scrut1, "i0": false, "i1": false, "n": focus, "h": 0, "t": stack };
-//│                     set stack = tmp;
-//│                     set focus = scrut0;
-//│                     continue lbl
-//│                   else
-//│                     set mode = 1;
-//│                     continue lbl
-//│                 end
-//│             end
-//│           1 =>
-//│             match stack
-//│               null =>
-//│                 set finalResult = focus;
-//│                 set mode = 2;
-//│                 continue lbl
-//│               else
-//│                 set frameChild0 = stack.c0﹖;
-//│                 set frameChild1 = stack.c1﹖;
-//│                 set frameInert0 = stack.i0﹖;
-//│                 set frameInert1 = stack.i1﹖;
-//│                 set frameNode = stack.n﹖;
-//│                 set frameTail = stack.t﹖;
-//│                 set frameHole = stack.h﹖;
-//│                 match frameHole
-//│                   0 =>
-//│                     set unchanged1 = ===⁰(focus, frameChild0);
-//│                     match unchanged1
-//│                       true =>
-//│                         set tmp1 = frameNode;
-//│                         end
-//│                       else
-//│                         set tmp1 = new Add⁰(focus, frameChild1);
-//│                         end
-//│                     set redexResult2 = matcher0$(tmp1);
-//│                     match redexResult2
-//│                       MatchSuccess⁰ =>
-//│                         set contractum2 = redexResult2.output⁰;
-//│                         set stack = frameTail;
-//│                         set focus = contractum2;
-//│                         set mode = 0;
-//│                         continue lbl
-//│                       else
-//│                         block alt$x:
-//│                           match frameInert1
-//│                             false =>
-//│                               set sideOk = matcher__Lit$(focus);
-//│                               match sideOk
-//│                                 true =>
-//│                                   set tmp2 = { "tag": 0, "c0": focus, "c1": frameChild1, "i0": true, "i1": frameInert1, "n": tmp1, "h": 1, "t": frameTail };
-//│                                   set stack = tmp2;
-//│                                   set focus = frameChild1;
-//│                                   set mode = 0;
-//│                                   break alt$x
-//│                                 else
-//│                                   end
-//│                               end
-//│                           set stack = frameTail;
-//│                           set focus = tmp1;
-//│                           end
-//│                         continue lbl
-//│                     end
-//│                   else
-//│                     set unchanged = ===⁰(focus, frameChild1);
-//│                     match unchanged
-//│                       true =>
-//│                         set tmp3 = frameNode;
-//│                         end
-//│                       else
-//│                         set tmp3 = new Add⁰(frameChild0, focus);
-//│                         end
-//│                     set redexResult1 = matcher0$(tmp3);
-//│                     match redexResult1
-//│                       MatchSuccess⁰ =>
-//│                         set contractum1 = redexResult1.output⁰;
-//│                         set stack = frameTail;
-//│                         set focus = contractum1;
-//│                         set mode = 0;
-//│                         continue lbl
-//│                       else
-//│                         match frameInert0
-//│                           false =>
-//│                             set tmp4 = { "tag": 0, "c0": frameChild0, "c1": focus, "i0": frameInert0, "i1": true, "n": tmp3, "h": 0, "t": frameTail };
-//│                             set stack = tmp4;
-//│                             set focus = frameChild0;
-//│                             set mode = 0;
-//│                             continue lbl
-//│                           else
-//│                             set stack = frameTail;
-//│                             set focus = tmp3;
-//│                             continue lbl
-//│                         end
-//│                     end
-//│                 end
-//│             end
-//│           else
-//│             end
-//│         end
-//│       return new runtime⁰.MatchSuccess⁰(finalResult, null)
+//│     let output, inlinedVal, matcher0$, matcher1$, matcher2$, matcher3$, matcher4$, matcher__Lit$, mode, focus, stack, finalResult, lambda, lambda1, lambda2, lambda3, lambda4, lambda5;
+//│     define lambda as fun lambda⁰(input1) {
+//│       let lhs, rhs, lhs1, rhs1, result2$, result1$, bindings, bindings1, tmp, tmp1, tmp2;
+//│       match input1
+//│         Add⁰ =>
+//│           set lhs = input1.lhs⁰;
+//│           set rhs = input1.rhs⁰;
+//│           set tmp = matcher1$(lhs);
+//│           set lhs1 = { "input": lhs, "result": tmp };
+//│           set tmp1 = matcher2$(rhs);
+//│           set rhs1 = { "input": rhs, "result": tmp1 };
+//│           set result1$ = lhs1.result﹖;
+//│           match result1$
+//│             MatchSuccess⁰ =>
+//│               set bindings = result1$.bindings⁰;
+//│               set result2$ = rhs1.result﹖;
+//│               match result2$
+//│                 MatchSuccess⁰ =>
+//│                   let inlinedVal1, a, b, c, tmp3, tmp4, tmp5, tmp6, tmp7;
+//│                   set bindings1 = result2$.bindings⁰;
+//│                   set tmp2 = { ...bindings, ...bindings1 };
+//│                   set a = tmp2.a﹖;
+//│                   set b = tmp2.b﹖;
+//│                   set c = +⁰(a, b);
+//│                   set tmp3 = +⁰("reduce ", a);
+//│                   set tmp4 = +⁰(tmp3, " + ");
+//│                   set tmp5 = +⁰(tmp4, b);
+//│                   set tmp6 = +⁰(tmp5, " = ");
+//│                   set tmp7 = +⁰(tmp6, c);
+//│                   do Predef⁰.print⁰(tmp7);
+//│                   set inlinedVal1 = Lit⁰(c);
+//│                   return new runtime⁰.MatchSuccess⁰(inlinedVal1, null)
+//│                 else
+//│                   return new runtime⁰.MatchFailure⁰("topmost")
+//│               end
+//│             else
+//│               return new runtime⁰.MatchFailure⁰("topmost")
+//│           end
+//│         else
+//│           return new runtime⁰.MatchFailure⁰("never")
+//│       end
 //│     };
-//│     set fixedPointResult = lambda⁶(input);
-//│     match fixedPointResult
+//│     set matcher0$ = lambda⁰;
+//│     define lambda1 as fun lambda¹(input1) {
+//│       let value, value1, result3$, output3$, fieldBindings, bindings, tmp, tmp1;
+//│       match input1
+//│         Lit¹ =>
+//│           set value = input1.value⁰;
+//│           set tmp = matcher3$(value);
+//│           set value1 = { "input": value, "result": tmp };
+//│           set result3$ = value1.result﹖;
+//│           match result3$
+//│             MatchSuccess⁰ =>
+//│               set output3$ = result3$.output⁰;
+//│               set bindings = result3$.bindings⁰;
+//│               set fieldBindings = { "a": output3$ };
+//│               set tmp1 = { ...fieldBindings, ...bindings };
+//│               return new runtime⁰.MatchSuccess⁰(input1, tmp1)
+//│             else
+//│               return new runtime⁰.MatchFailure⁰("topmost")
+//│           end
+//│         else
+//│           return new runtime⁰.MatchFailure⁰("never")
+//│       end
+//│     };
+//│     set matcher1$ = lambda¹;
+//│     define lambda2 as fun lambda²(input1) {
+//│       let value, value1, result4$, output4$, fieldBindings, bindings, tmp, tmp1;
+//│       match input1
+//│         Lit¹ =>
+//│           set value = input1.value⁰;
+//│           set tmp = matcher4$(value);
+//│           set value1 = { "input": value, "result": tmp };
+//│           set result4$ = value1.result﹖;
+//│           match result4$
+//│             MatchSuccess⁰ =>
+//│               set output4$ = result4$.output⁰;
+//│               set bindings = result4$.bindings⁰;
+//│               set fieldBindings = { "b": output4$ };
+//│               set tmp1 = { ...fieldBindings, ...bindings };
+//│               return new runtime⁰.MatchSuccess⁰(input1, tmp1)
+//│             else
+//│               return new runtime⁰.MatchFailure⁰("topmost")
+//│           end
+//│         else
+//│           return new runtime⁰.MatchFailure⁰("never")
+//│       end
+//│     };
+//│     set matcher2$ = lambda²;
+//│     @private
+//│     define lambda4 as fun lambda³(input1) {
+//│       let tmp;
+//│       set tmp = { "a": input1 };
+//│       return new runtime⁰.MatchSuccess⁰(input1, tmp)
+//│     };
+//│     set matcher3$ = lambda³;
+//│     @private
+//│     define lambda5 as fun lambda⁴(input1) {
+//│       let tmp;
+//│       set tmp = { "b": input1 };
+//│       return new runtime⁰.MatchSuccess⁰(input1, tmp)
+//│     };
+//│     set matcher4$ = lambda⁴;
+//│     define lambda3 as fun lambda⁵(input1) {
+//│       match input1
+//│         Lit¹ =>
+//│           return true
+//│         else
+//│           return false
+//│       end
+//│     };
+//│     set matcher__Lit$ = lambda⁵;
+//│     set mode = 0;
+//│     set focus = input;
+//│     set stack = null;
+//│     set finalResult = null;
+//│     loop lbl:
+//│       let scrut0, scrut1, redexResult, contractum, frameChild0, frameChild1, frameInert0, frameInert1, frameNode, frameTail, frameHole, unchanged, redexResult1, contractum1, sideOk, unchanged1, redexResult2, contractum2, tmp, tmp1, tmp2, tmp3, tmp4;
+//│       match mode
+//│         0 =>
+//│           set redexResult = matcher0$(focus);
+//│           match redexResult
+//│             MatchSuccess⁰ =>
+//│               set contractum = redexResult.output⁰;
+//│               set focus = contractum;
+//│               continue lbl
+//│             else
+//│               match focus
+//│                 Add⁰ =>
+//│                   set scrut0 = focus.lhs⁰;
+//│                   set scrut1 = focus.rhs⁰;
+//│                   set tmp = { "tag": 0, "c0": scrut0, "c1": scrut1, "i0": false, "i1": false, "n": focus, "h": 0, "t": stack };
+//│                   set stack = tmp;
+//│                   set focus = scrut0;
+//│                   continue lbl
+//│                 else
+//│                   set mode = 1;
+//│                   continue lbl
+//│               end
+//│           end
+//│         1 =>
+//│           match stack
+//│             null =>
+//│               set finalResult = focus;
+//│               set mode = 2;
+//│               continue lbl
+//│             else
+//│               set frameChild0 = stack.c0﹖;
+//│               set frameChild1 = stack.c1﹖;
+//│               set frameInert0 = stack.i0﹖;
+//│               set frameInert1 = stack.i1﹖;
+//│               set frameNode = stack.n﹖;
+//│               set frameTail = stack.t﹖;
+//│               set frameHole = stack.h﹖;
+//│               match frameHole
+//│                 0 =>
+//│                   set unchanged1 = ===⁰(focus, frameChild0);
+//│                   match unchanged1
+//│                     true =>
+//│                       set tmp1 = frameNode;
+//│                       end
+//│                     else
+//│                       set tmp1 = new Add⁰(focus, frameChild1);
+//│                       end
+//│                   set redexResult2 = matcher0$(tmp1);
+//│                   match redexResult2
+//│                     MatchSuccess⁰ =>
+//│                       set contractum2 = redexResult2.output⁰;
+//│                       set stack = frameTail;
+//│                       set focus = contractum2;
+//│                       set mode = 0;
+//│                       continue lbl
+//│                     else
+//│                       block alt$x:
+//│                         match frameInert1
+//│                           false =>
+//│                             set sideOk = matcher__Lit$(focus);
+//│                             match sideOk
+//│                               true =>
+//│                                 set tmp2 = { "tag": 0, "c0": focus, "c1": frameChild1, "i0": true, "i1": frameInert1, "n": tmp1, "h": 1, "t": frameTail };
+//│                                 set stack = tmp2;
+//│                                 set focus = frameChild1;
+//│                                 set mode = 0;
+//│                                 break alt$x
+//│                               else
+//│                                 end
+//│                             end
+//│                         set stack = frameTail;
+//│                         set focus = tmp1;
+//│                         end
+//│                       continue lbl
+//│                   end
+//│                 else
+//│                   set unchanged = ===⁰(focus, frameChild1);
+//│                   match unchanged
+//│                     true =>
+//│                       set tmp3 = frameNode;
+//│                       end
+//│                     else
+//│                       set tmp3 = new Add⁰(frameChild0, focus);
+//│                       end
+//│                   set redexResult1 = matcher0$(tmp3);
+//│                   match redexResult1
+//│                     MatchSuccess⁰ =>
+//│                       set contractum1 = redexResult1.output⁰;
+//│                       set stack = frameTail;
+//│                       set focus = contractum1;
+//│                       set mode = 0;
+//│                       continue lbl
+//│                     else
+//│                       match frameInert0
+//│                         false =>
+//│                           set tmp4 = { "tag": 0, "c0": frameChild0, "c1": focus, "i0": frameInert0, "i1": true, "n": tmp3, "h": 0, "t": frameTail };
+//│                           set stack = tmp4;
+//│                           set focus = frameChild0;
+//│                           set mode = 0;
+//│                           continue lbl
+//│                         else
+//│                           set stack = frameTail;
+//│                           set focus = tmp3;
+//│                           continue lbl
+//│                       end
+//│                   end
+//│               end
+//│           end
+//│         else
+//│           end
+//│       end
+//│     set inlinedVal = new runtime⁰.MatchSuccess⁰(finalResult, null);
+//│     match inlinedVal
 //│       MatchSuccess⁰ =>
-//│         set output = fixedPointResult.output⁰;
+//│         set output = inlinedVal.output⁰;
 //│         return new runtime⁰.MatchSuccess⁰(output, null)
 //│       else
 //│         return new runtime⁰.MatchFailure⁰(null)

@@ -365,13 +365,17 @@ fun g() =
   Foo()
 makeFoo()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let Foo;
 //│ @inline
 //│ define makeFoo⁰ as fun makeFoo¹() {
-//│   let Foo;
-//│   define Foo as class Foo¹ { constructor Foo⁰ };
+//│   let Foo1;
+//│   define Foo1 as class Foo¹ {
+//│     constructor Foo⁰
+//│   };
 //│   return Foo⁰()
 //│ };
-//│ return makeFoo¹()
+//│ define Foo as class Foo³ { constructor Foo² };
+//│ return Foo²()
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = Foo()
 
@@ -388,27 +392,22 @@ scope.locally of (
   test()
 )
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ let test;
-//│ @inline @private
-//│ define test as fun test⁰() {
-//│   let A, B, lambda;
-//│   define A as class A³
-//│   module A⁴ {
-//│     method foo² = fun foo³ {
-//│       return A⁴.foo³
-//│     }
-//│   };
-//│   define B as class B⁰
-//│   module B¹ {
-//│     method bar⁰ = fun bar¹() {
-//│       return A⁴.foo³
-//│     }
-//│   };
-//│   @private
-//│   define lambda as fun lambda⁰() { return A⁴.foo³ };
-//│   return lambda⁰
+//│ let A, B, lambda;
+//│ define A as class A³
+//│ module A⁴ {
+//│   method foo² = fun foo³ {
+//│     return A⁴.foo³
+//│   }
 //│ };
-//│ return test⁰()
+//│ define B as class B⁰
+//│ module B¹ {
+//│   method bar⁰ = fun bar¹() {
+//│     return A⁴.foo³
+//│   }
+//│ };
+//│ @private
+//│ define lambda as fun lambda⁰() { return A⁴.foo³ };
+//│ return lambda⁰
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = fun
 

@@ -24,24 +24,29 @@ fun f() =
   42
 f()
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ let A;
 //│ define f² as fun f³() {
-//│   let A;
-//│   define A as object A⁰ {
-//│     constructor() { do Predef⁰.print⁰("Hello"); end }
+//│   let A1;
+//│   define A1 as object A⁰ {
+//│     constructor() {
+//│       do Predef⁰.print⁰("Hello");
+//│       end
+//│     }
 //│   };
 //│   return 42
 //│ };
-//│ return f³()
+//│ define A as object A¹ { constructor() { do Predef⁰.print⁰("Hello"); end } };
+//│ return 42
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ let f1;
+//│ let f1, A2;
 //│ f1 = function f() {
-//│   let A1;
+//│   let A3;
 //│   (class A {
 //│     static {
 //│       new this
 //│     }
 //│     constructor() {
-//│       A1 = this;
+//│       A3 = this;
 //│       Predef.print("Hello");
 //│       Object.defineProperty(this, "class", {
 //│         value: A
@@ -53,7 +58,22 @@ f()
 //│   });
 //│   return 42
 //│ };
-//│ return f1()
+//│ (class A1 {
+//│   static {
+//│     new this
+//│   }
+//│   constructor() {
+//│     A2 = this;
+//│     Predef.print("Hello");
+//│     Object.defineProperty(this, "class", {
+//│       value: A1
+//│     });
+//│     globalThis.Object.freeze(this);
+//│   }
+//│   toString() { return runtime.render(this); }
+//│   static [definitionMetadata] = ["object", "A"];
+//│ });
+//│ return 42
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ > Hello
 //│ = 42

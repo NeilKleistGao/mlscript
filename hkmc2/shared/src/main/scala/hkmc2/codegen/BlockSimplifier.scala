@@ -1429,13 +1429,17 @@ class BlockSimplifier
             case _ => super.applyBlock(b)
 
           override def applyFunDefn(fun: FunDefn): Unit =
-            register(fun.sym)
+            // Local function member symbols are introduced by `Scoped`. Method member symbols
+            // have no enclosing `Scoped` and are registered by their owning class below.
             register(fun.dSym)
             fun.params.foreach(registerParamList)
             applyBlock(fun.body)
 
           override def applyClsLikeDefn(defn: ClsLikeDefn): Unit =
-            register(defn.sym)
+            // Like local functions, local class-like member symbols are introduced by `Scoped`.
+            // Methods, on the other hand, bind their member symbols directly in the class body.
+            defn.methods.foreach(method => register(method.sym))
+            defn.companion.foreach(_.methods.foreach(method => register(method.sym)))
             defn.ctorSym.foreach(register)
             defn.paramsOpt.foreach(registerParamList)
             defn.auxParams.foreach(registerParamList)

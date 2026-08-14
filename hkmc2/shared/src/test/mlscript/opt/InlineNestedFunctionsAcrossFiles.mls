@@ -4,14 +4,36 @@
 import "../../mlscript-compile/NestedFunctionsNoLift.mls"
 
 
-// The imported file disables lifting, so `loop` remains nested in `recursive` and must be
-// discovered by replaying the imported function's body summary. Its self-edge prevents peeling.
+// The imported file disables lifting, so replaying the imported summary must inline `recursive`
+// while preserving the genuinely recursive nested `loop` and its self-reference.
 :sjs
 :soir
 NestedFunctionsNoLift.recursive(4)
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
-//│ return NestedFunctionsNoLift⁰.recursive⁰(4)
+//│ let loop;
+//│ define loop as fun loop⁰(i) {
+//│   let scrut, tmp, tmp1;
+//│   set scrut = <=⁰(i, 0);
+//│   match scrut
+//│     true =>
+//│       return 0
+//│     else
+//│       set tmp = -⁰(i, 1);
+//│       set tmp1 = loop⁰(tmp);
+//│       return +⁰(tmp1, 1)
+//│   end
+//│ };
+//│ return loop⁰(4)
 //│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
-//│ return NestedFunctionsNoLift.recursive(4)
+//│ let loop;
+//│ loop = function loop(i) {
+//│   let scrut, tmp, tmp1;
+//│   scrut = i <= 0;
+//│   if (scrut === true) { return 0 }
+//│   tmp = i - 1;
+//│   tmp1 = loop(tmp);
+//│   return tmp1 + 1;
+//│ };
+//│ return loop(4)
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 //│ = 4
