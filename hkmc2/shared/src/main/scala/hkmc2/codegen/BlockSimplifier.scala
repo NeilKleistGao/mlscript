@@ -1387,21 +1387,15 @@ class BlockSimplifier
         * `Inner.this -> Outer.Mid.Inner`, `Mid.this -> Outer.Mid`,
         * and `Outer.this -> Outer`. */
       def buildThisMapping(qual: Path, ownerSym: InnerSymbol): Map[InnerSymbol, Path] =
-        var mapping = Map.empty[InnerSymbol, Path]
-        var currentQual = qual
-        var currentOwner = ownerSym
-        var continue = true
-        while continue do
-          mapping = mapping + (currentOwner -> currentQual)
+        def loop(currentQual: Path, currentOwner: InnerSymbol, acc: Map[InnerSymbol, Path]): Map[InnerSymbol, Path] =
+          val acc2 = acc + (currentOwner -> currentQual)
           currentQual match
           case s: Select =>
             s.qual.targetSymbol match
-            case S(ds: InnerSymbol) =>
-              currentOwner = ds
-              currentQual = s.qual
-            case _ => continue = false
-          case _ => continue = false
-        mapping
+            case S(ds: InnerSymbol) => loop(s.qual, ds, acc2)
+            case _ => acc2
+          case _ => acc2
+        loop(qual, ownerSym, Map.empty)
 
       def accessesPrivateMembers(blk: Block): Bool =
         var found = false
