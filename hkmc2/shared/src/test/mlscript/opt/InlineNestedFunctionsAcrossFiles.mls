@@ -1,0 +1,17 @@
+:js
+
+
+import "../../mlscript-compile/NestedFunctionsNoLift.mls"
+
+
+// The imported file disables lifting, so `loop` remains nested in `recursive` and must be
+// discovered by replaying the imported function's body summary. Its self-edge prevents peeling.
+:sjs
+:soir
+NestedFunctionsNoLift.recursive(4)
+//│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
+//│ return NestedFunctionsNoLift⁰.recursive⁰(4)
+//│ ————————————| JS (unsanitized) |————————————————————————————————————————————————————————————————————
+//│ return NestedFunctionsNoLift.recursive(4)
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+//│ = 4
