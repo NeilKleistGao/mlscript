@@ -15,6 +15,8 @@ import semantics.Elaborator.State
   * the worker. For tiny bodies, creating a worker would only add noise: the
   * wrapper body would inline the worker immediately under the stricter
   * `altSmallThreshold`, so we mark the original function inline directly.
+  * An original `@noInline` annotation is transferred to the worker, while the
+  * forwarding wrapper remains inlineable.
   */
 class WorkerWrapper
     (tl: TL, printer: Program => Str)
@@ -32,7 +34,7 @@ class WorkerWrapper
     params.flags == ParamListFlags.empty && params.restParam.isEmpty
   
   private def canUncurry(fun: FunDefn): Bool =
-    fun.owner.isEmpty && !fun.noInline && fun.params.lengthCompare(1) > 0 && fun.params.forall(isPlainParamList)
+    fun.owner.isEmpty && !fun.generator && fun.params.lengthCompare(1) > 0 && fun.params.forall(isPlainParamList)
   
   private def isBelowAltInlineThreshold(body: Block): Bool =
     config.inlining.exists: cfg =>
@@ -78,7 +80,7 @@ class WorkerWrapper
       fun.dSym,
       fun.params,
       wrapperBody,
-    )(fun.configOverride, withInline(fun.annotations))
+    )(fun.configOverride, withInline(fun.annotations.filterNot(_ == Annot.NoInline)))
     log(s"▶ Worker-wrapper: ${fun.dSym.showDbg} -> ${worker.dSym.showDbg}")
     Scoped(Set.single(worker.sym), Define(wrapper, Define(worker, rest)))
   
@@ -96,7 +98,7 @@ class WorkerWrapper
     case Define(fun: FunDefn, rest) if canUncurry(fun) =>
       val body = applyFunBodyLikeBlock(fun.body)
       val rest2 = applySubBlock(rest)
-      if isBelowAltInlineThreshold(body) then
+      if isBelowAltInlineThreshold(body) && !fun.noInline then
         val fun2 = mkInlineOnly(fun, body)
         if (fun2 is fun) && (rest2 is rest) then block else Define(fun2, rest2)
       else
