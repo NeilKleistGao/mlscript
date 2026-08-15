@@ -224,7 +224,7 @@ abstract class MLsDiffMaker extends DiffMaker:
     ln.split(" ").iterator.map(x => "ucs:" + x.trim).toSet
   
   
-  given Elaborator.State = new Elaborator.State:
+  given Elaborator.State = new Elaborator.State(N):
     override def dbg: Bool =
       dbgParsing.isSet
       || dbgElab.isSet

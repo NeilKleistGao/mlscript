@@ -59,9 +59,8 @@ class Importer:
             val importedSym = tl.trace(s">>> Importing $file"):
               given TL = tl
               val artifact = cctx.getElaboratedBlock(file, prelude)
-              artifact.tree.definedSymbols.find(_._1 === nme) match
-              case Some(nme -> imsym) => imsym
-              case None => lastWords(s"File $file does not define a symbol named $nme")
+              artifact.compilationUnit.defaultExport.getOrElse:
+                lastWords(s"File $file does not define a symbol named $nme")
             val sym: VarSymbol | BlockMemberSymbol = alias.fold(importedSym): alias =>
               VarSymbol(alias)
 

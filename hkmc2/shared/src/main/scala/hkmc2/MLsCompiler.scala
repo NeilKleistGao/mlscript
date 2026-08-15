@@ -57,8 +57,7 @@ class MLsCompiler
     
     val preludeCtx = cctx.getPrelude(preludeFile)(using compilerTL, summon[Raise]).ctx
     val artifact = cctx.getElaboratedBlock(file, preludeCtx)(using compilerTL)
-    val nme = file.baseName
-    val exportedSymbol = artifact.tree.definedSymbols.find(_._1 === nme).map(_._2)
+    val exportedSymbol = artifact.compilationUnit.defaultExport
     
     given Elaborator.State = artifact.state
     given Config = artifact.config

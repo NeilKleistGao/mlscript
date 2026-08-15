@@ -17,7 +17,7 @@ owner's provenance is produced and represented.
   - Record only symbols owned by the unit's state; unaliased `.mls` imports deliberately retain
     the imported unit's ownership.
   - Assert that one owned symbol is never associated with two module paths.
-- [ ] Separate compilation-unit provenance from ordinary elaborator state.
+- [x] Separate compilation-unit provenance from ordinary elaborator state.
   - Pass the source module path when constructing a compilation-unit state; worksheet, prelude,
     and analysis states remain explicitly ownerless.
   - Group the default export, effective configuration, and derived import map into one immutable

@@ -10,7 +10,7 @@ import document.Document.{braced, bracketed}
 import hkmc2.Message.MessageContext
 import hkmc2.syntax.{Tree, MutVal, ImmutVal, SpreadKind}
 import hkmc2.semantics.*
-import Elaborator.{State, Ctx}
+import Elaborator.{State, Ctx, ExternalModuleImport}
 import hkmc2.codegen.Lambda
 
 import Scope.scope
@@ -201,28 +201,17 @@ class JSBuilder(using Config, TL, State, Ctx) extends CodeBuilder:
     val defaultImports = collection.mutable.Map.empty[ImportSymbol, Str]
     val privateImports = collection.mutable.Map.empty[BlockMemberSymbol, Str]
     
-    /** Import provenance has two sources:
-      *
-      *  - `importedModulePath` records default imports introduced while elaborating the symbol's
-      *    compilation unit. These include user imports and compiler-provided `TempSymbol`s.
-      *  - `compilationUnitModulePath` identifies symbols defined by another MLscript unit. Its
-      *    declared export is imported as the module default; other block members use the stable
-      *    private names allocated when that unit was compiled.
-      *
-      * State identity, rather than equal path strings, is the compilation-unit ownership invariant:
-      * all symbols belonging to the current artifact were created by this builder's `State`.
-      */
+    /** State identity, rather than equal path strings, is the compilation-unit ownership
+      * invariant: all symbols belonging to the current artifact were created by this builder's
+      * `State`. The symbol's owner encapsulates whether it denotes an imported default, the
+      * defining unit's default export, or one of that unit's private exports. */
     def note(sym: ImportSymbol): Unit =
       if !localSymbols(sym) then
         val originState = sym.getState
-        originState.importedModulePath(sym) match
-        case S(path) => defaultImports(sym) = path
-        case N => originState.compilationUnitModulePath.foreach: path =>
-          if originState.isCompilationUnitExport(sym) then
-            defaultImports(sym) = path
-          else sym match
-            case sym: BlockMemberSymbol if originState isnt State => privateImports(sym) = path
-            case _ =>
+        originState.externalModuleImport(sym, State) match
+        case S(ExternalModuleImport.Default(sym, path)) => defaultImports(sym) = path
+        case S(ExternalModuleImport.Private(sym, path)) => privateImports(sym) = path
+        case N =>
     
     /** Only value references require JavaScript bindings. In particular, symbols occurring solely
       * in definitions, assignments, or metadata must not become imports. `VarSymbol` and

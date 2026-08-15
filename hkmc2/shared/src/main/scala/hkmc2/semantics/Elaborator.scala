@@ -401,56 +401,87 @@ object Elaborator:
         matchFailureTrm = term("MatchFailure"),
       )
 
-  class State:
+  /** Immutable semantic provenance published once a compilation unit has been elaborated. */
+  final case class CompilationUnitProvenance(
+    defaultExport: Opt[BlockMemberSymbol],
+    config: Config,
+    importedModulePaths: Map[ImportSymbol, Str],
+  )
+
+  /** Immutable JavaScript ABI published once private export names have been allocated. */
+  final case class CompilationUnitAbi(
+    privateExportNames: Map[BlockMemberSymbol, Str],
+  )
+
+  enum ExternalModuleImport:
+    case Default(sym: ImportSymbol, modulePath: Str)
+    case Private(sym: BlockMemberSymbol, modulePath: Str)
+
+  /** Stable compilation-unit identity captured by the symbols of that unit.
+    *
+    * The module path is known when compilation starts and is therefore a constructor parameter.
+    * Semantic provenance and the JavaScript ABI are produced by later phases; each is published as
+    * one immutable value before the artifact becomes observable through the compiler cache. */
+  final class CompilationUnitOwner(val modulePath: Str):
+    private var _provenance: Opt[CompilationUnitProvenance] = N
+    private var _abi: Opt[CompilationUnitAbi] = N
+
+    private[hkmc2] def publishProvenance(provenance: CompilationUnitProvenance): Unit =
+      assert(_provenance.isEmpty)
+      _provenance = S(provenance)
+
+    private[hkmc2] def publishAbi(abi: CompilationUnitAbi): Unit =
+      assert(_provenance.nonEmpty && _abi.isEmpty)
+      _abi = S(abi)
+
+    def defaultExport: Opt[BlockMemberSymbol] =
+      _provenance.flatMap(_.defaultExport)
+
+    def config: Opt[Config] =
+      _provenance.map(_.config)
+
+    def externalImport(sym: ImportSymbol, isForeign: Bool): Opt[ExternalModuleImport] =
+      _provenance.flatMap: provenance =>
+        provenance.importedModulePaths.get(sym) match
+        case S(path) => S(ExternalModuleImport.Default(sym, path))
+        case N if provenance.defaultExport.contains(sym) =>
+          S(ExternalModuleImport.Default(sym, modulePath))
+        case N => sym match
+          case sym: BlockMemberSymbol if isForeign =>
+            S(ExternalModuleImport.Private(sym, modulePath))
+          case _ => N
+
+    def privateExportName(sym: BlockMemberSymbol): Opt[Str] =
+      _abi.flatMap(_.privateExportNames.get(sym))
+
+  end CompilationUnitOwner
+
+
+  class State(val compilationUnitOwner: Opt[CompilationUnitOwner]):
     val suid = new Uid.Symbol.State
     given State = this
-    private var _compilationUnitOrigin: Opt[Origin] = N
-    private var _compilationUnitExport: Opt[BlockMemberSymbol] = N
-    private var _compilationUnitPrivateNames: Opt[Map[BlockMemberSymbol, Str]] = N
-    private var _importedModulePaths: Opt[Map[ImportSymbol, Str]] = N
-    /** Records the source file represented by this state and its default module export.
-      *
-      * Symbols retain their elaboration state, so this immutable-after-initialization metadata
-      * lets code generation recover their origin after cross-compilation-unit inlining without
-      * mutating shared cached symbols. Worksheet states intentionally remain uninitialized. */
-    def initializeCompilationUnit(origin: Origin, defaultExport: Opt[BlockMemberSymbol]): Unit =
-      assert(_compilationUnitOrigin.isEmpty && _compilationUnitExport.isEmpty)
-      _compilationUnitOrigin = S(origin)
-      _compilationUnitExport = defaultExport
-    def compilationUnitModulePath: Opt[Str] =
-      _compilationUnitOrigin.map: origin =>
-        val file = origin.fileName
-        (file.up / io.RelPath(file.baseName + ".mjs")).toString
-    def isCompilationUnitExport(sym: Symbol): Bool =
-      _compilationUnitExport.contains(sym)
-    /** Publish the private export names allocated for this compilation unit.
-      *
-      * The table is initialized before the artifact is cached and is immutable afterwards. Keeping
-      * it on the owning state lets separately emitted importers and exporters agree on names without
-      * putting mutable code-generation metadata on shared symbols. */
-    def initializeCompilationUnitPrivateNames(names: Map[BlockMemberSymbol, Str]): Unit =
-      assert(_compilationUnitPrivateNames.isEmpty)
-      assert(names.keysIterator.forall(_.getState is this))
-      _compilationUnitPrivateNames = S(names)
+    /** Publish all semantic provenance together before optimizing this compilation unit. */
+    def publishCompilationUnitProvenance(provenance: CompilationUnitProvenance): Unit =
+      assert(provenance.defaultExport.forall(_.getState is this))
+      assert(provenance.importedModulePaths.keysIterator.forall(_.getState is this))
+      compilationUnitOwner match
+      case S(owner) => owner.publishProvenance(provenance)
+      case N => assert(false, "Cannot publish compilation-unit provenance on an ownerless state")
+    /** Publish the separately staged JavaScript ABI before caching this compilation unit. */
+    def publishCompilationUnitAbi(abi: CompilationUnitAbi): Unit =
+      assert(abi.privateExportNames.keysIterator.forall(_.getState is this))
+      compilationUnitOwner match
+      case S(owner) => owner.publishAbi(abi)
+      case N => assert(false, "Cannot publish a compilation-unit ABI on an ownerless state")
+    /** Resolve the one JavaScript import represented by an external symbol reference. */
+    def externalModuleImport(sym: ImportSymbol, importingState: State): Opt[ExternalModuleImport] =
+      assert(sym.getState is this)
+      compilationUnitOwner.flatMap(_.externalImport(sym, this isnt importingState))
     def compilationUnitPrivateName(sym: BlockMemberSymbol): Opt[Str] =
-      _compilationUnitPrivateNames.flatMap(_.get(sym))
-    /** Publishes the imports whose symbols are owned by this state.
-      *
-      * The complete table is derived from the elaborated block rather than updated as a side
-      * effect of every import-producing path. Imports of `.mls` files normally reuse the exported
-      * symbol owned by the imported state, so their paths are recovered from that state's
-      * compilation-unit provenance instead. */
-    def initializeImportedModulePaths(paths: Map[ImportSymbol, Str]): Unit =
-      assert(_importedModulePaths.isEmpty)
-      assert(paths.keysIterator.forall(_.getState is this))
-      _importedModulePaths = S(paths)
-    def importedModulePath(sym: ImportSymbol): Opt[Str] =
-      _importedModulePaths.flatMap(_.get(sym))
-    /** Effective configuration of the imported compilation unit represented by this state.
-      *
-      * Root worksheet states intentionally leave this empty because their configuration can
-      * still be changed by the worksheet being compiled. */
-    var compilationUnitConfig: Opt[Config] = N
+      compilationUnitOwner.flatMap(_.privateExportName(sym))
+    /** Root worksheet states have no fixed compilation-unit configuration. */
+    def compilationUnitConfig: Opt[Config] =
+      compilationUnitOwner.flatMap(_.config)
     val globalThisSymbol = TopLevelSymbol("globalThis")
     private var cachedRuntimeSymbols: Opt[RuntimeSymbols] = N
     def initRuntimeSymbolsFromBlock(blk: Term.Blk): Unit =
