@@ -26,7 +26,7 @@ owner's provenance is produced and represented.
     available after optimization.
   - Expose narrow lookup operations to `JSBuilder` and `BlockSimplifier`; UID allocation and lazy
     runtime-symbol services remain the responsibility of `Elaborator.State`.
-- [ ] Run `ctest`, the focused compilation/import tests, and `hkmc2AllTests/test`; inspect and
+- [x] Run `ctest`, the focused compilation/import tests, and `hkmc2AllTests/test`; inspect and
   commit every intentional golden-output update.
 
 ## Longer-term option

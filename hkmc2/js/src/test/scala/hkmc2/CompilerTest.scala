@@ -123,7 +123,7 @@ class CompilerTest extends AnyFunSuite:
     val helper = semantics.BlockMemberSymbol("helper", Nil)
     val program = codegen.Program(Nil, codegen.Scoped(Set(existing, helper), codegen.End()))
 
-    val names = codegen.js.JSBuilder.allocateModulePrivateExportNames(program)
+    val names = CompilerCtx.allocateModulePrivateExportNames(program)
 
     assert(names(helper) == "_$_modulePrivate_$_helper1",
       "The private name should receive the normal scope collision suffix")
