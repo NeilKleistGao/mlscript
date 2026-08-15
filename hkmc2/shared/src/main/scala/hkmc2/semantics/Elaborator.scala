@@ -1002,19 +1002,13 @@ extends Importer:
     def elaborateSelection(tree: Sel): Term =
       val preTrm = subterm(tree.prefix)
       val sym = resolveField(tree.name, preTrm.symbol, tree.name)
-      def isSourceMember(name: Str): Bool =
-        ctx.getBuiltin("source")
-          .flatMap(_.symbol)
-          .flatMap(_.asMod)
-          .flatMap(_.tree.definedSymbols.get(name))
-          .exists(sym.contains)
-      if isSourceMember("line") then
+      if sym.contains(ctx.builtins.source.line) then
         val loc = tree.toLoc.getOrElse(???)
         val (line, _, _) = loc.origin.fph.getLineColAt(loc.spanStart)
         Term.Lit(IntLit(loc.origin.startLineNum + line))
-      else if isSourceMember("name") then
+      else if sym.contains(ctx.builtins.source.name) then
         Term.Lit(StrLit(ctx.getOuter.map(_.nme).getOrElse("")))
-      else if isSourceMember("file") then
+      else if sym.contains(ctx.builtins.source.file) then
         val loc = tree.toLoc.getOrElse(???)
         Term.Lit(StrLit(loc.origin.fileName.toString))
       else

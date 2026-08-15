@@ -117,53 +117,42 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       val map = if unary then wasmUnaryIntrinsicMap else wasmBinaryIntrinsicMap
       map.get(sym.nme).map(name => State.wasmSymbol.asSimpleRef.selN(Tree.Ident(name)))
     else N
-  private def getBuiltinOpt(nme: Str): Opt[Ctx.Elem] =
-    if ctx.parent.isEmpty then N else ctx.getBuiltin(nme)
-  private def builtinModuleMember(moduleName: Str, memberName: Str): Opt[BlockMemberSymbol] =
-    getBuiltinOpt(moduleName)
-      .flatMap(_.symbol)
-      .flatMap(_.asMod)
-      .flatMap(_.tree.definedSymbols.get(memberName))
-  private def builtinModuleSymbol(moduleName: Str): Opt[BlockMemberSymbol] =
-    getBuiltinOpt(moduleName)
-      .flatMap(_.symbol)
-      .flatMap(_.asBlkMember)
   private lazy val virtualModuleSymbols: Set[BlockMemberSymbol] =
-    Set("source", "js", "wasm", "debug", "annotations").flatMap(builtinModuleSymbol)
-  private lazy val wasmIntrinsicSymbols: Set[BlockMemberSymbol] = Set(
-    "plus_impl",
-    "minus_impl",
-    "times_impl",
-    "div_impl",
-    "mod_impl",
-    "eq_impl",
-    "neq_impl",
-    "lt_impl",
-    "le_impl",
-    "gt_impl",
-    "ge_impl",
-    "neg_impl",
-    "pos_impl",
-    "not_impl",
-  ).flatMap(builtinModuleMember("wasm", _))
+    val blt = ctx.builtins
+    Set(blt.source.bms, blt.js.bms, blt.wasm.bms, blt.debug.bms, blt.annotations.bms)
+  private lazy val wasmIntrinsicSymbols: Set[BlockMemberSymbol] =
+    val wasm = ctx.builtins.wasm
+    Set(
+      wasm.plus_impl,
+      wasm.minus_impl,
+      wasm.times_impl,
+      wasm.div_impl,
+      wasm.mod_impl,
+      wasm.eq_impl,
+      wasm.neq_impl,
+      wasm.lt_impl,
+      wasm.le_impl,
+      wasm.gt_impl,
+      wasm.ge_impl,
+      wasm.neg_impl,
+      wasm.pos_impl,
+      wasm.not_impl,
+    )
   private enum SpecialBuiltin:
     case RuntimeIntrinsic(runtimeName: Str)
     case DebugPrintStack
     case ScopeLocally
-  // * Resolve these stable builtin symbols once per lowering run. Application lowering then uses
-  // * the resolved callee symbol directly, rather than repeatedly walking the builtin module tree.
-  private lazy val specialBuiltinSymbols: Map[BlockMemberSymbol, SpecialBuiltin] = List(
-      ("js", "bitand", SpecialBuiltin.RuntimeIntrinsic("bitand")),
-      ("js", "bitnot", SpecialBuiltin.RuntimeIntrinsic("bitnot")),
-      ("js", "bitor", SpecialBuiltin.RuntimeIntrinsic("bitor")),
-      ("js", "shl", SpecialBuiltin.RuntimeIntrinsic("shl")),
-      ("js", "try_catch", SpecialBuiltin.RuntimeIntrinsic("try_catch")),
-      ("debug", "printStack", SpecialBuiltin.DebugPrintStack),
-      ("scope", "locally", SpecialBuiltin.ScopeLocally),
-    ).flatMap:
-      case (moduleName, memberName, specialBuiltin) =>
-        builtinModuleMember(moduleName, memberName).map(_ -> specialBuiltin)
-    .toMap
+  private lazy val specialBuiltinSymbols: Map[BlockMemberSymbol, SpecialBuiltin] =
+    val blt = ctx.builtins
+    Map(
+      blt.js.bitand -> SpecialBuiltin.RuntimeIntrinsic("bitand"),
+      blt.js.bitnot -> SpecialBuiltin.RuntimeIntrinsic("bitnot"),
+      blt.js.bitor -> SpecialBuiltin.RuntimeIntrinsic("bitor"),
+      blt.js.shl -> SpecialBuiltin.RuntimeIntrinsic("shl"),
+      blt.js.try_catch -> SpecialBuiltin.RuntimeIntrinsic("try_catch"),
+      blt.debug.printStack -> SpecialBuiltin.DebugPrintStack,
+      blt.scope.locally -> SpecialBuiltin.ScopeLocally,
+    )
   
   lazy val unreachableFn =
     Select(State.runtimeSymbol.asSimpleRef, Tree.Ident("unreachable"))(S(State.unreachableSymbol))(false)
