@@ -9,7 +9,7 @@ This document records the invariants that keep the implementation sound.
 
 ## Compilation-unit identity
 
-A cached `Artifact` is the identity of every definition it contains. All importers must therefore
+A cached `Artifact` owns the identity of every definition it contains. All importers must therefore
 observe the same artifact for a given source file.
 
 `CompilerCtx` fixes the root configuration and compiler paths for its lifetime. Imported units are
@@ -111,7 +111,11 @@ Compiled modules export such definitions under a scope-allocated name with the
 `_$_modulePrivate_$_` prefix. Importing modules synthesize a matching named import. For example:
 
 ```js
+// Dependency.mjs
 export { helper as _$_modulePrivate_$_helper };
+```
+```js
+// User.mjs
 import { _$_modulePrivate_$_helper as helper } from "./Dependency.mjs";
 ```
 
