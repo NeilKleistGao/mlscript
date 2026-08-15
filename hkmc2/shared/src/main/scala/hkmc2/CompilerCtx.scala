@@ -116,6 +116,22 @@ class CompilerCtx(
         given Elaborator.State = state
         val resolver = Resolver(backendTL)
         resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
+      def findQuote(t: semantics.Statement): Bool = t match
+        case Term.Quoted(_) | Term.Unquoted(_) => true
+        case Term.Ref(sym) => sym === State.termSymbol
+        case _ => t.subTerms.exists(findQuote)
+      val hasQuote = findQuote(blk0)
+      val blk = new Term.Blk(
+        Import(State.runtimeSymbol, paths.runtimeFile.toString, paths.runtimeFile) ::
+          // Only import `Term.mls` when necessary.
+          (if hasQuote then
+            Import(State.termSymbol, paths.termFile.toString, paths.termFile) :: blk0.stats
+          else
+            blk0.stats),
+        blk0.res
+      )
+      state.initializeImportedModulePaths:
+        CompilerCtx.collectImportedModulePaths(blk)(using state)
 
       // Runs the compilation pipeline on a freshly lowered compilation unit.
       // The unit's own top-level symbols are preserved as a private ABI, because other
@@ -138,22 +154,6 @@ class CompilerCtx(
       val ir =
         artifactConfig.givenIn:
           given Elaborator.State = state
-          def findQuote(t: semantics.Statement): Bool = t match
-            case Term.Quoted(_) | Term.Unquoted(_) => true
-            case Term.Ref(sym) => sym === State.termSymbol
-            case _ => t.subTerms.exists(findQuote)
-          val hasQuote = findQuote(blk0)
-          val blk = new Term.Blk(
-            Import(State.runtimeSymbol, paths.runtimeFile.toString, paths.runtimeFile) ::
-              // Only import `Term.mls` when necessary.
-              (if hasQuote then
-                Import(State.termSymbol, paths.termFile.toString, paths.termFile) :: blk0.stats
-              else
-                blk0.stats),
-            blk0.res
-          )
-          state.noteImportedModule(State.runtimeSymbol, paths.runtimeFile.toString)
-          if hasQuote then state.noteImportedModule(State.termSymbol, paths.termFile.toString)
           val low = backendTL.givenIn:
             new codegen.Lowering()(using artifactConfig, backendTL, summon[Raise], state, prelude, summon[SymbolPrinter])
           optimize(low.program(blk, Set.empty))
@@ -217,7 +217,26 @@ class CompilerCtx(
 object CompilerCtx:
   
   inline def get(using cctx: CompilerCtx) = cctx
-  
+
+
+  /** Collect import provenance after elaboration has assembled all user and synthetic imports.
+    *
+    * Only locally-owned symbols belong in the table. An unaliased `.mls` import retains the
+    * imported compilation unit's symbol, whose defining-unit provenance must remain authoritative.
+    */
+  private def collectImportedModulePaths(blk: Term.Blk)(using state: State): Map[ImportSymbol, Str] =
+    var paths = Map.empty[ImportSymbol, Str]
+    def collect(statement: semantics.Statement): Unit =
+      statement match
+      case Import(sym, path, _) if sym.getState is state =>
+        paths.get(sym) match
+        case S(previous) => assert(previous === path, (sym, previous, path))
+        case N => paths = paths.updated(sym, path)
+      case _ =>
+      statement.subStatements.foreach(collect)
+    collect(blk)
+    paths
+
   def fresh(fs: io.FileSystem, paths: MLsCompiler.Paths, rootConfig: Config): CompilerCtx =
     CompilerCtx(N, Set.empty, fs, new PlatformCompilerCache, N, paths, rootConfig)
 

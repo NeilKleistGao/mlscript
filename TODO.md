@@ -11,7 +11,7 @@ owner's provenance is produced and represented.
 
 ## Green milestones
 
-- [ ] Derive imported-symbol provenance once from the completed semantic block.
+- [x] Derive imported-symbol provenance once from the completed semantic block.
   - Remove `State.noteImportedModule` and the importer's `noteImport` wrapper.
   - Include compiler-added Runtime and Term imports in the same derivation.
   - Record only symbols owned by the unit's state; unaliased `.mls` imports deliberately retain

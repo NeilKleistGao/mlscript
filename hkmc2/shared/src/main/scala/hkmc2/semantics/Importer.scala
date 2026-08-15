@@ -17,10 +17,7 @@ import hkmc2.syntax.LetBind
 class Importer:
   self: Elaborator =>
   import tl.*
-  
-  private def noteImport(sym: ImportSymbol, path: Str, file: io.Path): Import =
-    State.noteImportedModule(sym, path)
-    Import(sym, path, file)
+
 
   def importPath(path: Str, alias: Opt[syntax.Tree.Ident])(using cfg: Config): Import =
     // log(s"pwd: ${os.pwd}")
@@ -45,7 +42,7 @@ class Importer:
       file.ext match
       
       case "mjs" | "js" =>
-        noteImport(sym, file.toString, file)
+        Import(sym, file.toString, file)
         
       case "mls" =>
         def reportCycle(files: Ls[io.Path]): Import =
@@ -53,7 +50,7 @@ class Importer:
             ErrorReport:
                 msg"Circular imports of `mls` files are not yet supported" -> N
                 :: files.map(f => msg"  importing ${f.toString}" -> N)
-          noteImport(sym, path, file)
+          Import(sym, path, file)
 
         if cctx.beingCompiled.contains(file) then
           reportCycle(cctx.allFilesBeingImported :+ file)
@@ -69,13 +66,13 @@ class Importer:
               VarSymbol(alias)
 
             val jsFile = file.up / io.RelPath(file.baseName + ".mjs")
-            noteImport(sym, jsFile.toString, jsFile)
+            Import(sym, jsFile.toString, jsFile)
         
       case _ =>
         if file.ext =/= "mls" then raise:
           ErrorReport(msg"Unsupported file extension: ${file.ext}" -> N :: Nil)
-        noteImport(sym, path, file)
+        Import(sym, path, file)
       
     else
-      noteImport(sym, path, file)
+      Import(sym, path, file)
     

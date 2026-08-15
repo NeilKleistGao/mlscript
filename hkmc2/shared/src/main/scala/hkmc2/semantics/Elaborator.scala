@@ -407,7 +407,7 @@ object Elaborator:
     private var _compilationUnitOrigin: Opt[Origin] = N
     private var _compilationUnitExport: Opt[BlockMemberSymbol] = N
     private var _compilationUnitPrivateNames: Opt[Map[BlockMemberSymbol, Str]] = N
-    private val importedModulePaths = mutable.Map.empty[ImportSymbol, Str]
+    private var _importedModulePaths: Opt[Map[ImportSymbol, Str]] = N
     /** Records the source file represented by this state and its default module export.
       *
       * Symbols retain their elaboration state, so this immutable-after-initialization metadata
@@ -434,17 +434,18 @@ object Elaborator:
       _compilationUnitPrivateNames = S(names)
     def compilationUnitPrivateName(sym: BlockMemberSymbol): Opt[Str] =
       _compilationUnitPrivateNames.flatMap(_.get(sym))
-    /** Records imports whose symbols are owned by this state.
+    /** Publishes the imports whose symbols are owned by this state.
       *
-      * Imports of `.mls` files normally reuse the exported symbol owned by the imported state;
-      * their paths are recovered from that state's compilation-unit origin instead. */
-    def noteImportedModule(sym: ImportSymbol, path: Str): Unit =
-      if sym.getState is this then
-        importedModulePaths.get(sym) match
-          case S(previous) => assert(previous === path, (sym, previous, path))
-          case N => importedModulePaths(sym) = path
+      * The complete table is derived from the elaborated block rather than updated as a side
+      * effect of every import-producing path. Imports of `.mls` files normally reuse the exported
+      * symbol owned by the imported state, so their paths are recovered from that state's
+      * compilation-unit provenance instead. */
+    def initializeImportedModulePaths(paths: Map[ImportSymbol, Str]): Unit =
+      assert(_importedModulePaths.isEmpty)
+      assert(paths.keysIterator.forall(_.getState is this))
+      _importedModulePaths = S(paths)
     def importedModulePath(sym: ImportSymbol): Opt[Str] =
-      importedModulePaths.get(sym)
+      _importedModulePaths.flatMap(_.get(sym))
     /** Effective configuration of the imported compilation unit represented by this state.
       *
       * Root worksheet states intentionally leave this empty because their configuration can
