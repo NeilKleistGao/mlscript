@@ -22,12 +22,12 @@ owner's provenance is produced and represented.
     `Origin` on the elaborator state.
   - Expose narrow lookup operations to `JSBuilder` and `BlockSimplifier`; UID allocation and lazy
     runtime-symbol services remain the responsibility of `Elaborator.State`.
-- [x] Replace the mutable `CompilationUnitOwner` handle with one immutable `CompilationUnit`.
-  - Derive semantic provenance before optimization, but keep it local to the artifact build.
-  - Allocate the private JavaScript ABI after optimization, then construct and publish the complete
-    compilation unit in one operation.
-  - Keep only the unavoidable one-shot `CompilationUnit` reference on `State`, because symbols
-    capture that state before the complete unit exists.
+- [x] Replace the mutable `CompilationUnitOwner` handle with phase-correct immutable values.
+  - Construct and publish the immutable semantic `CompilationUnit` before optimization, when its
+    module path, default export, configuration, and imported-module paths are all available.
+  - Allocate and publish a separate immutable private JavaScript ABI after optimization.
+  - Keep only the unavoidable one-shot references on `State`, because symbols capture that state
+    before the values needed by later compilation phases exist.
 - [x] Run `ctest`, the focused compilation/import tests, and `hkmc2AllTests/test`; inspect and
   commit every intentional golden-output update.
 

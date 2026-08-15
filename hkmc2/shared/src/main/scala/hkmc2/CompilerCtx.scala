@@ -130,6 +130,13 @@ class CompilerCtx(
         blk0.res
       )
       val importedModulePaths = CompilerCtx.collectImportedModulePaths(blk)(using state)
+      val compilationUnit = CompilationUnit(
+        modulePath,
+        exportedSymbol,
+        artifactConfig,
+        importedModulePaths,
+      )
+      state.publishCompilationUnit(compilationUnit)
 
       // Runs the compilation pipeline on a freshly lowered compilation unit.
       // The unit's own top-level symbols are preserved as a private ABI, because other
@@ -156,14 +163,9 @@ class CompilerCtx(
             new codegen.Lowering()(using artifactConfig, backendTL, summon[Raise], state, prelude, summon[SymbolPrinter])
           optimize(low.program(blk, Set.empty))
 
-      val compilationUnit = CompilationUnit(
-        modulePath,
-        exportedSymbol,
-        artifactConfig,
-        importedModulePaths,
-        CompilerCtx.allocateModulePrivateExportNames(ir)(using state, summon[Raise]),
-      )
-      state.publishCompilationUnit(compilationUnit)
+      state.publishCompilationUnitAbi:
+        CompilationUnitAbi:
+          CompilerCtx.allocateModulePrivateExportNames(ir)(using state, summon[Raise])
       Artifact(parsed, blk0, ir, artifactConfig, prelude, state, compilationUnit, rootConfig, dependencies.result, lastMod)
     
     val artifact = cache.upsert(file)(

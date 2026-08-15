@@ -401,13 +401,12 @@ object Elaborator:
         matchFailureTrm = term("MatchFailure"),
       )
 
-  /** Complete immutable metadata for one cached compilation unit. */
+  /** Immutable semantic metadata published before a compilation unit is optimized. */
   final case class CompilationUnit(
     modulePath: Str,
     defaultExport: Opt[BlockMemberSymbol],
     config: Config,
     importedModulePaths: Map[ImportSymbol, Str],
-    privateExportNames: Map[BlockMemberSymbol, Str],
   ):
     def externalImport(sym: ImportSymbol, isForeign: Bool): Opt[ExternalModuleImport] =
       importedModulePaths.get(sym) match
@@ -419,10 +418,12 @@ object Elaborator:
           S(ExternalModuleImport.Private(sym, modulePath))
         case _ => N
 
-    def privateExportName(sym: BlockMemberSymbol): Opt[Str] =
-      privateExportNames.get(sym)
-
   end CompilationUnit
+
+  /** Immutable JavaScript ABI published after optimization has fixed the emitted definitions. */
+  final case class CompilationUnitAbi(
+    privateExportNames: Map[BlockMemberSymbol, Str],
+  )
 
   enum ExternalModuleImport:
     case Default(sym: ImportSymbol, modulePath: Str)
@@ -432,22 +433,25 @@ object Elaborator:
     val suid = new Uid.Symbol.State
     given State = this
     private var _compilationUnit: Opt[CompilationUnit] = N
-    /** Publish the complete immutable compilation unit before its artifact enters the cache. */
+    private var _compilationUnitAbi: Opt[CompilationUnitAbi] = N
+    /** Publish semantic provenance before optimizing this compilation unit. */
     private[hkmc2] def publishCompilationUnit(unit: CompilationUnit): Unit =
       assert(_compilationUnit.isEmpty)
       assert(unit.defaultExport.forall(_.getState is this))
       assert(unit.importedModulePaths.keysIterator.forall(_.getState is this))
-      assert(unit.privateExportNames.keysIterator.forall(_.getState is this))
       _compilationUnit = S(unit)
+    /** Publish the separately staged JavaScript ABI before caching this compilation unit. */
+    private[hkmc2] def publishCompilationUnitAbi(abi: CompilationUnitAbi): Unit =
+      assert(_compilationUnit.nonEmpty && _compilationUnitAbi.isEmpty)
+      assert(abi.privateExportNames.keysIterator.forall(_.getState is this))
+      _compilationUnitAbi = S(abi)
     /** Resolve the one JavaScript import represented by an external symbol reference. */
     def externalModuleImport(sym: ImportSymbol, importingState: State): Opt[ExternalModuleImport] =
       assert(sym.getState is this)
       _compilationUnit.flatMap(_.externalImport(sym, this isnt importingState))
     def compilationUnitPrivateName(sym: BlockMemberSymbol): Opt[Str] =
-      _compilationUnit.flatMap(_.privateExportName(sym))
-    /** Root worksheet states and the unit currently being optimized are not yet published.
-      * Cross-unit optimization only queries completed foreign artifacts; the current unit uses the
-      * active `Config` directly. */
+      _compilationUnitAbi.flatMap(_.privateExportNames.get(sym))
+    /** Root worksheet states have no fixed compilation-unit configuration. */
     def compilationUnitConfig: Opt[Config] =
       _compilationUnit.map(_.config)
     val globalThisSymbol = TopLevelSymbol("globalThis")
