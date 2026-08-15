@@ -18,14 +18,16 @@ owner's provenance is produced and represented.
     the imported unit's ownership.
   - Assert that one owned symbol is never associated with two module paths.
 - [x] Separate compilation-unit provenance from ordinary elaborator state.
-  - Pass the source module path when constructing a compilation-unit state; worksheet, prelude,
-    and analysis states remain explicitly ownerless.
-  - Group the default export, effective configuration, and derived import map into one immutable
-    provenance value that is published once before optimization.
-  - Keep private JavaScript export names in a distinct, one-shot ABI value because they are only
-    available after optimization.
+  - Keep the source module path as an ordinary `CompilerCtx` input instead of late-initializing an
+    `Origin` on the elaborator state.
   - Expose narrow lookup operations to `JSBuilder` and `BlockSimplifier`; UID allocation and lazy
     runtime-symbol services remain the responsibility of `Elaborator.State`.
+- [x] Replace the mutable `CompilationUnitOwner` handle with one immutable `CompilationUnit`.
+  - Derive semantic provenance before optimization, but keep it local to the artifact build.
+  - Allocate the private JavaScript ABI after optimization, then construct and publish the complete
+    compilation unit in one operation.
+  - Keep only the unavoidable one-shot `CompilationUnit` reference on `State`, because symbols
+    capture that state before the complete unit exists.
 - [x] Run `ctest`, the focused compilation/import tests, and `hkmc2AllTests/test`; inspect and
   commit every intentional golden-output update.
 

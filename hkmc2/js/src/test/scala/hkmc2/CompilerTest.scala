@@ -117,7 +117,7 @@ class CompilerTest extends AnyFunSuite:
     assert(fs.exists(Path("/Bar.mjs")), "Second output should exist")
 
   test("private ABI allocation avoids existing top-level names"):
-    given state: semantics.Elaborator.State = new semantics.Elaborator.State(N)
+    given state: semantics.Elaborator.State = new semantics.Elaborator.State
     given Raise = diagnostic => fail(diagnostic.toString)
     val existing = semantics.BlockMemberSymbol("_$_modulePrivate_$_helper", Nil)
     val helper = semantics.BlockMemberSymbol("helper", Nil)

@@ -69,8 +69,7 @@ class CompilerCtx(
     def mk =
       val dependencies = new CompilerCtx.DependencyRecorder
       val modulePath = (file.up / io.RelPath(file.baseName + ".mjs")).toString
-      val compilationUnit = new Elaborator.CompilationUnitOwner(modulePath)
-      val state = new Elaborator.State(S(compilationUnit))
+      val state = new Elaborator.State
       given Elaborator.State = state
 
       given Config = rootConfig
@@ -130,12 +129,7 @@ class CompilerCtx(
             blk0.stats),
         blk0.res
       )
-      state.publishCompilationUnitProvenance:
-        CompilationUnitProvenance(
-          exportedSymbol,
-          artifactConfig,
-          CompilerCtx.collectImportedModulePaths(blk)(using state),
-        )
+      val importedModulePaths = CompilerCtx.collectImportedModulePaths(blk)(using state)
 
       // Runs the compilation pipeline on a freshly lowered compilation unit.
       // The unit's own top-level symbols are preserved as a private ABI, because other
@@ -162,9 +156,14 @@ class CompilerCtx(
             new codegen.Lowering()(using artifactConfig, backendTL, summon[Raise], state, prelude, summon[SymbolPrinter])
           optimize(low.program(blk, Set.empty))
 
-      state.publishCompilationUnitAbi:
-        CompilationUnitAbi:
-          CompilerCtx.allocateModulePrivateExportNames(ir)(using state, summon[Raise])
+      val compilationUnit = CompilationUnit(
+        modulePath,
+        exportedSymbol,
+        artifactConfig,
+        importedModulePaths,
+        CompilerCtx.allocateModulePrivateExportNames(ir)(using state, summon[Raise]),
+      )
+      state.publishCompilationUnit(compilationUnit)
       Artifact(parsed, blk0, ir, artifactConfig, prelude, state, compilationUnit, rootConfig, dependencies.result, lastMod)
     
     val artifact = cache.upsert(file)(
@@ -207,7 +206,7 @@ class CompilerCtx(
           s"Cached prelude for $file was elaborated under a different root configuration")
         art.lastChangedTimestamp >= lastMod,
       create =
-        val state = new Elaborator.State(N)
+        val state = new Elaborator.State
         given Elaborator.State = state
         given Config = rootConfig
         given CompilerCtx = this
@@ -293,7 +292,7 @@ object CompilerCache:
     val config: Config,
     val ctx: Elaborator.Ctx,
     val state: Elaborator.State,
-    val compilationUnit: Elaborator.CompilationUnitOwner,
+    val compilationUnit: Elaborator.CompilationUnit,
     val rootConfig: Config,
     val dependencies: Set[SourceDependency],
     val lastChangedTimestamp: Long,

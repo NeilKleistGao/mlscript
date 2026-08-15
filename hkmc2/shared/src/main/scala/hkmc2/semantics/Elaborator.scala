@@ -401,87 +401,55 @@ object Elaborator:
         matchFailureTrm = term("MatchFailure"),
       )
 
-  /** Immutable semantic provenance published once a compilation unit has been elaborated. */
-  final case class CompilationUnitProvenance(
+  /** Complete immutable metadata for one cached compilation unit. */
+  final case class CompilationUnit(
+    modulePath: Str,
     defaultExport: Opt[BlockMemberSymbol],
     config: Config,
     importedModulePaths: Map[ImportSymbol, Str],
-  )
-
-  /** Immutable JavaScript ABI published once private export names have been allocated. */
-  final case class CompilationUnitAbi(
     privateExportNames: Map[BlockMemberSymbol, Str],
-  )
+  ):
+    def externalImport(sym: ImportSymbol, isForeign: Bool): Opt[ExternalModuleImport] =
+      importedModulePaths.get(sym) match
+      case S(path) => S(ExternalModuleImport.Default(sym, path))
+      case N if defaultExport.contains(sym) =>
+        S(ExternalModuleImport.Default(sym, modulePath))
+      case N => sym match
+        case sym: BlockMemberSymbol if isForeign =>
+          S(ExternalModuleImport.Private(sym, modulePath))
+        case _ => N
+
+    def privateExportName(sym: BlockMemberSymbol): Opt[Str] =
+      privateExportNames.get(sym)
+
+  end CompilationUnit
 
   enum ExternalModuleImport:
     case Default(sym: ImportSymbol, modulePath: Str)
     case Private(sym: BlockMemberSymbol, modulePath: Str)
 
-  /** Stable compilation-unit identity captured by the symbols of that unit.
-    *
-    * The module path is known when compilation starts and is therefore a constructor parameter.
-    * Semantic provenance and the JavaScript ABI are produced by later phases; each is published as
-    * one immutable value before the artifact becomes observable through the compiler cache. */
-  final class CompilationUnitOwner(val modulePath: Str):
-    private var _provenance: Opt[CompilationUnitProvenance] = N
-    private var _abi: Opt[CompilationUnitAbi] = N
-
-    private[hkmc2] def publishProvenance(provenance: CompilationUnitProvenance): Unit =
-      assert(_provenance.isEmpty)
-      _provenance = S(provenance)
-
-    private[hkmc2] def publishAbi(abi: CompilationUnitAbi): Unit =
-      assert(_provenance.nonEmpty && _abi.isEmpty)
-      _abi = S(abi)
-
-    def defaultExport: Opt[BlockMemberSymbol] =
-      _provenance.flatMap(_.defaultExport)
-
-    def config: Opt[Config] =
-      _provenance.map(_.config)
-
-    def externalImport(sym: ImportSymbol, isForeign: Bool): Opt[ExternalModuleImport] =
-      _provenance.flatMap: provenance =>
-        provenance.importedModulePaths.get(sym) match
-        case S(path) => S(ExternalModuleImport.Default(sym, path))
-        case N if provenance.defaultExport.contains(sym) =>
-          S(ExternalModuleImport.Default(sym, modulePath))
-        case N => sym match
-          case sym: BlockMemberSymbol if isForeign =>
-            S(ExternalModuleImport.Private(sym, modulePath))
-          case _ => N
-
-    def privateExportName(sym: BlockMemberSymbol): Opt[Str] =
-      _abi.flatMap(_.privateExportNames.get(sym))
-
-  end CompilationUnitOwner
-
-
-  class State(val compilationUnitOwner: Opt[CompilationUnitOwner]):
+  class State:
     val suid = new Uid.Symbol.State
     given State = this
-    /** Publish all semantic provenance together before optimizing this compilation unit. */
-    def publishCompilationUnitProvenance(provenance: CompilationUnitProvenance): Unit =
-      assert(provenance.defaultExport.forall(_.getState is this))
-      assert(provenance.importedModulePaths.keysIterator.forall(_.getState is this))
-      compilationUnitOwner match
-      case S(owner) => owner.publishProvenance(provenance)
-      case N => assert(false, "Cannot publish compilation-unit provenance on an ownerless state")
-    /** Publish the separately staged JavaScript ABI before caching this compilation unit. */
-    def publishCompilationUnitAbi(abi: CompilationUnitAbi): Unit =
-      assert(abi.privateExportNames.keysIterator.forall(_.getState is this))
-      compilationUnitOwner match
-      case S(owner) => owner.publishAbi(abi)
-      case N => assert(false, "Cannot publish a compilation-unit ABI on an ownerless state")
+    private var _compilationUnit: Opt[CompilationUnit] = N
+    /** Publish the complete immutable compilation unit before its artifact enters the cache. */
+    private[hkmc2] def publishCompilationUnit(unit: CompilationUnit): Unit =
+      assert(_compilationUnit.isEmpty)
+      assert(unit.defaultExport.forall(_.getState is this))
+      assert(unit.importedModulePaths.keysIterator.forall(_.getState is this))
+      assert(unit.privateExportNames.keysIterator.forall(_.getState is this))
+      _compilationUnit = S(unit)
     /** Resolve the one JavaScript import represented by an external symbol reference. */
     def externalModuleImport(sym: ImportSymbol, importingState: State): Opt[ExternalModuleImport] =
       assert(sym.getState is this)
-      compilationUnitOwner.flatMap(_.externalImport(sym, this isnt importingState))
+      _compilationUnit.flatMap(_.externalImport(sym, this isnt importingState))
     def compilationUnitPrivateName(sym: BlockMemberSymbol): Opt[Str] =
-      compilationUnitOwner.flatMap(_.privateExportName(sym))
-    /** Root worksheet states have no fixed compilation-unit configuration. */
+      _compilationUnit.flatMap(_.privateExportName(sym))
+    /** Root worksheet states and the unit currently being optimized are not yet published.
+      * Cross-unit optimization only queries completed foreign artifacts; the current unit uses the
+      * active `Config` directly. */
     def compilationUnitConfig: Opt[Config] =
-      compilationUnitOwner.flatMap(_.config)
+      _compilationUnit.map(_.config)
     val globalThisSymbol = TopLevelSymbol("globalThis")
     private var cachedRuntimeSymbols: Opt[RuntimeSymbols] = N
     def initRuntimeSymbolsFromBlock(blk: Term.Blk): Unit =
