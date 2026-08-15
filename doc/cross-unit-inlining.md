@@ -120,7 +120,7 @@ import { _$_modulePrivate_$_helper as helper } from "./Dependency.mjs";
 ```
 
 The defining compilation state records symbol provenance and the allocated export names. Before
-rendering either a module or a worksheet, `JSBuilder` traverses the IR and builds one typed import
+rendering either a module or a worksheet, `CompilerCtx` traverses the IR and builds one typed import
 plan containing resolved module paths, default imports, and private imports. Collection and binding
 are shared by both output modes.
 

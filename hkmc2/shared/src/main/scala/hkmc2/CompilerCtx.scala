@@ -159,7 +159,7 @@ class CompilerCtx(
           optimize(low.program(blk, Set.empty))
 
       state.initializeCompilationUnitPrivateNames:
-        codegen.js.JSBuilder.allocateModulePrivateExportNames(ir)(using state, summon[Raise])
+        CompilerCtx.allocateModulePrivateExportNames(ir)(using state, summon[Raise])
       Artifact(parsed, blk0, ir, artifactConfig, prelude, state, rootConfig, dependencies.result, lastMod)
     
     val artifact = cache.upsert(file)(
@@ -232,6 +232,29 @@ object CompilerCtx:
       dependencies ++= artifact.dependencies
 
     def result: Set[SourceDependency] = dependencies.toSet
+  
+  
+  private val modulePrivatePrefix = "_$_modulePrivate_$_"
+  
+  import codegen.*
+  
+  /** Allocate the defining unit's private export namespace once so all importers reuse it.
+    *
+    * Ordinary top-level names are reserved first, then the private aliases are allocated with a
+    * distinctive prefix. `Scope` handles escaping and collision suffixes exactly as it does for
+    * other generated JavaScript names; symbol UIDs influence traversal order only and never become
+    * part of the external name. */
+  def allocateModulePrivateExportNames(p: Program)(using State, Raise): Map[BlockMemberSymbol, Str] =
+    p.main match
+    case Scoped(syms, _) =>
+      val orderedSymbols = syms.toList.sortBy(_.uid)
+      val privateNameScope = Scope.empty(Scope.Cfg.default)
+      orderedSymbols.foreach(privateNameScope.allocateName(_))
+      orderedSymbols.collect:
+        case sym: BlockMemberSymbol =>
+          sym -> privateNameScope.allocateName(sym, prefix = modulePrivatePrefix, shadow = true)
+      .toMap
+    case _ => Map.empty
   
 end CompilerCtx
 
