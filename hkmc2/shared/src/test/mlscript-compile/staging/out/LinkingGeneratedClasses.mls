@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: false, mono: false)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../LinkingGeneratedClasses.mls" as LinkingGeneratedClasses__Legacy
 class S with
   ()
@@ -22,4 +22,7 @@ module LinkingGeneratedClasses with
         else new S()
     fun test3 = new D()
 open LinkingGeneratedClasses
-fun f_S_sp_0(self, x) = 1
+fun f_S_sp_0(self, x) =
+  if self is
+    S then 1
+    else branch.unreachable

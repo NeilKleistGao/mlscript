@@ -430,15 +430,44 @@ prop(Ctx.empty(), c)
 //│   )
 //│ )
 
-let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueSimpleRef(x), [Arm(Cls(VirtualClassSymbol("Bool"), Select(ValueMemberRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(1))), Arm(Lit(8), Return(ValueLit(2))), Arm(Cls(VirtualClassSymbol("Int"), Select(ValueMemberRef(Symbol("runtime")), Symbol("unreachable"))), Return(ValueLit(3)))], Some(Return(ValueLit(0))), End())))
+let c = Scoped([x], Assign(x, ValueLit(9), Match(ValueSimpleRef(x), [Arm(Cls(VirtualClassSymbol("Bool"), Select(ValueMemberRef(Symbol("runtime")), Symbol("unreachable"), None)), Return(ValueLit(1))), Arm(Lit(8), Return(ValueLit(2))), Arm(Cls(VirtualClassSymbol("Int"), Select(ValueMemberRef(Symbol("runtime")), Symbol("unreachable"), None)), Return(ValueLit(3)))], Some(Return(ValueLit(0))), End())))
 prop(Ctx.empty(), c)
 //│ = [
 //│   Scoped(
 //│     [Symbol("x")],
-//│     Assign(Symbol("x"), ValueLit(9), Return(ValueLit(3)))
+//│     Assign(
+//│       Symbol("x"),
+//│       ValueLit(9),
+//│       Match(
+//│         ValueSimpleRef(Symbol("x")),
+//│         [
+//│           Arm(
+//│             Cls(
+//│               VirtualClassSymbol("Int"),
+//│               Select(
+//│                 ValueMemberRef(Symbol("runtime")),
+//│                 Symbol("unreachable"),
+//│                 None
+//│               )
+//│             ),
+//│             Return(ValueLit(3))
+//│           )
+//│         ],
+//│         Some(
+//│           Return(
+//│             Select(
+//│               ValueMemberRef(Symbol("branch")),
+//│               Symbol("unreachable"),
+//│               None
+//│             )
+//│           )
+//│         ),
+//│         End()
+//│       )
+//│     )
 //│   ),
 //│   {Lit(3)},
-//│   true
+//│   false
 //│ ]
 //│ c = Scoped(
 //│   [Symbol("x")],
@@ -451,7 +480,11 @@ prop(Ctx.empty(), c)
 //│         Arm(
 //│           Cls(
 //│             VirtualClassSymbol("Bool"),
-//│             Select(ValueMemberRef(Symbol("runtime")), Symbol("unreachable"))
+//│             Select(
+//│               ValueMemberRef(Symbol("runtime")),
+//│               Symbol("unreachable"),
+//│               None
+//│             )
 //│           ),
 //│           Return(ValueLit(1))
 //│         ),
@@ -459,7 +492,11 @@ prop(Ctx.empty(), c)
 //│         Arm(
 //│           Cls(
 //│             VirtualClassSymbol("Int"),
-//│             Select(ValueMemberRef(Symbol("runtime")), Symbol("unreachable"))
+//│             Select(
+//│               ValueMemberRef(Symbol("runtime")),
+//│               Symbol("unreachable"),
+//│               None
+//│             )
 //│           ),
 //│           Return(ValueLit(3))
 //│         )
@@ -479,21 +516,25 @@ module M with
 :ignore
 val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.480: 	val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
+//│ ║  l.517: 	val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
 //│ ║         	                                            ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueMemberRef(ModuleSymbol("M", class M, false))
 
 val fSym = Symbol("f")
-val fPath = Select(MSym, fSym)
-//│ fPath = Select(ValueMemberRef(ModuleSymbol("M", class M, false)), Symbol("f"))
+val fPath = Select(MSym, fSym, None)
+//│ fPath = Select(ValueMemberRef(ModuleSymbol("M", class M, false)), Symbol("f"), None)
 //│ fSym = Symbol("f")
 
 val callF = Call(fPath, [Arg(ValueLit(12))], false)
 sor(Ctx.empty(), callF)
 //│ = [End(), ValueLit(24), {Lit(24)}]
 //│ callF = Call(
-//│   Select(ValueMemberRef(ModuleSymbol("M", class M, false)), Symbol("f")),
+//│   Select(
+//│     ValueMemberRef(ModuleSymbol("M", class M, false)),
+//│     Symbol("f"),
+//│     None
+//│   ),
 //│   [Arg(ValueLit(12))],
 //│   false
 //│ )
@@ -538,10 +579,23 @@ prop(Ctx.empty(), blockBranch)
 //│ = [
 //│   Scoped(
 //│     [Symbol("z")],
-//│     Assign(Symbol("z"), ValueLit(1), Return(ValueLit(1)))
+//│     Match(
+//│       ValueLit(1),
+//│       [Arm(Lit(1), Assign(Symbol("z"), ValueLit(1), End()))],
+//│       Some(
+//│         Return(
+//│           Select(
+//│             ValueMemberRef(Symbol("branch")),
+//│             Symbol("unreachable"),
+//│             None
+//│           )
+//│         )
+//│       ),
+//│       Return(ValueLit(1))
+//│     )
 //│   ),
 //│   {Lit(1)},
-//│   true
+//│   false
 //│ ]
 //│ blockBranch = Scoped(
 //│   [Symbol("z")],
@@ -572,11 +626,24 @@ prop(Ctx.empty(), earlyRetBlock)
 //│     Assign(
 //│       Symbol("x"),
 //│       ValueLit(false),
-//│       Assign(Symbol("y"), ValueLit(20), Return(ValueLit(20)))
+//│       Match(
+//│         ValueSimpleRef(Symbol("x")),
+//│         [Arm(Lit(false), Assign(Symbol("y"), ValueLit(20), End()))],
+//│         Some(
+//│           Return(
+//│             Select(
+//│               ValueMemberRef(Symbol("branch")),
+//│               Symbol("unreachable"),
+//│               None
+//│             )
+//│           )
+//│         ),
+//│         Return(ValueLit(20))
+//│       )
 //│     )
 //│   ),
 //│   {Lit(20)},
-//│   true
+//│   false
 //│ ]
 //│ earlyRetBlock = Scoped(
 //│   [Symbol("x"), Symbol("y")],
@@ -613,7 +680,9 @@ printCode(res.0)
 //│ > let {x, y}
 //│ > x = true
 //│ > y = false
-//│ > 2
+//│ > if x is
+//│ >   true then 2
+//│ >   else branch.unreachable
 
 val res = prop(Ctx.empty(), nestedBlock)
 //│ res = [
@@ -622,7 +691,24 @@ val res = prop(Ctx.empty(), nestedBlock)
 //│     Assign(
 //│       Symbol("x"),
 //│       ValueLit(true),
-//│       Assign(Symbol("y"), ValueLit(false), Return(ValueLit(2)))
+//│       Assign(
+//│         Symbol("y"),
+//│         ValueLit(false),
+//│         Match(
+//│           ValueSimpleRef(Symbol("x")),
+//│           [Arm(Lit(true), Return(ValueLit(2)))],
+//│           Some(
+//│             Return(
+//│               Select(
+//│                 ValueMemberRef(Symbol("branch")),
+//│                 Symbol("unreachable"),
+//│                 None
+//│               )
+//│             )
+//│           ),
+//│           End()
+//│         )
+//│       )
 //│     )
 //│   ),
 //│   {Lit(2)},

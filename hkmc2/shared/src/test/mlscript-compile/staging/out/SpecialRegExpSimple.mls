@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: true, mono: true)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../SpecialRegExpSimple.mls" as SpecialRegExpSimple__Legacy
 module SpecialRegExpSimple with
     class Some(val x)
@@ -42,7 +42,7 @@ module SpecialRegExpSimple with
         let {ch__, arg_Exact_0_}
         if other is
           Exact then
-            arg_Exact_0_ = other.ch
+            arg_Exact_0_ = other.Exact#ch
             ch__ = arg_Exact_0_
             ch == ch__
           else false
@@ -116,8 +116,8 @@ module SpecialRegExpSimple with
         let {p2__1, p1__3, scrut4, scrut5, arg_Concat_0_, arg_Concat_1_}
         if other is
           Concat then
-            arg_Concat_0_ = other.p1
-            arg_Concat_1_ = other.p2
+            arg_Concat_0_ = other.Concat#p1
+            arg_Concat_1_ = other.Concat#p2
             p2__1 = arg_Concat_1_
             p1__3 = arg_Concat_0_
             scrut4 = p1.eq(p1__3)
@@ -166,7 +166,7 @@ module SpecialRegExpSimple with
         let {p__, arg_Star_0_}
         if other is
           Star then
-            arg_Star_0_ = other.p
+            arg_Star_0_ = other.Star#p
             p__ = arg_Star_0_
             p.eq(p__)
           else false
@@ -180,8 +180,8 @@ module SpecialRegExpSimple with
       let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
       if ys is
         Cons then
-          arg_Cons_0_1 = ys.x
-          arg_Cons_1_1 = ys.xs
+          arg_Cons_0_1 = ys.Cons#x
+          arg_Cons_1_1 = ys.Cons#xs
           ys__ = arg_Cons_1_1
           y = arg_Cons_0_1
           tmp20 = pushUnique(xs, y)
@@ -191,34 +191,37 @@ module SpecialRegExpSimple with
     fun lsEq(xs, ys) =
       let {scrut9, x3, y1, xs4, ys2, scrut10, scrut11, element1_, element0_, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3}
       scrut9 = [xs, ys]
-      element0_ = scrut9.0
-      element1_ = scrut9.1
-      if element0_ is
-        Nil then
-          if element1_ is
-            Nil then true
-            else false
-        Cons then
-          arg_Cons_0_2 = element0_.x
-          arg_Cons_1_2 = element0_.xs
-          if element1_ is
+      if scrut9 is
+        [_, _] then
+          element0_ = scrut9.0
+          element1_ = scrut9.1
+          if element0_ is
+            Nil then
+              if element1_ is
+                Nil then true
+                else false
             Cons then
-              arg_Cons_0_3 = element1_.x
-              arg_Cons_1_3 = element1_.xs
-              ys2 = arg_Cons_1_3
-              y1 = arg_Cons_0_3
-              xs4 = arg_Cons_1_2
-              x3 = arg_Cons_0_2
-              scrut10 = x3.eq(y1)
-              if scrut10 is
-                true then
-                  scrut11 = lsEq(xs4, ys2)
-                  if scrut11 is
-                    true then true
+              arg_Cons_0_2 = element0_.Cons#x
+              arg_Cons_1_2 = element0_.Cons#xs
+              if element1_ is
+                Cons then
+                  arg_Cons_0_3 = element1_.Cons#x
+                  arg_Cons_1_3 = element1_.Cons#xs
+                  ys2 = arg_Cons_1_3
+                  y1 = arg_Cons_0_3
+                  xs4 = arg_Cons_1_2
+                  x3 = arg_Cons_0_2
+                  scrut10 = x3.eq(y1)
+                  if scrut10 is
+                    true then
+                      scrut11 = lsEq(xs4, ys2)
+                      if scrut11 is
+                        true then true
+                        else false
                     else false
                 else false
             else false
-        else false
+        else branch.unreachable
     fun match(p, s) = matchImpl_SpecialRegExpSimple_sp_0(p, s, "")
     fun matchImpl(p, s, acc) =
       let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25}
@@ -251,8 +254,8 @@ module SpecialRegExpSimple with
       let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
       if ls is
         Cons then
-          arg_Cons_0_4 = ls.x
-          arg_Cons_1_4 = ls.xs
+          arg_Cons_0_4 = ls.Cons#x
+          arg_Cons_1_4 = ls.Cons#xs
           if arg_Cons_1_4 is
             Nil then
               x4 = arg_Cons_0_4
@@ -267,8 +270,8 @@ module SpecialRegExpSimple with
       let {x2, xs1, scrut8, arg_Cons_0_, arg_Cons_1_, tmp19}
       if ls is
         Cons then
-          arg_Cons_0_ = ls.x
-          arg_Cons_1_ = ls.xs
+          arg_Cons_0_ = ls.Cons#x
+          arg_Cons_1_ = ls.Cons#xs
           xs1 = arg_Cons_1_
           x2 = arg_Cons_0_
           scrut8 = x2.eq(e)
@@ -290,8 +293,8 @@ fun concatUnique_SpecialRegExpSimple_sp_0(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   if ys is
     Cons then
-      arg_Cons_0_1 = ys.x
-      arg_Cons_1_1 = ys.xs
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
       ys__ = arg_Cons_1_1
       y = arg_Cons_0_1
       tmp20 = pushUnique_SpecialRegExpSimple_sp_0(xs, y)
@@ -299,39 +302,51 @@ fun concatUnique_SpecialRegExpSimple_sp_0(xs, ys) =
     else xs
 fun concatUnique_SpecialRegExpSimple_sp_1(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
-  arg_Cons_0_1 = ys.x
-  arg_Cons_1_1 = ys.xs
-  ys__ = arg_Cons_1_1
-  y = arg_Cons_0_1
-  tmp20 = pushUnique_SpecialRegExpSimple_sp_1(xs, y)
-  concatUnique_SpecialRegExpSimple_sp_2(tmp20, ys__)
+  if ys is
+    Cons then
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
+      ys__ = arg_Cons_1_1
+      y = arg_Cons_0_1
+      tmp20 = pushUnique_SpecialRegExpSimple_sp_1(xs, y)
+      concatUnique_SpecialRegExpSimple_sp_2(tmp20, ys__)
+    else branch.unreachable
 fun concatUnique_SpecialRegExpSimple_sp_10(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
-  arg_Cons_0_1 = ys.x
-  arg_Cons_1_1 = ys.xs
-  ys__ = arg_Cons_1_1
-  y = arg_Cons_0_1
-  tmp20 = pushUnique_SpecialRegExpSimple_sp_7(xs, y)
-  concatUnique_SpecialRegExpSimple_sp_11(tmp20, ys__)
+  if ys is
+    Cons then
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
+      ys__ = arg_Cons_1_1
+      y = arg_Cons_0_1
+      tmp20 = pushUnique_SpecialRegExpSimple_sp_7(xs, y)
+      concatUnique_SpecialRegExpSimple_sp_11(tmp20, ys__)
+    else branch.unreachable
 fun concatUnique_SpecialRegExpSimple_sp_11(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   xs
 fun concatUnique_SpecialRegExpSimple_sp_12(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
-  arg_Cons_0_1 = ys.x
-  arg_Cons_1_1 = ys.xs
-  ys__ = arg_Cons_1_1
-  y = arg_Cons_0_1
-  tmp20 = pushUnique_SpecialRegExpSimple_sp_3(xs, y)
-  concatUnique_SpecialRegExpSimple_sp_6(tmp20, ys__)
+  if ys is
+    Cons then
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
+      ys__ = arg_Cons_1_1
+      y = arg_Cons_0_1
+      tmp20 = pushUnique_SpecialRegExpSimple_sp_3(xs, y)
+      concatUnique_SpecialRegExpSimple_sp_6(tmp20, ys__)
+    else branch.unreachable
 fun concatUnique_SpecialRegExpSimple_sp_13(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
-  arg_Cons_0_1 = ys.x
-  arg_Cons_1_1 = ys.xs
-  ys__ = arg_Cons_1_1
-  y = arg_Cons_0_1
-  tmp20 = pushUnique_SpecialRegExpSimple_sp_6(xs, y)
-  concatUnique_SpecialRegExpSimple_sp_10(tmp20, ys__)
+  if ys is
+    Cons then
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
+      ys__ = arg_Cons_1_1
+      y = arg_Cons_0_1
+      tmp20 = pushUnique_SpecialRegExpSimple_sp_6(xs, y)
+      concatUnique_SpecialRegExpSimple_sp_10(tmp20, ys__)
+    else branch.unreachable
 fun concatUnique_SpecialRegExpSimple_sp_2(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   xs
@@ -339,8 +354,8 @@ fun concatUnique_SpecialRegExpSimple_sp_3(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   if ys is
     Cons then
-      arg_Cons_0_1 = ys.x
-      arg_Cons_1_1 = ys.xs
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
       ys__ = arg_Cons_1_1
       y = arg_Cons_0_1
       tmp20 = pushUnique_SpecialRegExpSimple_sp_2(xs, y)
@@ -348,34 +363,43 @@ fun concatUnique_SpecialRegExpSimple_sp_3(xs, ys) =
     else xs
 fun concatUnique_SpecialRegExpSimple_sp_4(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
-  arg_Cons_0_1 = ys.x
-  arg_Cons_1_1 = ys.xs
-  ys__ = arg_Cons_1_1
-  y = arg_Cons_0_1
-  tmp20 = pushUnique_SpecialRegExpSimple_sp_3(xs, y)
-  concatUnique_SpecialRegExpSimple_sp_5(tmp20, ys__)
+  if ys is
+    Cons then
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
+      ys__ = arg_Cons_1_1
+      y = arg_Cons_0_1
+      tmp20 = pushUnique_SpecialRegExpSimple_sp_3(xs, y)
+      concatUnique_SpecialRegExpSimple_sp_5(tmp20, ys__)
+    else branch.unreachable
 fun concatUnique_SpecialRegExpSimple_sp_5(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   xs
 fun concatUnique_SpecialRegExpSimple_sp_6(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
-  arg_Cons_0_1 = ys.x
-  arg_Cons_1_1 = ys.xs
-  ys__ = arg_Cons_1_1
-  y = arg_Cons_0_1
-  tmp20 = pushUnique_SpecialRegExpSimple_sp_4(xs, y)
-  concatUnique_SpecialRegExpSimple_sp_7(tmp20, ys__)
+  if ys is
+    Cons then
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
+      ys__ = arg_Cons_1_1
+      y = arg_Cons_0_1
+      tmp20 = pushUnique_SpecialRegExpSimple_sp_4(xs, y)
+      concatUnique_SpecialRegExpSimple_sp_7(tmp20, ys__)
+    else branch.unreachable
 fun concatUnique_SpecialRegExpSimple_sp_7(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   xs
 fun concatUnique_SpecialRegExpSimple_sp_8(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
-  arg_Cons_0_1 = ys.x
-  arg_Cons_1_1 = ys.xs
-  ys__ = arg_Cons_1_1
-  y = arg_Cons_0_1
-  tmp20 = pushUnique_SpecialRegExpSimple_sp_6(xs, y)
-  concatUnique_SpecialRegExpSimple_sp_9(tmp20, ys__)
+  if ys is
+    Cons then
+      arg_Cons_0_1 = ys.Cons#x
+      arg_Cons_1_1 = ys.Cons#xs
+      ys__ = arg_Cons_1_1
+      y = arg_Cons_0_1
+      tmp20 = pushUnique_SpecialRegExpSimple_sp_6(xs, y)
+      concatUnique_SpecialRegExpSimple_sp_9(tmp20, ys__)
+    else branch.unreachable
 fun concatUnique_SpecialRegExpSimple_sp_9(xs, ys) =
   let {y, ys__, arg_Cons_0_1, arg_Cons_1_1, tmp20}
   xs
@@ -387,7 +411,7 @@ fun matchImpl_SpecialRegExpSimple_sp_0(p, s, acc) =
     true then
       scrut13 = p.canBeEmpty()
       if scrut13 is
-        true then new Some(acc)
+        true then new Some("")
         else new None()
     else
       if p is
@@ -404,7 +428,7 @@ fun matchImpl_SpecialRegExpSimple_sp_0(p, s, acc) =
             else
               scrut15 = p.canBeEmpty()
               if scrut15 is
-                true then new Some(acc)
+                true then new Some("")
                 else new None()
 fun matchImpl_SpecialRegExpSimple_sp_1(p, s, acc) =
   let {scrut12, scrut13, c12, scrut14, scrut15, tmp22, tmp23, tmp24, tmp25}
@@ -435,10 +459,14 @@ fun matchImpl_SpecialRegExpSimple_sp_2(p, s, acc) =
       if p is
         Altern(Concat(Star(Exact), Exact), _) then
           scrut13 = canBeEmpty_Altern_sp_0(p)
-          new Some(acc)
+          if scrut13 is
+            true then new Some(acc)
+            else branch.unreachable
         Altern(Concat(Nothing, Exact), _) then
           scrut13 = canBeEmpty_Altern_sp_1(p)
-          new Some(acc)
+          if scrut13 is
+            true then new Some(acc)
+            else branch.unreachable
         Concat(Star(Exact), _) then
           scrut13 = canBeEmpty_Concat_sp_1(p)
           new None()
@@ -459,12 +487,16 @@ fun matchImpl_SpecialRegExpSimple_sp_2(p, s, acc) =
               matchImpl_SpecialRegExpSimple_sp_2(tmp23, tmp24, tmp25)
             else
               scrut15 = canBeEmpty_Altern_sp_0(p)
-              new Some(acc)
+              if scrut15 is
+                true then new Some(acc)
+                else branch.unreachable
         Altern(Concat(Nothing, Exact), _) then
           c12 = s.0
           scrut14 = startsWith_Altern_sp_1(p, c12)
           scrut15 = canBeEmpty_Altern_sp_1(p)
-          new Some(acc)
+          if scrut15 is
+            true then new Some(acc)
+            else branch.unreachable
         Concat(Star(Exact), _) then
           c12 = s.0
           scrut14 = startsWith_Concat_sp_1(p, c12)
@@ -488,68 +520,110 @@ fun mkUnion_SpecialRegExpSimple_sp_0(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
   if ls is
     Cons(Concat(Star(Exact), Exact), _) then
-      arg_Cons_0_4 = ls.x
-      arg_Cons_1_4 = ls.xs
-      xs5 = arg_Cons_1_4
-      x5 = arg_Cons_0_4
-      tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
-      new Altern(x5, tmp21)
+      if ls is
+        Cons then
+          arg_Cons_0_4 = ls.Cons#x
+          arg_Cons_1_4 = ls.Cons#xs
+          xs5 = arg_Cons_1_4
+          x5 = arg_Cons_0_4
+          tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
+          new Altern(x5, tmp21)
+        else branch.unreachable
     Cons(Concat(Nothing, Exact), _) then
-      arg_Cons_0_4 = ls.x
-      arg_Cons_1_4 = ls.xs
-      xs5 = arg_Cons_1_4
-      x5 = arg_Cons_0_4
-      tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
-      new Altern(x5, tmp21)
+      if ls is
+        Cons then
+          arg_Cons_0_4 = ls.Cons#x
+          arg_Cons_1_4 = ls.Cons#xs
+          xs5 = arg_Cons_1_4
+          x5 = arg_Cons_0_4
+          tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
+          new Altern(x5, tmp21)
+        else branch.unreachable
     else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_1(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
-  arg_Cons_0_4 = ls.x
-  arg_Cons_1_4 = ls.xs
-  x4 = arg_Cons_0_4
-  x4
+  if ls is
+    Cons then
+      arg_Cons_0_4 = ls.Cons#x
+      arg_Cons_1_4 = ls.Cons#xs
+      if arg_Cons_1_4 is
+        Nil then
+          x4 = arg_Cons_0_4
+          x4
+        else branch.unreachable
+    else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_2(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
   if ls is
     Cons(Concat(Star(Exact), Exact), _) then
-      arg_Cons_0_4 = ls.x
-      arg_Cons_1_4 = ls.xs
-      x4 = arg_Cons_0_4
-      x4
+      if ls is
+        Cons then
+          arg_Cons_0_4 = ls.Cons#x
+          arg_Cons_1_4 = ls.Cons#xs
+          if arg_Cons_1_4 is
+            Nil then
+              x4 = arg_Cons_0_4
+              x4
+            else branch.unreachable
+        else branch.unreachable
     Cons(Concat(Nothing, Exact), _) then
-      arg_Cons_0_4 = ls.x
-      arg_Cons_1_4 = ls.xs
-      x4 = arg_Cons_0_4
-      x4
+      if ls is
+        Cons then
+          arg_Cons_0_4 = ls.Cons#x
+          arg_Cons_1_4 = ls.Cons#xs
+          if arg_Cons_1_4 is
+            Nil then
+              x4 = arg_Cons_0_4
+              x4
+            else branch.unreachable
+        else branch.unreachable
     else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_3(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
-  arg_Cons_0_4 = ls.x
-  arg_Cons_1_4 = ls.xs
-  xs5 = arg_Cons_1_4
-  x5 = arg_Cons_0_4
-  tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
-  new Altern(x5, tmp21)
+  if ls is
+    Cons then
+      arg_Cons_0_4 = ls.Cons#x
+      arg_Cons_1_4 = ls.Cons#xs
+      xs5 = arg_Cons_1_4
+      x5 = arg_Cons_0_4
+      tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
+      new Altern(x5, tmp21)
+    else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_4(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
-  arg_Cons_0_4 = ls.x
-  arg_Cons_1_4 = ls.xs
-  xs5 = arg_Cons_1_4
-  x5 = arg_Cons_0_4
-  tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
-  new Altern(x5, tmp21)
+  if ls is
+    Cons then
+      arg_Cons_0_4 = ls.Cons#x
+      arg_Cons_1_4 = ls.Cons#xs
+      xs5 = arg_Cons_1_4
+      x5 = arg_Cons_0_4
+      tmp21 = mkUnion_SpecialRegExpSimple_sp_1(xs5)
+      new Altern(x5, tmp21)
+    else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_5(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
-  arg_Cons_0_4 = ls.x
-  arg_Cons_1_4 = ls.xs
-  x4 = arg_Cons_0_4
-  x4
+  if ls is
+    Cons then
+      arg_Cons_0_4 = ls.Cons#x
+      arg_Cons_1_4 = ls.Cons#xs
+      if arg_Cons_1_4 is
+        Nil then
+          x4 = arg_Cons_0_4
+          x4
+        else branch.unreachable
+    else branch.unreachable
 fun mkUnion_SpecialRegExpSimple_sp_6(ls) =
   let {x4, x5, xs5, arg_Cons_0_4, arg_Cons_1_4, tmp21}
-  arg_Cons_0_4 = ls.x
-  arg_Cons_1_4 = ls.xs
-  x4 = arg_Cons_0_4
-  x4
+  if ls is
+    Cons then
+      arg_Cons_0_4 = ls.Cons#x
+      arg_Cons_1_4 = ls.Cons#xs
+      if arg_Cons_1_4 is
+        Nil then
+          x4 = arg_Cons_0_4
+          x4
+        else branch.unreachable
+    else branch.unreachable
 fun pushUnique_SpecialRegExpSimple_sp_0(ls, e) =
   let {x2, xs1, scrut8, arg_Cons_0_, arg_Cons_1_, tmp19}
   new Cons(e, Nil)
@@ -558,28 +632,34 @@ fun pushUnique_SpecialRegExpSimple_sp_1(ls, e) =
   new Cons(e, Nil)
 fun pushUnique_SpecialRegExpSimple_sp_2(ls, e) =
   let {x2, xs1, scrut8, arg_Cons_0_, arg_Cons_1_, tmp19}
-  arg_Cons_0_ = ls.x
-  arg_Cons_1_ = ls.xs
-  xs1 = arg_Cons_1_
-  x2 = arg_Cons_0_
-  scrut8 = eq_Concat_sp_0(x2, e)
-  if scrut8 is
-    true then ls
-    else
-      tmp19 = pushUnique_SpecialRegExpSimple_sp_0(xs1, e)
-      new Cons(x2, tmp19)
+  if ls is
+    Cons then
+      arg_Cons_0_ = ls.Cons#x
+      arg_Cons_1_ = ls.Cons#xs
+      xs1 = arg_Cons_1_
+      x2 = arg_Cons_0_
+      scrut8 = eq_Concat_sp_0(x2, e)
+      if scrut8 is
+        true then ls
+        else
+          tmp19 = pushUnique_SpecialRegExpSimple_sp_0(xs1, e)
+          new Cons(x2, tmp19)
+    else branch.unreachable
 fun pushUnique_SpecialRegExpSimple_sp_3(ls, e) =
   let {x2, xs1, scrut8, arg_Cons_0_, arg_Cons_1_, tmp19}
   new Cons(e, Nil)
 fun pushUnique_SpecialRegExpSimple_sp_4(ls, e) =
   let {x2, xs1, scrut8, arg_Cons_0_, arg_Cons_1_, tmp19}
-  arg_Cons_0_ = ls.x
-  arg_Cons_1_ = ls.xs
-  xs1 = arg_Cons_1_
-  x2 = arg_Cons_0_
-  scrut8 = eq_Concat_sp_1(x2, e)
-  tmp19 = pushUnique_SpecialRegExpSimple_sp_5(xs1, e)
-  new Cons(x2, tmp19)
+  if ls is
+    Cons then
+      arg_Cons_0_ = ls.Cons#x
+      arg_Cons_1_ = ls.Cons#xs
+      xs1 = arg_Cons_1_
+      x2 = arg_Cons_0_
+      scrut8 = eq_Concat_sp_1(x2, e)
+      tmp19 = pushUnique_SpecialRegExpSimple_sp_5(xs1, e)
+      new Cons(x2, tmp19)
+    else branch.unreachable
 fun pushUnique_SpecialRegExpSimple_sp_5(ls, e) =
   let {x2, xs1, scrut8, arg_Cons_0_, arg_Cons_1_, tmp19}
   new Cons(e, Nil)
@@ -588,295 +668,509 @@ fun pushUnique_SpecialRegExpSimple_sp_6(ls, e) =
   new Cons(e, Nil)
 fun pushUnique_SpecialRegExpSimple_sp_7(ls, e) =
   let {x2, xs1, scrut8, arg_Cons_0_, arg_Cons_1_, tmp19}
-  arg_Cons_0_ = ls.x
-  arg_Cons_1_ = ls.xs
-  xs1 = arg_Cons_1_
-  x2 = arg_Cons_0_
-  scrut8 = eq_Concat_sp_2(x2, e)
-  tmp19 = pushUnique_SpecialRegExpSimple_sp_5(xs1, e)
-  new Cons(x2, tmp19)
-fun canBeEmpty_Nothing_sp_0(self) = false
-fun flat_Nothing_sp_0(self) = new Nil()
-fun normalize_Nothing_sp_0(self) = self
-fun startsWith_Nothing_sp_0(self, c) = false
-fun canBeEmpty_Empty_sp_0(self) = true
-fun derive_Empty_sp_0(self, c) = new Nothing()
-fun flat_Empty_sp_0(self) = new Cons(self, Nil)
-fun normalize_Empty_sp_0(self) = self
-fun startsWith_Empty_sp_0(self, c) = false
-fun canBeEmpty_Exact_sp_0(self) = false
+  if ls is
+    Cons then
+      arg_Cons_0_ = ls.Cons#x
+      arg_Cons_1_ = ls.Cons#xs
+      xs1 = arg_Cons_1_
+      x2 = arg_Cons_0_
+      scrut8 = eq_Concat_sp_2(x2, e)
+      tmp19 = pushUnique_SpecialRegExpSimple_sp_5(xs1, e)
+      new Cons(x2, tmp19)
+    else branch.unreachable
+fun canBeEmpty_Nothing_sp_0(self) =
+  if self is
+    Nothing then false
+    else branch.unreachable
+fun flat_Nothing_sp_0(self) =
+  if self is
+    Nothing then new Nil()
+    else branch.unreachable
+fun normalize_Nothing_sp_0(self) =
+  if self is
+    Nothing then self
+    else branch.unreachable
+fun startsWith_Nothing_sp_0(self, c) =
+  if self is
+    Nothing then false
+    else branch.unreachable
+fun canBeEmpty_Empty_sp_0(self) =
+  if self is
+    Empty then true
+    else branch.unreachable
+fun derive_Empty_sp_0(self, c) =
+  if self is
+    Empty then new Nothing()
+    else branch.unreachable
+fun flat_Empty_sp_0(self) =
+  if self is
+    Empty then new Cons(self, Nil)
+    else branch.unreachable
+fun normalize_Empty_sp_0(self) =
+  if self is
+    Empty then self
+    else branch.unreachable
+fun startsWith_Empty_sp_0(self, c) =
+  if self is
+    Empty then false
+    else branch.unreachable
+fun canBeEmpty_Exact_sp_0(self) =
+  if self is
+    Exact then false
+    else branch.unreachable
 fun derive_Exact_sp_0(self, c) =
-  let {scrut}
-  scrut = startsWith_Exact_sp_0(self, c)
-  if scrut is
-    true then new Empty()
-    else new Nothing()
+  if self is
+    Exact then
+      let {scrut}
+      scrut = startsWith_Exact_sp_0(self, c)
+      if scrut is
+        true then new Empty()
+        else new Nothing()
+    else branch.unreachable
 fun derive_Exact_sp_1(self, c) =
-  let {scrut}
-  scrut = startsWith_Exact_sp_1(self, c)
-  if scrut is
-    true then new Empty()
-    else new Nothing()
-fun normalize_Exact_sp_0(self) = self
-fun startsWith_Exact_sp_0(self, c) = "a" == c
-fun startsWith_Exact_sp_1(self, c) = "b" == c
-fun canBeEmpty_Altern_sp_0(self) = true
-fun canBeEmpty_Altern_sp_1(self) = true
+  if self is
+    Exact then
+      let {scrut}
+      scrut = startsWith_Exact_sp_1(self, c)
+      if scrut is
+        true then new Empty()
+        else new Nothing()
+    else branch.unreachable
+fun normalize_Exact_sp_0(self) =
+  if self is
+    Exact then self
+    else branch.unreachable
+fun startsWith_Exact_sp_0(self, c) =
+  if self is
+    Exact then "a" == c
+    else branch.unreachable
+fun startsWith_Exact_sp_1(self, c) =
+  if self is
+    Exact then "b" == c
+    else branch.unreachable
+fun canBeEmpty_Altern_sp_0(self) =
+  if self is
+    Altern then true
+    else branch.unreachable
+fun canBeEmpty_Altern_sp_1(self) =
+  if self is
+    Altern then true
+    else branch.unreachable
 fun derive_Altern_sp_0(self, c) =
-  let {tmp, tmp1, tmp2}
-  tmp = derive_Concat_sp_1(self.p1, c)
-  tmp1 = derive_Empty_sp_0(self.p2, c)
-  tmp2 = new Altern(tmp, tmp1)
-  if tmp2 is
-    Altern(Altern(Concat(Star(Exact), Exact), Empty), _) then normalize_Altern_sp_4(tmp2)
-    Altern(Altern(Concat(Nothing, Exact), Empty), _) then normalize_Altern_sp_5(tmp2)
-    Altern(Concat(Star(Exact), Exact), _) then normalize_Altern_sp_6(tmp2)
-    Altern(Concat(Nothing, Exact), _) then normalize_Altern_sp_7(tmp2)
+  if self is
+    Altern then
+      let {tmp, tmp1, tmp2}
+      tmp = derive_Concat_sp_1(self.Altern#p1, c)
+      tmp1 = derive_Empty_sp_0(self.Altern#p2, c)
+      tmp2 = new Altern(tmp, tmp1)
+      if tmp2 is
+        Altern(Altern(Concat(Star(Exact), Exact), Empty), _) then normalize_Altern_sp_4(tmp2)
+        Altern(Altern(Concat(Nothing, Exact), Empty), _) then normalize_Altern_sp_5(tmp2)
+        Altern(Concat(Star(Exact), Exact), _) then normalize_Altern_sp_6(tmp2)
+        Altern(Concat(Nothing, Exact), _) then normalize_Altern_sp_7(tmp2)
+        else branch.unreachable
     else branch.unreachable
 fun flat_Altern_sp_0(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = self.p1.flat()
-  p2__ = self.p2.flat()
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_0(Nil, p1__)
-  concatUnique(tmp8, p2__)
-fun flat_Altern_sp_1(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = self.p1.flat()
-  p2__ = self.p2.flat()
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_0(Nil, p1__)
-  concatUnique(tmp8, p2__)
-fun flat_Altern_sp_10(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = flat_Concat_sp_2(self.p1)
-  p2__ = flat_Nothing_sp_0(self.p2)
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
-  concatUnique_SpecialRegExpSimple_sp_9(tmp8, p2__)
-fun flat_Altern_sp_2(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = flat_Concat_sp_0(self.p1)
-  p2__ = self.p2.flat()
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_1(Nil, p1__)
-  concatUnique_SpecialRegExpSimple_sp_3(tmp8, p2__)
-fun flat_Altern_sp_3(self) =
-  let {p1__, p2__, tmp8}
-  if self.p1 is
-    Concat(Star(Exact), _) then
-      p1__ = flat_Concat_sp_1(self.p1)
-      p2__ = flat_Empty_sp_0(self.p2)
-      tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
-      concatUnique_SpecialRegExpSimple_sp_6(tmp8, p2__)
-    Concat(Nothing, _) then
-      p1__ = flat_Concat_sp_2(self.p1)
-      p2__ = flat_Empty_sp_0(self.p2)
-      tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
-      concatUnique_SpecialRegExpSimple_sp_10(tmp8, p2__)
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = self.Altern#p1.flat()
+      p2__ = self.Altern#p2.flat()
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_0(Nil, p1__)
+      concatUnique(tmp8, p2__)
     else branch.unreachable
-fun flat_Altern_sp_4(self) =
-  let {p1__, p2__, tmp8}
-  if self.p1 is
-    Concat(Star(Exact), _) then
-      p1__ = flat_Concat_sp_1(self.p1)
-      p2__ = flat_Nothing_sp_0(self.p2)
-      tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
-      concatUnique_SpecialRegExpSimple_sp_5(tmp8, p2__)
-    Concat(Nothing, _) then
-      p1__ = flat_Concat_sp_2(self.p1)
-      p2__ = flat_Nothing_sp_0(self.p2)
+fun flat_Altern_sp_1(self) =
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = self.Altern#p1.flat()
+      p2__ = self.Altern#p2.flat()
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_0(Nil, p1__)
+      concatUnique(tmp8, p2__)
+    else branch.unreachable
+fun flat_Altern_sp_10(self) =
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = flat_Concat_sp_2(self.Altern#p1)
+      p2__ = flat_Nothing_sp_0(self.Altern#p2)
       tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
       concatUnique_SpecialRegExpSimple_sp_9(tmp8, p2__)
     else branch.unreachable
+fun flat_Altern_sp_2(self) =
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = flat_Concat_sp_0(self.Altern#p1)
+      p2__ = self.Altern#p2.flat()
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_1(Nil, p1__)
+      concatUnique_SpecialRegExpSimple_sp_3(tmp8, p2__)
+    else branch.unreachable
+fun flat_Altern_sp_3(self) =
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      if self.p1 is
+        Concat(Star(Exact), _) then
+          p1__ = flat_Concat_sp_1(self.Altern#p1)
+          p2__ = flat_Empty_sp_0(self.Altern#p2)
+          tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
+          concatUnique_SpecialRegExpSimple_sp_6(tmp8, p2__)
+        Concat(Nothing, _) then
+          p1__ = flat_Concat_sp_2(self.Altern#p1)
+          p2__ = flat_Empty_sp_0(self.Altern#p2)
+          tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
+          concatUnique_SpecialRegExpSimple_sp_10(tmp8, p2__)
+        else branch.unreachable
+    else branch.unreachable
+fun flat_Altern_sp_4(self) =
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      if self.p1 is
+        Concat(Star(Exact), _) then
+          p1__ = flat_Concat_sp_1(self.Altern#p1)
+          p2__ = flat_Nothing_sp_0(self.Altern#p2)
+          tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
+          concatUnique_SpecialRegExpSimple_sp_5(tmp8, p2__)
+        Concat(Nothing, _) then
+          p1__ = flat_Concat_sp_2(self.Altern#p1)
+          p2__ = flat_Nothing_sp_0(self.Altern#p2)
+          tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
+          concatUnique_SpecialRegExpSimple_sp_9(tmp8, p2__)
+        else branch.unreachable
+    else branch.unreachable
 fun flat_Altern_sp_5(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = flat_Altern_sp_6(self.p1)
-  p2__ = flat_Nothing_sp_0(self.p2)
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_12(Nil, p1__)
-  concatUnique_SpecialRegExpSimple_sp_7(tmp8, p2__)
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = flat_Altern_sp_6(self.Altern#p1)
+      p2__ = flat_Nothing_sp_0(self.Altern#p2)
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_12(Nil, p1__)
+      concatUnique_SpecialRegExpSimple_sp_7(tmp8, p2__)
+    else branch.unreachable
 fun flat_Altern_sp_6(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = flat_Concat_sp_1(self.p1)
-  p2__ = flat_Empty_sp_0(self.p2)
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
-  concatUnique_SpecialRegExpSimple_sp_6(tmp8, p2__)
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = flat_Concat_sp_1(self.Altern#p1)
+      p2__ = flat_Empty_sp_0(self.Altern#p2)
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
+      concatUnique_SpecialRegExpSimple_sp_6(tmp8, p2__)
+    else branch.unreachable
 fun flat_Altern_sp_7(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = flat_Altern_sp_8(self.p1)
-  p2__ = flat_Nothing_sp_0(self.p2)
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_13(Nil, p1__)
-  concatUnique_SpecialRegExpSimple_sp_11(tmp8, p2__)
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = flat_Altern_sp_8(self.Altern#p1)
+      p2__ = flat_Nothing_sp_0(self.Altern#p2)
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_13(Nil, p1__)
+      concatUnique_SpecialRegExpSimple_sp_11(tmp8, p2__)
+    else branch.unreachable
 fun flat_Altern_sp_8(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = flat_Concat_sp_2(self.p1)
-  p2__ = flat_Empty_sp_0(self.p2)
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
-  concatUnique_SpecialRegExpSimple_sp_10(tmp8, p2__)
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = flat_Concat_sp_2(self.Altern#p1)
+      p2__ = flat_Empty_sp_0(self.Altern#p2)
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_8(Nil, p1__)
+      concatUnique_SpecialRegExpSimple_sp_10(tmp8, p2__)
+    else branch.unreachable
 fun flat_Altern_sp_9(self) =
-  let {p1__, p2__, tmp8}
-  p1__ = flat_Concat_sp_1(self.p1)
-  p2__ = flat_Nothing_sp_0(self.p2)
-  tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
-  concatUnique_SpecialRegExpSimple_sp_5(tmp8, p2__)
+  if self is
+    Altern then
+      let {p1__, p2__, tmp8}
+      p1__ = flat_Concat_sp_1(self.Altern#p1)
+      p2__ = flat_Nothing_sp_0(self.Altern#p2)
+      tmp8 = concatUnique_SpecialRegExpSimple_sp_4(Nil, p1__)
+      concatUnique_SpecialRegExpSimple_sp_5(tmp8, p2__)
+    else branch.unreachable
 fun normalize_Altern_sp_0(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_0(self)
-  mkUnion(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_0(self)
+      mkUnion(tmp4)
+    else branch.unreachable
 fun normalize_Altern_sp_1(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_2(self)
-  mkUnion(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_2(self)
+      mkUnion(tmp4)
+    else branch.unreachable
 fun normalize_Altern_sp_2(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_3(self)
-  mkUnion_SpecialRegExpSimple_sp_0(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_3(self)
+      mkUnion_SpecialRegExpSimple_sp_0(tmp4)
+    else branch.unreachable
 fun normalize_Altern_sp_3(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_4(self)
-  mkUnion_SpecialRegExpSimple_sp_2(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_4(self)
+      mkUnion_SpecialRegExpSimple_sp_2(tmp4)
+    else branch.unreachable
 fun normalize_Altern_sp_4(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_5(self)
-  mkUnion_SpecialRegExpSimple_sp_3(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_5(self)
+      mkUnion_SpecialRegExpSimple_sp_3(tmp4)
+    else branch.unreachable
 fun normalize_Altern_sp_5(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_7(self)
-  mkUnion_SpecialRegExpSimple_sp_4(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_7(self)
+      mkUnion_SpecialRegExpSimple_sp_4(tmp4)
+    else branch.unreachable
 fun normalize_Altern_sp_6(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_9(self)
-  mkUnion_SpecialRegExpSimple_sp_5(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_9(self)
+      mkUnion_SpecialRegExpSimple_sp_5(tmp4)
+    else branch.unreachable
 fun normalize_Altern_sp_7(self) =
-  let {tmp4}
-  tmp4 = flat_Altern_sp_10(self)
-  mkUnion_SpecialRegExpSimple_sp_6(tmp4)
+  if self is
+    Altern then
+      let {tmp4}
+      tmp4 = flat_Altern_sp_10(self)
+      mkUnion_SpecialRegExpSimple_sp_6(tmp4)
+    else branch.unreachable
 fun startsWith_Altern_sp_0(self, c) =
-  let {tmp7}
-  tmp7 = startsWith_Concat_sp_1(self.p1, c)
-  if tmp7 is
-    false then startsWith_Empty_sp_0(self.p2, c)
-    else true
-fun startsWith_Altern_sp_1(self, c) = false
-fun canBeEmpty_Concat_sp_0(self) = false
-fun canBeEmpty_Concat_sp_1(self) = false
-fun canBeEmpty_Concat_sp_2(self) = false
+  if self is
+    Altern then
+      let {tmp7}
+      tmp7 = startsWith_Concat_sp_1(self.Altern#p1, c)
+      if tmp7 is
+        false then startsWith_Empty_sp_0(self.Altern#p2, c)
+        else true
+    else branch.unreachable
+fun startsWith_Altern_sp_1(self, c) =
+  if self is
+    Altern then false
+    else branch.unreachable
+fun canBeEmpty_Concat_sp_0(self) =
+  if self is
+    Concat then false
+    else branch.unreachable
+fun canBeEmpty_Concat_sp_1(self) =
+  if self is
+    Concat then false
+    else branch.unreachable
+fun canBeEmpty_Concat_sp_2(self) =
+  if self is
+    Concat then false
+    else branch.unreachable
 fun derive_Concat_sp_0(self, c) =
-  let {p1__1, scrut1, tmp9, tmp10, tmp11, tmp12}
-  p1__1 = derive_Star_sp_0(self.p1, c)
-  scrut1 = canBeEmpty_Star_sp_0(self.p1)
-  tmp9 = new Concat.class(p1__1, self.p2)
-  tmp10 = derive_Exact_sp_1(self.p2, c)
-  tmp11 = new Altern(tmp9, tmp10)
-  if tmp11 is
-    Altern(_, Empty) then normalize_Altern_sp_2(tmp11)
-    Altern(_, Nothing) then normalize_Altern_sp_3(tmp11)
+  if self is
+    Concat then
+      let {p1__1, scrut1, tmp9, tmp10, tmp11, tmp12}
+      p1__1 = derive_Star_sp_0(self.Concat#p1, c)
+      scrut1 = canBeEmpty_Star_sp_0(self.Concat#p1)
+      if scrut1 is
+        true then
+          tmp9 = new Concat.class(p1__1, self.Concat#p2)
+          tmp10 = derive_Exact_sp_1(self.Concat#p2, c)
+          tmp11 = new Altern(tmp9, tmp10)
+          if tmp11 is
+            Altern(_, Empty) then normalize_Altern_sp_2(tmp11)
+            Altern(_, Nothing) then normalize_Altern_sp_3(tmp11)
+            else branch.unreachable
+        else branch.unreachable
     else branch.unreachable
 fun derive_Concat_sp_1(self, c) =
-  let {p1__1, scrut1, tmp9, tmp10, tmp11, tmp12}
-  p1__1 = derive_Star_sp_1(self.p1, c)
-  scrut1 = canBeEmpty_Star_sp_1(self.p1)
-  tmp9 = new Concat.class(p1__1, self.p2)
-  tmp10 = derive_Exact_sp_1(self.p2, c)
-  tmp11 = new Altern(tmp9, tmp10)
-  if tmp11 is
-    Altern(_, Empty) then normalize_Altern_sp_2(tmp11)
-    Altern(_, Nothing) then normalize_Altern_sp_3(tmp11)
+  if self is
+    Concat then
+      let {p1__1, scrut1, tmp9, tmp10, tmp11, tmp12}
+      p1__1 = derive_Star_sp_1(self.Concat#p1, c)
+      scrut1 = canBeEmpty_Star_sp_1(self.Concat#p1)
+      if scrut1 is
+        true then
+          tmp9 = new Concat.class(p1__1, self.Concat#p2)
+          tmp10 = derive_Exact_sp_1(self.Concat#p2, c)
+          tmp11 = new Altern(tmp9, tmp10)
+          if tmp11 is
+            Altern(_, Empty) then normalize_Altern_sp_2(tmp11)
+            Altern(_, Nothing) then normalize_Altern_sp_3(tmp11)
+            else branch.unreachable
+        else branch.unreachable
     else branch.unreachable
 fun eq_Concat_sp_0(self, other) =
-  let {p2__1, p1__3, scrut4, scrut5, arg_Concat_0_, arg_Concat_1_}
-  if other is
+  if self is
     Concat then
-      arg_Concat_0_ = other.p1
-      arg_Concat_1_ = other.p2
-      p2__1 = arg_Concat_1_
-      p1__3 = arg_Concat_0_
-      scrut4 = self.p1.eq(p1__3)
-      if scrut4 is
-        true then
-          scrut5 = self.p2.eq(p2__1)
-          if scrut5 is
-            true then true
+      let {p2__1, p1__3, scrut4, scrut5, arg_Concat_0_, arg_Concat_1_}
+      if other is
+        Concat then
+          arg_Concat_0_ = other.Concat#p1
+          arg_Concat_1_ = other.Concat#p2
+          p2__1 = arg_Concat_1_
+          p1__3 = arg_Concat_0_
+          scrut4 = self.Concat#p1.eq(p1__3)
+          if scrut4 is
+            true then
+              scrut5 = self.Concat#p2.eq(p2__1)
+              if scrut5 is
+                true then true
+                else false
             else false
         else false
-    else false
-fun eq_Concat_sp_1(self, other) = false
-fun eq_Concat_sp_2(self, other) = false
-fun flat_Concat_sp_0(self) = new Cons(self, Nil)
-fun flat_Concat_sp_1(self) = new Cons(self, Nil)
-fun flat_Concat_sp_2(self) = new Cons(self, Nil)
+    else branch.unreachable
+fun eq_Concat_sp_1(self, other) =
+  if self is
+    Concat then false
+    else branch.unreachable
+fun eq_Concat_sp_2(self, other) =
+  if self is
+    Concat then false
+    else branch.unreachable
+fun flat_Concat_sp_0(self) =
+  if self is
+    Concat then new Cons(self, Nil)
+    else branch.unreachable
+fun flat_Concat_sp_1(self) =
+  if self is
+    Concat then new Cons(self, Nil)
+    else branch.unreachable
+fun flat_Concat_sp_2(self) =
+  if self is
+    Concat then new Cons(self, Nil)
+    else branch.unreachable
 fun normalize_Concat_sp_0(self) =
-  let {p1__2, tmp13}
-  p1__2 = self.p1.normalize()
-  if p1__2 is
-    Empty then self.p2.normalize()
-    Nothing then p1__2
-    else
-      tmp13 = self.p2.normalize()
-      new Concat.class(p1__2, tmp13)
+  if self is
+    Concat then
+      let {p1__2, tmp13}
+      p1__2 = self.Concat#p1.normalize()
+      if p1__2 is
+        Empty then self.Concat#p2.normalize()
+        Nothing then p1__2
+        else
+          tmp13 = self.Concat#p2.normalize()
+          new Concat.class(p1__2, tmp13)
+    else branch.unreachable
 fun normalize_Concat_sp_1(self) =
-  let {p1__2, tmp13}
-  p1__2 = self.p1.normalize()
-  if p1__2 is
-    Empty then normalize_Star_sp_0(self.p2)
-    Nothing then p1__2
-    else
-      tmp13 = normalize_Star_sp_0(self.p2)
-      new Concat.class(p1__2, tmp13)
+  if self is
+    Concat then
+      let {p1__2, tmp13}
+      p1__2 = self.Concat#p1.normalize()
+      if p1__2 is
+        Empty then normalize_Star_sp_0(self.Concat#p2)
+        Nothing then p1__2
+        else
+          tmp13 = normalize_Star_sp_0(self.Concat#p2)
+          new Concat.class(p1__2, tmp13)
+    else branch.unreachable
 fun normalize_Concat_sp_2(self) =
-  let {p1__2, tmp13}
-  p1__2 = normalize_Empty_sp_0(self.p1)
-  normalize_Star_sp_1(self.p2)
+  if self is
+    Concat then
+      let {p1__2, tmp13}
+      p1__2 = normalize_Empty_sp_0(self.Concat#p1)
+      if p1__2 is
+        Empty then normalize_Star_sp_1(self.Concat#p2)
+        else branch.unreachable
+    else branch.unreachable
 fun normalize_Concat_sp_3(self) =
-  let {p1__2, tmp13}
-  p1__2 = normalize_Nothing_sp_0(self.p1)
-  p1__2
+  if self is
+    Concat then
+      let {p1__2, tmp13}
+      p1__2 = normalize_Nothing_sp_0(self.Concat#p1)
+      if p1__2 is
+        Nothing then p1__2
+        else branch.unreachable
+    else branch.unreachable
 fun startsWith_Concat_sp_0(self, c) =
-  let {scrut6, scrut7, tmp14}
-  tmp14 = startsWith_Star_sp_0(self.p1, c)
-  if tmp14 is
-    false then
-      scrut6 = canBeEmpty_Star_sp_0(self.p1)
-      scrut7 = startsWith_Exact_sp_1(self.p2, c)
-      if scrut7 is
-        true then true
-        else false
-    else true
+  if self is
+    Concat then
+      let {scrut6, scrut7, tmp14}
+      tmp14 = startsWith_Star_sp_0(self.Concat#p1, c)
+      if tmp14 is
+        false then
+          scrut6 = canBeEmpty_Star_sp_0(self.Concat#p1)
+          if scrut6 is
+            true then
+              scrut7 = startsWith_Exact_sp_1(self.Concat#p2, c)
+              if scrut7 is
+                true then true
+                else false
+            else branch.unreachable
+        else true
+    else branch.unreachable
 fun startsWith_Concat_sp_1(self, c) =
-  let {scrut6, scrut7, tmp14}
-  tmp14 = startsWith_Star_sp_1(self.p1, c)
-  if tmp14 is
-    false then
-      scrut6 = canBeEmpty_Star_sp_1(self.p1)
-      scrut7 = startsWith_Exact_sp_1(self.p2, c)
-      if scrut7 is
-        true then true
-        else false
-    else true
-fun startsWith_Concat_sp_2(self, c) = false
-fun canBeEmpty_Star_sp_0(self) = true
-fun canBeEmpty_Star_sp_1(self) = true
+  if self is
+    Concat then
+      let {scrut6, scrut7, tmp14}
+      tmp14 = startsWith_Star_sp_1(self.Concat#p1, c)
+      if tmp14 is
+        false then
+          scrut6 = canBeEmpty_Star_sp_1(self.Concat#p1)
+          if scrut6 is
+            true then
+              scrut7 = startsWith_Exact_sp_1(self.Concat#p2, c)
+              if scrut7 is
+                true then true
+                else false
+            else branch.unreachable
+        else true
+    else branch.unreachable
+fun startsWith_Concat_sp_2(self, c) =
+  if self is
+    Concat then false
+    else branch.unreachable
+fun canBeEmpty_Star_sp_0(self) =
+  if self is
+    Star then true
+    else branch.unreachable
+fun canBeEmpty_Star_sp_1(self) =
+  if self is
+    Star then true
+    else branch.unreachable
 fun derive_Star_sp_0(self, c) =
-  let {tmp15, tmp16, tmp17}
-  tmp15 = derive_Exact_sp_0(self.p, c)
-  tmp16 = new Star.class(self.p)
-  tmp17 = new Concat(tmp15, tmp16)
-  if tmp17 is
-    Concat(Empty, _) then normalize_Concat_sp_2(tmp17)
-    Concat(Nothing, _) then normalize_Concat_sp_3(tmp17)
+  if self is
+    Star then
+      let {tmp15, tmp16, tmp17}
+      tmp15 = derive_Exact_sp_0(self.Star#p, c)
+      tmp16 = new Star.class(self.Star#p)
+      tmp17 = new Concat(tmp15, tmp16)
+      if tmp17 is
+        Concat(Empty, _) then normalize_Concat_sp_2(tmp17)
+        Concat(Nothing, _) then normalize_Concat_sp_3(tmp17)
+        else branch.unreachable
     else branch.unreachable
 fun derive_Star_sp_1(self, c) =
-  let {tmp15, tmp16, tmp17}
-  tmp15 = derive_Exact_sp_0(self.p, c)
-  tmp16 = new Star.class(self.p)
-  tmp17 = new Concat(tmp15, tmp16)
-  if tmp17 is
-    Concat(Empty, _) then normalize_Concat_sp_2(tmp17)
-    Concat(Nothing, _) then normalize_Concat_sp_3(tmp17)
+  if self is
+    Star then
+      let {tmp15, tmp16, tmp17}
+      tmp15 = derive_Exact_sp_0(self.Star#p, c)
+      tmp16 = new Star.class(self.Star#p)
+      tmp17 = new Concat(tmp15, tmp16)
+      if tmp17 is
+        Concat(Empty, _) then normalize_Concat_sp_2(tmp17)
+        Concat(Nothing, _) then normalize_Concat_sp_3(tmp17)
+        else branch.unreachable
     else branch.unreachable
 fun normalize_Star_sp_0(self) =
-  let {tmp18}
-  tmp18 = self.p.normalize()
-  new Star(tmp18)
+  if self is
+    Star then
+      let {tmp18}
+      tmp18 = self.Star#p.normalize()
+      new Star(tmp18)
+    else branch.unreachable
 fun normalize_Star_sp_1(self) =
-  let {tmp18}
-  tmp18 = normalize_Exact_sp_0(self.p)
-  new Star(tmp18)
-fun startsWith_Star_sp_0(self, c) = startsWith_Exact_sp_0(self.p, c)
-fun startsWith_Star_sp_1(self, c) = startsWith_Exact_sp_0(self.p, c)
+  if self is
+    Star then
+      let {tmp18}
+      tmp18 = normalize_Exact_sp_0(self.Star#p)
+      new Star(tmp18)
+    else branch.unreachable
+fun startsWith_Star_sp_0(self, c) =
+  if self is
+    Star then startsWith_Exact_sp_0(self.Star#p, c)
+    else branch.unreachable
+fun startsWith_Star_sp_1(self, c) =
+  if self is
+    Star then startsWith_Exact_sp_0(self.Star#p, c)
+    else branch.unreachable

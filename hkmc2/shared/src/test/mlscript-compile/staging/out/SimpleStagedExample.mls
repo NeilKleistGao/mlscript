@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: false, mono: false)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../SimpleStagedExample.mls" as SimpleStagedExample__Legacy
 module SimpleStagedExample with
     class Bar(val x) with
@@ -40,7 +40,10 @@ module SimpleStagedExample with
         else
           tmp10 = 0
       y1 = tmp10
-      tmp11 = 0
+      if y1 is
+        Num then
+          tmp11 = 0
+        else branch.unreachable
       z = 0
       y1 + 0
     fun inc(x, s) =
@@ -72,6 +75,12 @@ fun inc_SimpleStagedExample_sp_0(x, s) =
     true then 0
     else
       tmp12 = 1
-      inc(tmp12, s)
-fun bar_Bar_sp_0(self) = 1
-fun foo_Foo_sp_0(self, b) = 2
+      inc(1, s)
+fun bar_Bar_sp_0(self) =
+  if self is
+    Bar then 1
+    else branch.unreachable
+fun foo_Foo_sp_0(self, b) =
+  if self is
+    Foo then 2
+    else branch.unreachable

@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: false, mono: false)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../StagedClass.mls" as StagedClass__Legacy
 module StagedClass with
     class Foo
@@ -47,11 +47,11 @@ module StagedClass with
       if x is
         Foo then 0
         Bar then
-          arg_Bar_0_ = x.x
+          arg_Bar_0_ = x.Bar#x
           x__ = arg_Bar_0_
           x__
         Baz then
-          arg_Baz_0_ = x.x
+          arg_Baz_0_ = x.Baz#x
           y4 = arg_Baz_0_
           y4 + 1
         else -1
@@ -64,6 +64,11 @@ module StagedClass with
       f_X_sp_0(tmp3, 1)
 open StagedClass
 fun f_X_sp_0(self, y) =
-  let {scrut}
-  scrut = true
-  new Bar(self.x)
+  if self is
+    X then
+      let {scrut}
+      scrut = true
+      if scrut is
+        true then new Bar(self.X#x)
+        else branch.unreachable
+    else branch.unreachable

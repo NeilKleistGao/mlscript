@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: false, mono: false)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../StagedRegExpTrick.mls" as StagedRegExpTrick__Legacy
 module StagedRegExpTrick with
     class Some(val x)
@@ -271,7 +271,7 @@ module StagedRegExpTrick with
           scrut22 = match(p, s)
           if scrut22 is
             Some then
-              arg_Some_0_ = scrut22.x
+              arg_Some_0_ = scrut22.Some#x
               ss = arg_Some_0_
               tmp52 = len(ss)
               scrut23 = tmp52 > 0
@@ -387,7 +387,7 @@ fun matchAllImpl_StagedRegExpTrick_sp_0(p, s, res) =
       scrut22 = match(p, s)
       if scrut22 is
         Some then
-          arg_Some_0_ = scrut22.x
+          arg_Some_0_ = scrut22.Some#x
           ss = arg_Some_0_
           tmp52 = len(ss)
           scrut23 = tmp52 > 0
@@ -413,7 +413,7 @@ fun matchAllImpl_StagedRegExpTrick_sp_1(p, s, res) =
       scrut22 = match_StagedRegExpTrick_sp_0(p, s)
       if scrut22 is
         Some then
-          arg_Some_0_ = scrut22.x
+          arg_Some_0_ = scrut22.Some#x
           ss = arg_Some_0_
           tmp52 = len(ss)
           scrut23 = tmp52 > 0
@@ -441,7 +441,7 @@ fun matchImpl_StagedRegExpTrick_sp_0(p, s, acc) =
     true then
       scrut20 = p.canBeEmpty()
       if scrut20 is
-        true then new Some(acc)
+        true then new Some("")
         else new None()
     else
       if p is
@@ -450,7 +450,7 @@ fun matchImpl_StagedRegExpTrick_sp_0(p, s, acc) =
           c8 = s.0
           chs = p.first()
           tmp50 = len(chs)
-          tryMatch_StagedRegExpTrick_sp_0(p, s, acc, c8, chs, tmp50)
+          tryMatch_StagedRegExpTrick_sp_0(p, s, "", c8, chs, tmp50)
 fun matchImpl_StagedRegExpTrick_sp_1(p, s, acc) =
   let {scrut19, scrut20, c8, chs, tmp49, tmp50}
   tmp49 = len(s)
@@ -459,13 +459,13 @@ fun matchImpl_StagedRegExpTrick_sp_1(p, s, acc) =
     true then
       scrut20 = p.canBeEmpty()
       if scrut20 is
-        true then new Some(acc)
+        true then new Some("")
         else new None()
     else
       c8 = s.0
       chs = p.first()
       tmp50 = len(chs)
-      tryMatch_StagedRegExpTrick_sp_1(p, s, acc, c8, chs, tmp50)
+      tryMatch_StagedRegExpTrick_sp_1(p, s, "", c8, chs, tmp50)
 fun match_StagedRegExpTrick_sp_0(p, s) = matchImpl_StagedRegExpTrick_sp_1(p, s, "")
 fun plus_StagedRegExpTrick_sp_0(r) =
   let {tmp39}
@@ -481,7 +481,7 @@ fun tryMatch_StagedRegExpTrick_sp_0(p, s, acc, c, ch, i) =
     true then
       scrut17 = p.canBeEmpty()
       if scrut17 is
-        true then new Some(acc)
+        true then new Some("")
         else new None()
     else
       tmp43 = len(ch)
@@ -496,7 +496,7 @@ fun tryMatch_StagedRegExpTrick_sp_0(p, s, acc, c, ch, i) =
           matchImpl(tmp45, tmp46, tmp47)
         else
           tmp48 = i - 1
-          tryMatch(p, s, acc, c, ch, tmp48)
+          tryMatch(p, s, "", c, ch, tmp48)
 fun tryMatch_StagedRegExpTrick_sp_1(p, s, acc, c, ch, i) =
   let {scrut16, scrut17, c__, scrut18, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48}
   tmp40 = len(ch)
@@ -507,7 +507,7 @@ fun tryMatch_StagedRegExpTrick_sp_1(p, s, acc, c, ch, i) =
     true then
       scrut17 = p.canBeEmpty()
       if scrut17 is
-        true then new Some(acc)
+        true then new Some("")
         else new None()
     else
       tmp43 = len(ch)
@@ -522,4 +522,4 @@ fun tryMatch_StagedRegExpTrick_sp_1(p, s, acc, c, ch, i) =
           matchImpl(tmp45, tmp46, tmp47)
         else
           tmp48 = i - 1
-          tryMatch(p, s, acc, c, ch, tmp48)
+          tryMatch(p, s, "", c, ch, tmp48)

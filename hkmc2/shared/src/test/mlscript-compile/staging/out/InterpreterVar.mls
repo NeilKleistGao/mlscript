@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: false, mono: false)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../InterpreterVar.mls" as InterpreterVar__Legacy
 module InterpreterVar with
     class Cons(val x, val xs)
@@ -20,8 +20,8 @@ module InterpreterVar with
         let {x2, rest, arg_Cons_0_, arg_Cons_1_, tmp1, tmp2}
         if s is
           Cons then
-            arg_Cons_0_ = s.x
-            arg_Cons_1_ = s.xs
+            arg_Cons_0_ = s.Cons#x
+            arg_Cons_1_ = s.Cons#xs
             rest = arg_Cons_1_
             x2 = arg_Cons_0_
             tmp1 = -(x2)
@@ -34,12 +34,12 @@ module InterpreterVar with
         let {x3, y, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp3, tmp4}
         if s is
           Cons then
-            arg_Cons_0_1 = s.x
-            arg_Cons_1_1 = s.xs
+            arg_Cons_0_1 = s.Cons#x
+            arg_Cons_1_1 = s.Cons#xs
             if arg_Cons_1_1 is
               Cons then
-                arg_Cons_0_2 = arg_Cons_1_1.x
-                arg_Cons_1_2 = arg_Cons_1_1.xs
+                arg_Cons_0_2 = arg_Cons_1_1.Cons#x
+                arg_Cons_1_2 = arg_Cons_1_1.Cons#xs
                 rest1 = arg_Cons_1_2
                 y = arg_Cons_0_2
                 x3 = arg_Cons_0_1
@@ -59,12 +59,12 @@ module InterpreterVar with
         let {x4, y1, rest2, arg_Cons_0_3, arg_Cons_1_3, arg_Cons_0_4, arg_Cons_1_4, tmp5, tmp6}
         if s is
           Cons then
-            arg_Cons_0_3 = s.x
-            arg_Cons_1_3 = s.xs
+            arg_Cons_0_3 = s.Cons#x
+            arg_Cons_1_3 = s.Cons#xs
             if arg_Cons_1_3 is
               Cons then
-                arg_Cons_0_4 = arg_Cons_1_3.x
-                arg_Cons_1_4 = arg_Cons_1_3.xs
+                arg_Cons_0_4 = arg_Cons_1_3.Cons#x
+                arg_Cons_1_4 = arg_Cons_1_3.Cons#xs
                 rest2 = arg_Cons_1_4
                 y1 = arg_Cons_0_4
                 x4 = arg_Cons_0_3
@@ -87,8 +87,8 @@ module InterpreterVar with
         let {rest3, c, arg_Cons_0_5, arg_Cons_1_5}
         if s is
           Cons then
-            arg_Cons_0_5 = s.x
-            arg_Cons_1_5 = s.xs
+            arg_Cons_0_5 = s.Cons#x
+            arg_Cons_1_5 = s.Cons#xs
             rest3 = arg_Cons_1_5
             c = arg_Cons_0_5
             if c is
@@ -101,8 +101,8 @@ module InterpreterVar with
         let {rest4, v1, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
         if s is
           Cons then
-            arg_Cons_0_6 = s.x
-            arg_Cons_1_6 = s.xs
+            arg_Cons_0_6 = s.Cons#x
+            arg_Cons_1_6 = s.Cons#xs
             rest4 = arg_Cons_1_6
             v1 = arg_Cons_0_6
             tmp7 = [name, v1]
@@ -116,7 +116,7 @@ module InterpreterVar with
         opt = get(e, name)
         if opt is
           Some then
-            arg_Some_0_ = opt.x
+            arg_Some_0_ = opt.Some#x
             v2 = arg_Some_0_
             tmp9 = new Cons(v2, s)
             [tmp9, e]
@@ -125,8 +125,8 @@ module InterpreterVar with
       let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
       if insts is
         Cons then
-          arg_Cons_0_8 = insts.x
-          arg_Cons_1_8 = insts.xs
+          arg_Cons_0_8 = insts.Cons#x
+          arg_Cons_1_8 = insts.Cons#xs
           rest6 = arg_Cons_1_8
           inst = arg_Cons_0_8
           res = inst.eval(s, e)
@@ -148,8 +148,8 @@ module InterpreterVar with
           element1_2 = ss1.1
           if element0_2 is
             Cons then
-              arg_Cons_0_9 = element0_2.x
-              arg_Cons_1_9 = element0_2.xs
+              arg_Cons_0_9 = element0_2.Cons#x
+              arg_Cons_1_9 = element0_2.Cons#xs
               if arg_Cons_1_9 is
                 Nil then
                   x5 = arg_Cons_0_9
@@ -162,8 +162,8 @@ module InterpreterVar with
       let {n, rest5, v3, scrut1, arg_Cons_0_7, arg_Cons_1_7, element1_, element0_}
       if env is
         Cons then
-          arg_Cons_0_7 = env.x
-          arg_Cons_1_7 = env.xs
+          arg_Cons_0_7 = env.Cons#x
+          arg_Cons_1_7 = env.Cons#xs
           if arg_Cons_0_7 is
             [_, _] then
               element0_ = arg_Cons_0_7.0
@@ -206,187 +206,300 @@ module InterpreterVar with
 open InterpreterVar
 fun evalAll_InterpreterVar_sp_0(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Push_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_1(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Push_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_1(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_1(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Def_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_2(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Def_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_2(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_2(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Load_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_3(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Load_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_3(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_3(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Push_sp_1(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_4(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Push_sp_1(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_4(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_4(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Comp_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_5(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Comp_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_5(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_5(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Branch_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_7(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Branch_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_7(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_6(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Load_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_7(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Load_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_7(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_7(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
   [s, e]
 fun evalAll_InterpreterVar_sp_8(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Load_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_9(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Load_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_9(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun evalAll_InterpreterVar_sp_9(insts, s, e) =
   let {rest6, inst, res, ss, ne, arg_Cons_0_8, arg_Cons_1_8, element1_1, element0_1}
-  arg_Cons_0_8 = insts.x
-  arg_Cons_1_8 = insts.xs
-  rest6 = arg_Cons_1_8
-  inst = arg_Cons_0_8
-  res = eval_Neg_sp_0(inst, s, e)
-  element0_1 = res.0
-  element1_1 = res.1
-  ne = element1_1
-  ss = element0_1
-  evalAll_InterpreterVar_sp_7(rest6, ss, ne)
+  if insts is
+    Cons then
+      arg_Cons_0_8 = insts.Cons#x
+      arg_Cons_1_8 = insts.Cons#xs
+      rest6 = arg_Cons_1_8
+      inst = arg_Cons_0_8
+      res = eval_Neg_sp_0(inst, s, e)
+      if res is
+        [_, _] then
+          element0_1 = res.0
+          element1_1 = res.1
+          ne = element1_1
+          ss = element0_1
+          evalAll_InterpreterVar_sp_7(rest6, ss, ne)
+        else branch.unreachable
+    else branch.unreachable
 fun exec_InterpreterVar_sp_0(insts, s, e) =
   let {ss1, x5, element1_2, element0_2, arg_Cons_0_9, arg_Cons_1_9}
   ss1 = evalAll_InterpreterVar_sp_0(insts, s, e)
-  element0_2 = ss1.0
-  element1_2 = ss1.1
-  arg_Cons_0_9 = element0_2.x
-  arg_Cons_1_9 = element0_2.xs
-  x5 = arg_Cons_0_9
-  new Some(x5)
+  if ss1 is
+    [_, _] then
+      element0_2 = ss1.0
+      element1_2 = ss1.1
+      if element0_2 is
+        Cons then
+          arg_Cons_0_9 = element0_2.Cons#x
+          arg_Cons_1_9 = element0_2.Cons#xs
+          if arg_Cons_1_9 is
+            Nil then
+              x5 = arg_Cons_0_9
+              new Some(x5)
+            else branch.unreachable
+        else branch.unreachable
+    else branch.unreachable
 fun get_InterpreterVar_sp_0(env, name) =
   let {n, rest5, v3, scrut1, arg_Cons_0_7, arg_Cons_1_7, element1_, element0_}
-  arg_Cons_0_7 = env.x
-  arg_Cons_1_7 = env.xs
-  element0_ = arg_Cons_0_7.0
-  element1_ = arg_Cons_0_7.1
-  rest5 = arg_Cons_1_7
-  v3 = element1_
-  n = "x"
-  scrut1 = true
-  new Some(v3)
+  if env is
+    Cons then
+      arg_Cons_0_7 = env.Cons#x
+      arg_Cons_1_7 = env.Cons#xs
+      if arg_Cons_0_7 is
+        [_, _] then
+          element0_ = arg_Cons_0_7.0
+          element1_ = arg_Cons_0_7.1
+          rest5 = arg_Cons_1_7
+          v3 = element1_
+          n = "x"
+          scrut1 = true
+          if scrut1 is
+            true then new Some(v3)
+            else branch.unreachable
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Push_sp_0(self, s, e) =
-  let {tmp}
-  tmp = new Cons(self.v, s)
-  [tmp, e]
+  if self is
+    Push then
+      let {tmp}
+      tmp = new Cons(self.Push#v, s)
+      [tmp, e]
+    else branch.unreachable
 fun eval_Push_sp_1(self, s, e) =
-  let {tmp}
-  tmp = new Cons(self.v, s)
-  [tmp, e]
+  if self is
+    Push then
+      let {tmp}
+      tmp = new Cons(self.Push#v, s)
+      [tmp, e]
+    else branch.unreachable
 fun eval_Neg_sp_0(self, s, e) =
-  let {x2, rest, arg_Cons_0_, arg_Cons_1_, tmp1, tmp2}
-  arg_Cons_0_ = s.x
-  arg_Cons_1_ = s.xs
-  rest = arg_Cons_1_
-  x2 = arg_Cons_0_
-  tmp1 = -(x2)
-  tmp2 = new Cons(tmp1, rest)
-  [tmp2, e]
+  if self is
+    Neg then
+      let {x2, rest, arg_Cons_0_, arg_Cons_1_, tmp1, tmp2}
+      if s is
+        Cons then
+          arg_Cons_0_ = s.Cons#x
+          arg_Cons_1_ = s.Cons#xs
+          rest = arg_Cons_1_
+          x2 = arg_Cons_0_
+          tmp1 = -(x2)
+          tmp2 = new Cons(tmp1, rest)
+          [tmp2, e]
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Comp_sp_0(self, s, e) =
-  let {x3, y, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp3, tmp4}
-  arg_Cons_0_1 = s.x
-  arg_Cons_1_1 = s.xs
-  arg_Cons_0_2 = arg_Cons_1_1.x
-  arg_Cons_1_2 = arg_Cons_1_1.xs
-  rest1 = arg_Cons_1_2
-  y = arg_Cons_0_2
-  x3 = 0
-  scrut = self.le
-  tmp3 = 0 <= y
-  tmp4 = new Cons(tmp3, rest1)
-  [tmp4, e]
+  if self is
+    Comp then
+      let {x3, y, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, arg_Cons_0_2, arg_Cons_1_2, tmp3, tmp4}
+      if s is
+        Cons then
+          arg_Cons_0_1 = s.Cons#x
+          arg_Cons_1_1 = s.Cons#xs
+          if arg_Cons_1_1 is
+            Cons then
+              arg_Cons_0_2 = arg_Cons_1_1.Cons#x
+              arg_Cons_1_2 = arg_Cons_1_1.Cons#xs
+              rest1 = arg_Cons_1_2
+              y = arg_Cons_0_2
+              x3 = 0
+              scrut = self.Comp#le
+              if scrut is
+                true then
+                  tmp3 = 0 <= y
+                else branch.unreachable
+              tmp4 = new Cons(tmp3, rest1)
+              [tmp4, e]
+            else branch.unreachable
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Branch_sp_0(self, s, e) =
-  let {rest3, c, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = s.x
-  arg_Cons_1_5 = s.xs
-  rest3 = arg_Cons_1_5
-  c = arg_Cons_0_5
-  if c is
-    true then evalAll_InterpreterVar_sp_6(self.t, rest3, e)
-    else evalAll_InterpreterVar_sp_8(self.f, rest3, e)
+  if self is
+    Branch then
+      let {rest3, c, arg_Cons_0_5, arg_Cons_1_5}
+      if s is
+        Cons then
+          arg_Cons_0_5 = s.Cons#x
+          arg_Cons_1_5 = s.Cons#xs
+          rest3 = arg_Cons_1_5
+          c = arg_Cons_0_5
+          if c is
+            true then evalAll_InterpreterVar_sp_6(self.Branch#t, rest3, e)
+            else evalAll_InterpreterVar_sp_8(self.Branch#f, rest3, e)
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Def_sp_0(self, s, e) =
-  let {rest4, v1, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
-  arg_Cons_0_6 = s.x
-  arg_Cons_1_6 = s.xs
-  rest4 = arg_Cons_1_6
-  v1 = arg_Cons_0_6
-  tmp7 = [self.name, v1]
-  tmp8 = new Cons(tmp7, e)
-  [rest4, tmp8]
+  if self is
+    Def then
+      let {rest4, v1, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
+      if s is
+        Cons then
+          arg_Cons_0_6 = s.Cons#x
+          arg_Cons_1_6 = s.Cons#xs
+          rest4 = arg_Cons_1_6
+          v1 = arg_Cons_0_6
+          tmp7 = [self.Def#name, v1]
+          tmp8 = new Cons(tmp7, e)
+          [rest4, tmp8]
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Load_sp_0(self, s, e) =
-  let {opt, v2, arg_Some_0_, tmp9}
-  opt = get_InterpreterVar_sp_0(e, self.name)
-  arg_Some_0_ = opt.x
-  v2 = arg_Some_0_
-  tmp9 = new Cons(v2, s)
-  [tmp9, e]
+  if self is
+    Load then
+      let {opt, v2, arg_Some_0_, tmp9}
+      opt = get_InterpreterVar_sp_0(e, self.Load#name)
+      if opt is
+        Some then
+          arg_Some_0_ = opt.Some#x
+          v2 = arg_Some_0_
+          tmp9 = new Cons(v2, s)
+          [tmp9, e]
+        else branch.unreachable
+    else branch.unreachable

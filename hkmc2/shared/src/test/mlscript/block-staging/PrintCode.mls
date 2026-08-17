@@ -26,7 +26,7 @@ printCode(ValueLit("string"))
 printCode(Symbol("internal$"))
 //│ > internal_
 
-printCode(Select(ValueSimpleRef(Symbol("p")), Symbol("x")))
+printCode(Select(ValueSimpleRef(Symbol("p")), Symbol("x"), None))
 printCode(DynSelect(ValueSimpleRef(Symbol("p")), ValueSimpleRef(Symbol("field")), false))
 //│ > p.x
 //│ > p.(field)
@@ -71,6 +71,10 @@ printCode(Match(ValueSimpleRef(Symbol("x")), [Arm(Lit(1), Return(ValueLit(2))), 
 //│ >   1 then 2
 //│ >   B then 3
 //│ >   else x
+
+printCode(Match(ValueSimpleRef(Symbol("p")), [Arm(Cls(dSym, ValueSimpleRef(Symbol("p"))), Return(Select(ValueSimpleRef(Symbol("p")), Symbol("x"), Some(dSym))))], None, End()))
+//│ > if p is
+//│ >   D then p.D#x
 
 printCode(Scoped([Symbol("y")], Match(
     ValueLit(1),
@@ -121,5 +125,5 @@ printCode(Scoped([Symbol("y")], Match(
 //│ >     y = 3
 //│ >     y
 
-Printer(Some(dSym)).printCode(Select(ValueSimpleRef(dSym), Symbol("x")))
+Printer(Some(dSym)).printCode(Select(ValueSimpleRef(dSym), Symbol("x"), None))
 //│ > D.x

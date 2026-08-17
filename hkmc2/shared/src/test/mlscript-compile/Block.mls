@@ -107,7 +107,7 @@ class Result with
 
 class Path extends Result with
   constructor
-    Select(val qual: Path, val name: Symbol)
+    Select(val qual: Path, val name: Symbol, val classField: Opt[ClassSymbol])
     DynSelect(val qual: Path, val fld: Path, val arrayIdx: Bool) // is arrayIdx used?
     // we use Value as a prefix here to diambiguate from Case.Lit
     ValueSimpleRef(val l: Symbol)
@@ -142,6 +142,9 @@ fun concat(b1: Block, b2: Block) = if b1 is
   Assign(lhs, rhs, rest) then Assign(lhs, rhs, concat(rest, b2))
   Define(defn, rest) then Define(defn, concat(rest, b2))
   Scoped(symbols, rest) then Scoped(symbols, concat(rest, b2))
+
+fun branchUnreachable(): Block =
+  Return(Select(ValueMemberRef(Symbol("branch")), Symbol("unreachable"), None))
 
 fun indent(s: Str) = s.replaceAll("\n", "\n  ")
 
@@ -179,18 +182,21 @@ class Printer(val owner: Opt[Symbol]) with
         else owner.name + ".\"" + s.name + "$" + owner.name + "\""
     else s.name.replaceAll("$", "_")
 
+  fun showSelect(qual: Path, name: Symbol, classField: Opt[ClassSymbol]): Str =
+    if qual is
+      ValueThis then showSymbol(name)
+      // avoids needing to import the runtime module
+      ValueMemberRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit, _) then "()"
+      // remove selection to owner for values defined within the owner
+      // TODO: does this pattern exist, or is it replaced by the case below?
+      ValueMemberRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
+      else if classField is
+        Some(cls) then showPath(qual) + "." + showSymbol(cls) + "#" + showSymbol(name)
+      else showPath(qual) + "." + showSymbol(name)
+
   fun showPath(p: Path): Str =
     if p is
-      Select(qual, name) and
-        qual is
-          // avoids needing to import the runtime module
-          ValueMemberRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit, _) then "()"
-          // remove selection to owner for values defined within the owner
-          // TODO: does this pattern exist, or is it replaced by the case below?
-          ValueMemberRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
-          // NOTE: ValueThis carries information about the class, but the elaborator can infer it for us
-          ValueThis then showSymbol(name)
-        else showPath(qual) + "." + showSymbol(name)
+      Select(qual, name, classField) then showSelect(qual, name, classField)
       DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
       ValueSimpleRef(l) | ValueMemberRef(l) then showSymbol(l)
@@ -205,10 +211,10 @@ class Printer(val owner: Opt[Symbol]) with
   
   fun hasClassValue(cls: Path) =
     if cls is
-      Select(ValueMemberRef(sym), name) and
+      Select(ValueMemberRef(sym), name, _) and
         owner is Some(owner) and sym == owner and isGeneratedStagedClass(name) then false
       ValueMemberRef(ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
-      Select(_, ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
+      Select(_, ConcreteClassSymbol(_, value, _, _, _), _) then not (value."class" is undefined)
       else false
 
   fun showInstantiatePath(cls: Path) =
@@ -346,30 +352,38 @@ class Printer(val owner: Opt[Symbol]) with
       FunDefn(sym, ps, body) then showFunDefn("", sym, ps, body)
       else showDefn(d)
 
-  fun showPrivateMethodDefn(d: Defn): Str =
+  fun showPrivateMethodDefn(d: Defn, selfCls: Opt[ConcreteClassSymbol]): Str =
     if d is
       FunDefn(sym, ps, body) then
         let selfSym = freshSelfSymbol(ps, body)
         let psWithSelf = prependParam(ps, Param([], selfSym))
+        let selfPath = ValueSimpleRef(selfSym)
+        let bodyWithSelfGuard = if selfCls is
+          Some(cls) then Match(selfPath, [Arm(Cls(cls, selfPath), body)], Some(branchUnreachable()), End())
+          else body
         // substitute `this` with `self`
         class SelfPrinter(val selfSym: Symbol) extends Printer(owner) with
+          fun showSelect(qual: Path, name: Symbol, classField: Opt[ClassSymbol]): Str =
+            if classField is
+              Some(cls) then this.showPath(qual) + "." + this.showSymbol(cls) + "#" + this.showSymbol(name)
+              else if qual is
+                // avoids needing to import the runtime module
+                ValueMemberRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit, _) then "()"
+                ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym) + "." + this.showSymbol(name)
+                ValueThis then this.showSymbol(name)
+                ValueMemberRef(sym) and owner is Some(owner) and sym === owner and owner is ConcreteClassSymbol then this.showSymbol(selfSym) + "." + this.showSymbol(name)
+                ValueMemberRef(sym) and owner is Some(owner) and sym === owner then this.showSymbol(name)
+              else this.showPath(qual) + "." + this.showSymbol(name)
+
           fun showPath(p: Path): Str =
             if p is
-              Select(qual, name) and
-                qual is
-                  // avoids needing to import the runtime module
-                  ValueMemberRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit, _) then "()"
-                  ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym) + "." + this.showSymbol(name)
-                  ValueThis then this.showSymbol(name)
-                  ValueMemberRef(sym) and owner is Some(owner) and sym === owner and owner is ConcreteClassSymbol then this.showSymbol(selfSym) + "." + this.showSymbol(name)
-                  ValueMemberRef(sym) and owner is Some(owner) and sym === owner then this.showSymbol(name)
-                else showPath(qual) + "." + this.showSymbol(name)
+              Select(qual, name, classField) then this.showSelect(qual, name, classField)
               DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
               DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
               ValueSimpleRef(l) | ValueMemberRef(l) then this.showSymbol(l)
               ValueLit(lit) then this.showLiteral(lit)
               ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym)
-        SelfPrinter(selfSym).showFunDefn("", sym, psWithSelf, body)
+        SelfPrinter(selfSym).showFunDefn("", sym, psWithSelf, bodyWithSelfGuard)
       else showPrivateDefn(d)
 
   fun showBlock(b) =
@@ -424,8 +438,10 @@ let configs =
   let options = [
     "noFreeze: true",
     "noModuleCheck: true",
+    "sanityChecks: None",
     "liftDefns: None",
-    "disableDataFlowAnalysis: true", // FIXME: remove it. it now leads to timeout in staged reg exp output
+    // "disableDataFlowAnalysis: true", // FIXME: remove it. it now leads to timeout in staged reg exp output
+    "deforest: Some(Deforest(debug: false, mono: true))",
     "deadParamElim: Some(DeadParamElim(debug: false, mono: true))"
   ]
   "#config(" + options.join(", ") + ")\n"
@@ -437,7 +453,7 @@ fun printPrivateMember(cache) =
   let printer = Printer(Some(cache.owner))
   cache.cache.values().map(e =>
     if e.isPrivate then
-      if cache.owner is ConcreteClassSymbol then printer.showPrivateMethodDefn(e.defn)
+      if cache.owner is ConcreteClassSymbol then printer.showPrivateMethodDefn(e.defn, e.selfCls)
       else printer.showPrivateDefn(e.defn)
     else ""
   ).toArray().filter(_ != "").sort().join("\n")

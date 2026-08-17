@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: false, mono: false)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../InterpreterPlug.mls" as InterpreterPlug__Legacy
 module InterpreterPlug with
     class Cons(val x, val xs)
@@ -17,12 +17,12 @@ module InterpreterPlug with
         let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
         if s is
           Cons then
-            arg_Cons_0_ = s.x
-            arg_Cons_1_ = s.xs
+            arg_Cons_0_ = s.Cons#x
+            arg_Cons_1_ = s.Cons#xs
             if arg_Cons_1_ is
               Cons then
-                arg_Cons_0_1 = arg_Cons_1_.x
-                arg_Cons_1_1 = arg_Cons_1_.xs
+                arg_Cons_0_1 = arg_Cons_1_.Cons#x
+                arg_Cons_1_1 = arg_Cons_1_.Cons#xs
                 rest = arg_Cons_1_1
                 y = arg_Cons_0_1
                 x2 = arg_Cons_0_
@@ -42,12 +42,12 @@ module InterpreterPlug with
         let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp1}
         if s is
           Cons then
-            arg_Cons_0_2 = s.x
-            arg_Cons_1_2 = s.xs
+            arg_Cons_0_2 = s.Cons#x
+            arg_Cons_1_2 = s.Cons#xs
             if arg_Cons_1_2 is
               Cons then
-                arg_Cons_0_3 = arg_Cons_1_2.x
-                arg_Cons_1_3 = arg_Cons_1_2.xs
+                arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+                arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
                 rest1 = arg_Cons_1_3
                 y1 = arg_Cons_0_3
                 x3 = arg_Cons_0_2
@@ -56,13 +56,13 @@ module InterpreterPlug with
                     if y1 is
                       true then
                         tmp1 = true
-                        new Cons(tmp1, rest1)
+                        new Cons(true, rest1)
                       else
                         tmp1 = false
-                        new Cons(tmp1, rest1)
+                        new Cons(false, rest1)
                   else
                     tmp1 = false
-                    new Cons(tmp1, rest1)
+                    new Cons(false, rest1)
               else new Error()
           else new Error()
     class Branch(val t, val f) extends Instruction() with
@@ -71,8 +71,8 @@ module InterpreterPlug with
         let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
         if s is
           Cons then
-            arg_Cons_0_4 = s.x
-            arg_Cons_1_4 = s.xs
+            arg_Cons_0_4 = s.Cons#x
+            arg_Cons_1_4 = s.Cons#xs
             rest2 = arg_Cons_1_4
             c = arg_Cons_0_4
             if c is
@@ -83,8 +83,8 @@ module InterpreterPlug with
       let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
       if insts is
         Cons then
-          arg_Cons_0_5 = insts.x
-          arg_Cons_1_5 = insts.xs
+          arg_Cons_0_5 = insts.Cons#x
+          arg_Cons_1_5 = insts.Cons#xs
           rest3 = arg_Cons_1_5
           inst = arg_Cons_0_5
           res = inst.eval(s)
@@ -97,8 +97,8 @@ module InterpreterPlug with
       ss = evalAll(insts, s)
       if ss is
         Cons then
-          arg_Cons_0_6 = ss.x
-          arg_Cons_1_6 = ss.xs
+          arg_Cons_0_6 = ss.Cons#x
+          arg_Cons_1_6 = ss.Cons#xs
           if arg_Cons_1_6 is
             Nil then
               x4 = arg_Cons_0_6
@@ -160,28 +160,37 @@ module InterpreterPlug with
 open InterpreterPlug
 fun evalAll_InterpreterPlug_sp_0(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_0(inst, s)
-  evalAll_InterpreterPlug_sp_1(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_0(inst, s)
+      evalAll_InterpreterPlug_sp_1(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_1(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_1(inst, s)
-  evalAll_InterpreterPlug_sp_2(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_1(inst, s)
+      evalAll_InterpreterPlug_sp_2(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_10(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_4(inst, s)
-  evalAll_InterpreterPlug_sp_11(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_4(inst, s)
+      evalAll_InterpreterPlug_sp_11(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_11(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
   s
@@ -190,186 +199,297 @@ fun evalAll_InterpreterPlug_sp_12(insts, s) =
   s
 fun evalAll_InterpreterPlug_sp_13(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_0(inst, s)
-  evalAll_InterpreterPlug_sp_14(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_0(inst, s)
+      evalAll_InterpreterPlug_sp_14(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_14(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_1(inst, s)
-  evalAll_InterpreterPlug_sp_15(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_1(inst, s)
+      evalAll_InterpreterPlug_sp_15(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_15(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Comp_sp_2(inst, s)
-  evalAll_InterpreterPlug_sp_16(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Comp_sp_2(inst, s)
+      evalAll_InterpreterPlug_sp_16(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_16(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Branch_sp_1(inst, s)
-  evalAll_InterpreterPlug_sp_12(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Branch_sp_1(inst, s)
+      evalAll_InterpreterPlug_sp_12(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_2(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Comp_sp_0(inst, s)
-  evalAll_InterpreterPlug_sp_3(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Comp_sp_0(inst, s)
+      evalAll_InterpreterPlug_sp_3(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_3(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_1(inst, s)
-  evalAll_InterpreterPlug_sp_4(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_1(inst, s)
+      evalAll_InterpreterPlug_sp_4(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_4(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_2(inst, s)
-  evalAll_InterpreterPlug_sp_5(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_2(inst, s)
+      evalAll_InterpreterPlug_sp_5(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_5(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Comp_sp_1(inst, s)
-  evalAll_InterpreterPlug_sp_6(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Comp_sp_1(inst, s)
+      evalAll_InterpreterPlug_sp_6(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_6(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_And_sp_0(inst, s)
-  evalAll_InterpreterPlug_sp_7(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_And_sp_0(inst, s)
+      evalAll_InterpreterPlug_sp_7(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_7(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Branch_sp_0(inst, s)
-  evalAll_InterpreterPlug_sp_12(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Branch_sp_0(inst, s)
+      evalAll_InterpreterPlug_sp_12(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_8(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
-  arg_Cons_0_5 = insts.x
-  arg_Cons_1_5 = insts.xs
-  rest3 = arg_Cons_1_5
-  inst = arg_Cons_0_5
-  res = eval_Push_sp_3(inst, s)
-  evalAll_InterpreterPlug_sp_9(rest3, res)
+  if insts is
+    Cons then
+      arg_Cons_0_5 = insts.Cons#x
+      arg_Cons_1_5 = insts.Cons#xs
+      rest3 = arg_Cons_1_5
+      inst = arg_Cons_0_5
+      res = eval_Push_sp_3(inst, s)
+      evalAll_InterpreterPlug_sp_9(rest3, res)
+    else branch.unreachable
 fun evalAll_InterpreterPlug_sp_9(insts, s) =
   let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
   s
 fun exec_InterpreterPlug_sp_0(insts, s) =
   let {ss, x4, arg_Cons_0_6, arg_Cons_1_6}
   ss = evalAll_InterpreterPlug_sp_0(insts, s)
-  arg_Cons_0_6 = ss.x
-  arg_Cons_1_6 = ss.xs
-  x4 = arg_Cons_0_6
-  new Some(x4)
+  if ss is
+    Cons then
+      arg_Cons_0_6 = ss.Cons#x
+      arg_Cons_1_6 = ss.Cons#xs
+      if arg_Cons_1_6 is
+        Nil then
+          x4 = arg_Cons_0_6
+          new Some(x4)
+        else branch.unreachable
+    else branch.unreachable
 fun exec_InterpreterPlug_sp_1(insts, s) =
   let {ss, x4, arg_Cons_0_6, arg_Cons_1_6}
   ss = evalAll_InterpreterPlug_sp_13(insts, s)
-  arg_Cons_0_6 = ss.x
-  arg_Cons_1_6 = ss.xs
-  x4 = arg_Cons_0_6
-  new Some(x4)
-fun eval_Push_sp_0(self, s) = new Cons(self.v, s)
-fun eval_Push_sp_1(self, s) = new Cons(self.v, s)
-fun eval_Push_sp_2(self, s) = new Cons(self.v, s)
-fun eval_Push_sp_3(self, s) = new Cons(self.v, s)
-fun eval_Push_sp_4(self, s) = new Cons(self.v, s)
+  if ss is
+    Cons then
+      arg_Cons_0_6 = ss.Cons#x
+      arg_Cons_1_6 = ss.Cons#xs
+      if arg_Cons_1_6 is
+        Nil then
+          x4 = arg_Cons_0_6
+          new Some(x4)
+        else branch.unreachable
+    else branch.unreachable
+fun eval_Push_sp_0(self, s) =
+  if self is
+    Push then new Cons(self.Push#v, s)
+    else branch.unreachable
+fun eval_Push_sp_1(self, s) =
+  if self is
+    Push then new Cons(self.Push#v, s)
+    else branch.unreachable
+fun eval_Push_sp_2(self, s) =
+  if self is
+    Push then new Cons(self.Push#v, s)
+    else branch.unreachable
+fun eval_Push_sp_3(self, s) =
+  if self is
+    Push then new Cons(self.Push#v, s)
+    else branch.unreachable
+fun eval_Push_sp_4(self, s) =
+  if self is
+    Push then new Cons(self.Push#v, s)
+    else branch.unreachable
 fun eval_Comp_sp_0(self, s) =
-  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
-  arg_Cons_0_ = s.x
-  arg_Cons_1_ = s.xs
-  arg_Cons_0_1 = arg_Cons_1_.x
-  arg_Cons_1_1 = arg_Cons_1_.xs
-  rest = arg_Cons_1_1
-  y = arg_Cons_0_1
-  x2 = arg_Cons_0_
-  scrut = self.le
-  tmp = x2 <= y
-  new Cons(tmp, rest)
+  if self is
+    Comp then
+      let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
+      if s is
+        Cons then
+          arg_Cons_0_ = s.Cons#x
+          arg_Cons_1_ = s.Cons#xs
+          if arg_Cons_1_ is
+            Cons then
+              arg_Cons_0_1 = arg_Cons_1_.Cons#x
+              arg_Cons_1_1 = arg_Cons_1_.Cons#xs
+              rest = arg_Cons_1_1
+              y = arg_Cons_0_1
+              x2 = arg_Cons_0_
+              scrut = self.Comp#le
+              if scrut is
+                true then
+                  tmp = x2 <= y
+                  new Cons(tmp, rest)
+                else branch.unreachable
+            else branch.unreachable
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Comp_sp_1(self, s) =
-  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
-  arg_Cons_0_ = s.x
-  arg_Cons_1_ = s.xs
-  arg_Cons_0_1 = arg_Cons_1_.x
-  arg_Cons_1_1 = arg_Cons_1_.xs
-  rest = arg_Cons_1_1
-  y = arg_Cons_0_1
-  x2 = arg_Cons_0_
-  scrut = self.le
-  tmp = x2 >= y
-  new Cons(tmp, rest)
+  if self is
+    Comp then
+      let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
+      if s is
+        Cons then
+          arg_Cons_0_ = s.Cons#x
+          arg_Cons_1_ = s.Cons#xs
+          if arg_Cons_1_ is
+            Cons then
+              arg_Cons_0_1 = arg_Cons_1_.Cons#x
+              arg_Cons_1_1 = arg_Cons_1_.Cons#xs
+              rest = arg_Cons_1_1
+              y = arg_Cons_0_1
+              x2 = arg_Cons_0_
+              scrut = self.Comp#le
+              tmp = x2 >= y
+              new Cons(tmp, rest)
+            else branch.unreachable
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Comp_sp_2(self, s) =
-  let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
-  arg_Cons_0_ = s.x
-  arg_Cons_1_ = s.xs
-  arg_Cons_0_1 = arg_Cons_1_.x
-  arg_Cons_1_1 = arg_Cons_1_.xs
-  rest = arg_Cons_1_1
-  y = arg_Cons_0_1
-  x2 = arg_Cons_0_
-  scrut = self.le
-  tmp = x2 >= y
-  new Cons(tmp, rest)
+  if self is
+    Comp then
+      let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
+      if s is
+        Cons then
+          arg_Cons_0_ = s.Cons#x
+          arg_Cons_1_ = s.Cons#xs
+          if arg_Cons_1_ is
+            Cons then
+              arg_Cons_0_1 = arg_Cons_1_.Cons#x
+              arg_Cons_1_1 = arg_Cons_1_.Cons#xs
+              rest = arg_Cons_1_1
+              y = arg_Cons_0_1
+              x2 = arg_Cons_0_
+              scrut = self.Comp#le
+              tmp = x2 >= y
+              new Cons(tmp, rest)
+            else branch.unreachable
+        else branch.unreachable
+    else branch.unreachable
 fun eval_And_sp_0(self, s) =
-  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp1}
-  arg_Cons_0_2 = s.x
-  arg_Cons_1_2 = s.xs
-  arg_Cons_0_3 = arg_Cons_1_2.x
-  arg_Cons_1_3 = arg_Cons_1_2.xs
-  rest1 = arg_Cons_1_3
-  y1 = arg_Cons_0_3
-  x3 = arg_Cons_0_2
-  if x3 is
-    true then
-      if y1 is
-        true then
-          tmp1 = true
-          new Cons(tmp1, rest1)
-        else
-          tmp1 = false
-          new Cons(tmp1, rest1)
-    else
-      tmp1 = false
-      new Cons(tmp1, rest1)
+  if self is
+    And then
+      let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp1}
+      if s is
+        Cons then
+          arg_Cons_0_2 = s.Cons#x
+          arg_Cons_1_2 = s.Cons#xs
+          if arg_Cons_1_2 is
+            Cons then
+              arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+              arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
+              rest1 = arg_Cons_1_3
+              y1 = arg_Cons_0_3
+              x3 = arg_Cons_0_2
+              if x3 is
+                true then
+                  if y1 is
+                    true then
+                      tmp1 = true
+                      new Cons(true, rest1)
+                    else
+                      tmp1 = false
+                      new Cons(false, rest1)
+                else
+                  tmp1 = false
+                  new Cons(false, rest1)
+            else branch.unreachable
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Branch_sp_0(self, s) =
-  let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
-  arg_Cons_0_4 = s.x
-  arg_Cons_1_4 = s.xs
-  rest2 = arg_Cons_1_4
-  c = arg_Cons_0_4
-  if c is
-    true then evalAll_InterpreterPlug_sp_8(self.t, rest2)
-    else evalAll_InterpreterPlug_sp_10(self.f, rest2)
+  if self is
+    Branch then
+      let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
+      if s is
+        Cons then
+          arg_Cons_0_4 = s.Cons#x
+          arg_Cons_1_4 = s.Cons#xs
+          rest2 = arg_Cons_1_4
+          c = arg_Cons_0_4
+          if c is
+            true then evalAll_InterpreterPlug_sp_8(self.Branch#t, rest2)
+            else evalAll_InterpreterPlug_sp_10(self.Branch#f, rest2)
+        else branch.unreachable
+    else branch.unreachable
 fun eval_Branch_sp_1(self, s) =
-  let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
-  arg_Cons_0_4 = s.x
-  arg_Cons_1_4 = s.xs
-  rest2 = arg_Cons_1_4
-  c = arg_Cons_0_4
-  if c is
-    true then evalAll_InterpreterPlug_sp_8(self.t, rest2)
-    else evalAll_InterpreterPlug_sp_10(self.f, rest2)
+  if self is
+    Branch then
+      let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
+      if s is
+        Cons then
+          arg_Cons_0_4 = s.Cons#x
+          arg_Cons_1_4 = s.Cons#xs
+          rest2 = arg_Cons_1_4
+          c = arg_Cons_0_4
+          if c is
+            true then evalAll_InterpreterPlug_sp_8(self.Branch#t, rest2)
+            else evalAll_InterpreterPlug_sp_10(self.Branch#f, rest2)
+        else branch.unreachable
+    else branch.unreachable

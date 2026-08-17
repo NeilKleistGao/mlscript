@@ -1,4 +1,4 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+#config(noFreeze: true, noModuleCheck: true, sanityChecks: None, liftDefns: None, deforest: Some(Deforest(debug: false, mono: false)), deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
 import "../Special.mls" as Special__Legacy
 module Special with
     class Pair(val x, val y) with
@@ -23,10 +23,10 @@ module Special with
       if x5 is
         Pair(1, 2) then
           tmp7 = swap_Pair_sp_1(x5)
-          tmp7.x
+          tmp7.Pair#x
         Pair(3, 4) then
           tmp7 = swap_Pair_sp_3(x5)
-          tmp7.x
+          tmp7.Pair#x
         else branch.unreachable
     fun bazbaz(b) =
       let {x11, y2, tmp22}
@@ -61,10 +61,10 @@ module Special with
       if x6 is
         Pair(1, _) then
           tmp11 = swap_Pair_sp_4(x6)
-          tmp11.x
+          tmp11.Pair#x
         Pair(2, _) then
           tmp11 = swap_Pair_sp_5(x6)
-          tmp11.x
+          tmp11.Pair#x
         else branch.unreachable
     fun fff(b) =
       let {x12, p2, tmp23, tmp24}
@@ -77,8 +77,8 @@ module Special with
       tmp24 = new Foo(x12)
       p2 = new Pair(tmp24, 0)
       if p2.x.x is
-        Foo then f_Foo_sp_0(p2.x.x)
-        Bar then f_Bar_sp_0(p2.x.x)
+        Foo then f_Foo_sp_0(p2.Pair#x.Foo#x)
+        Bar then f_Bar_sp_0(p2.Pair#x.Foo#x)
     fun foo(b) =
       let {x3, tmp, tmp1, tmp2}
       if b is
@@ -105,10 +105,10 @@ module Special with
       if x7 is
         Pair(1, Foo(2)) then
           tmp15 = swap_Pair_sp_6(x7)
-          tmp15.x
+          tmp15.Pair#x
         Pair(2, Foo(3)) then
           tmp15 = swap_Pair_sp_7(x7)
-          tmp15.x
+          tmp15.Pair#x
         else branch.unreachable
     fun hh(b) =
       let {x8, tmp16, tmp17, tmp18, tmp19}
@@ -123,28 +123,73 @@ module Special with
       if x8 is
         Pair(1, _) then
           tmp19 = swap_Pair_sp_6(x8)
-          tmp19.x
+          tmp19.Pair#x
         Pair(2, _) then
           tmp19 = swap_Pair_sp_8(x8)
-          tmp19.x
+          tmp19.Pair#x
         else branch.unreachable
     fun sub(p) = p.x - p.y
 open Special
-fun sub_Special_sp_0(p) = p.x - p.y
+fun sub_Special_sp_0(p) = p.Pair#x - p.Pair#y
 fun sub_Special_sp_1(p) = 1
 fun sub_Special_sp_2(p) = 1
-fun swap_Pair_sp_0(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_1(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_10(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_11(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_12(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_2(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_3(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_4(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_5(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_6(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_7(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_8(self) = new Pair.class(self.y, self.x)
-fun swap_Pair_sp_9(self) = new Pair.class(self.y, self.x)
-fun f_Foo_sp_0(self) = 2
-fun f_Bar_sp_0(self) = 4
+fun swap_Pair_sp_0(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_1(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_10(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_11(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_12(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_2(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_3(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_4(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_5(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_6(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_7(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_8(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun swap_Pair_sp_9(self) =
+  if self is
+    Pair then new Pair.class(self.Pair#y, self.Pair#x)
+    else branch.unreachable
+fun f_Foo_sp_0(self) =
+  if self is
+    Foo then 2
+    else branch.unreachable
+fun f_Bar_sp_0(self) =
+  if self is
+    Bar then 4
+    else branch.unreachable

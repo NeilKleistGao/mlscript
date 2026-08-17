@@ -102,11 +102,14 @@ print(If."cache$If")
 //│ > fun f_If_sp_2(x) = "else "
 //│ > fun test2_If_sp_0(x, y) =
 //│ >   let {tmp6}
-//│ >   if y is
-//│ >     1 then 1
-//│ >     else
-//│ >       tmp6 = 2
-//│ >       4
+//│ >   if x is
+//│ >     1 then
+//│ >       if y is
+//│ >         1 then 1
+//│ >         else
+//│ >           tmp6 = 2
+//│ >           4
+//│ >     else branch.unreachable
 
 class C(val n)
 staged module If2 with
@@ -136,9 +139,12 @@ print(If2."cache$If2")
 //│ > fun f_If2_sp_0(x) = 3
 //│ > fun f_If2_sp_1(x) =
 //│ >   let {y, tmp}
-//│ >   y = x.n
-//│ >   tmp = runtime.Unit
-//│ >   y + 1
+//│ >   if x is
+//│ >     If2__Legacy."C$If2" then
+//│ >       y = x.If2__Legacy."C$If2"#n
+//│ >       tmp = runtime.Unit
+//│ >       y + 1
+//│ >     else branch.unreachable
 //│ > fun f_If2_sp_2(x) = 1
 
 staged module LinearAlgebra with
@@ -164,25 +170,27 @@ print(LinearAlgebra."cache$LinearAlgebra")
 //│ >   tmp = 1
 //│ >   tmp1 = v1.(0) * 3
 //│ >   tmp2 = tmp1 + 0
-//│ >   _dot_LinearAlgebra_sp_1(v1, v2, tmp, tmp2)
+//│ >   _dot_LinearAlgebra_sp_1(v1, v2, 1, tmp2)
 //│ > fun _dot_LinearAlgebra_sp_1(v1, v2, n, acc) =
 //│ >   let {scrut, tmp, tmp1, tmp2}
 //│ >   scrut = false
 //│ >   tmp = 2
 //│ >   tmp1 = 4
 //│ >   tmp2 = 4 + acc
-//│ >   _dot_LinearAlgebra_sp_2(v1, v2, tmp, tmp2)
+//│ >   _dot_LinearAlgebra_sp_2(v1, v2, 2, tmp2)
 //│ > fun _dot_LinearAlgebra_sp_2(v1, v2, n, acc) =
 //│ >   let {scrut, tmp, tmp1, tmp2}
 //│ >   scrut = false
 //│ >   tmp = 3
 //│ >   tmp1 = 2
 //│ >   tmp2 = 2 + acc
-//│ >   _dot_LinearAlgebra_sp_3(v1, v2, tmp, tmp2)
+//│ >   _dot_LinearAlgebra_sp_3(v1, v2, 3, tmp2)
 //│ > fun _dot_LinearAlgebra_sp_3(v1, v2, n, acc) =
 //│ >   let {scrut, tmp, tmp1, tmp2}
 //│ >   scrut = true
-//│ >   acc
+//│ >   if scrut is
+//│ >     true then acc
+//│ >     else branch.unreachable
 //│ > fun dot_LinearAlgebra_sp_0(v1, v2) = _dot_LinearAlgebra_sp_0(v1, v2, 0, 0)
 
 staged class L1(val y) with
@@ -222,7 +230,10 @@ print(Dispatching."cache$Dispatching")
 //│ >     tmp3 = new L3.class(3)
 //│ >     m = pick_Dispatching_sp_2(tmp2, tmp3, b)
 //│ >     twice_Dispatching_sp_3(m, 5)
-//│ > fun pick_Dispatching_sp_0(x, y, b) = x
+//│ > fun pick_Dispatching_sp_0(x, y, b) =
+//│ >   if b is
+//│ >     true then x
+//│ >     else branch.unreachable
 //│ > fun pick_Dispatching_sp_1(x, y, b) = y
 //│ > fun pick_Dispatching_sp_2(x, y, b) =
 //│ >   if b is
@@ -237,9 +248,9 @@ print(Dispatching."cache$Dispatching")
 //│ >   let {tmp}
 //│ >   if f is
 //│ >     L2 then
-//│ >       tmp = call_L2_sp_0(f, x)
+//│ >       tmp = call_L2_sp_0(f, 5)
 //│ >     L3 then
-//│ >       tmp = call_L3_sp_0(f, x)
+//│ >       tmp = call_L3_sp_0(f, 5)
 //│ >   if f is
 //│ >     L2 then call_L2_sp_2(f, tmp)
 //│ >     L3 then call_L3_sp_2(f, tmp)
@@ -249,21 +260,45 @@ print(L2.class."class$cache$L2")
 print(L3.class."class$cache$L3")
 //│ > class L1(val y) with
 //│ >   ()
-//│ > fun call_L1_sp_0(self, x) = 8
-//│ > fun call_L1_sp_1(self, x) = 11
+//│ > fun call_L1_sp_0(self, x) =
+//│ >   if self is
+//│ >     L1 then 8
+//│ >     else branch.unreachable
+//│ > fun call_L1_sp_1(self, x) =
+//│ >   if self is
+//│ >     L1 then 11
+//│ >     else branch.unreachable
 //│ > class L2(val y) with
 //│ >   ()
-//│ > fun call_L2_sp_0(self, x) = 7
-//│ > fun call_L2_sp_1(self, x) = 9
-//│ > fun call_L2_sp_2(self, x) = x + 2
+//│ > fun call_L2_sp_0(self, x) =
+//│ >   if self is
+//│ >     L2 then 7
+//│ >     else branch.unreachable
+//│ > fun call_L2_sp_1(self, x) =
+//│ >   if self is
+//│ >     L2 then 9
+//│ >     else branch.unreachable
+//│ > fun call_L2_sp_2(self, x) =
+//│ >   if self is
+//│ >     L2 then x + 2
+//│ >     else branch.unreachable
 //│ > class L3(val y) with
 //│ >   ()
-//│ > fun call_L3_sp_0(self, x) = 13
-//│ > fun call_L3_sp_1(self, x) = 29
+//│ > fun call_L3_sp_0(self, x) =
+//│ >   if self is
+//│ >     L3 then 13
+//│ >     else branch.unreachable
+//│ > fun call_L3_sp_1(self, x) =
+//│ >   if self is
+//│ >     L3 then 29
+//│ >     else branch.unreachable
 //│ > fun call_L3_sp_2(self, x) =
-//│ >   let {tmp1}
-//│ >   tmp1 = x * 2
-//│ >   tmp1 + 3
+//│ >   if self is
+//│ >     L3 then
+//│ >       let {tmp1}
+//│ >       tmp1 = x * 2
+//│ >       tmp1 + 3
+//│ >     else branch.unreachable
 
 staged class Bar(val x) with
   fun bar() = x
@@ -301,10 +336,16 @@ print(A.class."class$cache$A")
 print(B.class."class$cache$B")
 //│ > class A(val x) with
 //│ >   ()
-//│ > fun f_A_sp_0(self, y) = 2
+//│ > fun f_A_sp_0(self, y) =
+//│ >   if self is
+//│ >     A then 2
+//│ >     else branch.unreachable
 //│ > class B(val x) with
 //│ >   ()
-//│ > fun f_B_sp_0(self, y) = 3
+//│ > fun f_B_sp_0(self, y) =
+//│ >   if self is
+//│ >     B then 3
+//│ >     else branch.unreachable
 
 staged class B(val x, val y) with
   val z = x + y
