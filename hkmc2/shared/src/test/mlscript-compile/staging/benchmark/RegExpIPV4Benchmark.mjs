@@ -2,6 +2,7 @@ import fs from "fs";
 import { run, bench, boxplot, summary } from 'mitata';
 
 import SimpleRegExp from "../../SimpleRegExp.mjs"
+import SimpleRegExpTrick from "../../SimpleRegExpTrick.mjs"
 import StagedRegExp from "../out/StagedRegExp.mjs"
 import SpecialRegExpIPv4 from "../out/SpecialRegExpIPv4.mjs"
 import TrickRegExpIPv4 from "../out/TrickRegExpIPv4.mjs"
@@ -12,6 +13,10 @@ boxplot(() => {
   summary(() => {
     bench('SimpleRegExp.matchAllIPv4', () => {
       SimpleRegExp.matchAllIPv4(text);
+    });
+
+    bench('SimpleRegExpTrick.matchAllIPv4', () => {
+      SimpleRegExpTrick.matchAllIPv4(text);
     });
 
     bench('StagedRegExp.matchAllIPv4', () => {
