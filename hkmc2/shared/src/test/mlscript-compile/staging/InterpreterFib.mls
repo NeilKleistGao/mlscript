@@ -35,7 +35,7 @@ staged module InterpreterFib with
         else Error
 
   staged class Branch(val t, val f) extends Instruction() with
-    fun eval(s, e, d) =
+    fun eval(s, e, @specialize d) =
       if s is
         Cons(c, rest) then
           if c then evalAll(t, rest, e, d) else evalAll(f, rest, e, d)
@@ -57,7 +57,7 @@ staged module InterpreterFib with
       [s, e, new Cons([name, new Closure(name, ps, body, e)], d)]
 
   staged object Call extends Instruction() with
-    fun eval(s, e, d) =
+    fun eval(s, e, @specialize d) =
       if s is
         Cons(v, s') and v is Closure(name, ps, body, e') then
           let t = bind(ps, s', e')
@@ -70,7 +70,7 @@ staged module InterpreterFib with
             else Error
         else Error
 
-  fun get(@specialize env, name) =
+  fun get(@specialize env, @specialize name) =
     if env is
       Cons([n, v], rest) then
         if n == name then new Some(v) else get(rest, name)
@@ -82,7 +82,7 @@ staged module InterpreterFib with
       [Nil, ss] then [ss, e]
       else Error
 
-  fun evalAll(@specialize insts, @specialize s, e, d) =
+  fun evalAll(@specialize insts, @specialize s, e, @specialize d) =
     if insts is
       Cons(inst, rest) then
         let res = inst.eval(s, e, d)
