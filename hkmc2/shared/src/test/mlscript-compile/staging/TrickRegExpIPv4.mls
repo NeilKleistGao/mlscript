@@ -3,9 +3,6 @@
 open annotations { special, specialize }
 
 module SeqHelper with
-  fun push(arr, ele) =
-    arr.push(ele)
-    arr
   fun concat(lhs, rhs) = lhs.concat(rhs)
   fun has(arr, ele) = arr.includes(ele)
   fun len(s) = s.length
@@ -66,7 +63,10 @@ staged module TrickRegExpIPv4 with
   fun len(s) = SeqHelper.len(s)
   fun has(arr, ele) = SeqHelper.has(arr, ele)
   fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
-  fun push(arr, ele) = SeqHelper.push(arr, ele)
+  fun push(ls, e) =
+    if ls is
+      Cons(x, xs) then new Cons(x, push(xs, e))
+      else new Cons(e, Nil)
 
   staged class RegExp() with
     fun derive(c)
@@ -219,11 +219,11 @@ staged module TrickRegExpIPv4 with
     else
       if matchImpl(p, s, i, i) is
         Some(ss) then
-          if SeqHelper.len(ss) > 0 then matchAllImpl(p, s, i + SeqHelper.len(ss), SeqHelper.push(res, ss))
+          if SeqHelper.len(ss) > 0 then matchAllImpl(p, s, i + SeqHelper.len(ss), push(res, ss))
           else matchAllImpl(p, s, i + 1, res)
         else matchAllImpl(p, s, i + 1, res)
   fun matchAll(p, s) =
-    matchAllImpl(p, s, 0, [])
+    matchAllImpl(p, s, 0, Nil)
 
   // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
   fun matchAllIPv4(s) =

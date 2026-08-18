@@ -1,6 +1,6 @@
 #config(noFreeze: true)
 
-module SimpleRegExpTrick with
+module SimpleRegExp with
   class Some(val x)
   object None
 
@@ -10,6 +10,11 @@ module SimpleRegExpTrick with
   fun len(s) = s.length
 
   fun digit() = new Cons("0", new Cons("1", new Cons("2", new Cons("3", new Cons("4", new Cons("5", new Cons("6", new Cons("7", new Cons("8", new Cons("9", Nil))))))))))
+
+  fun concat(xs, ys) =
+    if xs is
+      Cons(x, xs') then new Cons(x, concat(xs', ys))
+      else ys
 
   fun has(ls, e) =
     if ls is
@@ -30,18 +35,6 @@ module SimpleRegExpTrick with
       Cons(x, xs) then new Cons(x, push(xs, e))
       else new Cons(e, Nil)
 
-  fun pushCharUnique(ls, c) =
-    if ls is
-      Cons(d, ds) then
-        if c == d then ls
-        else new Cons(d, pushCharUnique(ds, c))
-      else new Cons(c, Nil)
-
-  fun concatCharsUnique(xs, ys) =
-    if ys is
-      Cons(d, ds) then concatCharsUnique(pushCharUnique(xs, d), ds)
-      else xs
-
   fun pushUnique(ls, e) =
     if ls is
       Cons(x, xs) then
@@ -51,7 +44,7 @@ module SimpleRegExpTrick with
 
   fun concatUnique(xs, ys) =
     if ys is
-      Cons(y, ys') then concatUnique(pushUnique(xs, y), ys')
+      Cons(y, ys) then concatUnique(pushUnique(xs, y), ys)
       else xs
 
   fun lsEq(xs, ys) =
@@ -69,7 +62,6 @@ module SimpleRegExpTrick with
     fun normalize()
     fun eq(other)
     fun startsWith(c)
-    fun first()
     fun flat()
 
   object Nothing extends RegExp() with
@@ -78,7 +70,6 @@ module SimpleRegExpTrick with
     fun normalize() = this
     fun eq(other) = other is Nothing
     fun startsWith(c) = false
-    fun first() = Nil
     fun flat() = Nil
 
   object Empty extends RegExp() with
@@ -87,7 +78,6 @@ module SimpleRegExpTrick with
     fun normalize() = this
     fun eq(other) = other is Empty
     fun startsWith(c) = false
-    fun first() = Nil
     fun flat() = new Cons(this, Nil)
 
   class Exact(val ch) extends RegExp() with
@@ -99,7 +89,6 @@ module SimpleRegExpTrick with
     fun eq(other) =
       if other is Exact(ch') then ch == ch' else false
     fun startsWith(c) = ch == c
-    fun first() = new Cons(ch, Nil)
     fun flat() = new Cons(this, Nil)
 
   class Any() extends RegExp() with
@@ -108,8 +97,21 @@ module SimpleRegExpTrick with
     fun normalize() = this
     fun eq(other) = other is Any
     fun startsWith(c) = true
-    fun first() = Nil
     fun flat() = new Cons(this, Nil)
+
+  class Not(val chars) extends RegExp() with
+    fun derive(c) =
+      if startsWith(c) then Empty else Nothing
+    fun canBeEmpty() = false
+    fun normalize() = this
+    fun eq(other) =
+      if other is Not(chars') then charListEq(chars, chars') else false
+    fun startsWith(c) = not has(chars, c)
+    fun flat() = new Cons(this, Nil)
+
+  fun notWord() = new Not(words().chars)
+  fun notSpace() = new Not(spaces().chars)
+  fun notDigit() = new Not(digits().chars)
 
   fun mkUnion(ls) =
     if ls is
@@ -123,11 +125,11 @@ module SimpleRegExpTrick with
     fun normalize() =
       mkUnion(flat())
     fun eq(other) =
-      if other is
-        Altern then lsEq(flat(), other.flat())
+      let n = other.normalize()
+      if n is
+        Altern then lsEq(flat(), n.flat())
         else false
     fun startsWith(c) = p1.startsWith(c) || p2.startsWith(c)
-    fun first() = concatCharsUnique(p1.first(), p2.first())
     fun flat() =
       let p1' = p1.flat()
       let p2' = p2.flat()
@@ -143,7 +145,6 @@ module SimpleRegExpTrick with
     fun eq(other) =
       if other is In(chars') then charListEq(chars, chars') else false
     fun startsWith(c) = has(chars, c)
-    fun first() = chars
     fun flat() = new Cons(this, Nil)
 
   fun words() = new In(new Cons("a", new Cons("b", new Cons("c", new Cons("d", new Cons("e", new Cons("f", new Cons("g", new Cons("h", new Cons("i", new Cons("j", new Cons("k", new Cons("l", new Cons("m", new Cons("n", new Cons("o", new Cons("p", new Cons("q", new Cons("r", new Cons("s", new Cons("t", new Cons("u", new Cons("v", new Cons("w", new Cons("x", new Cons("y", new Cons("z", new Cons("A", new Cons("B", new Cons("C", new Cons("D", new Cons("E", new Cons("F", new Cons("G", new Cons("H", new Cons("I", new Cons("J", new Cons("K", new Cons("L", new Cons("M", new Cons("N", new Cons("O", new Cons("P", new Cons("Q", new Cons("R", new Cons("S", new Cons("T", new Cons("U", new Cons("V", new Cons("W", new Cons("X", new Cons("Y", new Cons("Z", Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))
@@ -154,7 +155,8 @@ module SimpleRegExpTrick with
     fun derive(c) =
       let p1' = p1.derive(c)
       if p1.canBeEmpty() then
-        (new Altern(new Concat(p1', p2), p2.derive(c))).normalize()
+        let t = new Concat(p1', p2).normalize()
+        new Altern(t, p2.derive(c)).normalize()
       else (new Concat(p1', p2)).normalize()
     fun canBeEmpty() = p1.canBeEmpty() and p2.canBeEmpty()
     fun normalize() =
@@ -166,10 +168,6 @@ module SimpleRegExpTrick with
     fun eq(other) =
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
-    fun first() =
-      let f = p1.first()
-      if p1.canBeEmpty() then concatCharsUnique(f, p2.first())
-      else f
     fun flat() = new Cons(this, Nil)
 
   fun nTimes(r, i) =
@@ -183,20 +181,9 @@ module SimpleRegExpTrick with
     fun eq(other) =
       if other is Star(p') then p.eq(p') else false
     fun startsWith(c) = p.startsWith(c)
-    fun first() = p.first()
     fun flat() = new Cons(this, Nil)
 
   fun plus(r) = new Concat(r, new Star(r))
-
-  fun matchImplRec(p, fs, s, i, j, c) =
-    if fs is
-      Cons(d, ds) then
-        if c == d then matchImpl(p.derive(d), s, i, j + 1)
-        else matchImplRec(p, ds, s, i, j, c)
-      else
-        if p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
-        else if p.canBeEmpty() then new Some(s.substring(i, j))
-        else None
 
   fun matchImpl(p, s, i, j) = if
     len(s) == j and
@@ -204,7 +191,9 @@ module SimpleRegExpTrick with
       else None
     p is Nothing then None
     let c = s.(j)
-    else matchImplRec(p, p.first(), s, i, j, c)
+    p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
+    p.canBeEmpty() then new Some(s.substring(i, j))
+    else None
   fun match(p, s) =
     matchImpl(p, s, 0, 0)
 
@@ -218,6 +207,26 @@ module SimpleRegExpTrick with
         else matchAllImpl(p, s, i + 1, res)
   fun matchAll(p, s) =
     matchAllImpl(p, s, 0, Nil)
+
+  // [\w\.-]+@[\w\.-]+\.[\w\.-]+
+  fun matchAllEmail(s) =
+    let p = plus(new In(concat(words().chars, new Cons("-", new Cons(".", Nil)))))
+    let email = new Concat(p, new Concat(new Exact("@"), new Concat(p, new Concat(new Exact("."), p))))
+    matchAll(email, s)
+
+  // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
+  fun matchAllURI(s) =
+    let n1 = new Not(new Cons("/", new Cons("?", new Cons("#", new Cons(" ", new Cons("\n", new Cons("\t", new Cons("\r", Nil))))))))
+    let n2 = new Not(new Cons("?", new Cons("#", new Cons(" ", new Cons("\n", new Cons("\t", new Cons("\r", Nil)))))))
+    let n3 = new Not(new Cons("#", new Cons(" ", new Cons("\n", new Cons("\t", new Cons("\r", Nil))))))
+    let w = words()
+    let d = digits()
+    let p = concat(words().chars, concat(digit(), new Cons("-", new Cons("_", Nil))))
+    let head = new Concat(plus(w), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
+    let body = new Concat(plus(n1), plus(n2))
+    let params = new Concat(question(new Concat(new Exact("?"), new Star(new In(p)))), question(new Concat(new Exact("#"), new Star(new In(p)))))
+    let uri = new Concat(head, new Concat(body, params))
+    matchAll(uri, s)
 
   // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
   fun matchAllIPv4(s) =
