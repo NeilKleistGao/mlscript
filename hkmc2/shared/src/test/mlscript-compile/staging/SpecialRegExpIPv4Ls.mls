@@ -2,30 +2,35 @@
 
 open annotations { special, specialize }
 
-module SeqHelper with
-  fun push(arr, ele) =
-    arr.push(ele)
-    arr
-  fun concat(lhs, rhs) = lhs.concat(rhs)
-  fun has(arr, ele) = arr.includes(ele)
-  fun len(s) = s.length
-  fun eq(arr1, arr2) =
-    arr1.length == arr2.length and arr1.every((v, i) => v == arr2.(i))
-
-module CharSet with
-  fun alphabet() = [
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
-  ]
-  fun space() = [" ", "\n", "\t", "\r"]
-  fun digit() = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-staged module SpecialRegExpIPv4Arr with
+staged module SpecialRegExpIPv4Ls with
   class Some(val x)
   object None
 
   class Cons(val x, val xs)
   object Nil
+
+  fun len(s) = s.length
+
+  fun digit() = new Cons("0", new Cons("1", new Cons("2", new Cons("3", new Cons("4", new Cons("5", new Cons("6", new Cons("7", new Cons("8", new Cons("9", Nil))))))))))
+
+  fun has(ls, e) =
+    if ls is
+      Cons(x, xs) then x == e || has(xs, e)
+      else false
+
+  fun charListEq(xs, ys) =
+    if xs is
+      Nil then ys is Nil
+      Cons(x, xs') then
+        if ys is
+          Cons(y, ys') then x == y and charListEq(xs', ys')
+          else false
+      else false
+
+  fun push(ls, e) =
+    if ls is
+      Cons(x, xs) then new Cons(x, push(xs, e))
+      else new Cons(e, Nil)
 
   @specialize
   fun pushUnique(ls, e) =
@@ -42,15 +47,13 @@ staged module SpecialRegExpIPv4Arr with
 
   @specialize
   fun lsEq(xs, ys) =
-    if [xs, ys] is
-      [Nil, Nil] then true
-      [Cons(x, xs), Cons(y, ys)] then x.eq(y) and lsEq(xs, ys)
+    if xs is
+      Nil then ys is Nil
+      Cons(x, xs') then
+        if ys is
+          Cons(y, ys') then x.eq(y) and lsEq(xs', ys')
+          else false
       else false
-
-  fun len(s) = SeqHelper.len(s)
-  fun has(arr, ele) = SeqHelper.has(arr, ele)
-  fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
-  fun push(arr, ele) = SeqHelper.push(arr, ele)
 
   staged class RegExp() with
     fun derive(c)
@@ -101,13 +104,13 @@ staged module SpecialRegExpIPv4Arr with
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) =
-      if other is Not(chars') then arrEq(chars, chars') else false
+      if other is Not(chars') then charListEq(chars, chars') else false
     fun startsWith(c) = not has(chars, c)
     fun flat() = (@special new Cons(this, Nil))
 
-  fun notWord() = new Not(CharSet.alphabet())
-  fun notSpace() = new Not(CharSet.space())
-  fun notDigit() = new Not(CharSet.digit())
+  fun notWord() = new Not(words().chars)
+  fun notSpace() = new Not(spaces().chars)
+  fun notDigit() = new Not(digits().chars)
 
   @specialize
   fun mkUnion(ls) =
@@ -139,13 +142,13 @@ staged module SpecialRegExpIPv4Arr with
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) =
-      if other is In(chars') then arrEq(chars, chars') else false
+      if other is In(chars') then charListEq(chars, chars') else false
     fun startsWith(c) = has(chars, c)
     fun flat() = (@special new Cons(this, Nil))
 
-  fun words() = new In(CharSet.alphabet())
-  fun spaces() = new In(CharSet.space())
-  fun digits() = new In(CharSet.digit())
+  fun words() = new In(new Cons("a", new Cons("b", new Cons("c", new Cons("d", new Cons("e", new Cons("f", new Cons("g", new Cons("h", new Cons("i", new Cons("j", new Cons("k", new Cons("l", new Cons("m", new Cons("n", new Cons("o", new Cons("p", new Cons("q", new Cons("r", new Cons("s", new Cons("t", new Cons("u", new Cons("v", new Cons("w", new Cons("x", new Cons("y", new Cons("z", new Cons("A", new Cons("B", new Cons("C", new Cons("D", new Cons("E", new Cons("F", new Cons("G", new Cons("H", new Cons("I", new Cons("J", new Cons("K", new Cons("L", new Cons("M", new Cons("N", new Cons("O", new Cons("P", new Cons("Q", new Cons("R", new Cons("S", new Cons("T", new Cons("U", new Cons("V", new Cons("W", new Cons("X", new Cons("Y", new Cons("Z", Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))
+  fun spaces() = new In(new Cons(" ", new Cons("\n", new Cons("\t", new Cons("\r", Nil)))))
+  fun digits() = new In(digit())
 
   staged class Concat(val p1, val p2) extends RegExp() with
     fun derive(c) =
@@ -181,7 +184,7 @@ staged module SpecialRegExpIPv4Arr with
   fun plus(r) = (@special new Concat(r, (@special new Star(r))))
 
   fun matchImpl(@specialize p, s, i, j) = if
-    SeqHelper.len(s) == j and
+    len(s) == j and
       p.canBeEmpty() then new Some(s.substring(i, j))
       else None
     p is Nothing then None
@@ -193,20 +196,20 @@ staged module SpecialRegExpIPv4Arr with
     matchImpl(p, s, 0, 0)
 
   fun matchAllImpl(@specialize p, s, i, res) =
-    if SeqHelper.len(s) == i then res
+    if len(s) == i then res
     else
       if matchImpl(p, s, i, i) is
         Some(ss) then
-          if SeqHelper.len(ss) > 0 then matchAllImpl(p, s, i + SeqHelper.len(ss), SeqHelper.push(res, ss))
+          if len(ss) > 0 then matchAllImpl(p, s, i + len(ss), push(res, ss))
           else matchAllImpl(p, s, i + 1, res)
         else matchAllImpl(p, s, i + 1, res)
   fun matchAll(p, s) =
-    matchAllImpl(p, s, 0, [])
+    matchAllImpl(p, s, 0, Nil)
 
   // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
   fun matchAllIPv4(s) =
-    let fo = new In(["0", "1", "2", "3", "4"])
-    let fi = new In(["0", "1", "2", "3", "4", "5"])
+    let fo = new In(new Cons("0", new Cons("1", new Cons("2", new Cons("3", new Cons("4", Nil))))))
+    let fi = new In(new Cons("0", new Cons("1", new Cons("2", new Cons("3", new Cons("4", new Cons("5", Nil)))))))
     let segment = new Altern(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Altern(
       new Concat(new Exact("2"), new Concat(fo, digits())),
       new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
