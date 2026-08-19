@@ -38,11 +38,11 @@ match(Any(), "xyz")
 //│ = Some("x")
 
 
-match(Not(new Cons("x", new Cons("y", new Cons("z", Nil)))), "xyz")
+match(Not(["x", "y", "z"]), "xyz")
 //│ = None
 
 
-match(Not(new Cons("x", new Cons("y", new Cons("z", Nil)))), "w")
+match(Not(["x", "y", "z"]), "w")
 //│ = Some("w")
 
 match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "z")
@@ -107,17 +107,14 @@ match(nTimes(Exact("x"), 3), "xx")
 
 
 :silent
-let p = Concat(In(new Cons("T", new Cons("t", Nil))), Concat(Star(words()), notWord()))
+let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord()))
 
 matchAll(p, "To be or not to be, that is the question.")
-//│ = Cons(
-//│   "To ",
-//│   Cons("t ", Cons("to ", Cons("that ", Cons("the ", Cons("tion.", Nil)))))
-//│ )
+//│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
 
 
 matchAllIPv4("8.8.8.8")
-//│ = Cons("8.8.8.8", Nil)
+//│ = ["8.8.8.8"]
 
 matchAllIPv4("192.168.1.1")
-//│ = Cons("192.168.1.1", Nil)
+//│ = ["192.168.1.1"]
