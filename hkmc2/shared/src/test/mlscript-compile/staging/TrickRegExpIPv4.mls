@@ -74,7 +74,7 @@ staged module TrickRegExpIPv4 with
     fun normalize()
     fun eq(other)
     fun startsWith(c)
-    fun first()
+    fun first(c)
     fun flat()
 
   staged object Nothing extends RegExp() with
@@ -83,7 +83,7 @@ staged module TrickRegExpIPv4 with
     fun normalize() = this
     fun eq(other) = other is Nothing
     fun startsWith(c) = false
-    fun first() = Nil
+    fun first(c) = Nil
     fun flat() = Nil
 
   staged object Empty extends RegExp() with
@@ -92,7 +92,7 @@ staged module TrickRegExpIPv4 with
     fun normalize() = this
     fun eq(other) = other is Empty
     fun startsWith(c) = false
-    fun first() = Nil
+    fun first(c) = Nil
     fun flat() = new Cons(this, Nil)
 
   staged class Exact(val ch) extends RegExp() with
@@ -104,7 +104,7 @@ staged module TrickRegExpIPv4 with
     fun eq(other) =
       if other is Exact(ch') then ch == ch' else false
     fun startsWith(c) = ch == c
-    fun first() = new Cons(ch, Nil)
+    fun first(c) = new Cons(ch, Nil)
     fun flat() = new Cons(this, Nil)
 
   staged class Any() extends RegExp() with
@@ -113,7 +113,7 @@ staged module TrickRegExpIPv4 with
     fun normalize() = this
     fun eq(other) = other is Any
     fun startsWith(c) = true
-    fun first() = Nil
+    fun first(c) = new Cons(c, Nil)
     fun flat() = new Cons(this, Nil)
 
   @specialize
@@ -133,7 +133,7 @@ staged module TrickRegExpIPv4 with
         Altern then lsEq(flat(), other.flat())
         else false
     fun startsWith(c) = p1.startsWith(c) || p2.startsWith(c)
-    fun first() = concatCharsUnique(p1.first(), p2.first())
+    fun first(c) = concatCharsUnique(p1.first(c), p2.first(c))
     fun flat() =
       let p1' = p1.flat()
       let p2' = p2.flat()
@@ -149,7 +149,7 @@ staged module TrickRegExpIPv4 with
     fun eq(other) =
       if other is In(chars') then arrEq(chars, chars') else false
     fun startsWith(c) = has(chars, c)
-    fun first() = arrayToList(chars, 0)
+    fun first(c) = arrayToList(chars, 0)
     fun flat() = new Cons(this, Nil)
 
   fun words() = new In(CharSet.alphabet())
@@ -172,9 +172,9 @@ staged module TrickRegExpIPv4 with
     fun eq(other) =
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
-    fun first() =
-      let f = p1.first()
-      if p1.canBeEmpty() then concatCharsUnique(f, p2.first())
+    fun first(c) =
+      let f = p1.first(c)
+      if p1.canBeEmpty() then concatCharsUnique(f, p2.first(c))
       else f
     fun flat() = new Cons(this, Nil)
 
@@ -189,7 +189,7 @@ staged module TrickRegExpIPv4 with
     fun eq(other) =
       if other is Star(p') then p.eq(p') else false
     fun startsWith(c) = p.startsWith(c)
-    fun first() = p.first()
+    fun first(c) = p.first(c)
     fun flat() = new Cons(this, Nil)
 
   fun plus(r) = new Concat(r, new Star(r))
@@ -199,10 +199,8 @@ staged module TrickRegExpIPv4 with
       Cons(d, ds) then
         if c == d then matchImpl(p.derive(d), s, i, j + 1)
         else matchImplRec(p, ds, s, i, j, c)
-      else
-        if p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
-        else if p.canBeEmpty() then new Some(s.substring(i, j))
-        else None
+      else if p.canBeEmpty() then new Some(s.substring(i, j))
+      else None
 
   fun matchImpl(@specialize p, s, i, j) = if
     SeqHelper.len(s) == j and
@@ -210,7 +208,7 @@ staged module TrickRegExpIPv4 with
       else None
     p is Nothing then None
     let c = s.(j)
-    else matchImplRec(p, p.first(), s, i, j, c)
+    else matchImplRec(p, p.first(c), s, i, j, c)
   fun match(p, s) =
     matchImpl(p, s, 0, 0)
 
