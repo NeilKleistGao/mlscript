@@ -2,21 +2,6 @@
 
 open annotations { special, specialize }
 
-module SeqHelper with
-  fun concat(lhs, rhs) = lhs.concat(rhs)
-  fun has(arr, ele) = arr.includes(ele)
-  fun len(s) = s.length
-  fun eq(arr1, arr2) =
-    arr1.length == arr2.length and arr1.every((v, i) => v == arr2.(i))
-
-module CharSet with
-  fun alphabet() = [
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
-  ]
-  fun space() = [" ", "\n", "\t", "\r"]
-  fun digit() = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
 staged module TrickRegExpIPv4 with
   class Some(val x)
   object None
@@ -24,9 +9,23 @@ staged module TrickRegExpIPv4 with
   class Cons(val x, val xs)
   object Nil
 
-  fun arrayToList(arr, i) =
-    if SeqHelper.len(arr) == i then Nil
-    else new Cons(arr.(i), arrayToList(arr, i + 1))
+  fun len(s) = s.length
+
+  fun digit() = new Cons("0", new Cons("1", new Cons("2", new Cons("3", new Cons("4", new Cons("5", new Cons("6", new Cons("7", new Cons("8", new Cons("9", Nil))))))))))
+
+  fun has(ls, e) =
+    if ls is
+      Cons(x, xs) then x == e || has(xs, e)
+      else false
+
+  fun charListEq(xs, ys) =
+    if xs is
+      Nil then ys is Nil
+      Cons(x, xs') then
+        if ys is
+          Cons(y, ys') then x == y and charListEq(xs', ys')
+          else false
+      else false
 
   fun pushCharUnique(ls, c) =
     if ls is
@@ -55,18 +54,17 @@ staged module TrickRegExpIPv4 with
 
   @specialize
   fun lsEq(xs, ys) =
-    if [xs, ys] is
-      [Nil, Nil] then true
-      [Cons(x, xs), Cons(y, ys)] then x.eq(y) and lsEq(xs, ys)
+    if xs is
+      Nil then ys is Nil
+      Cons(x, xs') then
+        if ys is
+          Cons(y, ys') then x.eq(y) and lsEq(xs', ys')
+          else false
       else false
 
-  fun len(s) = SeqHelper.len(s)
-  fun has(arr, ele) = SeqHelper.has(arr, ele)
-  fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
-  fun push(ls, e) =
-    if ls is
-      Cons(x, xs) then new Cons(x, push(xs, e))
-      else new Cons(e, Nil)
+  fun push(arr, e) =
+    arr.push(e)
+    arr
 
   staged class RegExp() with
     fun derive(c)
@@ -74,7 +72,7 @@ staged module TrickRegExpIPv4 with
     fun normalize()
     fun eq(other)
     fun startsWith(c)
-    fun first(c)
+    fun first()
     fun flat()
 
   staged object Nothing extends RegExp() with
@@ -83,7 +81,7 @@ staged module TrickRegExpIPv4 with
     fun normalize() = this
     fun eq(other) = other is Nothing
     fun startsWith(c) = false
-    fun first(c) = Nil
+    fun first() = Nil
     fun flat() = Nil
 
   staged object Empty extends RegExp() with
@@ -92,7 +90,7 @@ staged module TrickRegExpIPv4 with
     fun normalize() = this
     fun eq(other) = other is Empty
     fun startsWith(c) = false
-    fun first(c) = Nil
+    fun first() = Nil
     fun flat() = new Cons(this, Nil)
 
   staged class Exact(val ch) extends RegExp() with
@@ -104,16 +102,7 @@ staged module TrickRegExpIPv4 with
     fun eq(other) =
       if other is Exact(ch') then ch == ch' else false
     fun startsWith(c) = ch == c
-    fun first(c) = new Cons(ch, Nil)
-    fun flat() = new Cons(this, Nil)
-
-  staged class Any() extends RegExp() with
-    fun derive(c) = Empty
-    fun canBeEmpty() = false
-    fun normalize() = this
-    fun eq(other) = other is Any
-    fun startsWith(c) = true
-    fun first(c) = new Cons(c, Nil)
+    fun first() = new Cons(ch, Nil)
     fun flat() = new Cons(this, Nil)
 
   @specialize
@@ -133,7 +122,7 @@ staged module TrickRegExpIPv4 with
         Altern then lsEq(flat(), other.flat())
         else false
     fun startsWith(c) = p1.startsWith(c) || p2.startsWith(c)
-    fun first(c) = concatCharsUnique(p1.first(c), p2.first(c))
+    fun first() = concatCharsUnique(p1.first(), p2.first())
     fun flat() =
       let p1' = p1.flat()
       let p2' = p2.flat()
@@ -147,14 +136,12 @@ staged module TrickRegExpIPv4 with
     fun canBeEmpty() = false
     fun normalize() = this
     fun eq(other) =
-      if other is In(chars') then arrEq(chars, chars') else false
+      if other is In(chars') then charListEq(chars, chars') else false
     fun startsWith(c) = has(chars, c)
-    fun first(c) = arrayToList(chars, 0)
+    fun first() = chars
     fun flat() = new Cons(this, Nil)
 
-  fun words() = new In(CharSet.alphabet())
-  fun spaces() = new In(CharSet.space())
-  fun digits() = new In(CharSet.digit())
+  fun digits() = new In(digit())
 
   staged class Concat(val p1, val p2) extends RegExp() with
     fun derive(c) =
@@ -172,9 +159,9 @@ staged module TrickRegExpIPv4 with
     fun eq(other) =
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
-    fun first(c) =
-      let f = p1.first(c)
-      if p1.canBeEmpty() then concatCharsUnique(f, p2.first(c))
+    fun first() =
+      let f = p1.first()
+      if p1.canBeEmpty() then concatCharsUnique(f, p2.first())
       else f
     fun flat() = new Cons(this, Nil)
 
@@ -189,7 +176,7 @@ staged module TrickRegExpIPv4 with
     fun eq(other) =
       if other is Star(p') then p.eq(p') else false
     fun startsWith(c) = p.startsWith(c)
-    fun first(c) = p.first(c)
+    fun first() = p.first()
     fun flat() = new Cons(this, Nil)
 
   fun plus(r) = new Concat(r, new Star(r))
@@ -203,30 +190,30 @@ staged module TrickRegExpIPv4 with
       else None
 
   fun matchImpl(@specialize p, s, i, j) = if
-    SeqHelper.len(s) == j and
+    len(s) == j and
       p.canBeEmpty() then new Some(s.substring(i, j))
       else None
     p is Nothing then None
     let c = s.(j)
-    else matchImplRec(p, p.first(c), s, i, j, c)
+    else matchImplRec(p, p.first(), s, i, j, c)
   fun match(p, s) =
     matchImpl(p, s, 0, 0)
 
   fun matchAllImpl(@specialize p, s, i, res) =
-    if SeqHelper.len(s) == i then res
+    if len(s) == i then res
     else
       if matchImpl(p, s, i, i) is
         Some(ss) then
-          if SeqHelper.len(ss) > 0 then matchAllImpl(p, s, i + SeqHelper.len(ss), push(res, ss))
+          if len(ss) > 0 then matchAllImpl(p, s, i + len(ss), push(res, ss))
           else matchAllImpl(p, s, i + 1, res)
         else matchAllImpl(p, s, i + 1, res)
   fun matchAll(p, s) =
-    matchAllImpl(p, s, 0, Nil)
+    matchAllImpl(p, s, 0, [])
 
   // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
   fun matchAllIPv4(s) =
-    let fo = new In(["0", "1", "2", "3", "4"])
-    let fi = new In(["0", "1", "2", "3", "4", "5"])
+    let fo = new In(new Cons("0", new Cons("1", new Cons("2", new Cons("3", new Cons("4", Nil))))))
+    let fi = new In(new Cons("0", new Cons("1", new Cons("2", new Cons("3", new Cons("4", new Cons("5", Nil)))))))
     let segment = new Altern(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Altern(
       new Concat(new Exact("2"), new Concat(fo, digits())),
       new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
