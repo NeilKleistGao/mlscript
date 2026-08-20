@@ -1,0 +1,228 @@
+#config(noFreeze: true)
+
+module JsonSchemaParser with
+  class Some(val x)
+  object None
+
+  class Cons(val x, val xs)
+  object Nil
+
+  class KVPair(val key, val value)
+  class JsonObject(val kvs)
+  class JsonArray(val arr)
+
+  class ParseResult(val next, val res)
+
+  fun isDigit(c) = 48 <= c and c <= 57
+
+  fun rev(ls, res) =
+    if ls is
+      Cons(x, xs) then rev(xs, new Cons(x, res))
+      else res
+
+  fun parseNumberImpl(s, i, n) =
+    if i < s.length and
+      let c = s.charCodeAt(i)
+      isDigit(c) then
+        let n' = n * 10 + c - 48
+        parseNumberImpl(s, i + 1, n')
+    else new ParseResult(i, new Some(n))
+
+  fun parseNumber(s, i) =
+    if i < s.length and
+      let c = s.charCodeAt(i)
+      isDigit(c) then parseNumberImpl(s, i + 1, c - 48)
+    else new ParseResult(i, None)
+
+  fun parseStringImpl(s, i, j) =
+    if i + j < s.length then
+      let c = s.(i + j)
+      if c
+        == "'" then new ParseResult(i + j + 1, new Some(s.substring(i, i + j)))
+        else parseStringImpl(s, i, j + 1)
+    else new ParseResult(i, None)
+
+  fun parseString(s, i) =
+    if i < s.length and
+      let c = s.(i)
+      c == "'" then parseStringImpl(s, i + 1, 0)
+    else new ParseResult(i, 1)
+
+  fun parseArrayImpl(s, i, split, arr) =
+    if i < s.length and
+      let c = s.(i)
+      c == "]" then new ParseResult(i + 1, new Some(new JsonArray(rev(arr, Nil))))
+      c == "," then parseArrayImpl(s, i + 1, true, arr)
+      c == " " then parseArrayImpl(s, i + 1, split, arr)
+      else
+        if split then
+          if parseNumber(s, i) is
+            ParseResult(j, Some(d)) then parseArrayImpl(s, j, false, new Cons(d, arr))
+          else if parseString(s, i) is
+            ParseResult(j, Some(s')) then parseArrayImpl(s, j, false, new Cons(s', arr))
+          else if parseArray(s, i) is
+            ParseResult(j, Some(a)) then parseArrayImpl(s, j, false, new Cons(a, arr))
+          else if parseObject(s, i) is
+            ParseResult(j, Some(o)) then parseArrayImpl(s, j, false, new Cons(o, arr))
+          else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseArray(s, i) =
+    if i < s.length and
+      let c = s.(i)
+      c == "[" then parseArrayImpl(s, i + 1, true, Nil)
+    else new ParseResult(i, None)
+
+  fun parseWithSchemaRec(s, i, schemas) =
+    if schemas is
+      Cons(sh, ss) then
+        let res = sh.parse(s, i) 
+        if res.res is Some then res
+        else parseWithSchemaRec(s, i, ss)
+      else new ParseResult(i, None)
+
+  fun parseArrayWithSchemaImpl(s, i, schemas, split, arr) =
+    if i < s.length and
+      let c = s.(i)
+      c == "]" then new ParseResult(i + 1, new Some(new JsonArray(rev(arr, Nil))))
+      c == "," then parseArrayWithSchemaImpl(s, i + 1, schemas, true, arr)
+      c == " " then parseArrayWithSchemaImpl(s, i + 1, schemas, split, arr)
+      else
+        if split then
+          if parseWithSchemaRec(s, i, schemas) is
+            ParseResult(j, Some(d)) then parseArrayWithSchemaImpl(s, j, schemas, false, new Cons(d, arr))
+          else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseArrayWithSchema(s, i, schemas) =
+    if i < s.length and
+      let c = s.(i)
+      c == "[" then parseArrayWithSchemaImpl(s, i + 1, schemas, true, Nil)
+    else new ParseResult(i, None)
+
+  fun parseKV(s, i, k, split) =
+    if i < s.length then
+      if s.(i) is
+        " " then parseKV(s, i + 1, k, split)
+        ":" and k is Some then parseKV(s, i + 1, k, true)
+        else
+          if k is
+            Some(key) then
+              if split and
+                parseNumber(s, i) is ParseResult(j, Some(d)) then new ParseResult(j, new Some(new KVPair(key, d)))
+                parseString(s, i) is ParseResult(j, Some(s')) then new ParseResult(j, new Some(new KVPair(key, s')))
+                parseArray(s, i) is ParseResult(j, Some(a)) then new ParseResult(j, new Some(new KVPair(key, a)))
+                parseObject(s, i) is ParseResult(j, Some(o)) then new ParseResult(j, new Some(new KVPair(key, o)))
+              else new ParseResult(i, None)
+            else if parseString(s, i) is
+              ParseResult(j, k) and k is Some then parseKV(s, j, k, false)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseWithSchemaPairRec(s, i, pairs, k) =
+    if pairs is
+      Cons(p, ps) then
+        if p.key == k and
+          let res = p.schema.parse(s, i)
+          res.res is Some then res
+        else parseWithSchemaPairRec(s, i, ps, k)
+      else new ParseResult(i, None)
+
+  fun parseKVWithSchema(s, i, schemas, k, split) =
+    if i < s.length then
+      if s.(i) is
+        " " then parseKVWithSchema(s, i + 1, schemas, k, split)
+        ":" and k is Some then parseKVWithSchema(s, i + 1, schemas, k, true)
+        else
+          if k is
+            Some(key) then
+              if split and
+                parseWithSchemaPairRec(s, i, schemas, key) is ParseResult(j, Some(d)) then new ParseResult(j, new Some(new KVPair(key, d)))
+              else new ParseResult(i, None)
+            else if parseString(s, i) is
+              ParseResult(j, k) and k is Some then parseKVWithSchema(s, j, schemas, k, false)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseObjectImpl(s, i, split, pairs) =
+    if i < s.length and
+      let c = s.(i)
+      c == "}" then new ParseResult(i + 1, new Some(new JsonObject(rev(pairs, Nil))))
+      c == "," then parseObjectImpl(s, i + 1, true, pairs)
+      c == " " then parseObjectImpl(s, i + 1, split, pairs)
+      else
+        if split and
+          parseKV(s, i, None, false) is ParseResult(j, Some(p)) then parseObjectImpl(s, j, false, new Cons(p, pairs))
+        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseObject(s, i) =
+    if i < s.length and
+      let c = s.(i)
+      c == "{" then parseObjectImpl(s, i + 1, true, Nil)
+    else new ParseResult(i, None)
+
+  fun parseObjectWithSchemasImpl(s, i, schemas, split, pairs) =
+    if i < s.length and
+      let c = s.(i)
+      c == "}" then new ParseResult(i + 1, new Some(new JsonObject(rev(pairs, Nil))))
+      c == "," then parseObjectWithSchemasImpl(s, i + 1, schemas, true, pairs)
+      c == " " then parseObjectWithSchemasImpl(s, i + 1, schemas, split, pairs)
+      else
+        if split and
+          parseKVWithSchema(s, i, schemas, None, false) is ParseResult(j, Some(p)) then parseObjectWithSchemasImpl(s, j, schemas, false, new Cons(p, pairs))
+        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseObjectWithSchema(s, i, schemas) =
+    if i < s.length and
+      let c = s.(i)
+      c == "{" then parseObjectWithSchemasImpl(s, i + 1, schemas, true, Nil)
+    else new ParseResult(i, None)
+
+  fun parse(s) = parseObject(s, 0).res
+
+  class JsonSchema() with
+    fun parse(s, i)
+
+  class StringSchema(val minLen, val maxLen) extends JsonSchema() with
+    fun parse(s, i) =
+      let r = parseString(s, i)
+      if r is ParseResult(j, Some(s')) and
+        let t1 = if minLen is
+          Some(lb) then s'.length >= lb
+          else true
+        let t2 = if maxLen is
+          Some(ub) then s'.length <= ub
+          else true
+        t1 and t2 then r
+      else new ParseResult(i, None)
+
+  class NumberSchema(val min, val max) extends JsonSchema() with
+    fun parse(s, i) =
+      let r = parseNumber(s, i)
+      if r is ParseResult(j, Some(n)) and
+        let t1 = if min is
+          Some(lb) then n >= lb
+          else true
+        let t2 = if max is
+          Some(ub) then n <= ub
+          else true
+        t1 and t2 then r
+      else new ParseResult(i, None)
+
+  class ArraySchema(val subSchemas) extends JsonSchema() with
+    fun parse(s, i) =
+      if subSchemas is
+        Nil then parseArray(s, i)
+        else parseArrayWithSchema(s, i, subSchemas)
+
+  class SchemaPair(val key, val schema)
+
+  class ObjectSchema(val schemaPairs) extends JsonSchema() with
+    fun parse(s, i) =
+      if schemaPairs is
+        Nil then parseObject(s, i)
+        else parseObjectWithSchema(s, i, schemaPairs)
