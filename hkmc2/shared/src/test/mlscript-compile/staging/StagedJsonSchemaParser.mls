@@ -1,6 +1,6 @@
 #config(noFreeze: true)
 
-module JsonSchemaParser with
+staged module StagedJsonSchemaParser with
   class Some(val x)
   object None
 
@@ -218,10 +218,10 @@ module JsonSchemaParser with
 
   fun parse(s) = parseObject(s, 0).res
 
-  class JsonSchema() with
+  staged class JsonSchema() with
     fun parse(s, i)
 
-  class StringSchema(val minLen, val maxLen) extends JsonSchema() with
+  staged class StringSchema(val minLen, val maxLen) extends JsonSchema() with
     fun parse(s, i) =
       let r = parseString(s, i)
       if r is ParseResult(j, Some(s')) then
@@ -237,7 +237,7 @@ module JsonSchemaParser with
         else new ParseResult(i, None)
       else new ParseResult(i, None)
 
-  class NumberSchema(val min, val max) extends JsonSchema() with
+  staged class NumberSchema(val min, val max) extends JsonSchema() with
     fun parse(s, i) =
       let r = parseNumber(s, i)
       if r is ParseResult(j, Some(n)) then
@@ -253,7 +253,7 @@ module JsonSchemaParser with
         else new ParseResult(i, None)
       else new ParseResult(i, None)
 
-  class ArraySchema(val subSchemas) extends JsonSchema() with
+  staged class ArraySchema(val subSchemas) extends JsonSchema() with
     fun parse(s, i) =
       if subSchemas is
         Nil then parseArray(s, i)
@@ -261,7 +261,7 @@ module JsonSchemaParser with
 
   class SchemaPair(val key, val schema)
 
-  class ObjectSchema(val schemaPairs) extends JsonSchema() with
+  staged class ObjectSchema(val schemaPairs) extends JsonSchema() with
     fun parse(s, i) =
       if schemaPairs is
         Nil then parseObject(s, i)

@@ -1,0 +1,1062 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, disableDataFlowAnalysis: true, deadParamElim: Some(DeadParamElim(debug: false, mono: true)))
+import "../StagedJsonSchemaParser.mls" as StagedJsonSchemaParser__Legacy
+module StagedJsonSchemaParser with
+    class Some(val x)
+    object None
+    class Cons(val x, val xs)
+    object Nil
+    class KVPair(val key, val value)
+    class JsonObject(val kvs)
+    class JsonArray(val arr)
+    class ParseResult(val next, val res)
+    class JsonSchema() with
+      ()
+    class StringSchema(val minLen, val maxLen) extends JsonSchema() with
+      ()
+      fun parse(s, i) =
+        let {r, j, s__, t1, scrut, lb, t2, scrut1, ub, arg_ParseResult_0_, arg_ParseResult_1_, arg_Some_0_, arg_Some_0_1, tmp, arg_Some_0_2, tmp1}
+        r = parseString(s, i)
+        if r is
+          ParseResult then
+            arg_ParseResult_0_ = r.next
+            arg_ParseResult_1_ = r.res
+            if arg_ParseResult_1_ is
+              Some then
+                arg_Some_0_ = arg_ParseResult_1_.x
+                s__ = arg_Some_0_
+                j = arg_ParseResult_0_
+                scrut = minLen
+                if scrut is
+                  Some then
+                    arg_Some_0_1 = scrut.x
+                    lb = arg_Some_0_1
+                    tmp = s__.length >= lb
+                  else
+                    tmp = true
+                t1 = tmp
+                scrut1 = maxLen
+                if scrut1 is
+                  Some then
+                    arg_Some_0_2 = scrut1.x
+                    ub = arg_Some_0_2
+                    tmp1 = s__.length <= ub
+                  else
+                    tmp1 = true
+                t2 = tmp1
+                if t1 is
+                  true then
+                    if t2 is
+                      true then r
+                      else new ParseResult(i, None)
+                  else new ParseResult(i, None)
+              else new ParseResult(i, None)
+          else new ParseResult(i, None)
+    class NumberSchema(val min, val max) extends JsonSchema() with
+      ()
+      fun parse(s, i) =
+        let {r1, n, j1, t11, scrut2, lb1, t21, scrut3, ub1, arg_ParseResult_0_1, arg_ParseResult_1_1, arg_Some_0_3, arg_Some_0_4, tmp2, arg_Some_0_5, tmp3}
+        r1 = parseNumber(s, i)
+        if r1 is
+          ParseResult then
+            arg_ParseResult_0_1 = r1.next
+            arg_ParseResult_1_1 = r1.res
+            if arg_ParseResult_1_1 is
+              Some then
+                arg_Some_0_3 = arg_ParseResult_1_1.x
+                n = arg_Some_0_3
+                j1 = arg_ParseResult_0_1
+                scrut2 = min
+                if scrut2 is
+                  Some then
+                    arg_Some_0_4 = scrut2.x
+                    lb1 = arg_Some_0_4
+                    tmp2 = n >= lb1
+                  else
+                    tmp2 = true
+                t11 = tmp2
+                scrut3 = max
+                if scrut3 is
+                  Some then
+                    arg_Some_0_5 = scrut3.x
+                    ub1 = arg_Some_0_5
+                    tmp3 = n <= ub1
+                  else
+                    tmp3 = true
+                t21 = tmp3
+                if t11 is
+                  true then
+                    if t21 is
+                      true then r1
+                      else new ParseResult(i, None)
+                  else new ParseResult(i, None)
+              else new ParseResult(i, None)
+          else new ParseResult(i, None)
+    class ArraySchema(val subSchemas) extends JsonSchema() with
+      ()
+      fun parse(s, i) =
+        let {scrut4}
+        scrut4 = subSchemas
+        if scrut4 is
+          Nil then parseArray(s, i)
+          else parseArrayWithSchema(s, i, subSchemas)
+    class SchemaPair(val key, val schema)
+    class ObjectSchema(val schemaPairs) extends JsonSchema() with
+      ()
+      fun parse(s, i) =
+        let {scrut5}
+        scrut5 = schemaPairs
+        if scrut5 is
+          Nil then parseObject(s, i)
+          else parseObjectWithSchema(s, i, schemaPairs)
+    fun isDigit(c) =
+      let {scrut6, scrut7}
+      scrut6 = 48 <= c
+      if scrut6 is
+        true then
+          scrut7 = c <= 57
+          if scrut7 is
+            true then true
+            else false
+        else false
+    fun parse(s) =
+      let {tmp70}
+      tmp70 = parseObject_StagedJsonSchemaParser_sp_0(s, 0)
+      tmp70.res
+    fun parseArray(s, i) =
+      let {scrut21, c6, scrut22, tmp31}
+      scrut21 = i < s.length
+      if scrut21 is
+        true then
+          c6 = s.(i)
+          scrut22 = c6 == "["
+          if scrut22 is
+            true then
+              tmp31 = i + 1
+              parseArrayImpl_StagedJsonSchemaParser_sp_0(s, tmp31, true, Nil)
+            else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseArrayImpl(s, i, split, arr) =
+      let {scrut16, c5, numberResult, scrut17, d, stringResult, scrut18, s__1, arrayResult, scrut19, a, objectResult, scrut20, o, tmp21, tmp22, tmp23, tmp24, tmp25, tmp26, arg_Some_0_6, tmp27, arg_Some_0_7, tmp28, arg_Some_0_8, tmp29, arg_Some_0_9, tmp30}
+      scrut16 = i < s.length
+      if scrut16 is
+        true then
+          c5 = s.(i)
+          if c5 is
+            "]" then
+              tmp21 = i + 1
+              tmp22 = rev_StagedJsonSchemaParser_sp_1(arr, Nil)
+              tmp23 = new JsonArray(tmp22)
+              tmp24 = new Some(tmp23)
+              new ParseResult(tmp21, tmp24)
+            "," then
+              tmp25 = i + 1
+              parseArrayImpl(s, tmp25, true, arr)
+            " " then
+              tmp26 = i + 1
+              parseArrayImpl(s, tmp26, split, arr)
+            else
+              if split is
+                true then
+                  numberResult = parseNumber(s, i)
+                  scrut17 = numberResult.res
+                  if scrut17 is
+                    Some then
+                      arg_Some_0_6 = scrut17.x
+                      d = arg_Some_0_6
+                      tmp27 = new Cons(d, arr)
+                      parseArrayImpl(s, numberResult.next, false, tmp27)
+                    else
+                      stringResult = parseString(s, i)
+                      scrut18 = stringResult.res
+                      if scrut18 is
+                        Some then
+                          arg_Some_0_7 = scrut18.x
+                          s__1 = arg_Some_0_7
+                          tmp28 = new Cons(s__1, arr)
+                          parseArrayImpl(s, stringResult.next, false, tmp28)
+                        else
+                          arrayResult = parseArray(s, i)
+                          scrut19 = arrayResult.res
+                          if scrut19 is
+                            Some then
+                              arg_Some_0_8 = scrut19.x
+                              a = arg_Some_0_8
+                              tmp29 = new Cons(a, arr)
+                              parseArrayImpl(s, arrayResult.next, false, tmp29)
+                            else
+                              objectResult = parseObject(s, i)
+                              scrut20 = objectResult.res
+                              if scrut20 is
+                                Some then
+                                  arg_Some_0_9 = scrut20.x
+                                  o = arg_Some_0_9
+                                  tmp30 = new Cons(o, arr)
+                                  parseArrayImpl(s, objectResult.next, false, tmp30)
+                                else new ParseResult(i, None)
+                else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseArrayWithSchema(s, i, schemas) =
+      let {scrut26, c8, scrut27, tmp39}
+      scrut26 = i < s.length
+      if scrut26 is
+        true then
+          c8 = s.(i)
+          scrut27 = c8 == "["
+          if scrut27 is
+            true then
+              tmp39 = i + 1
+              parseArrayWithSchemaImpl_StagedJsonSchemaParser_sp_0(s, tmp39, schemas, true, Nil)
+            else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseArrayWithSchemaImpl(s, i, schemas, split, arr) =
+      let {scrut24, c7, scrut25, j3, d1, tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, arg_ParseResult_0_2, arg_ParseResult_1_2, arg_Some_0_10, tmp38}
+      scrut24 = i < s.length
+      if scrut24 is
+        true then
+          c7 = s.(i)
+          if c7 is
+            "]" then
+              tmp32 = i + 1
+              tmp33 = rev_StagedJsonSchemaParser_sp_1(arr, Nil)
+              tmp34 = new JsonArray(tmp33)
+              tmp35 = new Some(tmp34)
+              new ParseResult(tmp32, tmp35)
+            "," then
+              tmp36 = i + 1
+              parseArrayWithSchemaImpl(s, tmp36, schemas, true, arr)
+            " " then
+              tmp37 = i + 1
+              parseArrayWithSchemaImpl(s, tmp37, schemas, split, arr)
+            else
+              if split is
+                true then
+                  scrut25 = parseWithSchemaRec(s, i, schemas)
+                  if scrut25 is
+                    ParseResult then
+                      arg_ParseResult_0_2 = scrut25.next
+                      arg_ParseResult_1_2 = scrut25.res
+                      if arg_ParseResult_1_2 is
+                        Some then
+                          arg_Some_0_10 = arg_ParseResult_1_2.x
+                          d1 = arg_Some_0_10
+                          j3 = arg_ParseResult_0_2
+                          tmp38 = new Cons(d1, arr)
+                          parseArrayWithSchemaImpl(s, j3, schemas, false, tmp38)
+                        else new ParseResult(i, None)
+                    else new ParseResult(i, None)
+                else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseKV(s, i, k, split) =
+      let {scrut28, scrut29, key2, numberResult1, scrut30, d2, stringResult1, scrut31, s__2, arrayResult1, scrut32, a1, objectResult1, scrut33, o1, scrut34, j4, k1, tmp40, tmp41, arg_Some_0_11, arg_Some_0_12, tmp42, tmp43, arg_Some_0_13, tmp44, tmp45, arg_Some_0_14, tmp46, tmp47, arg_Some_0_15, tmp48, tmp49, arg_ParseResult_0_3, arg_ParseResult_1_3}
+      scrut28 = i < s.length
+      if scrut28 is
+        true then
+          scrut29 = s.(i)
+          if scrut29 is
+            " " then
+              tmp40 = i + 1
+              parseKV(s, tmp40, k, split)
+            ":" then
+              if k is
+                Some then
+                  tmp41 = i + 1
+                  parseKV(s, tmp41, k, true)
+                else new ParseResult(i, None)
+            else
+              if k is
+                Some then
+                  arg_Some_0_11 = k.x
+                  key2 = arg_Some_0_11
+                  if split is
+                    true then
+                      numberResult1 = parseNumber(s, i)
+                      scrut30 = numberResult1.res
+                      if scrut30 is
+                        Some then
+                          arg_Some_0_12 = scrut30.x
+                          d2 = arg_Some_0_12
+                          tmp42 = new KVPair(key2, d2)
+                          tmp43 = new Some(tmp42)
+                          new ParseResult(numberResult1.next, tmp43)
+                        else
+                          stringResult1 = parseString(s, i)
+                          scrut31 = stringResult1.res
+                          if scrut31 is
+                            Some then
+                              arg_Some_0_13 = scrut31.x
+                              s__2 = arg_Some_0_13
+                              tmp44 = new KVPair(key2, s__2)
+                              tmp45 = new Some(tmp44)
+                              new ParseResult(stringResult1.next, tmp45)
+                            else
+                              arrayResult1 = parseArray(s, i)
+                              scrut32 = arrayResult1.res
+                              if scrut32 is
+                                Some then
+                                  arg_Some_0_14 = scrut32.x
+                                  a1 = arg_Some_0_14
+                                  tmp46 = new KVPair(key2, a1)
+                                  tmp47 = new Some(tmp46)
+                                  new ParseResult(arrayResult1.next, tmp47)
+                                else
+                                  objectResult1 = parseObject(s, i)
+                                  scrut33 = objectResult1.res
+                                  if scrut33 is
+                                    Some then
+                                      arg_Some_0_15 = scrut33.x
+                                      o1 = arg_Some_0_15
+                                      tmp48 = new KVPair(key2, o1)
+                                      tmp49 = new Some(tmp48)
+                                      new ParseResult(objectResult1.next, tmp49)
+                                    else new ParseResult(i, None)
+                    else new ParseResult(i, None)
+                else
+                  scrut34 = parseString(s, i)
+                  if scrut34 is
+                    ParseResult then
+                      arg_ParseResult_0_3 = scrut34.next
+                      arg_ParseResult_1_3 = scrut34.res
+                      k1 = arg_ParseResult_1_3
+                      j4 = arg_ParseResult_0_3
+                      if k1 is
+                        Some then parseKV(s, j4, k1, false)
+                        else new ParseResult(i, None)
+                    else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseKVWithSchema(s, i, schemas, k, split) =
+      let {scrut37, scrut38, key3, scrut39, j5, d3, scrut40, j6, k4, tmp50, tmp51, arg_Some_0_16, arg_ParseResult_0_4, arg_ParseResult_1_4, arg_Some_0_17, tmp52, tmp53, arg_ParseResult_0_5, arg_ParseResult_1_5}
+      scrut37 = i < s.length
+      if scrut37 is
+        true then
+          scrut38 = s.(i)
+          if scrut38 is
+            " " then
+              tmp50 = i + 1
+              parseKVWithSchema(s, tmp50, schemas, k, split)
+            ":" then
+              if k is
+                Some then
+                  tmp51 = i + 1
+                  parseKVWithSchema(s, tmp51, schemas, k, true)
+                else new ParseResult(i, None)
+            else
+              if k is
+                Some then
+                  arg_Some_0_16 = k.x
+                  key3 = arg_Some_0_16
+                  if split is
+                    true then
+                      scrut39 = parseWithSchemaPairRec(s, i, schemas, key3)
+                      if scrut39 is
+                        ParseResult then
+                          arg_ParseResult_0_4 = scrut39.next
+                          arg_ParseResult_1_4 = scrut39.res
+                          if arg_ParseResult_1_4 is
+                            Some then
+                              arg_Some_0_17 = arg_ParseResult_1_4.x
+                              d3 = arg_Some_0_17
+                              j5 = arg_ParseResult_0_4
+                              tmp52 = new KVPair(key3, d3)
+                              tmp53 = new Some(tmp52)
+                              new ParseResult(j5, tmp53)
+                            else new ParseResult(i, None)
+                        else new ParseResult(i, None)
+                    else new ParseResult(i, None)
+                else
+                  scrut40 = parseString(s, i)
+                  if scrut40 is
+                    ParseResult then
+                      arg_ParseResult_0_5 = scrut40.next
+                      arg_ParseResult_1_5 = scrut40.res
+                      k4 = arg_ParseResult_1_5
+                      j6 = arg_ParseResult_0_5
+                      if k4 is
+                        Some then parseKVWithSchema(s, j6, schemas, k4, false)
+                        else new ParseResult(i, None)
+                    else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseNumber(s, i) =
+      let {scrut10, c2, scrut11, tmp10, tmp11}
+      scrut10 = i < s.length
+      if scrut10 is
+        true then
+          c2 = s.charCodeAt(i)
+          scrut11 = isDigit(c2)
+          if scrut11 is
+            true then
+              tmp10 = i + 1
+              tmp11 = c2 - 48
+              parseNumberImpl(s, tmp10, tmp11)
+            else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseNumberImpl(s, i, n) =
+      let {scrut8, c1, scrut9, n__, tmp5, tmp6, tmp7, tmp8, tmp9}
+      scrut8 = i < s.length
+      if scrut8 is
+        true then
+          c1 = s.charCodeAt(i)
+          scrut9 = isDigit(c1)
+          if scrut9 is
+            true then
+              tmp5 = n * 10
+              tmp6 = tmp5 + c1
+              n__ = tmp6 - 48
+              tmp7 = i + 1
+              parseNumberImpl(s, tmp7, n__)
+            else
+              tmp8 = new Some(n)
+              new ParseResult(i, tmp8)
+        else
+          tmp9 = new Some(n)
+          new ParseResult(i, tmp9)
+    fun parseObject(s, i) =
+      let {scrut43, c10, scrut44, tmp61}
+      scrut43 = i < s.length
+      if scrut43 is
+        true then
+          c10 = s.(i)
+          scrut44 = c10 == "{"
+          if scrut44 is
+            true then
+              tmp61 = i + 1
+              parseObjectImpl_StagedJsonSchemaParser_sp_0(s, tmp61, true, Nil)
+            else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseObjectImpl(s, i, split, pairs) =
+      let {scrut41, c9, scrut42, j7, p1, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, arg_ParseResult_0_6, arg_ParseResult_1_6, arg_Some_0_18, tmp60}
+      scrut41 = i < s.length
+      if scrut41 is
+        true then
+          c9 = s.(i)
+          if c9 is
+            "}" then
+              tmp54 = i + 1
+              tmp55 = rev_StagedJsonSchemaParser_sp_1(pairs, Nil)
+              tmp56 = new JsonObject(tmp55)
+              tmp57 = new Some(tmp56)
+              new ParseResult(tmp54, tmp57)
+            "," then
+              tmp58 = i + 1
+              parseObjectImpl(s, tmp58, true, pairs)
+            " " then
+              tmp59 = i + 1
+              parseObjectImpl(s, tmp59, split, pairs)
+            else
+              if split is
+                true then
+                  scrut42 = parseKV_StagedJsonSchemaParser_sp_0(s, i, None, false)
+                  if scrut42 is
+                    ParseResult then
+                      arg_ParseResult_0_6 = scrut42.next
+                      arg_ParseResult_1_6 = scrut42.res
+                      if arg_ParseResult_1_6 is
+                        Some then
+                          arg_Some_0_18 = arg_ParseResult_1_6.x
+                          p1 = arg_Some_0_18
+                          j7 = arg_ParseResult_0_6
+                          tmp60 = new Cons(p1, pairs)
+                          parseObjectImpl(s, j7, false, tmp60)
+                        else new ParseResult(i, None)
+                    else new ParseResult(i, None)
+                else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseObjectWithSchema(s, i, schemas) =
+      let {scrut47, c12, scrut48, tmp69}
+      scrut47 = i < s.length
+      if scrut47 is
+        true then
+          c12 = s.(i)
+          scrut48 = c12 == "{"
+          if scrut48 is
+            true then
+              tmp69 = i + 1
+              parseObjectWithSchemasImpl_StagedJsonSchemaParser_sp_0(s, tmp69, schemas, true, Nil)
+            else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseObjectWithSchemasImpl(s, i, schemas, split, pairs) =
+      let {scrut45, c11, scrut46, j8, p2, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, arg_ParseResult_0_7, arg_ParseResult_1_7, arg_Some_0_19, tmp68}
+      scrut45 = i < s.length
+      if scrut45 is
+        true then
+          c11 = s.(i)
+          if c11 is
+            "}" then
+              tmp62 = i + 1
+              tmp63 = rev_StagedJsonSchemaParser_sp_1(pairs, Nil)
+              tmp64 = new JsonObject(tmp63)
+              tmp65 = new Some(tmp64)
+              new ParseResult(tmp62, tmp65)
+            "," then
+              tmp66 = i + 1
+              parseObjectWithSchemasImpl(s, tmp66, schemas, true, pairs)
+            " " then
+              tmp67 = i + 1
+              parseObjectWithSchemasImpl(s, tmp67, schemas, split, pairs)
+            else
+              if split is
+                true then
+                  scrut46 = parseKVWithSchema_StagedJsonSchemaParser_sp_0(s, i, schemas, None, false)
+                  if scrut46 is
+                    ParseResult then
+                      arg_ParseResult_0_7 = scrut46.next
+                      arg_ParseResult_1_7 = scrut46.res
+                      if arg_ParseResult_1_7 is
+                        Some then
+                          arg_Some_0_19 = arg_ParseResult_1_7.x
+                          p2 = arg_Some_0_19
+                          j8 = arg_ParseResult_0_7
+                          tmp68 = new Cons(p2, pairs)
+                          parseObjectWithSchemasImpl(s, j8, schemas, false, tmp68)
+                        else new ParseResult(i, None)
+                    else new ParseResult(i, None)
+                else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseString(s, i) =
+      let {scrut14, c4, scrut15, tmp20}
+      scrut14 = i < s.length
+      if scrut14 is
+        true then
+          c4 = s.(i)
+          scrut15 = c4 == "'"
+          if scrut15 is
+            true then
+              tmp20 = i + 1
+              parseStringImpl_StagedJsonSchemaParser_sp_0(s, tmp20, 0)
+            else new ParseResult(i, None)
+        else new ParseResult(i, None)
+    fun parseStringImpl(s, i, j) =
+      let {scrut12, c3, scrut13, tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+      tmp12 = i + j
+      scrut12 = tmp12 < s.length
+      if scrut12 is
+        true then
+          tmp13 = i + j
+          c3 = s.(tmp13)
+          scrut13 = c3 == "'"
+          if scrut13 is
+            true then
+              tmp14 = i + j
+              tmp15 = tmp14 + 1
+              tmp16 = i + j
+              tmp17 = s.substring(i, tmp16)
+              tmp18 = new Some(tmp17)
+              new ParseResult(tmp15, tmp18)
+            else
+              tmp19 = j + 1
+              parseStringImpl(s, i, tmp19)
+        else new ParseResult(i, None)
+    fun parseStudentData(s, detailed) =
+      let {schema1, scrut49, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91, tmp92, tmp93, tmp94, tmp95, tmp96, tmp97, tmp98, tmp99, tmp100, tmp101, tmp102, tmp103, tmp104, tmp105}
+      tmp71 = new StringSchema(None, None)
+      tmp72 = new SchemaPair("name", tmp71)
+      tmp73 = new Some(8)
+      tmp74 = new Some(8)
+      tmp75 = new StringSchema(tmp73, tmp74)
+      tmp76 = new SchemaPair("id", tmp75)
+      scrut49 = not detailed
+      if scrut49 is
+        true then
+          tmp77 = new Some(1)
+          tmp78 = new Some(6)
+          tmp79 = new NumberSchema(tmp77, tmp78)
+          tmp80 = new SchemaPair("year", tmp79)
+          tmp81 = new Some(3)
+          tmp82 = new Some(3)
+          tmp83 = new StringSchema(tmp81, tmp82)
+          tmp84 = new SchemaPair("dept", tmp83)
+          tmp85 = new Cons(tmp84, Nil)
+          tmp86 = new Cons(tmp80, tmp85)
+        else
+          tmp87 = new Some(0)
+          tmp88 = new Some(4)
+          tmp89 = new NumberSchema(tmp87, tmp88)
+          tmp90 = new SchemaPair("gpa", tmp89)
+          tmp91 = new StringSchema(None, None)
+          tmp92 = new SchemaPair("cs", tmp91)
+          tmp93 = new Some(0)
+          tmp94 = new Some(100)
+          tmp95 = new NumberSchema(tmp93, tmp94)
+          tmp96 = new SchemaPair("sc", tmp95)
+          tmp97 = new Cons(tmp96, Nil)
+          tmp98 = new Cons(tmp92, tmp97)
+          tmp99 = new ObjectSchema(tmp98)
+          tmp100 = new Cons(tmp99, Nil)
+          tmp101 = new ArraySchema(tmp100)
+          tmp102 = new SchemaPair("list", tmp101)
+          tmp103 = new Cons(tmp102, Nil)
+          tmp86 = new Cons(tmp90, tmp103)
+      tmp104 = new Cons(tmp76, tmp86)
+      tmp105 = new Cons(tmp72, tmp104)
+      schema1 = new ObjectSchema(tmp105)
+      parse_ObjectSchema_sp_0(schema1, s, 0)
+    fun parseWithSchemaPairRec(s, i, pairs, k) =
+      let {ps, p, scrut35, res3, scrut36, arg_Cons_0_2, arg_Cons_1_2}
+      if pairs is
+        Cons then
+          arg_Cons_0_2 = pairs.x
+          arg_Cons_1_2 = pairs.xs
+          ps = arg_Cons_1_2
+          p = arg_Cons_0_2
+          scrut35 = p.key == k
+          if scrut35 is
+            true then
+              res3 = p.schema.parse(s, i)
+              scrut36 = res3.res
+              if scrut36 is
+                Some then res3
+                else parseWithSchemaPairRec(s, i, ps, k)
+            else parseWithSchemaPairRec(s, i, ps, k)
+        else new ParseResult(i, None)
+    fun parseWithSchemaRec(s, i, schemas) =
+      let {ss, sh, res2, scrut23, arg_Cons_0_1, arg_Cons_1_1}
+      if schemas is
+        Cons then
+          arg_Cons_0_1 = schemas.x
+          arg_Cons_1_1 = schemas.xs
+          ss = arg_Cons_1_1
+          sh = arg_Cons_0_1
+          res2 = sh.parse(s, i)
+          scrut23 = res2.res
+          if scrut23 is
+            Some then res2
+            else parseWithSchemaRec(s, i, ss)
+        else new ParseResult(i, None)
+    fun rev(ls, res) =
+      let {x2, xs1, arg_Cons_0_, arg_Cons_1_, tmp4}
+      if ls is
+        Cons then
+          arg_Cons_0_ = ls.x
+          arg_Cons_1_ = ls.xs
+          xs1 = arg_Cons_1_
+          x2 = arg_Cons_0_
+          tmp4 = new Cons(x2, res)
+          rev(xs1, tmp4)
+        else res
+open StagedJsonSchemaParser
+fun parseArrayImpl_StagedJsonSchemaParser_sp_0(s, i, split, arr) =
+  let {scrut16, c5, numberResult, scrut17, d, stringResult, scrut18, s__1, arrayResult, scrut19, a, objectResult, scrut20, o, tmp21, tmp22, tmp23, tmp24, tmp25, tmp26, arg_Some_0_6, tmp27, arg_Some_0_7, tmp28, arg_Some_0_8, tmp29, arg_Some_0_9, tmp30}
+  scrut16 = i < s.length
+  if scrut16 is
+    true then
+      c5 = s.(i)
+      if c5 is
+        "]" then
+          tmp21 = i + 1
+          tmp22 = rev_StagedJsonSchemaParser_sp_0(arr, Nil)
+          tmp23 = new JsonArray(tmp22)
+          tmp24 = new Some(tmp23)
+          new ParseResult(tmp21, tmp24)
+        "," then
+          tmp25 = i + 1
+          parseArrayImpl(s, tmp25, true, arr)
+        " " then
+          tmp26 = i + 1
+          parseArrayImpl(s, tmp26, split, arr)
+        else
+          numberResult = parseNumber(s, i)
+          scrut17 = numberResult.res
+          if scrut17 is
+            Some then
+              arg_Some_0_6 = scrut17.x
+              d = arg_Some_0_6
+              tmp27 = new Cons(d, arr)
+              parseArrayImpl(s, numberResult.next, false, tmp27)
+            else
+              stringResult = parseString(s, i)
+              scrut18 = stringResult.res
+              if scrut18 is
+                Some then
+                  arg_Some_0_7 = scrut18.x
+                  s__1 = arg_Some_0_7
+                  tmp28 = new Cons(s__1, arr)
+                  parseArrayImpl(s, stringResult.next, false, tmp28)
+                else
+                  arrayResult = parseArray(s, i)
+                  scrut19 = arrayResult.res
+                  if scrut19 is
+                    Some then
+                      arg_Some_0_8 = scrut19.x
+                      a = arg_Some_0_8
+                      tmp29 = new Cons(a, arr)
+                      parseArrayImpl(s, arrayResult.next, false, tmp29)
+                    else
+                      objectResult = parseObject(s, i)
+                      scrut20 = objectResult.res
+                      if scrut20 is
+                        Some then
+                          arg_Some_0_9 = scrut20.x
+                          o = arg_Some_0_9
+                          tmp30 = new Cons(o, arr)
+                          parseArrayImpl(s, objectResult.next, false, tmp30)
+                        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseArrayWithSchemaImpl_StagedJsonSchemaParser_sp_0(s, i, schemas, split, arr) =
+  let {scrut24, c7, scrut25, j3, d1, tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, arg_ParseResult_0_2, arg_ParseResult_1_2, arg_Some_0_10, tmp38}
+  scrut24 = i < s.length
+  if scrut24 is
+    true then
+      c7 = s.(i)
+      if c7 is
+        "]" then
+          tmp32 = i + 1
+          tmp33 = rev_StagedJsonSchemaParser_sp_0(arr, Nil)
+          tmp34 = new JsonArray(tmp33)
+          tmp35 = new Some(tmp34)
+          new ParseResult(tmp32, tmp35)
+        "," then
+          tmp36 = i + 1
+          parseArrayWithSchemaImpl(s, tmp36, schemas, true, arr)
+        " " then
+          tmp37 = i + 1
+          parseArrayWithSchemaImpl(s, tmp37, schemas, split, arr)
+        else
+          scrut25 = parseWithSchemaRec(s, i, schemas)
+          if scrut25 is
+            ParseResult then
+              arg_ParseResult_0_2 = scrut25.next
+              arg_ParseResult_1_2 = scrut25.res
+              if arg_ParseResult_1_2 is
+                Some then
+                  arg_Some_0_10 = arg_ParseResult_1_2.x
+                  d1 = arg_Some_0_10
+                  j3 = arg_ParseResult_0_2
+                  tmp38 = new Cons(d1, arr)
+                  parseArrayWithSchemaImpl(s, j3, schemas, false, tmp38)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseKVWithSchema_StagedJsonSchemaParser_sp_0(s, i, schemas, k, split) =
+  let {scrut37, scrut38, key3, scrut39, j5, d3, scrut40, j6, k4, tmp50, tmp51, arg_Some_0_16, arg_ParseResult_0_4, arg_ParseResult_1_4, arg_Some_0_17, tmp52, tmp53, arg_ParseResult_0_5, arg_ParseResult_1_5}
+  scrut37 = i < s.length
+  if scrut37 is
+    true then
+      scrut38 = s.(i)
+      if scrut38 is
+        " " then
+          tmp50 = i + 1
+          parseKVWithSchema(s, tmp50, schemas, k, split)
+        ":" then new ParseResult(i, None)
+        else
+          scrut40 = parseString(s, i)
+          if scrut40 is
+            ParseResult then
+              arg_ParseResult_0_5 = scrut40.next
+              arg_ParseResult_1_5 = scrut40.res
+              k4 = arg_ParseResult_1_5
+              j6 = arg_ParseResult_0_5
+              if k4 is
+                Some then parseKVWithSchema(s, j6, schemas, k4, false)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseKVWithSchema_StagedJsonSchemaParser_sp_1(s, i, schemas, k, split) =
+  let {scrut37, scrut38, key3, scrut39, j5, d3, scrut40, j6, k4, tmp50, tmp51, arg_Some_0_16, arg_ParseResult_0_4, arg_ParseResult_1_4, arg_Some_0_17, tmp52, tmp53, arg_ParseResult_0_5, arg_ParseResult_1_5}
+  scrut37 = 1 < s.length
+  if scrut37 is
+    true then
+      scrut38 = s.(1)
+      if scrut38 is
+        " " then
+          tmp50 = 2
+          parseKVWithSchema(s, tmp50, schemas, k, split)
+        ":" then new ParseResult(i, None)
+        else
+          scrut40 = parseString_StagedJsonSchemaParser_sp_0(s, i)
+          if scrut40 is
+            ParseResult then
+              arg_ParseResult_0_5 = scrut40.next
+              arg_ParseResult_1_5 = scrut40.res
+              k4 = arg_ParseResult_1_5
+              j6 = arg_ParseResult_0_5
+              if k4 is
+                Some then parseKVWithSchema(s, j6, schemas, k4, false)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseKV_StagedJsonSchemaParser_sp_0(s, i, k, split) =
+  let {scrut28, scrut29, key2, numberResult1, scrut30, d2, stringResult1, scrut31, s__2, arrayResult1, scrut32, a1, objectResult1, scrut33, o1, scrut34, j4, k1, tmp40, tmp41, arg_Some_0_11, arg_Some_0_12, tmp42, tmp43, arg_Some_0_13, tmp44, tmp45, arg_Some_0_14, tmp46, tmp47, arg_Some_0_15, tmp48, tmp49, arg_ParseResult_0_3, arg_ParseResult_1_3}
+  scrut28 = i < s.length
+  if scrut28 is
+    true then
+      scrut29 = s.(i)
+      if scrut29 is
+        " " then
+          tmp40 = i + 1
+          parseKV(s, tmp40, k, split)
+        ":" then new ParseResult(i, None)
+        else
+          scrut34 = parseString(s, i)
+          if scrut34 is
+            ParseResult then
+              arg_ParseResult_0_3 = scrut34.next
+              arg_ParseResult_1_3 = scrut34.res
+              k1 = arg_ParseResult_1_3
+              j4 = arg_ParseResult_0_3
+              if k1 is
+                Some then parseKV(s, j4, k1, false)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseKV_StagedJsonSchemaParser_sp_1(s, i, k, split) =
+  let {scrut28, scrut29, key2, numberResult1, scrut30, d2, stringResult1, scrut31, s__2, arrayResult1, scrut32, a1, objectResult1, scrut33, o1, scrut34, j4, k1, tmp40, tmp41, arg_Some_0_11, arg_Some_0_12, tmp42, tmp43, arg_Some_0_13, tmp44, tmp45, arg_Some_0_14, tmp46, tmp47, arg_Some_0_15, tmp48, tmp49, arg_ParseResult_0_3, arg_ParseResult_1_3}
+  scrut28 = 1 < s.length
+  if scrut28 is
+    true then
+      scrut29 = s.(1)
+      if scrut29 is
+        " " then
+          tmp40 = 2
+          parseKV(s, tmp40, k, split)
+        ":" then new ParseResult(i, None)
+        else
+          scrut34 = parseString_StagedJsonSchemaParser_sp_0(s, i)
+          if scrut34 is
+            ParseResult then
+              arg_ParseResult_0_3 = scrut34.next
+              arg_ParseResult_1_3 = scrut34.res
+              k1 = arg_ParseResult_1_3
+              j4 = arg_ParseResult_0_3
+              if k1 is
+                Some then parseKV(s, j4, k1, false)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseObjectImpl_StagedJsonSchemaParser_sp_0(s, i, split, pairs) =
+  let {scrut41, c9, scrut42, j7, p1, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, arg_ParseResult_0_6, arg_ParseResult_1_6, arg_Some_0_18, tmp60}
+  scrut41 = i < s.length
+  if scrut41 is
+    true then
+      c9 = s.(i)
+      if c9 is
+        "}" then
+          tmp54 = i + 1
+          tmp55 = rev_StagedJsonSchemaParser_sp_0(pairs, Nil)
+          tmp56 = new JsonObject(tmp55)
+          tmp57 = new Some(tmp56)
+          new ParseResult(tmp54, tmp57)
+        "," then
+          tmp58 = i + 1
+          parseObjectImpl(s, tmp58, true, pairs)
+        " " then
+          tmp59 = i + 1
+          parseObjectImpl(s, tmp59, split, pairs)
+        else
+          scrut42 = parseKV_StagedJsonSchemaParser_sp_0(s, i, None, false)
+          if scrut42 is
+            ParseResult then
+              arg_ParseResult_0_6 = scrut42.next
+              arg_ParseResult_1_6 = scrut42.res
+              if arg_ParseResult_1_6 is
+                Some then
+                  arg_Some_0_18 = arg_ParseResult_1_6.x
+                  p1 = arg_Some_0_18
+                  j7 = arg_ParseResult_0_6
+                  tmp60 = new Cons(p1, pairs)
+                  parseObjectImpl(s, j7, false, tmp60)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseObjectImpl_StagedJsonSchemaParser_sp_1(s, i, split, pairs) =
+  let {scrut41, c9, scrut42, j7, p1, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, arg_ParseResult_0_6, arg_ParseResult_1_6, arg_Some_0_18, tmp60}
+  scrut41 = 1 < s.length
+  if scrut41 is
+    true then
+      c9 = s.(1)
+      if c9 is
+        "}" then
+          tmp54 = 2
+          tmp55 = rev_StagedJsonSchemaParser_sp_0(pairs, Nil)
+          tmp56 = new JsonObject(tmp55)
+          tmp57 = new Some(tmp56)
+          new ParseResult(tmp54, tmp57)
+        "," then
+          tmp58 = 2
+          parseObjectImpl(s, tmp58, true, pairs)
+        " " then
+          tmp59 = 2
+          parseObjectImpl(s, tmp59, split, pairs)
+        else
+          scrut42 = parseKV_StagedJsonSchemaParser_sp_1(s, i, None, false)
+          if scrut42 is
+            ParseResult then
+              arg_ParseResult_0_6 = scrut42.next
+              arg_ParseResult_1_6 = scrut42.res
+              if arg_ParseResult_1_6 is
+                Some then
+                  arg_Some_0_18 = arg_ParseResult_1_6.x
+                  p1 = arg_Some_0_18
+                  j7 = arg_ParseResult_0_6
+                  tmp60 = new Cons(p1, pairs)
+                  parseObjectImpl(s, j7, false, tmp60)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseObjectWithSchema_StagedJsonSchemaParser_sp_0(s, i, schemas) =
+  let {scrut47, c12, scrut48, tmp69}
+  scrut47 = 0 < s.length
+  if scrut47 is
+    true then
+      c12 = s.(0)
+      scrut48 = c12 == "{"
+      if scrut48 is
+        true then
+          tmp69 = 1
+          parseObjectWithSchemasImpl_StagedJsonSchemaParser_sp_1(s, tmp69, schemas, true, Nil)
+        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseObjectWithSchemasImpl_StagedJsonSchemaParser_sp_0(s, i, schemas, split, pairs) =
+  let {scrut45, c11, scrut46, j8, p2, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, arg_ParseResult_0_7, arg_ParseResult_1_7, arg_Some_0_19, tmp68}
+  scrut45 = i < s.length
+  if scrut45 is
+    true then
+      c11 = s.(i)
+      if c11 is
+        "}" then
+          tmp62 = i + 1
+          tmp63 = rev_StagedJsonSchemaParser_sp_0(pairs, Nil)
+          tmp64 = new JsonObject(tmp63)
+          tmp65 = new Some(tmp64)
+          new ParseResult(tmp62, tmp65)
+        "," then
+          tmp66 = i + 1
+          parseObjectWithSchemasImpl(s, tmp66, schemas, true, pairs)
+        " " then
+          tmp67 = i + 1
+          parseObjectWithSchemasImpl(s, tmp67, schemas, split, pairs)
+        else
+          scrut46 = parseKVWithSchema_StagedJsonSchemaParser_sp_0(s, i, schemas, None, false)
+          if scrut46 is
+            ParseResult then
+              arg_ParseResult_0_7 = scrut46.next
+              arg_ParseResult_1_7 = scrut46.res
+              if arg_ParseResult_1_7 is
+                Some then
+                  arg_Some_0_19 = arg_ParseResult_1_7.x
+                  p2 = arg_Some_0_19
+                  j8 = arg_ParseResult_0_7
+                  tmp68 = new Cons(p2, pairs)
+                  parseObjectWithSchemasImpl(s, j8, schemas, false, tmp68)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseObjectWithSchemasImpl_StagedJsonSchemaParser_sp_1(s, i, schemas, split, pairs) =
+  let {scrut45, c11, scrut46, j8, p2, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, arg_ParseResult_0_7, arg_ParseResult_1_7, arg_Some_0_19, tmp68}
+  scrut45 = 1 < s.length
+  if scrut45 is
+    true then
+      c11 = s.(1)
+      if c11 is
+        "}" then
+          tmp62 = 2
+          tmp63 = rev_StagedJsonSchemaParser_sp_0(pairs, Nil)
+          tmp64 = new JsonObject(tmp63)
+          tmp65 = new Some(tmp64)
+          new ParseResult(tmp62, tmp65)
+        "," then
+          tmp66 = 2
+          parseObjectWithSchemasImpl(s, tmp66, schemas, true, pairs)
+        " " then
+          tmp67 = 2
+          parseObjectWithSchemasImpl(s, tmp67, schemas, split, pairs)
+        else
+          scrut46 = parseKVWithSchema_StagedJsonSchemaParser_sp_1(s, i, schemas, None, false)
+          if scrut46 is
+            ParseResult then
+              arg_ParseResult_0_7 = scrut46.next
+              arg_ParseResult_1_7 = scrut46.res
+              if arg_ParseResult_1_7 is
+                Some then
+                  arg_Some_0_19 = arg_ParseResult_1_7.x
+                  p2 = arg_Some_0_19
+                  j8 = arg_ParseResult_0_7
+                  tmp68 = new Cons(p2, pairs)
+                  parseObjectWithSchemasImpl(s, j8, schemas, false, tmp68)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseObject_StagedJsonSchemaParser_sp_0(s, i) =
+  let {scrut43, c10, scrut44, tmp61}
+  scrut43 = 0 < s.length
+  if scrut43 is
+    true then
+      c10 = s.(0)
+      scrut44 = c10 == "{"
+      if scrut44 is
+        true then
+          tmp61 = 1
+          parseObjectImpl_StagedJsonSchemaParser_sp_1(s, tmp61, true, Nil)
+        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun parseStringImpl_StagedJsonSchemaParser_sp_0(s, i, j) =
+  let {scrut12, c3, scrut13, tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+  tmp12 = i + 0
+  scrut12 = tmp12 < s.length
+  if scrut12 is
+    true then
+      tmp13 = i + 0
+      c3 = s.(tmp13)
+      scrut13 = c3 == "'"
+      if scrut13 is
+        true then
+          tmp14 = i + 0
+          tmp15 = tmp14 + 1
+          tmp16 = i + 0
+          tmp17 = s.substring(i, tmp16)
+          tmp18 = new Some(tmp17)
+          new ParseResult(tmp15, tmp18)
+        else
+          tmp19 = 1
+          parseStringImpl(s, i, tmp19)
+    else new ParseResult(i, None)
+fun parseStringImpl_StagedJsonSchemaParser_sp_1(s, i, j) =
+  let {scrut12, c3, scrut13, tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+  tmp12 = 2
+  scrut12 = 2 < s.length
+  if scrut12 is
+    true then
+      tmp13 = 2
+      c3 = s.(2)
+      scrut13 = c3 == "'"
+      if scrut13 is
+        true then
+          tmp14 = 2
+          tmp15 = 3
+          tmp16 = 2
+          tmp17 = s.substring(i, tmp16)
+          tmp18 = new Some(tmp17)
+          new ParseResult(tmp15, tmp18)
+        else
+          tmp19 = 1
+          parseStringImpl(s, i, tmp19)
+    else new ParseResult(i, None)
+fun parseString_StagedJsonSchemaParser_sp_0(s, i) =
+  let {scrut14, c4, scrut15, tmp20}
+  scrut14 = 1 < s.length
+  if scrut14 is
+    true then
+      c4 = s.(1)
+      scrut15 = c4 == "'"
+      if scrut15 is
+        true then
+          tmp20 = 2
+          parseStringImpl_StagedJsonSchemaParser_sp_1(s, tmp20, 0)
+        else new ParseResult(i, None)
+    else new ParseResult(i, None)
+fun rev_StagedJsonSchemaParser_sp_0(ls, res) =
+  let {x2, xs1, arg_Cons_0_, arg_Cons_1_, tmp4}
+  res
+fun rev_StagedJsonSchemaParser_sp_1(ls, res) =
+  let {x2, xs1, arg_Cons_0_, arg_Cons_1_, tmp4}
+  if ls is
+    Cons then
+      arg_Cons_0_ = ls.x
+      arg_Cons_1_ = ls.xs
+      xs1 = arg_Cons_1_
+      x2 = arg_Cons_0_
+      tmp4 = new Cons(x2, res)
+      rev(xs1, tmp4)
+    else res
+fun parse_ObjectSchema_sp_0(self, s, i) =
+  let {scrut5}
+  scrut5 = self.schemaPairs
+  parseObjectWithSchema_StagedJsonSchemaParser_sp_0(s, i, self.schemaPairs)
