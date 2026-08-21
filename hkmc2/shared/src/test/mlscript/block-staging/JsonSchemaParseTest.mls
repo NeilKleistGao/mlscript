@@ -128,3 +128,68 @@ ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair(
 //│     )
 //│   )
 //│ )
+
+parseStudentData("{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}", false)
+//│ = ParseResult(
+//│   60,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Mike"),
+//│         Cons(
+//│           KVPair("id", "00000000"),
+//│           Cons(KVPair("year", 2), Cons(KVPair("dept", "cse"), Nil))
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+parseStudentData("{'name': 'Mike', 'id': 42, 'year': 2, 'dept': 'cse'}", false)
+//│ = ParseResult(17, None)
+
+parseStudentData("{'name': 'Tom', 'id': '19821982', 'year': 1, 'dept': 'cse'}", true)
+//│ = ParseResult(34, None)
+
+parseStudentData("{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}", true)
+//│ = ParseResult(
+//│   100,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Tom"),
+//│         Cons(
+//│           KVPair("id", "19821982"),
+//│           Cons(
+//│             KVPair("gpa", 3),
+//│             Cons(
+//│               KVPair(
+//│                 "list",
+//│                 JsonArray(
+//│                   Cons(
+//│                     JsonObject(
+//│                       Cons(KVPair("cs", "A"), Cons(KVPair("sc", 90), Nil))
+//│                     ),
+//│                     Cons(
+//│                       JsonObject(
+//│                         Cons(
+//│                           KVPair("cs", "AA"),
+//│                           Cons(KVPair("sc", 75), Nil)
+//│                         )
+//│                       ),
+//│                       Nil
+//│                     )
+//│                   )
+//│                 )
+//│               ),
+//│               Nil
+//│             )
+//│           )
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+parseStudentData("{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [90, 75}", true)
+//│ = ParseResult(44, None)

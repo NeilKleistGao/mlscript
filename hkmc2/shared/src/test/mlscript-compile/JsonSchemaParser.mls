@@ -226,3 +226,10 @@ module JsonSchemaParser with
       if schemaPairs is
         Nil then parseObject(s, i)
         else parseObjectWithSchema(s, i, schemaPairs)
+
+  fun parseStudentData(s, detailed) =
+    let schema =
+      new ObjectSchema(new Cons(new SchemaPair("name", new StringSchema(None, None)), new Cons(new SchemaPair("id", new StringSchema(new Some(8), new Some(8))),
+        if not detailed then new Cons(new SchemaPair("year", new NumberSchema(new Some(1), new Some(6))), new Cons(new SchemaPair("dept", new StringSchema(new StringSchema(new Some(3), new Some(3)))), Nil))
+        else new Cons(new SchemaPair("gpa", new NumberSchema(new Some(0), new Some(4))), new Cons(new SchemaPair("list", new ArraySchema(new Cons(new ObjectSchema(new Cons(new SchemaPair("cs", new StringSchema(None, None)), new Cons(new SchemaPair("sc", new NumberSchema(new Some(0), new Some(100))), Nil))), Nil))), Nil)))))
+    schema.parse(s, 0)
