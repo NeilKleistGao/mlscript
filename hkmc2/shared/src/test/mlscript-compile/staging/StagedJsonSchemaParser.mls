@@ -1,5 +1,7 @@
 #config(noFreeze: true)
 
+open annotations { specialize, special }
+
 staged module StagedJsonSchemaParser with
   class Some(val x)
   object None
@@ -82,7 +84,7 @@ staged module StagedJsonSchemaParser with
       else new ParseResult(i, None)
     else new ParseResult(i, None)
 
-  fun parseWithSchemaRec(s, i, schemas) =
+  fun parseWithSchemaRec(s, i, @specialize schemas) =
     if schemas is
       Cons(sh, ss) then
         let res = sh.parse(s, i) 
@@ -90,7 +92,7 @@ staged module StagedJsonSchemaParser with
         else parseWithSchemaRec(s, i, ss)
       else new ParseResult(i, None)
 
-  fun parseArrayWithSchemaImpl(s, i, schemas, split, arr) =
+  fun parseArrayWithSchemaImpl(s, i, @specialize schemas, split, arr) =
     if i < s.length then
       let c = s.(i)
       if c is
@@ -105,7 +107,7 @@ staged module StagedJsonSchemaParser with
           else new ParseResult(i, None)
     else new ParseResult(i, None)
 
-  fun parseArrayWithSchema(s, i, schemas) =
+  fun parseArrayWithSchema(s, i, @specialize schemas) =
     if i < s.length then
       let c = s.(i)
       if c == "[" then parseArrayWithSchemaImpl(s, i + 1, schemas, true, Nil)
@@ -143,7 +145,7 @@ staged module StagedJsonSchemaParser with
             else new ParseResult(i, None)
     else new ParseResult(i, None)
 
-  fun parseWithSchemaPairRec(s, i, pairs, k) =
+  fun parseWithSchemaPairRec(s, i, @specialize pairs, k) =
     if pairs is
       Cons(p, ps) then
         if p.key == k then
@@ -153,7 +155,7 @@ staged module StagedJsonSchemaParser with
         else parseWithSchemaPairRec(s, i, ps, k)
       else new ParseResult(i, None)
 
-  fun parseKVWithSchema(s, i, schemas, k, split) =
+  fun parseKVWithSchema(s, i, @specialize schemas, k, split) =
     if i < s.length then
       if s.(i) is
         " " then parseKVWithSchema(s, i + 1, schemas, k, split)
@@ -195,7 +197,7 @@ staged module StagedJsonSchemaParser with
       else new ParseResult(i, None)
     else new ParseResult(i, None)
 
-  fun parseObjectWithSchemasImpl(s, i, schemas, split, pairs) =
+  fun parseObjectWithSchemasImpl(s, i, @specialize schemas, split, pairs) =
     if i < s.length then
       let c = s.(i)
       if c is
@@ -209,7 +211,7 @@ staged module StagedJsonSchemaParser with
           else new ParseResult(i, None)
     else new ParseResult(i, None)
 
-  fun parseObjectWithSchema(s, i, schemas) =
+  fun parseObjectWithSchema(s, i, @specialize schemas) =
     if i < s.length then
       let c = s.(i)
       if c == "{" then parseObjectWithSchemasImpl(s, i + 1, schemas, true, Nil)
@@ -270,6 +272,6 @@ staged module StagedJsonSchemaParser with
   fun parseStudentData(s, detailed) =
     let schema =
       new ObjectSchema(new Cons(new SchemaPair("name", new StringSchema(None, None)), new Cons(new SchemaPair("id", new StringSchema(new Some(8), new Some(8))),
-        if not detailed then new Cons(new SchemaPair("year", new NumberSchema(new Some(1), new Some(6))), new Cons(new SchemaPair("dept", new StringSchema(new Some(3), new Some(3))), Nil))
-        else new Cons(new SchemaPair("gpa", new NumberSchema(new Some(0), new Some(4))), new Cons(new SchemaPair("list", new ArraySchema(new Cons(new ObjectSchema(new Cons(new SchemaPair("cs", new StringSchema(None, None)), new Cons(new SchemaPair("sc", new NumberSchema(new Some(0), new Some(100))), Nil))), Nil))), Nil)))))
+        if not detailed then (@special new Cons((@special new SchemaPair("year", new NumberSchema(new Some(1), new Some(6)))), new Cons((@special new SchemaPair("dept", new StringSchema(new Some(3), new Some(3)))), Nil)))
+        else (@special new Cons((@special new SchemaPair("gpa", new NumberSchema(new Some(0), new Some(4)))), new Cons((@special new SchemaPair("list", new ArraySchema(new Cons(new ObjectSchema(new Cons(new SchemaPair("cs", new StringSchema(None, None)), new Cons(new SchemaPair("sc", new NumberSchema(new Some(0), new Some(100))), Nil))), Nil)))), Nil))))))
     schema.parse(s, 0)
