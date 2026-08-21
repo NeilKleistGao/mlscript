@@ -1,0 +1,124 @@
+:js
+:staging
+:noModuleCheck
+
+
+import "../../mlscript-compile/JsonParser.mls"
+
+JsonParser.parseString("'abc'", 0)
+//│ = ParseResult(5, Some("abc"))
+
+JsonParser.parseString("abc", 0)
+//│ = ParseResult(0, 1)
+
+JsonParser.parseNumber("111", 0)
+//│ = ParseResult(3, Some(111))
+
+JsonParser.parseNumber("xx", 0)
+//│ = ParseResult(0, None)
+
+JsonParser.parseArray("[]", 0)
+//│ = ParseResult(2, Some(JsonArray(Nil)))
+
+JsonParser.parseArray("[1, 2, 3]", 0)
+//│ = ParseResult(9, Some(JsonArray(Cons(1, Cons(2, Cons(3, Nil))))))
+
+JsonParser.parseArray("[1, '5']", 0)
+//│ = ParseResult(8, Some(JsonArray(Cons(1, Cons("5", Nil)))))
+
+JsonParser.parseArray("[[]]", 0)
+//│ = ParseResult(4, Some(JsonArray(Cons(JsonArray(Nil), Nil))))
+
+JsonParser.parseArray("[[1], [2]]", 0)
+//│ = ParseResult(
+//│   10,
+//│   Some(
+//│     JsonArray(
+//│       Cons(JsonArray(Cons(1, Nil)), Cons(JsonArray(Cons(2, Nil)), Nil))
+//│     )
+//│   )
+//│ )
+
+JsonParser.parseArray("[1 2 3]", 0)
+//│ = ParseResult(3, None)
+
+JsonParser.parseObject("{}", 0)
+//│ = ParseResult(2, Some(JsonObject(Nil)))
+
+JsonParser.parseObject("{'name': 'Red'}", 0)
+//│ = ParseResult(15, Some(JsonObject(Cons(KVPair("name", "Red"), Nil))))
+
+JsonParser.parseObject("{ 'name' : 'Red' }", 0)
+//│ = ParseResult(18, Some(JsonObject(Cons(KVPair("name", "Red"), Nil))))
+
+
+JsonParser.parseObject("{'name': 'Red', 'count': 5}", 0)
+//│ = ParseResult(
+//│   27,
+//│   Some(
+//│     JsonObject(Cons(KVPair("name", "Red"), Cons(KVPair("count", 5), Nil)))
+//│   )
+//│ )
+
+JsonParser.parseObject("{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}", 0)
+//│ = ParseResult(
+//│   62,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Red"),
+//│         Cons(
+//│           KVPair("count", 5),
+//│           Cons(
+//│             KVPair(
+//│               "list",
+//│               JsonArray(
+//│                 Cons("R", Cons("F", Cons("O", Cons("P", Cons("S", Nil)))))
+//│               )
+//│             ),
+//│             Nil
+//│           )
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+JsonParser.parseObject("{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}", 0)
+//│ = ParseResult(
+//│   77,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Red"),
+//│         Cons(
+//│           KVPair("count", 5),
+//│           Cons(
+//│             KVPair(
+//│               "set",
+//│               JsonObject(
+//│                 Cons(
+//│                   KVPair("R", 6),
+//│                   Cons(
+//│                     KVPair("F", 6),
+//│                     Cons(
+//│                       KVPair("O", 7),
+//│                       Cons(KVPair("P", 8), Cons(KVPair("S", 12), Nil))
+//│                     )
+//│                   )
+//│                 )
+//│               )
+//│             ),
+//│             Nil
+//│           )
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+JsonParser.parseObject("{'name' 'Blue', 'count' 6}", 0)
+//│ = ParseResult(1, None)
+
+JsonParser.parseObject("{'name': 'Blue' 'count': 6}", 0)
+//│ = ParseResult(16, None)

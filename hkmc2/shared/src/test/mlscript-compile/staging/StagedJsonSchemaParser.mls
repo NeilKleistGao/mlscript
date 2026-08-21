@@ -1,0 +1,277 @@
+#config(noFreeze: true)
+
+open annotations { specialize, special }
+
+staged module StagedJsonSchemaParser with
+  class Some(val x)
+  object None
+
+  class Cons(val x, val xs)
+  object Nil
+
+  class KVPair(val key, val value)
+  class JsonObject(val kvs)
+  class JsonArray(val arr)
+
+  class ParseResult(val next, val res)
+
+  fun isDigit(c) = 48 <= c and c <= 57
+
+  fun rev(ls, res) =
+    if ls is
+      Cons(x, xs) then rev(xs, new Cons(x, res))
+      else res
+
+  fun parseNumberImpl(s, i, n) =
+    if i < s.length then
+      let c = s.charCodeAt(i)
+      if isDigit(c) then
+        let n' = n * 10 + c - 48
+        parseNumberImpl(s, i + 1, n')
+      else new ParseResult(i, new Some(n))
+    else new ParseResult(i, new Some(n))
+
+  fun parseNumber(s, i) =
+    if i < s.length then
+      let c = s.charCodeAt(i)
+      if isDigit(c) then parseNumberImpl(s, i + 1, c - 48)
+      else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseStringImpl(s, i, j) =
+    if i + j < s.length then
+      let c = s.(i + j)
+      if c
+        == "'" then new ParseResult(i + j + 1, new Some(s.substring(i, i + j)))
+        else parseStringImpl(s, i, j + 1)
+    else new ParseResult(i, None)
+
+  fun parseString(s, i) =
+    if i < s.length then
+      let c = s.(i)
+      if c == "'" then parseStringImpl(s, i + 1, 0)
+      else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseArrayImpl(s, i, split, arr) =
+    if i < s.length then
+      let c = s.(i)
+      if c is
+        "]" then new ParseResult(i + 1, new Some(new JsonArray(rev(arr, Nil))))
+        "," then parseArrayImpl(s, i + 1, true, arr)
+        " " then parseArrayImpl(s, i + 1, split, arr)
+        else
+          if split then
+            let numberResult = parseNumber(s, i)
+            if numberResult.res is Some(d) then parseArrayImpl(s, numberResult.next, false, new Cons(d, arr))
+            else
+              let stringResult = parseString(s, i)
+              if stringResult.res is Some(s') then parseArrayImpl(s, stringResult.next, false, new Cons(s', arr))
+              else
+                let arrayResult = parseArray(s, i)
+                if arrayResult.res is Some(a) then parseArrayImpl(s, arrayResult.next, false, new Cons(a, arr))
+                else
+                  let objectResult = parseObject(s, i)
+                  if objectResult.res is Some(o) then parseArrayImpl(s, objectResult.next, false, new Cons(o, arr))
+                  else new ParseResult(i, None)
+          else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseArray(s, i) =
+    if i < s.length then
+      let c = s.(i)
+      if c == "[" then parseArrayImpl(s, i + 1, true, Nil)
+      else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseWithSchemaRec(s, i, @specialize schemas) =
+    if schemas is
+      Cons(sh, ss) then
+        let res = sh.parse(s, i) 
+        if res.res is Some then res
+        else parseWithSchemaRec(s, i, ss)
+      else new ParseResult(i, None)
+
+  fun parseArrayWithSchemaImpl(s, i, @specialize schemas, split, arr) =
+    if i < s.length then
+      let c = s.(i)
+      if c is
+        "]" then new ParseResult(i + 1, new Some(new JsonArray(rev(arr, Nil))))
+        "," then parseArrayWithSchemaImpl(s, i + 1, schemas, true, arr)
+        " " then parseArrayWithSchemaImpl(s, i + 1, schemas, split, arr)
+        else
+          if split then
+            if parseWithSchemaRec(s, i, schemas) is
+              ParseResult(j, Some(d)) then parseArrayWithSchemaImpl(s, j, schemas, false, new Cons(d, arr))
+            else new ParseResult(i, None)
+          else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseArrayWithSchema(s, i, @specialize schemas) =
+    if i < s.length then
+      let c = s.(i)
+      if c == "[" then parseArrayWithSchemaImpl(s, i + 1, schemas, true, Nil)
+      else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseKV(s, i, k, split) =
+    if i < s.length then
+      if s.(i) is
+        " " then parseKV(s, i + 1, k, split)
+        ":" then
+          if k is Some then parseKV(s, i + 1, k, true)
+          else new ParseResult(i, None)
+        else
+          if k is
+            Some(key) then
+              if split then
+                let numberResult = parseNumber(s, i)
+                if numberResult.res is Some(d) then new ParseResult(numberResult.next, new Some(new KVPair(key, d)))
+                else
+                  let stringResult = parseString(s, i)
+                  if stringResult.res is Some(s') then new ParseResult(stringResult.next, new Some(new KVPair(key, s')))
+                  else
+                    let arrayResult = parseArray(s, i)
+                    if arrayResult.res is Some(a) then new ParseResult(arrayResult.next, new Some(new KVPair(key, a)))
+                    else
+                      let objectResult = parseObject(s, i)
+                      if objectResult.res is Some(o) then new ParseResult(objectResult.next, new Some(new KVPair(key, o)))
+                      else new ParseResult(i, None)
+              else new ParseResult(i, None)
+            else if parseString(s, i) is
+              ParseResult(j, k) then
+                if k is Some then parseKV(s, j, k, false)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseWithSchemaPairRec(s, i, @specialize pairs, k) =
+    if pairs is
+      Cons(p, ps) then
+        if p.key == k then
+          let res = p.schema.parse(s, i)
+          if res.res is Some then res
+          else parseWithSchemaPairRec(s, i, ps, k)
+        else parseWithSchemaPairRec(s, i, ps, k)
+      else new ParseResult(i, None)
+
+  fun parseKVWithSchema(s, i, @specialize schemas, k, split) =
+    if i < s.length then
+      if s.(i) is
+        " " then parseKVWithSchema(s, i + 1, schemas, k, split)
+        ":" then
+          if k is Some then parseKVWithSchema(s, i + 1, schemas, k, true)
+          else new ParseResult(i, None)
+        else
+          if k is
+            Some(key) then
+              if split then
+                if parseWithSchemaPairRec(s, i, schemas, key) is ParseResult(j, Some(d)) then new ParseResult(j, new Some(new KVPair(key, d)))
+                else new ParseResult(i, None)
+              else new ParseResult(i, None)
+            else if parseString(s, i) is
+              ParseResult(j, k) then
+                if k is Some then parseKVWithSchema(s, j, schemas, k, false)
+                else new ParseResult(i, None)
+            else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseObjectImpl(s, i, split, pairs) =
+    if i < s.length then
+      let c = s.(i)
+      if c is
+        "}" then new ParseResult(i + 1, new Some(new JsonObject(rev(pairs, Nil))))
+        "," then parseObjectImpl(s, i + 1, true, pairs)
+        " " then parseObjectImpl(s, i + 1, split, pairs)
+        else
+          if split then
+            if parseKV(s, i, None, false) is ParseResult(j, Some(p)) then parseObjectImpl(s, j, false, new Cons(p, pairs))
+            else new ParseResult(i, None)
+          else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseObject(s, i) =
+    if i < s.length then
+      let c = s.(i)
+      if c == "{" then parseObjectImpl(s, i + 1, true, Nil)
+      else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseObjectWithSchemasImpl(s, i, @specialize schemas, split, pairs) =
+    if i < s.length then
+      let c = s.(i)
+      if c is
+        "}" then new ParseResult(i + 1, new Some(new JsonObject(rev(pairs, Nil))))
+        "," then parseObjectWithSchemasImpl(s, i + 1, schemas, true, pairs)
+        " " then parseObjectWithSchemasImpl(s, i + 1, schemas, split, pairs)
+        else
+          if split then
+            if parseKVWithSchema(s, i, schemas, None, false) is ParseResult(j, Some(p)) then parseObjectWithSchemasImpl(s, j, schemas, false, new Cons(p, pairs))
+            else new ParseResult(i, None)
+          else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parseObjectWithSchema(s, i, @specialize schemas) =
+    if i < s.length then
+      let c = s.(i)
+      if c == "{" then parseObjectWithSchemasImpl(s, i + 1, schemas, true, Nil)
+      else new ParseResult(i, None)
+    else new ParseResult(i, None)
+
+  fun parse(s) = parseObject(s, 0).res
+
+  staged class JsonSchema() with
+    fun parse(s, i)
+
+  staged class StringSchema(val minLen, val maxLen) extends JsonSchema() with
+    fun parse(s, i) =
+      let r = parseString(s, i)
+      if r is ParseResult(j, Some(s')) then
+        let t1 = if minLen is
+          Some(lb) then s'.length >= lb
+          else true
+        let t2 = if maxLen is
+          Some(ub) then s'.length <= ub
+          else true
+        if t1 then
+          if t2 then r
+          else new ParseResult(i, None)
+        else new ParseResult(i, None)
+      else new ParseResult(i, None)
+
+  staged class NumberSchema(val min, val max) extends JsonSchema() with
+    fun parse(s, i) =
+      let r = parseNumber(s, i)
+      if r is ParseResult(j, Some(n)) then
+        let t1 = if min is
+          Some(lb) then n >= lb
+          else true
+        let t2 = if max is
+          Some(ub) then n <= ub
+          else true
+        if t1 then
+          if t2 then r
+          else new ParseResult(i, None)
+        else new ParseResult(i, None)
+      else new ParseResult(i, None)
+
+  staged class ArraySchema(val subSchemas) extends JsonSchema() with
+    fun parse(s, i) =
+      if subSchemas is
+        Nil then parseArray(s, i)
+        else parseArrayWithSchema(s, i, subSchemas)
+
+  class SchemaPair(val key, val schema)
+
+  staged class ObjectSchema(val schemaPairs) extends JsonSchema() with
+    fun parse(s, i) =
+      if schemaPairs is
+        Nil then parseObject(s, i)
+        else parseObjectWithSchema(s, i, schemaPairs)
+
+  fun parseStudentData(s, detailed) =
+    let schema =
+      new ObjectSchema(new Cons(new SchemaPair("name", new StringSchema(None, None)), new Cons(new SchemaPair("id", new StringSchema(new Some(8), new Some(8))),
+        if not detailed then (@special new Cons((@special new SchemaPair("year", new NumberSchema(new Some(1), new Some(6)))), new Cons((@special new SchemaPair("dept", new StringSchema(new Some(3), new Some(3)))), Nil)))
+        else (@special new Cons((@special new SchemaPair("gpa", new NumberSchema(new Some(0), new Some(4)))), new Cons((@special new SchemaPair("list", new ArraySchema(new Cons(new ObjectSchema(new Cons(new SchemaPair("cs", new StringSchema(None, None)), new Cons(new SchemaPair("sc", new NumberSchema(new Some(0), new Some(100))), Nil))), Nil)))), Nil))))))
+    schema.parse(s, 0)

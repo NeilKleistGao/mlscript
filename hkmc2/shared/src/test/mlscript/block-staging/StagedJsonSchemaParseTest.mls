@@ -1,0 +1,202 @@
+:js
+:staging
+:noModuleCheck
+
+
+import "../../mlscript-compile/staging/StagedJsonSchemaParser.mls"
+
+
+StagedJsonSchemaParser."generate"("../StagedJsonSchemaParser.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/StagedJsonSchemaParser.mls")
+
+
+import "../../mlscript-compile/staging/out/StagedJsonSchemaParser.mls"
+
+open StagedJsonSchemaParser
+
+
+StringSchema(None, None).parse("'air'", 0)
+//│ = ParseResult(5, Some("air"))
+
+StringSchema(Some(1), Some(2)).parse("'air'", 0)
+//│ = ParseResult(0, None)
+
+StringSchema(Some(1), Some(2)).parse("'ok'", 0)
+//│ = ParseResult(4, Some("ok"))
+
+
+NumberSchema(None, None).parse("42", 0)
+//│ = ParseResult(2, Some(42))
+
+NumberSchema(Some(50), None).parse("42", 0)
+//│ = ParseResult(0, None)
+
+NumberSchema(None, Some(100)).parse("42", 0)
+//│ = ParseResult(2, Some(42))
+
+ArraySchema(Nil).parse("[1, 2, 3, 4]", 0)
+//│ = ParseResult(12, Some(JsonArray(Cons(1, Cons(2, Cons(3, Cons(4, Nil)))))))
+
+ArraySchema(Cons(NumberSchema(None, None), Nil)).parse("[1, 2, 3, 4]", 0)
+//│ = ParseResult(12, Some(JsonArray(Cons(1, Cons(2, Cons(3, Cons(4, Nil)))))))
+
+ArraySchema(Cons(StringSchema(None, None), Nil)).parse("[1, 2, 3, 4]", 0)
+//│ = ParseResult(1, None)
+
+ArraySchema(Cons(NumberSchema(Some(1), None), Nil)).parse("[1, 2, 3, 4]", 0)
+//│ = ParseResult(12, Some(JsonArray(Cons(1, Cons(2, Cons(3, Cons(4, Nil)))))))
+
+ArraySchema(Cons(NumberSchema(None, Some(5)), Nil)).parse("[1, 2, 3, 4, 5, 6]", 0)
+//│ = ParseResult(16, None)
+
+ArraySchema(Cons(StringSchema(None, None), Cons(NumberSchema(Some(0), Some(0)), Nil))).parse("['a', 0, 'b', 0, 'c']", 0)
+//│ = ParseResult(
+//│   21,
+//│   Some(JsonArray(Cons("a", Cons(0, Cons("b", Cons(0, Cons("c", Nil)))))))
+//│ )
+
+ArraySchema(Cons(StringSchema(None, None), Cons(NumberSchema(Some(0), Some(0)), Nil))).parse("['a', 1, 'b', 2, 'c']", 0)
+//│ = ParseResult(6, None)
+
+ObjectSchema(Nil).parse("{'name': 'Red', 'count': 5}", 0)
+//│ = ParseResult(
+//│   27,
+//│   Some(
+//│     JsonObject(Cons(KVPair("name", "Red"), Cons(KVPair("count", 5), Nil)))
+//│   )
+//│ )
+
+ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair("count", NumberSchema(None, None)), Nil))).parse("{'name': 'Red', 'count': 5}", 0)
+//│ = ParseResult(
+//│   27,
+//│   Some(
+//│     JsonObject(Cons(KVPair("name", "Red"), Cons(KVPair("count", 5), Nil)))
+//│   )
+//│ )
+
+ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair("count", NumberSchema(None, None)), Nil))).parse("{'name': 'Red', 'count': '5'}", 0)
+//│ = ParseResult(16, None)
+
+ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair("count", NumberSchema(None, None)), Cons(SchemaPair("list", ArraySchema(Nil)), Nil)))).parse("{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}", 0)
+//│ = ParseResult(
+//│   62,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Red"),
+//│         Cons(
+//│           KVPair("count", 5),
+//│           Cons(
+//│             KVPair(
+//│               "list",
+//│               JsonArray(
+//│                 Cons("R", Cons("F", Cons("O", Cons("P", Cons("S", Nil)))))
+//│               )
+//│             ),
+//│             Nil
+//│           )
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair("count", NumberSchema(None, None)), Cons(SchemaPair("set", ArraySchema(Nil)), Nil)))).parse("{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}", 0)
+//│ = ParseResult(28, None)
+
+ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair("count", NumberSchema(None, None)), Cons(SchemaPair("set", ObjectSchema(Nil)), Nil)))).parse("{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}", 0)
+//│ = ParseResult(
+//│   77,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Red"),
+//│         Cons(
+//│           KVPair("count", 5),
+//│           Cons(
+//│             KVPair(
+//│               "set",
+//│               JsonObject(
+//│                 Cons(
+//│                   KVPair("R", 6),
+//│                   Cons(
+//│                     KVPair("F", 6),
+//│                     Cons(
+//│                       KVPair("O", 7),
+//│                       Cons(KVPair("P", 8), Cons(KVPair("S", 12), Nil))
+//│                     )
+//│                   )
+//│                 )
+//│               )
+//│             ),
+//│             Nil
+//│           )
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+parseStudentData("{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}", false)
+//│ = ParseResult(
+//│   60,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Mike"),
+//│         Cons(
+//│           KVPair("id", "00000000"),
+//│           Cons(KVPair("year", 2), Cons(KVPair("dept", "cse"), Nil))
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+parseStudentData("{'name': 'Mike', 'id': 42, 'year': 2, 'dept': 'cse'}", false)
+//│ = ParseResult(17, None)
+
+parseStudentData("{'name': 'Tom', 'id': '19821982', 'year': 1, 'dept': 'cse'}", true)
+//│ = ParseResult(34, None)
+
+parseStudentData("{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}", true)
+//│ = ParseResult(
+//│   100,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair("name", "Tom"),
+//│         Cons(
+//│           KVPair("id", "19821982"),
+//│           Cons(
+//│             KVPair("gpa", 3),
+//│             Cons(
+//│               KVPair(
+//│                 "list",
+//│                 JsonArray(
+//│                   Cons(
+//│                     JsonObject(
+//│                       Cons(KVPair("cs", "A"), Cons(KVPair("sc", 90), Nil))
+//│                     ),
+//│                     Cons(
+//│                       JsonObject(
+//│                         Cons(
+//│                           KVPair("cs", "AA"),
+//│                           Cons(KVPair("sc", 75), Nil)
+//│                         )
+//│                       ),
+//│                       Nil
+//│                     )
+//│                   )
+//│                 )
+//│               ),
+//│               Nil
+//│             )
+//│           )
+//│         )
+//│       )
+//│     )
+//│   )
+//│ )
+
+parseStudentData("{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [90, 75}", true)
+//│ = ParseResult(44, None)
