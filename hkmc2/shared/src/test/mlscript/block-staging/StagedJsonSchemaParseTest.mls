@@ -15,13 +15,13 @@ open StagedJsonSchemaParser
 
 
 StringSchema(None, None).parse("'air'", 0)
-//│ = ParseResult(5, Some("air"))
+//│ = ParseResult(5, Some(StrSlice("'air'", 1, 3)))
 
 StringSchema(Some(1), Some(2)).parse("'air'", 0)
 //│ = ParseResult(0, None)
 
 StringSchema(Some(1), Some(2)).parse("'ok'", 0)
-//│ = ParseResult(4, Some("ok"))
+//│ = ParseResult(4, Some(StrSlice("'ok'", 1, 2)))
 
 
 NumberSchema(None, None).parse("42", 0)
@@ -51,7 +51,20 @@ ArraySchema(Cons(NumberSchema(None, Some(5)), Nil)).parse("[1, 2, 3, 4, 5, 6]", 
 ArraySchema(Cons(StringSchema(None, None), Cons(NumberSchema(Some(0), Some(0)), Nil))).parse("['a', 0, 'b', 0, 'c']", 0)
 //│ = ParseResult(
 //│   21,
-//│   Some(JsonArray(Cons("a", Cons(0, Cons("b", Cons(0, Cons("c", Nil)))))))
+//│   Some(
+//│     JsonArray(
+//│       Cons(
+//│         StrSlice("['a', 0, 'b', 0, 'c']", 2, 1),
+//│         Cons(
+//│           0,
+//│           Cons(
+//│             StrSlice("['a', 0, 'b', 0, 'c']", 10, 1),
+//│             Cons(0, Cons(StrSlice("['a', 0, 'b', 0, 'c']", 18, 1), Nil))
+//│           )
+//│         )
+//│       )
+//│     )
+//│   )
 //│ )
 
 ArraySchema(Cons(StringSchema(None, None), Cons(NumberSchema(Some(0), Some(0)), Nil))).parse("['a', 1, 'b', 2, 'c']", 0)
@@ -61,7 +74,15 @@ ObjectSchema(Nil).parse("{'name': 'Red', 'count': 5}", 0)
 //│ = ParseResult(
 //│   27,
 //│   Some(
-//│     JsonObject(Cons(KVPair("name", "Red"), Cons(KVPair("count", 5), Nil)))
+//│     JsonObject(
+//│       Cons(
+//│         KVPair(
+//│           StrSlice("{'name': 'Red', 'count': 5}", 2, 4),
+//│           StrSlice("{'name': 'Red', 'count': 5}", 10, 3)
+//│         ),
+//│         Cons(KVPair(StrSlice("{'name': 'Red', 'count': 5}", 17, 5), 5), Nil)
+//│       )
+//│     )
 //│   )
 //│ )
 
@@ -69,7 +90,15 @@ ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair(
 //│ = ParseResult(
 //│   27,
 //│   Some(
-//│     JsonObject(Cons(KVPair("name", "Red"), Cons(KVPair("count", 5), Nil)))
+//│     JsonObject(
+//│       Cons(
+//│         KVPair(
+//│           StrSlice("{'name': 'Red', 'count': 5}", 2, 4),
+//│           StrSlice("{'name': 'Red', 'count': 5}", 10, 3)
+//│         ),
+//│         Cons(KVPair(StrSlice("{'name': 'Red', 'count': 5}", 17, 5), 5), Nil)
+//│       )
+//│     )
 //│   )
 //│ )
 
@@ -82,14 +111,71 @@ ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair(
 //│   Some(
 //│     JsonObject(
 //│       Cons(
-//│         KVPair("name", "Red"),
+//│         KVPair(
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│             2,
+//│             4
+//│           ),
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│             10,
+//│             3
+//│           )
+//│         ),
 //│         Cons(
-//│           KVPair("count", 5),
+//│           KVPair(
+//│             StrSlice(
+//│               "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│               17,
+//│               5
+//│             ),
+//│             5
+//│           ),
 //│           Cons(
 //│             KVPair(
-//│               "list",
+//│               StrSlice(
+//│                 "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                 29,
+//│                 4
+//│               ),
 //│               JsonArray(
-//│                 Cons("R", Cons("F", Cons("O", Cons("P", Cons("S", Nil)))))
+//│                 Cons(
+//│                   StrSlice(
+//│                     "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                     38,
+//│                     1
+//│                   ),
+//│                   Cons(
+//│                     StrSlice(
+//│                       "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                       43,
+//│                       1
+//│                     ),
+//│                     Cons(
+//│                       StrSlice(
+//│                         "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                         48,
+//│                         1
+//│                       ),
+//│                       Cons(
+//│                         StrSlice(
+//│                           "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                           53,
+//│                           1
+//│                         ),
+//│                         Cons(
+//│                           StrSlice(
+//│                             "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                             58,
+//│                             1
+//│                           ),
+//│                           Nil
+//│                         )
+//│                       )
+//│                     )
+//│                   )
+//│                 )
 //│               )
 //│             ),
 //│             Nil
@@ -109,20 +195,83 @@ ObjectSchema(Cons(SchemaPair("name", StringSchema(None, None)), Cons(SchemaPair(
 //│   Some(
 //│     JsonObject(
 //│       Cons(
-//│         KVPair("name", "Red"),
+//│         KVPair(
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│             2,
+//│             4
+//│           ),
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│             10,
+//│             3
+//│           )
+//│         ),
 //│         Cons(
-//│           KVPair("count", 5),
+//│           KVPair(
+//│             StrSlice(
+//│               "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│               17,
+//│               5
+//│             ),
+//│             5
+//│           ),
 //│           Cons(
 //│             KVPair(
-//│               "set",
+//│               StrSlice(
+//│                 "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                 29,
+//│                 3
+//│               ),
 //│               JsonObject(
 //│                 Cons(
-//│                   KVPair("R", 6),
+//│                   KVPair(
+//│                     StrSlice(
+//│                       "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                       37,
+//│                       1
+//│                     ),
+//│                     6
+//│                   ),
 //│                   Cons(
-//│                     KVPair("F", 6),
+//│                     KVPair(
+//│                       StrSlice(
+//│                         "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                         45,
+//│                         1
+//│                       ),
+//│                       6
+//│                     ),
 //│                     Cons(
-//│                       KVPair("O", 7),
-//│                       Cons(KVPair("P", 8), Cons(KVPair("S", 12), Nil))
+//│                       KVPair(
+//│                         StrSlice(
+//│                           "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                           53,
+//│                           1
+//│                         ),
+//│                         7
+//│                       ),
+//│                       Cons(
+//│                         KVPair(
+//│                           StrSlice(
+//│                             "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                             61,
+//│                             1
+//│                           ),
+//│                           8
+//│                         ),
+//│                         Cons(
+//│                           KVPair(
+//│                             StrSlice(
+//│                               "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                               69,
+//│                               1
+//│                             ),
+//│                             12
+//│                           ),
+//│                           Nil
+//│                         )
+//│                       )
 //│                     )
 //│                   )
 //│                 )
@@ -142,10 +291,56 @@ parseStudentData("{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
 //│   Some(
 //│     JsonObject(
 //│       Cons(
-//│         KVPair("name", "Mike"),
+//│         KVPair(
+//│           StrSlice(
+//│             "{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
+//│             2,
+//│             4
+//│           ),
+//│           StrSlice(
+//│             "{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
+//│             10,
+//│             4
+//│           )
+//│         ),
 //│         Cons(
-//│           KVPair("id", "00000000"),
-//│           Cons(KVPair("year", 2), Cons(KVPair("dept", "cse"), Nil))
+//│           KVPair(
+//│             StrSlice(
+//│               "{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
+//│               18,
+//│               2
+//│             ),
+//│             StrSlice(
+//│               "{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
+//│               24,
+//│               8
+//│             )
+//│           ),
+//│           Cons(
+//│             KVPair(
+//│               StrSlice(
+//│                 "{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
+//│                 36,
+//│                 4
+//│               ),
+//│               2
+//│             ),
+//│             Cons(
+//│               KVPair(
+//│                 StrSlice(
+//│                   "{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
+//│                   47,
+//│                   4
+//│                 ),
+//│                 StrSlice(
+//│                   "{'name': 'Mike', 'id': '00000000', 'year': 2, 'dept': 'cse'}",
+//│                   55,
+//│                   3
+//│                 )
+//│               ),
+//│               Nil
+//│             )
+//│           )
 //│         )
 //│       )
 //│     )
@@ -164,24 +359,102 @@ parseStudentData("{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A
 //│   Some(
 //│     JsonObject(
 //│       Cons(
-//│         KVPair("name", "Tom"),
+//│         KVPair(
+//│           StrSlice(
+//│             "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│             2,
+//│             4
+//│           ),
+//│           StrSlice(
+//│             "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│             10,
+//│             3
+//│           )
+//│         ),
 //│         Cons(
-//│           KVPair("id", "19821982"),
+//│           KVPair(
+//│             StrSlice(
+//│               "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│               17,
+//│               2
+//│             ),
+//│             StrSlice(
+//│               "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│               23,
+//│               8
+//│             )
+//│           ),
 //│           Cons(
-//│             KVPair("gpa", 3),
+//│             KVPair(
+//│               StrSlice(
+//│                 "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                 35,
+//│                 3
+//│               ),
+//│               3
+//│             ),
 //│             Cons(
 //│               KVPair(
-//│                 "list",
+//│                 StrSlice(
+//│                   "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                   45,
+//│                   4
+//│                 ),
 //│                 JsonArray(
 //│                   Cons(
 //│                     JsonObject(
-//│                       Cons(KVPair("cs", "A"), Cons(KVPair("sc", 90), Nil))
+//│                       Cons(
+//│                         KVPair(
+//│                           StrSlice(
+//│                             "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                             55,
+//│                             2
+//│                           ),
+//│                           StrSlice(
+//│                             "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                             61,
+//│                             1
+//│                           )
+//│                         ),
+//│                         Cons(
+//│                           KVPair(
+//│                             StrSlice(
+//│                               "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                               66,
+//│                               2
+//│                             ),
+//│                             90
+//│                           ),
+//│                           Nil
+//│                         )
+//│                       )
 //│                     ),
 //│                     Cons(
 //│                       JsonObject(
 //│                         Cons(
-//│                           KVPair("cs", "AA"),
-//│                           Cons(KVPair("sc", 75), Nil)
+//│                           KVPair(
+//│                             StrSlice(
+//│                               "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                               78,
+//│                               2
+//│                             ),
+//│                             StrSlice(
+//│                               "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                               84,
+//│                               2
+//│                             )
+//│                           ),
+//│                           Cons(
+//│                             KVPair(
+//│                               StrSlice(
+//│                                 "{'name': 'Tom', 'id': '19821982', 'gpa': 3, 'list': [{'cs': 'A', 'sc': 90}, {'cs': 'AA', 'sc': 75}]}",
+//│                                 90,
+//│                                 2
+//│                               ),
+//│                               75
+//│                             ),
+//│                             Nil
+//│                           )
 //│                         )
 //│                       ),
 //│                       Nil
