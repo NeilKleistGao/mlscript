@@ -1372,10 +1372,11 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
       inScopedBlockExcept(symbolsToPreserve)(using LoweringCtx.empty):
         block(funs ::: rest, R(main.res))(ImplctRet)
     
-    Program(
+    val p = Program(
       imps.map(imp => imp.sym -> imp.str),
       blk
     )
+    DataRepFlattener(p)
   
   
   def setupSelection(prefix: Term, nme: Tree.Ident, disamb: Opt[DefinitionSymbol[?]])(k: Result => Block)(using LoweringCtx): Block =
