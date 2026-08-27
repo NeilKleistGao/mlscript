@@ -1,2 +1,56 @@
 :dataRepFlatten debug mono
 :js
+
+//│ >>> start data-rep-flatten collection-phase
+//│ <<< end data-rep-flatten collection-phase
+
+class Foo(val x, val y)
+class Bar(val x)
+//│ >>> start data-rep-flatten collection-phase
+//│ <<< end data-rep-flatten collection-phase
+
+
+fun foo(x, y) = new Foo(x, y)
+//│ >>> start data-rep-flatten collection-phase
+//│ <<< end data-rep-flatten collection-phase
+
+
+fun foo(x, y) =
+  let f = new Foo(x, y)
+  if f is
+    Foo(x, y) then new Bar(x + y)
+//│ >>> start data-rep-flatten collection-phase
+//│ data-rep-flatten collection-phase > track construction of Foo@3 in foo
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten web-computation-phase
+//│ data-rep-flatten web-computation-phase > web 0:
+//│ data-rep-flatten web-computation-phase >   producers: Foo@3
+//│ data-rep-flatten web-computation-phase >   field accesses: x@0, y@1
+//│ data-rep-flatten web-computation-phase >   pattern matches: match@2
+//│ <<< end data-rep-flatten web-computation-phase
+
+
+private fun bar(x) = new Bar(x)
+//│ >>> start data-rep-flatten collection-phase
+//│ <<< end data-rep-flatten collection-phase
+
+
+module Baz with
+  fun bar(x) = new Bar(x)
+  private fun bar_private(x) =
+    let f = new Foo(x, x)
+    if f is
+      Foo(x, y) then new Bar(x + y)
+  fun baz(x) =
+    let f = new Foo(x, x)
+    if f is
+      Foo(x, y) then new Bar(x + y)
+//│ >>> start data-rep-flatten collection-phase
+//│ data-rep-flatten collection-phase > track construction of Foo@10 in Baz.baz
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten web-computation-phase
+//│ data-rep-flatten web-computation-phase > web 1:
+//│ data-rep-flatten web-computation-phase >   producers: Foo@10
+//│ data-rep-flatten web-computation-phase >   field accesses: x@3, y@4
+//│ data-rep-flatten web-computation-phase >   pattern matches: match@5
+//│ <<< end data-rep-flatten web-computation-phase
