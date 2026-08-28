@@ -37,7 +37,7 @@ private fun bar(x) = new Bar(x)
 
 module Baz with
   fun bar(x) = new Bar(x)
-  private fun bar_private(x) =
+  private fun barr(x) =
     let f = new Foo(x, x)
     if f is
       Foo(x, y) then new Bar(x + y)
@@ -49,8 +49,53 @@ module Baz with
 //│ data-rep-flatten collection-phase > track construction of Foo@10 in Baz.baz
 //│ <<< end data-rep-flatten collection-phase
 //│ >>> start data-rep-flatten web-computation-phase
-//│ data-rep-flatten web-computation-phase > web 1:
+//│ data-rep-flatten web-computation-phase > web 0:
 //│ data-rep-flatten web-computation-phase >   producers: Foo@10
 //│ data-rep-flatten web-computation-phase >   field accesses: x@3, y@4
 //│ data-rep-flatten web-computation-phase >   pattern matches: match@5
+//│ <<< end data-rep-flatten web-computation-phase
+
+
+fun foo(x, y) =
+  let f = new Foo(x, y)
+  bar(f) * baz(f)
+private fun bar(f) =
+  if f is
+    Foo(x, y) then x + y
+    else 0
+private fun baz(f) =
+  if f is
+    Foo(x, y) then x - y
+    else 1
+//│ >>> start data-rep-flatten collection-phase
+//│ data-rep-flatten collection-phase > track construction of Foo@6 in foo
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten web-computation-phase
+//│ data-rep-flatten web-computation-phase > web 0:
+//│ data-rep-flatten web-computation-phase >   producers: Foo@6
+//│ data-rep-flatten web-computation-phase >   field accesses: x@0, y@1, x@3, y@4
+//│ data-rep-flatten web-computation-phase >   pattern matches: match@2, match@5
+//│ <<< end data-rep-flatten web-computation-phase
+
+
+fun foo(x, y) =
+  let f = new Foo(x, y)
+  baz(f)
+fun bar(x) =
+  let b = new Bar(x)
+  baz(b)
+private fun baz(t) =
+  if t is
+    Foo(x, y) then x + y
+    Bar(x) then x
+    else 1
+//│ >>> start data-rep-flatten collection-phase
+//│ data-rep-flatten collection-phase > track construction of Foo@4 in foo
+//│ data-rep-flatten collection-phase > track construction of Bar@6 in bar
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten web-computation-phase
+//│ data-rep-flatten web-computation-phase > web 0:
+//│ data-rep-flatten web-computation-phase >   producers: Foo@4, Bar@6
+//│ data-rep-flatten web-computation-phase >   field accesses: x@0, y@1, x@3
+//│ data-rep-flatten web-computation-phase >   pattern matches: match@2
 //│ <<< end data-rep-flatten web-computation-phase

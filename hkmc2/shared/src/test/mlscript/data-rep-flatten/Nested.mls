@@ -1,0 +1,29 @@
+:dataRepFlatten debug mono
+:js
+
+//│ >>> start data-rep-flatten collection-phase
+//│ <<< end data-rep-flatten collection-phase
+class Cons(val x, val xs)
+object Nil
+//│ >>> start data-rep-flatten collection-phase
+//│ <<< end data-rep-flatten collection-phase
+
+
+
+fun foo(x, y, z) =
+  let ls = new Cons(1, new Cons(2, new Cons(3, new Cons(x, new Cons(y, new Cons(z, Nil))))))
+  bar(ls)
+private fun bar(ls) =
+  if ls is
+    Cons(1, Cons(2, Cons(3, Cons(x, Cons(y, Cons(z, Nil)))))) then x + y + z
+    else -1
+//│ >>> start data-rep-flatten collection-phase
+//│ data-rep-flatten collection-phase > track construction of Cons@23, Cons@24, Cons@25, Cons@26, Cons@27, Cons@28 in foo
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten web-computation-phase
+//│ data-rep-flatten web-computation-phase > web 0:
+//│ data-rep-flatten web-computation-phase >   producers: Cons@23, Cons@24, Cons@25, Cons@26, Cons@27, Cons@28
+//│ data-rep-flatten web-computation-phase >   field accesses: x@0, xs@1, x@2, xs@3, x@4, xs@5, x@6, xs@7, x@8, xs@9, x@10, xs@11
+//│ data-rep-flatten web-computation-phase >   pattern matches: match@13, match@14, match@15, match@17, match@19, match@21
+//│ <<< end data-rep-flatten web-computation-phase
+

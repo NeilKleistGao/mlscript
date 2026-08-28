@@ -97,11 +97,20 @@ object DataRepFlattener:
       Nil,
     )
 
+  private def mkWebs(entryPoints: List[List[ConcreteProducer]], flowRes: FlowConstraintSolver) =
+    val coveredProducers = MutSet.empty[ConcreteProducer]
+    val webs = ListBuffer.empty[Web]
+    for entries <- entryPoints do
+      if entries.nonEmpty && !entries.exists(coveredProducers) then
+        val web = mkWeb(entries, flowRes)
+        coveredProducers ++= web.markedProducers
+        webs += web
+    webs.toList
+
   private def logWebs(webs: List[Web])(using tl: TL): Unit =
-    val nonEmptyWebs = webs.zipWithIndex.filterNot(_._1.markedProducers.isEmpty)
-    if nonEmptyWebs.nonEmpty then
+    if webs.nonEmpty then
       tl.emitDbg(">>> start data-rep-flatten web-computation-phase")
-      for (web, index) <- nonEmptyWebs do
+      for (web, index) <- webs.zipWithIndex do
         val producers = web.markedProducers.toList.sortBy(_.exprId.uid)
         val fieldAccesses = web.markedConsumers.collect:
           case access: FieldSel => access
@@ -150,6 +159,6 @@ object DataRepFlattener:
           val result = EntryPointCollector(p, flowAnalysisRes)
           if dCfg.debug then tl.emitDbg("<<< end data-rep-flatten collection-phase")
           result
-        val webs = entryPoints.map(mkWeb(_, flowAnalysisRes))
+        val webs = mkWebs(entryPoints, flowAnalysisRes)
         if dCfg.debug then logWebs(webs)
         new DataRepFlattener(webs).applyProgram(p)
