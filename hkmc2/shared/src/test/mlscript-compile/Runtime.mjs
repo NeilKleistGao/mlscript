@@ -5,7 +5,34 @@ import RuntimeJS from "./RuntimeJS.mjs";
 import Rendering from "./Rendering.mjs";
 import LazyArray from "./LazyArray.mjs";
 import Iter from "./Iter.mjs";
-let Runtime1, lambda, lambda1, lambda2, lambda3, lambda4, lambda$, lambda$1, Capture$scope301, lambda$2, Capture$scope321, lambda$3;
+let continuation, Runtime1, lambda, lambda1, lambda2, lambda3, lambda4, lambda5, lambda$, lambda$1, Capture$scope301, lambda$2, Capture$scope321, lambda$3, lambda$4, continuation$;
+continuation$ = function continuation$(Runtime2, resume) {
+  return (value) => {
+    return continuation(Runtime2, resume, value)
+  }
+};
+continuation = function continuation(Runtime2, resume, value) {
+  let r, scrut;
+  r = runtime.safeCall(resume(value));
+  scrut = Runtime2.curEffect !== null;
+  if (scrut === true) {
+    Runtime2.illegalEffect("in exported async function");
+    return r
+  }
+  return r;
+};
+lambda$4 = (undefined, function (Runtime2, promise) {
+  return (resume) => {
+    let continuation$here;
+    continuation$here = continuation$(Runtime2, resume);
+    return runtime.safeCall(promise.then(continuation$here))
+  }
+});
+lambda3 = (undefined, function (Runtime2, promise, resume) {
+  let continuation$here;
+  continuation$here = continuation$(Runtime2, resume);
+  return runtime.safeCall(promise.then(continuation$here))
+});
 (class Capture$scope32 {
   static {
     Capture$scope321 = this
@@ -70,7 +97,7 @@ lambda$1 = (undefined, function (Runtime2) {
     return runtime.Unit
   }
 });
-lambda4 = (undefined, function (Runtime2, k) {
+lambda5 = (undefined, function (Runtime2, k) {
   Runtime2.stackResume = k;
   return runtime.Unit
 });
@@ -79,7 +106,7 @@ lambda$ = (undefined, function (Runtime2, EffectHandle1, value) {
     return Runtime2.resume(EffectHandle1.reified.contTrace)(value)
   }
 });
-lambda3 = (undefined, function (Runtime2, EffectHandle1, value) {
+lambda4 = (undefined, function (Runtime2, EffectHandle1, value) {
   return Runtime2.resume(EffectHandle1.reified.contTrace)(value)
 });
 (class Runtime {
@@ -567,6 +594,20 @@ lambda3 = (undefined, function (Runtime2, EffectHandle1, value) {
       }
       [prettyPrint]() { return this.toString(); }
       static [definitionMetadata] = ["class", "CustomStackError", ["stack"]];
+    });
+    (class AsyncEffectMarker {
+      static {
+        new this
+      }
+      constructor() {
+        Runtime.AsyncEffectMarker = this;
+        Object.defineProperty(this, "class", {
+          value: AsyncEffectMarker
+        });
+        globalThis.Object.freeze(this);
+      }
+      toString() { return runtime.render(this); }
+      static [definitionMetadata] = ["object", "AsyncEffectMarker"];
     });
     Runtime.stackLimit = 0;
     Runtime.stackDepth = 0;
@@ -1133,6 +1174,21 @@ lambda3 = (undefined, function (Runtime2, EffectHandle1, value) {
       return value;
     }
   }
+  static await(promise) {
+    let lambda$here;
+    lambda$here = lambda$4(Runtime, promise);
+    return Runtime.mkEffect(Runtime.AsyncEffectMarker, lambda$here)
+  }
+  static toJsAsync(thunk) {
+    let r, scrut;
+    r = Runtime.enterHandleBlock(Runtime.AsyncEffectMarker, thunk);
+    scrut = Runtime.curEffect !== null;
+    if (scrut === true) {
+      Runtime.illegalEffect("in exported async function");
+      return runtime.safeCall(globalThis.Promise.resolve(r))
+    }
+    return runtime.safeCall(globalThis.Promise.resolve(r));
+  }
   static checkDepth() {
     let tmp, tmp1;
     tmp = Runtime.stackDepth >= Runtime.stackLimit;
@@ -1204,16 +1260,20 @@ lambda3 = (undefined, function (Runtime2, EffectHandle1, value) {
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "Runtime"];
 });
+export { continuation as _$_modulePrivate_$_continuation };
 export { Runtime1 as _$_modulePrivate_$_Runtime };
 export { lambda as _$_modulePrivate_$_lambda };
 export { lambda1 as _$_modulePrivate_$_lambda1 };
 export { lambda2 as _$_modulePrivate_$_lambda2 };
 export { lambda3 as _$_modulePrivate_$_lambda3 };
 export { lambda4 as _$_modulePrivate_$_lambda4 };
+export { lambda5 as _$_modulePrivate_$_lambda5 };
 export { lambda$ as _$_modulePrivate_$_lambda$ };
 export { lambda$1 as _$_modulePrivate_$_lambda$1 };
 export { Capture$scope301 as _$_modulePrivate_$_Capture$scope30 };
 export { lambda$2 as _$_modulePrivate_$_lambda$2 };
 export { Capture$scope321 as _$_modulePrivate_$_Capture$scope32 };
 export { lambda$3 as _$_modulePrivate_$_lambda$3 };
+export { lambda$4 as _$_modulePrivate_$_lambda$4 };
+export { continuation$ as _$_modulePrivate_$_continuation$ };
 let Runtime = Runtime1; export default Runtime;
