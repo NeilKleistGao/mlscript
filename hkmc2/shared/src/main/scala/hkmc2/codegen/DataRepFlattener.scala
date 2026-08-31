@@ -12,7 +12,7 @@ import hkmc2.semantics.Elaborator.State
 import scala.collection.mutable.{Set as MutSet, Map as MutMap}
 import scala.collection.mutable.ListBuffer
 
-type Web = FlowWebComputation.Result[ConcreteProducer, ConcreteConsumer]
+type Web = FlowWebComputation.Result[Ctor, ConcreteCtorConsumer]
 
 private object DataRepFlattenDebug:
   private def ctorName(ctor: CtorCls): Str = ctor match
@@ -23,7 +23,7 @@ private object DataRepFlattenDebug:
     case sym: TermSymbol => sym.nme
     case index: Int => index.toString
 
-  def showProducer(producer: ConcreteProducer): Str =
+  def showProducer(producer: Ctor): Str =
     s"${ctorName(producer.ctor)}@${producer.exprId}"
 
   def showFieldAccess(access: FieldSel): Str =
@@ -36,9 +36,9 @@ class EntryPointCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) e
   private given fState: FlowAnalysis.State = flowRes.fState
   private given eState: State = flowRes.eState
 
-  private val entryPoints: ListBuffer[List[ConcreteProducer]] = ListBuffer.empty
-  private val concreteCtorsByResultId = MutMap.empty[ResultId, ListBuffer[ConcreteProducer]]
-  for ctor <- flowRes.ctorDests.keysIterator do
+  private val entryPoints: ListBuffer[List[Ctor]] = ListBuffer.empty
+  private val concreteCtorsByResultId = MutMap.empty[ResultId, ListBuffer[Ctor]]
+  for ctor <- flowRes.ctorsWithDests do
     concreteCtorsByResultId.getOrElseUpdate(ctor.exprId, ListBuffer.empty) += ctor
 
   private def funName(fun: FunDefn): Str =
@@ -56,15 +56,15 @@ class EntryPointCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) e
 
   override def applyFunDefn(fun: FunDefn): Unit =
     if fun.visibility is Visibility.Public then
-      val currentEntryPoints = ListBuffer.empty[ConcreteProducer]
+      val currentEntryPoints = ListBuffer.empty[Ctor]
       val collector = new AllocationCollector()
       collector.applyBlock(fun.body)
 
-      val seenEntryPoints = MutSet.empty[ConcreteProducer]
+      val seenEntryPoints = MutSet.empty[Ctor]
       for
         (allocationId, _) <- collector.allocations
         ctor <- concreteCtorsByResultId.getOrElse(allocationId, Nil)
-        if !flowRes.ctorDests(ctor).contains(UnknownCons)
+        if !ctor.dests.contains(UnknownCons)
         if seenEntryPoints.add(ctor)
       do currentEntryPoints += ctor
 
@@ -77,7 +77,7 @@ class EntryPointCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) e
     defn.companion.foreach(applyCompanionModule)
 
 object EntryPointCollector:
-  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): List[List[ConcreteProducer]] =
+  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): List[List[Ctor]] =
     val collector = new EntryPointCollector(flowRes)
     collector.applyProgram(p)
     collector.entryPoints.toList
@@ -87,22 +87,22 @@ class DataRepFlattener(val webs: List[Web])(using State) extends BlockTransforme
 
 
 object DataRepFlattener:
-  private def mkWeb(entries: List[ConcreteProducer], flowRes: FlowConstraintSolver): Web =
-    FlowWebComputation[ConcreteProducer, ConcreteConsumer](
-      producer => flowRes.ctorDests(producer).collect:
-        case consumer: ConcreteConsumer => consumer,
-      consumer => flowRes.dtorSrcs(consumer).collect:
-        case producer: ConcreteProducer => producer,
+  private def mkWeb(entries: List[Ctor]): Web =
+    FlowWebComputation[Ctor, ConcreteCtorConsumer](
+      producer => producer.dests.collect:
+        case consumer: ConcreteCtorConsumer => consumer,
+      consumer => consumer.srcs.collect:
+        case producer: Ctor => producer,
       entries,
       Nil,
     )
 
-  private def mkWebs(entryPoints: List[List[ConcreteProducer]], flowRes: FlowConstraintSolver) =
-    val coveredProducers = MutSet.empty[ConcreteProducer]
+  private def mkWebs(entryPoints: List[List[Ctor]]) =
+    val coveredProducers = MutSet.empty[Ctor]
     val webs = ListBuffer.empty[Web]
     for entries <- entryPoints do
       if entries.nonEmpty && !entries.exists(coveredProducers) then
-        val web = mkWeb(entries, flowRes)
+        val web = mkWeb(entries)
         coveredProducers ++= web.markedProducers
         webs += web
     webs.toList
@@ -159,6 +159,6 @@ object DataRepFlattener:
           val result = EntryPointCollector(p, flowAnalysisRes)
           if dCfg.debug then tl.emitDbg("<<< end data-rep-flatten collection-phase")
           result
-        val webs = mkWebs(entryPoints, flowAnalysisRes)
+        val webs = mkWebs(entryPoints)
         if dCfg.debug then logWebs(webs)
         new DataRepFlattener(webs).applyProgram(p)
