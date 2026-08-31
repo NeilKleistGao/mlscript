@@ -15,24 +15,24 @@ import scala.collection.mutable.ListBuffer
 type Web = FlowWebComputation.Result[Ctor, ConcreteCtorConsumer]
 
 private object DataRepFlattenDebug:
-  private def ctorName(ctor: CtorCls): Str = ctor match
+  def showCtor(ctor: CtorCls): Str = ctor match
     case cls: ClassLikeSymbol => cls.nme
     case size: Int => s"tup(size $size)"
 
-  private def fieldName(field: SelField): Str = field match
+  def showField(field: SelField): Str = field match
     case sym: TermSymbol => sym.nme
     case index: Int => index.toString
 
   def showProducer(producer: Ctor): Str =
-    s"${ctorName(producer.ctor)}@${producer.exprId}"
+    s"${showCtor(producer.ctor)}@${producer.exprId}"
 
   def showFieldAccess(access: FieldSel): Str =
-    s"${fieldName(access.field)}@${access.exprId}"
+    s"${showField(access.field)}@${access.exprId}"
 
   def showPatternMatch(patternMatch: Dtor): Str =
     s"match@${patternMatch.exprId}"
 
-class EntryPointCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) extends BlockTraverser:
+class ProducersCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) extends BlockTraverser:
   private given fState: FlowAnalysis.State = flowRes.fState
   private given eState: State = flowRes.eState
 
@@ -40,9 +40,6 @@ class EntryPointCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) e
   private val concreteCtorsByResultId = MutMap.empty[ResultId, ListBuffer[Ctor]]
   for ctor <- flowRes.ctorsWithDests do
     concreteCtorsByResultId.getOrElseUpdate(ctor.exprId, ListBuffer.empty) += ctor
-
-  private def funName(fun: FunDefn): Str =
-    fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")
 
   private class AllocationCollector extends BlockTraverserShallow:
     val allocations: ListBuffer[ResultId -> CtorCls] = ListBuffer.empty
@@ -69,21 +66,130 @@ class EntryPointCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) e
       do currentEntryPoints += ctor
 
       if currentEntryPoints.nonEmpty then
-        tl.log(s"track construction of ${currentEntryPoints.map(DataRepFlattenDebug.showProducer).mkString(", ")} in ${funName(fun)}")
+        tl.log(s"track construction of ${currentEntryPoints.map(DataRepFlattenDebug.showProducer).mkString(", ")} in ${fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")}")
 
       entryPoints += currentEntryPoints.toList
 
   override def applyClsLikeDefn(defn: ClsLikeDefn): Unit =
     defn.companion.foreach(applyCompanionModule)
 
-object EntryPointCollector:
-  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): List[List[Ctor]] =
-    val collector = new EntryPointCollector(flowRes)
+  def result: (List[List[Ctor]], Map[ResultId, List[Ctor]]) =
+    (entryPoints.toList, concreteCtorsByResultId.view.mapValues(_.toList).toMap)
+
+object ProducersCollector:
+  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): (List[List[Ctor]], Map[ResultId, List[Ctor]]) =
+    val collector = new ProducersCollector(flowRes)
     collector.applyProgram(p)
-    collector.entryPoints.toList
+    collector.result
 
 
-class DataRepFlattener(val webs: List[Web])(using State) extends BlockTransformer(SymbolSubst.Id)
+private sealed abstract class Shape:
+  def show: Str
+
+private case class LitShape(lit: Value.Lit) extends Shape:
+  def show: Str = lit match
+    case Value.Lit(lit) => lit.idStr
+
+private case class ClassShape(ctor: CtorCls, fields: Map[SelField, Shape]) extends Shape:
+  def show: Str =
+    if fields.isEmpty then DataRepFlattenDebug.showCtor(ctor)
+    else
+      val shownFields = fields.iterator
+        .map((field, shape) => s"${DataRepFlattenDebug.showField(field)}: ${shape.show}")
+      s"${DataRepFlattenDebug.showCtor(ctor)}${shownFields.mkString("(", ", ", ")")}"
+
+private case class UnionShape(subshapes: List[Shape]) extends Shape:
+  def show: Str = subshapes.map(_.show).mkString("(", " | ", ")")
+
+private object DynamicShape extends Shape:
+  def show: Str = "_"
+
+class DataRepFlattener(
+  val webs: List[Web],
+  val concreteCtorsByResultId: Map[ResultId, List[Ctor]],
+  val flowRes: FlowConstraintSolver,
+  val debug: Bool,
+)(using State, TL, Raise) extends BlockTransformer(SymbolSubst.Id):
+  private given fState: FlowAnalysis.State = flowRes.fState
+
+  private val producersInWeb = webs.iterator.flatMap(_.markedProducers).toSet
+
+  private val shapeTags = MutMap.empty[Shape, Int]
+
+  private def mkUnion(shapes: Iterable[Shape]) =
+    val flattened = shapes.iterator.flatMap:
+      case UnionShape(subshapes) if subshapes.nonEmpty => subshapes
+      case shape => shape :: Nil
+    val normalized = flattened.toList.distinct.sortBy(_.show)
+    normalized match
+      case Nil => DynamicShape
+      case shape :: Nil => shape
+      case shapes => UnionShape(shapes)
+
+  private def getCtorArgs(producer: Ctor) =
+    producer.exprId.getResult match
+      case CtorProducer(_, args, _) =>
+        softAssert(
+          args.size === producer.args.size,
+          s"Mismatched constructor arguments for ${DataRepFlattenDebug.showProducer(producer)}",
+        )
+        args
+      case result =>
+        softAssert(
+          false,
+          s"Missing constructor result for ${DataRepFlattenDebug.showProducer(producer)}: ${result.showDbg}",
+        )
+        Nil
+
+  private def shapeOfProducer(producer: Ctor) =
+    val args = getCtorArgs(producer)
+    val fields = producer.args.zipWithIndex.map:
+      case ((name, field), index) =>
+        val original = args.lift(index).map(_.value)
+        name -> shapeOf(field, original)
+    ClassShape(producer.ctor, fields.toMap)
+
+  private def shapeOf(producer: ProdStrat, original: Opt[Path]): Shape =
+    original match
+      case S(lit: Value.Lit) => LitShape(lit)
+      case _ => producer match
+        case ctor: Ctor => shapeOfProducer(ctor)
+        case variable: StratVar =>
+          mkUnion:
+            variable.lowerBounds.map: lowerBound =>
+              shapeOf(lowerBound, N)
+        case _ => DynamicShape
+
+  private def allocateShape(fun: FunDefn, producer: Ctor) =
+    val shape = shapeOfProducer(producer)
+    val tag = shapeTags.getOrElseUpdate(shape, shapeTags.size)
+    if debug then
+      val owner = fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")
+      summon[TL].emitDbg(
+        s"data-rep-flatten transform-phase > allocated tag $tag for ${shape.show} "
+          + s"at ${DataRepFlattenDebug.showProducer(producer)} in $owner",
+      )
+
+  override def applyProgram(program: Program): Program =
+    if debug then
+      summon[TL].emitDbg(">>> start data-rep-flatten transform-phase")
+    val result = super.applyProgram(program)
+    if debug then
+      summon[TL].emitDbg("<<< end data-rep-flatten transform-phase")
+    result
+
+  override def applyFunDefn(fun: FunDefn): FunDefn =
+    val collector = new BlockTraverserShallow:
+      override def applyResult(result: Result): Unit =
+        result match
+          case CtorProducer(_, _, _) =>
+            concreteCtorsByResultId.getOrElse(result.uid, Nil).filter(producersInWeb).foreach(allocateShape(fun, _))
+          case _ => ()
+        super.applyResult(result)
+    collector.applyBlock(fun.body)
+    // TODO: rewrite
+    super.applyFunDefn(fun)
+end DataRepFlattener
 
 
 object DataRepFlattener:
@@ -154,11 +260,11 @@ object DataRepFlattener:
           override def doTrace: Bool = dCfg.debug
           override def emitDbg(str: Str): Unit =
             tl.emitDbg(s"data-rep-flatten collection-phase > $str")
-        val entryPoints = collectorTl.givenIn:
+        val (entryPoints, concreteCtorsByResultId) = collectorTl.givenIn:
           if dCfg.debug then tl.emitDbg(">>> start data-rep-flatten collection-phase")
-          val result = EntryPointCollector(p, flowAnalysisRes)
+          val result = ProducersCollector(p, flowAnalysisRes)
           if dCfg.debug then tl.emitDbg("<<< end data-rep-flatten collection-phase")
           result
         val webs = mkWebs(entryPoints)
         if dCfg.debug then logWebs(webs)
-        new DataRepFlattener(webs).applyProgram(p)
+        new DataRepFlattener(webs, concreteCtorsByResultId, flowAnalysisRes, dCfg.debug).applyProgram(p)
