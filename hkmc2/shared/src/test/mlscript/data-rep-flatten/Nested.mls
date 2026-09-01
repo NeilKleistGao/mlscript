@@ -1,5 +1,6 @@
 :dataRepFlatten debug mono
 :js
+:noFreeze
 
 //│ >>> start data-rep-flatten collection-phase
 //│ <<< end data-rep-flatten collection-phase
@@ -13,7 +14,7 @@ object Nil
 //│ <<< end data-rep-flatten transform-phase
 
 
-
+:ssjs
 fun foo(x, y, z) =
   let ls = new Cons(1, new Cons(2, new Cons(3, new Cons(x, new Cons(y, new Cons(z, Nil))))))
   bar(ls)
@@ -38,4 +39,72 @@ private fun bar(ls) =
 //│ data-rep-flatten transform-phase > allocated tag 4 for Cons(x: 2, xs: Cons(x: 3, xs: Cons(x: _, xs: Cons(x: _, xs: Cons(x: _, xs: Nil))))) at Cons@27 in foo
 //│ data-rep-flatten transform-phase > allocated tag 5 for Cons(x: 1, xs: Cons(x: 2, xs: Cons(x: 3, xs: Cons(x: _, xs: Cons(x: _, xs: Cons(x: _, xs: Nil)))))) at Cons@28 in foo
 //│ <<< end data-rep-flatten transform-phase
+//│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
+//│ let bar, foo;
+//│ foo = function foo(x, y, z) {
+//│   runtime.checkArgs("foo", 3, true, arguments.length);
+//│   let tmp, tmp1, tmp2, tmp3, tmp4, tmp5;
+//│   tmp = (new Cons1.class(z, Nil1));
+//│   tmp.__tag = 0;
+//│   tmp1 = (new Cons1.class(y, tmp));
+//│   tmp1.__tag = 1;
+//│   tmp2 = (new Cons1.class(x, tmp1));
+//│   tmp2.__tag = 2;
+//│   tmp3 = (new Cons1.class(3, tmp2));
+//│   tmp3.__tag = 3;
+//│   tmp4 = (new Cons1.class(2, tmp3));
+//│   tmp4.__tag = 4;
+//│   tmp5 = (new Cons1.class(1, tmp4));
+//│   tmp5.__tag = 5;
+//│   return runtime.checkCall(bar(tmp5))
+//│ };
+//│ bar = function bar(ls) {
+//│   runtime.checkArgs("bar", 1, true, arguments.length);
+//│   let arg$Cons$0$, arg$Cons$1$, arg$Cons$0$1, arg$Cons$1$1, arg$Cons$0$2, arg$Cons$1$2, arg$Cons$0$3, arg$Cons$1$3, arg$Cons$0$4, arg$Cons$1$4, arg$Cons$0$5, arg$Cons$1$5, tmp;
+//│   if (ls instanceof Cons1.class) {
+//│     arg$Cons$0$ = ls.x;
+//│     arg$Cons$1$ = ls.xs;
+//│     if (arg$Cons$0$ === 1) {
+//│       if (arg$Cons$1$ instanceof Cons1.class) {
+//│         arg$Cons$0$1 = arg$Cons$1$.x;
+//│         arg$Cons$1$1 = arg$Cons$1$.xs;
+//│         if (arg$Cons$0$1 === 2) {
+//│           if (arg$Cons$1$1 instanceof Cons1.class) {
+//│             arg$Cons$0$2 = arg$Cons$1$1.x;
+//│             arg$Cons$1$2 = arg$Cons$1$1.xs;
+//│             if (arg$Cons$0$2 === 3) {
+//│               if (arg$Cons$1$2 instanceof Cons1.class) {
+//│                 arg$Cons$0$3 = arg$Cons$1$2.x;
+//│                 arg$Cons$1$3 = arg$Cons$1$2.xs;
+//│                 if (arg$Cons$1$3 instanceof Cons1.class) {
+//│                   arg$Cons$0$4 = arg$Cons$1$3.x;
+//│                   arg$Cons$1$4 = arg$Cons$1$3.xs;
+//│                   if (arg$Cons$1$4 instanceof Cons1.class) {
+//│                     arg$Cons$0$5 = arg$Cons$1$4.x;
+//│                     arg$Cons$1$5 = arg$Cons$1$4.xs;
+//│                     if (arg$Cons$1$5 instanceof Nil1.class) {
+//│                       tmp = arg$Cons$0$3 + arg$Cons$0$4;
+//│                       return tmp + arg$Cons$0$5
+//│                     }
+//│                     return -1;
+//│                   }
+//│                   return -1;
+//│                 }
+//│                 return -1;
+//│               }
+//│               return -1;
+//│             }
+//│             return -1;
+//│           }
+//│           return -1;
+//│         }
+//│         return -1;
+//│       }
+//│       return -1;
+//│     }
+//│     return -1;
+//│   }
+//│   return -1;
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 

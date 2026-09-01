@@ -41,9 +41,9 @@ class ProducersCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) ex
   private given eState: State = flowRes.eState
 
   private val entryPoints = ListBuffer.empty[ProducersCollector.EntryPoints]
-  private val concreteCtorsByResultId = MutMap.empty[ResultId, ListBuffer[Ctor]]
+  private val concreteCtorsByResultId = MutMap.empty[ResultId, Ctor]
   for ctor <- flowRes.ctorsWithDests do
-    concreteCtorsByResultId.getOrElseUpdate(ctor.exprId, ListBuffer.empty) += ctor
+    concreteCtorsByResultId.addOne(ctor.exprId, ctor)
   private val concreteConsumersByResultId = MutMap.empty[ResultId, ListBuffer[ConcreteCtorConsumer]]
   for consumer <- flowRes.consumersWithSrcs do
     concreteConsumersByResultId.getOrElseUpdate(consumer.exprId, ListBuffer.empty) += consumer
@@ -69,7 +69,7 @@ class ProducersCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) ex
       val seenProducerEntryPoints = MutSet.empty[Ctor]
       for
         (allocationId, _) <- collector.allocations
-        ctor <- concreteCtorsByResultId.getOrElse(allocationId, Nil)
+        ctor <- concreteCtorsByResultId.get(allocationId)
         if !ctor.dests.contains(UnknownCons)
       do seenProducerEntryPoints.add(ctor)
 
@@ -97,8 +97,8 @@ class ProducersCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) ex
   override def applyClsLikeDefn(defn: ClsLikeDefn): Unit =
     defn.companion.foreach(applyCompanionModule)
 
-  def result: (List[ProducersCollector.EntryPoints], Map[ResultId, List[Ctor]]) =
-    (entryPoints.toList, concreteCtorsByResultId.view.mapValues(_.toList).toMap)
+  def result: (List[ProducersCollector.EntryPoints], Map[ResultId, Ctor]) =
+    (entryPoints.toList, concreteCtorsByResultId.toMap)
 
 object ProducersCollector:
   case class EntryPoints(
@@ -106,7 +106,7 @@ object ProducersCollector:
     consumers: List[ConcreteCtorConsumer],
   )
 
-  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): (List[EntryPoints], Map[ResultId, List[Ctor]]) =
+  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): (List[EntryPoints], Map[ResultId, Ctor]) =
     val collector = new ProducersCollector(flowRes)
     collector.applyProgram(p)
     collector.result
@@ -135,7 +135,7 @@ private object DynamicShape extends Shape:
 
 class DataRepFlattener(
   val webs: List[Web],
-  val concreteCtorsByResultId: Map[ResultId, List[Ctor]],
+  val concreteCtorsByResultId: Map[ResultId, Ctor],
   val flowRes: FlowConstraintSolver,
   val debug: Bool,
 )(using State, TL, Raise) extends BlockTransformer(SymbolSubst.Id):
@@ -144,6 +144,8 @@ class DataRepFlattener(
   private val producersInWeb = webs.iterator.flatMap(_.markedProducers).toSet
 
   private val shapeTags = MutMap.empty[Shape, Int]
+
+  private val tagField = new syntax.Tree.Ident("__tag")
 
   private def mkUnion(shapes: Iterable[Shape]) =
     val flattened = shapes.iterator.flatMap:
@@ -198,6 +200,15 @@ class DataRepFlattener(
         s"data-rep-flatten transform-phase > allocated tag $tag for ${shape.show} "
           + s"at ${DataRepFlattenDebug.showProducer(producer)} in $owner",
       )
+    tag
+
+  private def insertTag(result: Result, tag: Int)(k: Path => Block): Block =
+    val instance = new TempSymbol(N, "tmp")
+    val instanceRef = instance.asSimpleRef.withLocOf(result)
+    Scoped(Set.single(instance), Assign(
+      instance, result, AssignField(
+        instanceRef, tagField, Value.Lit(syntax.Tree.IntLit(tag)), k(instanceRef),
+      )(N)))
 
   override def applyProgram(program: Program): Program =
     if debug then
@@ -208,16 +219,21 @@ class DataRepFlattener(
     result
 
   override def applyFunDefn(fun: FunDefn): FunDefn =
-    val collector = new BlockTraverserShallow:
-      override def applyResult(result: Result): Unit =
+    val transformer = new BlockTransformerShallow(SymbolSubst.Id):
+      override def applyResult(result: Result)(k: Result => Block): Block =
         result match
           case CtorProducer(_, _, _) =>
-            concreteCtorsByResultId.getOrElse(result.uid, Nil).filter(producersInWeb).foreach(allocateShape(fun, _))
-          case _ => ()
-        super.applyResult(result)
-    collector.applyBlock(fun.body)
-    // TODO: rewrite
-    super.applyFunDefn(fun)
+            concreteCtorsByResultId.get(result.uid).filter(producersInWeb) match
+              case S(ctor) =>
+                super.applyResult(result): transformed =>
+                  insertTag(transformed, allocateShape(fun, ctor))(k)
+              case N => super.applyResult(result)(k)
+          case _ => super.applyResult(result)(k)
+    val body = transformer.applyFunBodyLikeBlock(fun.body)
+    val transformed =
+      if body is fun.body then fun
+      else FunDefn(fun.owner, fun.sym, fun.dSym, fun.params, body)(fun.configOverride, fun.annotations)
+    super.applyFunDefn(transformed)
 end DataRepFlattener
 
 
