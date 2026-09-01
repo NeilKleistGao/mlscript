@@ -27,24 +27,33 @@ private object DataRepFlattenDebug:
     s"${showCtor(producer.ctor)}@${producer.exprId}"
 
   def showFieldAccess(access: FieldSel): Str =
-    s"${showField(access.field)}@${access.exprId}"
+    s"${{showCtor(access.selectsFrom)}}.${showField(access.field)}@${access.exprId}"
 
   def showPatternMatch(patternMatch: Dtor): Str =
     s"match@${patternMatch.exprId}"
+
+  def showConsumer(consumer: ConcreteCtorConsumer): Str = consumer match
+    case access: FieldSel => showFieldAccess(access)
+    case patternMatch: Dtor => showPatternMatch(patternMatch)
 
 class ProducersCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) extends BlockTraverser:
   private given fState: FlowAnalysis.State = flowRes.fState
   private given eState: State = flowRes.eState
 
-  private val entryPoints: ListBuffer[List[Ctor]] = ListBuffer.empty
+  private val entryPoints = ListBuffer.empty[ProducersCollector.EntryPoints]
   private val concreteCtorsByResultId = MutMap.empty[ResultId, ListBuffer[Ctor]]
   for ctor <- flowRes.ctorsWithDests do
     concreteCtorsByResultId.getOrElseUpdate(ctor.exprId, ListBuffer.empty) += ctor
+  private val concreteConsumersByResultId = MutMap.empty[ResultId, ListBuffer[ConcreteCtorConsumer]]
+  for consumer <- flowRes.consumersWithSrcs do
+    concreteConsumersByResultId.getOrElseUpdate(consumer.exprId, ListBuffer.empty) += consumer
 
   private class AllocationCollector extends BlockTraverserShallow:
     val allocations: ListBuffer[ResultId -> CtorCls] = ListBuffer.empty
+    val resultIds: ListBuffer[ResultId] = ListBuffer.empty
 
     override def applyResult(r: Result): Unit =
+      resultIds += r.uid
       r match
         case CtorProducer(ctor, _, _) => allocations += r.uid -> ctor
         case _ => ()
@@ -53,31 +62,51 @@ class ProducersCollector(val flowRes: FlowConstraintSolver)(using val tl: TL) ex
 
   override def applyFunDefn(fun: FunDefn): Unit =
     if fun.visibility is Visibility.Public then
-      val currentEntryPoints = ListBuffer.empty[Ctor]
+      val funName = fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")
       val collector = new AllocationCollector()
       collector.applyBlock(fun.body)
 
-      val seenEntryPoints = MutSet.empty[Ctor]
+      val seenProducerEntryPoints = MutSet.empty[Ctor]
       for
         (allocationId, _) <- collector.allocations
         ctor <- concreteCtorsByResultId.getOrElse(allocationId, Nil)
         if !ctor.dests.contains(UnknownCons)
-        if seenEntryPoints.add(ctor)
-      do currentEntryPoints += ctor
+      do seenProducerEntryPoints.add(ctor)
 
-      if currentEntryPoints.nonEmpty then
-        tl.log(s"track construction of ${currentEntryPoints.map(DataRepFlattenDebug.showProducer).mkString(", ")} in ${fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")}")
+      if !seenProducerEntryPoints.isEmpty then
+        tl.log(s"track construction of ${seenProducerEntryPoints.map(DataRepFlattenDebug.showProducer).mkString(", ")} in $funName")
 
-      entryPoints += currentEntryPoints.toList
+      val seenConsumerEntryPoints = MutSet.empty[ConcreteCtorConsumer]
+      for
+        resultId <- collector.resultIds
+        consumer <- concreteConsumersByResultId.getOrElse(resultId, Nil)
+        if !consumer.srcs.contains(UnknownProd)
+        if consumer.srcs.exists:
+          case _: Ctor => true
+          case _ => false
+      do seenConsumerEntryPoints.add(consumer)
+
+      if !seenConsumerEntryPoints.isEmpty then
+        tl.log(s"track consumption at ${seenConsumerEntryPoints.map(DataRepFlattenDebug.showConsumer).mkString(", ")} in $funName")
+
+      entryPoints += ProducersCollector.EntryPoints(
+        seenProducerEntryPoints.toList,
+        seenConsumerEntryPoints.toList,
+      )
 
   override def applyClsLikeDefn(defn: ClsLikeDefn): Unit =
     defn.companion.foreach(applyCompanionModule)
 
-  def result: (List[List[Ctor]], Map[ResultId, List[Ctor]]) =
+  def result: (List[ProducersCollector.EntryPoints], Map[ResultId, List[Ctor]]) =
     (entryPoints.toList, concreteCtorsByResultId.view.mapValues(_.toList).toMap)
 
 object ProducersCollector:
-  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): (List[List[Ctor]], Map[ResultId, List[Ctor]]) =
+  case class EntryPoints(
+    producers: List[Ctor],
+    consumers: List[ConcreteCtorConsumer],
+  )
+
+  def apply(p: Program, flowRes: FlowConstraintSolver)(using TL): (List[EntryPoints], Map[ResultId, List[Ctor]]) =
     val collector = new ProducersCollector(flowRes)
     collector.applyProgram(p)
     collector.result
@@ -193,23 +222,29 @@ end DataRepFlattener
 
 
 object DataRepFlattener:
-  private def mkWeb(entries: List[Ctor]): Web =
+  private def mkWeb(entries: ProducersCollector.EntryPoints): Web =
     FlowWebComputation[Ctor, ConcreteCtorConsumer](
       producer => producer.dests.collect:
         case consumer: ConcreteCtorConsumer => consumer,
       consumer => consumer.srcs.collect:
         case producer: Ctor => producer,
-      entries,
-      Nil,
+      entries.producers,
+      entries.consumers,
     )
 
-  private def mkWebs(entryPoints: List[List[Ctor]]) =
+  private def mkWebs(entryPoints: List[ProducersCollector.EntryPoints]) =
     val coveredProducers = MutSet.empty[Ctor]
+    val coveredConsumers = MutSet.empty[ConcreteCtorConsumer]
     val webs = ListBuffer.empty[Web]
     for entries <- entryPoints do
-      if entries.nonEmpty && !entries.exists(coveredProducers) then
+      if
+        (entries.producers.nonEmpty || entries.consumers.nonEmpty)
+          && !entries.producers.exists(coveredProducers)
+          && !entries.consumers.exists(coveredConsumers)
+      then
         val web = mkWeb(entries)
         coveredProducers ++= web.markedProducers
+        coveredConsumers ++= web.markedConsumers
         webs += web
     webs.toList
 

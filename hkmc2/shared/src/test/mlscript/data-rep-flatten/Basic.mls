@@ -27,11 +27,12 @@ fun foo(x, y) =
     Foo(x, y) then new Bar(x + y)
 //│ >>> start data-rep-flatten collection-phase
 //│ data-rep-flatten collection-phase > track construction of Foo@3 in foo
+//│ data-rep-flatten collection-phase > track consumption at Foo.x@0, Foo.y@1 in foo
 //│ <<< end data-rep-flatten collection-phase
 //│ >>> start data-rep-flatten web-computation-phase
 //│ data-rep-flatten web-computation-phase > web 0:
 //│ data-rep-flatten web-computation-phase >   producers: Foo@3
-//│ data-rep-flatten web-computation-phase >   field accesses: x@0, y@1
+//│ data-rep-flatten web-computation-phase >   field accesses: Foo.x@0, Foo.y@1
 //│ data-rep-flatten web-computation-phase >   pattern matches: match@2
 //│ <<< end data-rep-flatten web-computation-phase
 //│ >>> start data-rep-flatten transform-phase
@@ -58,11 +59,12 @@ module Baz with
       Foo(x, y) then new Bar(x + y)
 //│ >>> start data-rep-flatten collection-phase
 //│ data-rep-flatten collection-phase > track construction of Foo@10 in Baz.baz
+//│ data-rep-flatten collection-phase > track consumption at Foo.x@3, Foo.y@4 in Baz.baz
 //│ <<< end data-rep-flatten collection-phase
 //│ >>> start data-rep-flatten web-computation-phase
 //│ data-rep-flatten web-computation-phase > web 0:
 //│ data-rep-flatten web-computation-phase >   producers: Foo@10
-//│ data-rep-flatten web-computation-phase >   field accesses: x@3, y@4
+//│ data-rep-flatten web-computation-phase >   field accesses: Foo.x@3, Foo.y@4
 //│ data-rep-flatten web-computation-phase >   pattern matches: match@5
 //│ <<< end data-rep-flatten web-computation-phase
 //│ >>> start data-rep-flatten transform-phase
@@ -87,7 +89,7 @@ private fun baz(f) =
 //│ >>> start data-rep-flatten web-computation-phase
 //│ data-rep-flatten web-computation-phase > web 0:
 //│ data-rep-flatten web-computation-phase >   producers: Foo@6
-//│ data-rep-flatten web-computation-phase >   field accesses: x@0, y@1, x@3, y@4
+//│ data-rep-flatten web-computation-phase >   field accesses: Foo.x@0, Foo.y@1, Foo.x@3, Foo.y@4
 //│ data-rep-flatten web-computation-phase >   pattern matches: match@2, match@5
 //│ <<< end data-rep-flatten web-computation-phase
 //│ >>> start data-rep-flatten transform-phase
@@ -113,10 +115,39 @@ private fun baz(t) =
 //│ >>> start data-rep-flatten web-computation-phase
 //│ data-rep-flatten web-computation-phase > web 0:
 //│ data-rep-flatten web-computation-phase >   producers: Foo@4, Bar@6
-//│ data-rep-flatten web-computation-phase >   field accesses: x@0, y@1, x@3
+//│ data-rep-flatten web-computation-phase >   field accesses: Foo.x@0, Foo.y@1, Bar.x@3
 //│ data-rep-flatten web-computation-phase >   pattern matches: match@2
 //│ <<< end data-rep-flatten web-computation-phase
 //│ >>> start data-rep-flatten transform-phase
 //│ data-rep-flatten transform-phase > allocated tag 0 for Foo(x: _, y: _) at Foo@4 in foo
 //│ data-rep-flatten transform-phase > allocated tag 1 for Bar(x: _) at Bar@6 in bar
+//│ <<< end data-rep-flatten transform-phase
+
+
+class Some(val x)
+object None
+//│ >>> start data-rep-flatten collection-phase
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten transform-phase
+//│ <<< end data-rep-flatten transform-phase
+
+
+private fun foo(x) =
+  if x > 0 then new Some(x) else None
+fun bar(x) =
+  if foo(x) is
+    Some(y) then y
+    else 0
+//│ >>> start data-rep-flatten collection-phase
+//│ data-rep-flatten collection-phase > track consumption at Some.x@1 in bar
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten web-computation-phase
+//│ data-rep-flatten web-computation-phase > web 0:
+//│ data-rep-flatten web-computation-phase >   producers: Some@4, None@5
+//│ data-rep-flatten web-computation-phase >   field accesses: Some.x@1
+//│ data-rep-flatten web-computation-phase >   pattern matches: match@2
+//│ <<< end data-rep-flatten web-computation-phase
+//│ >>> start data-rep-flatten transform-phase
+//│ data-rep-flatten transform-phase > allocated tag 0 for Some(x: _) at Some@4 in foo
+//│ data-rep-flatten transform-phase > allocated tag 1 for None at None@5 in foo
 //│ <<< end data-rep-flatten transform-phase
