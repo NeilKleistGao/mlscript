@@ -937,7 +937,7 @@ class BlockSimplifier
         makeImpossibleAfter:
           super.applyBlock(b)
         
-      case Match(scrut, arms, dflt, rest) =>
+      case m @ Match(scrut, arms, dflt, rest) =>
         
         applyPath(scrut): scrut2 =>
           
@@ -1079,7 +1079,7 @@ class BlockSimplifier
           val restRewritten = applySubBlock(rest)
           
           if (scrut2 is scrut) && (newArms is arms) && (newDflt is dflt) && (restRewritten is rest) then b
-          else Match(scrut2, newArms, newDflt, restRewritten)
+          else Match(scrut2, newArms, newDflt, restRewritten)(m.annotations)
           
       case _ =>
         super.applyBlock(b)

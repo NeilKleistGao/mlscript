@@ -3,6 +3,7 @@ package codegen
 
 import hkmc2.utils.*, shorthands.*
 import utils.*
+import Message.MessageContext
 
 import semantics.*
 import flowAnalysis.*
@@ -119,13 +120,19 @@ private case class LitShape(lit: Value.Lit) extends Shape:
   def show: Str = lit match
     case Value.Lit(lit) => lit.idStr
 
-private case class ClassShape(ctor: CtorCls, fields: Map[SelField, Shape]) extends Shape:
+private case class ClassShape(ctor: ClassLikeSymbol, fields: Map[TermSymbol, Shape]) extends Shape:
   def show: Str =
     if fields.isEmpty then DataRepFlattenDebug.showCtor(ctor)
     else
       val shownFields = fields.iterator
         .map((field, shape) => s"${DataRepFlattenDebug.showField(field)}: ${shape.show}")
       s"${DataRepFlattenDebug.showCtor(ctor)}${shownFields.mkString("(", ", ", ")")}"
+
+private case class TupleShape(length: Int, elements: Ls[Shape]) extends Shape:
+  require(elements.length === length)
+  def show: Str =
+    if elements.isEmpty then DataRepFlattenDebug.showCtor(length)
+    else s"${DataRepFlattenDebug.showCtor(length)}${elements.map(_.show).mkString("(", ", ", ")")}"
 
 private case class UnionShape(subshapes: List[Shape]) extends Shape:
   def show: Str = subshapes.map(_.show).mkString("(", " | ", ")")
@@ -147,16 +154,6 @@ class DataRepFlattener(
 
   private val tagField = new syntax.Tree.Ident("__tag")
 
-  private def mkUnion(shapes: Iterable[Shape]) =
-    val flattened = shapes.iterator.flatMap:
-      case UnionShape(subshapes) if subshapes.nonEmpty => subshapes
-      case shape => shape :: Nil
-    val normalized = flattened.toList.distinct.sortBy(_.show)
-    normalized match
-      case Nil => DynamicShape
-      case shape :: Nil => shape
-      case shapes => UnionShape(shapes)
-
   private def getCtorArgs(producer: Ctor) =
     producer.exprId.getResult match
       case CtorProducer(_, args, _) =>
@@ -172,13 +169,27 @@ class DataRepFlattener(
         )
         Nil
 
-  private def shapeOfProducer(producer: Ctor) =
+  private def shapeOfProducer(producer: Ctor): Shape =
     val args = getCtorArgs(producer)
-    val fields = producer.args.zipWithIndex.map:
-      case ((name, field), index) =>
+    val fieldsOrElements = producer.args.zipWithIndex.map:
+      case ((field, value), index) =>
         val original = args.lift(index).map(_.value)
-        name -> shapeOf(field, original)
-    ClassShape(producer.ctor, fields.toMap)
+        field -> shapeOf(value, original)
+    producer.ctor match
+      case cls: ClassLikeSymbol =>
+        val fields = fieldsOrElements.collect:
+          case (field: TermSymbol, shape) => field -> shape
+        softAssert(
+          fields.size === fieldsOrElements.size,
+          s"Unexpected class fields in ${DataRepFlattenDebug.showProducer(producer)}",
+        )
+        ClassShape(cls, fields.toMap)
+      case length: Int =>
+        softAssert(
+          fieldsOrElements.size === length,
+          s"Mismatched tuple arity for ${DataRepFlattenDebug.showProducer(producer)}",
+        )
+        TupleShape(length, fieldsOrElements.map(_._2))
 
   private def shapeOf(producer: ProdStrat, original: Opt[Path]): Shape =
     original match
@@ -186,13 +197,14 @@ class DataRepFlattener(
       case _ => producer match
         case ctor: Ctor => shapeOfProducer(ctor)
         case variable: StratVar =>
-          mkUnion:
+          DataRepFlattener.mkUnion:
             variable.lowerBounds.map: lowerBound =>
               shapeOf(lowerBound, N)
         case _ => DynamicShape
 
   private def containsUnion(shape: Shape): Bool = shape match
     case ClassShape(_, fields) => fields.valuesIterator.exists(containsUnion)
+    case TupleShape(_, elements) => elements.exists(containsUnion)
     case _: UnionShape => true
     case _ => false
 
@@ -247,6 +259,51 @@ end DataRepFlattener
 
 
 object DataRepFlattener:
+  private def mkUnion(shapes: Iterable[Shape]): Shape =
+    val flattened = shapes.iterator.flatMap:
+      case UnionShape(subshapes) if subshapes.nonEmpty => subshapes
+      case shape => shape :: Nil
+    val normalized = flattened.toList.distinct.sortBy(_.show)
+    normalized match
+      case Nil => DynamicShape
+      case shape :: Nil => shape
+      case shapes => UnionShape(shapes)
+
+  private def mkShapeByPattern(pattern: Pattern)(using raise: Raise): Shape =
+    pattern match
+      case ctorPattern @ Pattern.Constructor(_, arguments) =>
+        ctorPattern.symbol.flatMap(_.asClsLike) match
+          case S(cls: ClassSymbol) =>
+            cls.tree.clsParams match
+              case fields :: Nil =>
+                val argumentShapes = arguments match
+                  case S(patterns) => patterns.map(mkShapeByPattern)
+                  case N => Nil
+                softAssert(
+                  argumentShapes.size === fields.size,
+                  s"Mismatched arity for class pattern $pattern.",
+                )
+                ClassShape(cls, fields.zip(argumentShapes).toMap)
+              case _ =>
+                raise(ErrorReport(
+                  msg"This pattern is not supported by @matchShapes yet." -> pattern.toLoc :: Nil,
+                  source = Diagnostic.Source.Compilation,
+                ))
+                DynamicShape
+          case S(obj: ModuleOrObjectSymbol) =>
+            ClassShape(obj, Map.empty)
+          case _ => DynamicShape
+      case Pattern.Tuple(leading, N) =>
+        TupleShape(leading.size, leading.map(mkShapeByPattern))
+      case Pattern.Literal(literal) => LitShape(Value.Lit(literal))
+      case Pattern.Wildcard() => DynamicShape
+      case _ =>
+        raise(ErrorReport(
+          msg"This pattern is not supported by @matchShapes yet." -> pattern.toLoc :: Nil,
+          source = Diagnostic.Source.Compilation,
+        ))
+        DynamicShape
+
   private def mkWeb(entries: ProducersCollector.EntryPoints): Web =
     FlowWebComputation[Ctor, ConcreteCtorConsumer](
       producer => producer.dests.collect:

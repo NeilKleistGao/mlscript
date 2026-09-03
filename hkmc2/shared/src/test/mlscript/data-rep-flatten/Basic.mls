@@ -282,3 +282,45 @@ fun callCtor(x, y) =
 //│   throw (new globalThis.Error("match error"));
 //│ };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
+
+
+:ssjs
+fun foo(x, y) =
+  let f = [1, 2, 3]
+  if f is
+    [x, y, z] then new Bar(x + y + z)
+//│ >>> start data-rep-flatten collection-phase
+//│ data-rep-flatten collection-phase > track construction of tup(size 3)@4 in foo
+//│ data-rep-flatten collection-phase > track consumption at tup(size 3).2@2, tup(size 3).1@1, tup(size 3).0@0 in foo
+//│ <<< end data-rep-flatten collection-phase
+//│ >>> start data-rep-flatten web-computation-phase
+//│ data-rep-flatten web-computation-phase > web 0:
+//│ data-rep-flatten web-computation-phase >   producers: tup(size 3)@4
+//│ data-rep-flatten web-computation-phase >   field accesses: tup(size 3).0@0, tup(size 3).1@1, tup(size 3).2@2
+//│ data-rep-flatten web-computation-phase >   pattern matches: match@3
+//│ <<< end data-rep-flatten web-computation-phase
+//│ >>> start data-rep-flatten transform-phase
+//│ data-rep-flatten transform-phase > allocated tag 0 for tup(size 3)(1, 2, 3) at tup(size 3)@4 in foo
+//│ <<< end data-rep-flatten transform-phase
+//│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
+//│ let foo5;
+//│ foo5 = function foo(x, y) {
+//│   runtime.checkArgs("foo", 2, true, arguments.length);
+//│   let element2$, element1$, element0$, tmp, tmp1, tmp2;
+//│   tmp2 = ([
+//│     1,
+//│     2,
+//│     3
+//│   ]);
+//│   tmp2.__tag = 0;
+//│   if (runtime.Tuple.isArrayLike(tmp2) && tmp2.length === 3) {
+//│     element0$ = runtime.checkCall(runtime.Tuple.get(tmp2, 0));
+//│     element1$ = runtime.checkCall(runtime.Tuple.get(tmp2, 1));
+//│     element2$ = runtime.checkCall(runtime.Tuple.get(tmp2, 2));
+//│     tmp = element0$ + element1$;
+//│     tmp1 = tmp + element2$;
+//│     return (new Bar1.class(tmp1))
+//│   }
+//│   throw (new globalThis.Error("match error"));
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
