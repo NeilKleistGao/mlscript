@@ -191,16 +191,23 @@ class DataRepFlattener(
               shapeOf(lowerBound, N)
         case _ => DynamicShape
 
+  private def containsUnion(shape: Shape): Bool = shape match
+    case ClassShape(_, fields) => fields.valuesIterator.exists(containsUnion)
+    case _: UnionShape => true
+    case _ => false
+
   private def allocateShape(fun: FunDefn, producer: Ctor) =
     val shape = shapeOfProducer(producer)
-    val tag = shapeTags.getOrElseUpdate(shape, shapeTags.size)
-    if debug then
-      val owner = fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")
-      summon[TL].emitDbg(
-        s"data-rep-flatten transform-phase > allocated tag $tag for ${shape.show} "
-          + s"at ${DataRepFlattenDebug.showProducer(producer)} in $owner",
-      )
-    tag
+    if containsUnion(shape) then N
+    else
+      val tag = shapeTags.getOrElseUpdate(shape, shapeTags.size)
+      if debug then
+        val owner = fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")
+        summon[TL].emitDbg(
+          s"data-rep-flatten transform-phase > allocated tag $tag for ${shape.show} "
+            + s"at ${DataRepFlattenDebug.showProducer(producer)} in $owner",
+        )
+      S(tag)
 
   private def insertTag(result: Result, tag: Int)(k: Path => Block): Block =
     val instance = new TempSymbol(N, "tmp")
@@ -226,7 +233,9 @@ class DataRepFlattener(
             concreteCtorsByResultId.get(result.uid).filter(producersInWeb) match
               case S(ctor) =>
                 super.applyResult(result): transformed =>
-                  insertTag(transformed, allocateShape(fun, ctor))(k)
+                  allocateShape(fun, ctor) match
+                    case S(tag) => insertTag(transformed, tag)(k)
+                    case N => k(transformed)
               case N => super.applyResult(result)(k)
           case _ => super.applyResult(result)(k)
     val body = transformer.applyFunBodyLikeBlock(fun.body)
