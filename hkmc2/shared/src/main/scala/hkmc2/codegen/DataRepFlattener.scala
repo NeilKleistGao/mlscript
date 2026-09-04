@@ -210,16 +210,17 @@ class DataRepFlattener(
 
   private def allocateShape(fun: FunDefn, producer: Ctor) =
     val shape = shapeOfProducer(producer)
-    if containsUnion(shape) then N
-    else
-      val tag = shapeTags.getOrElseUpdate(shape, shapeTags.size)
-      if debug then
-        val owner = fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")
-        summon[TL].emitDbg(
-          s"data-rep-flatten transform-phase > allocated tag $tag for ${shape.show} "
-            + s"at ${DataRepFlattenDebug.showProducer(producer)} in $owner",
-        )
-      S(tag)
+    shape match
+      case shape: ClassShape if !containsUnion(shape) =>
+        val tag = shapeTags.getOrElseUpdate(shape, shapeTags.size)
+        if debug then
+          val owner = fun.owner.fold(fun.dSym.nme)(owner => s"${owner.nme}.${fun.dSym.nme}")
+          summon[TL].emitDbg(
+            s"data-rep-flatten transform-phase > allocated tag $tag for ${shape.show} "
+              + s"at ${DataRepFlattenDebug.showProducer(producer)} in $owner",
+          )
+        S(tag)
+      case _ => N
 
   private def insertTag(result: Result, tag: Int)(k: Path => Block): Block =
     val instance = new TempSymbol(N, "tmp")
