@@ -31,6 +31,10 @@ enum Annot extends AutoLocated:
   case Specialize
   case Dynamic
   case Static
+  case NoInline
+  case Generator
+  case Async
+  case RaiseEffects
   // Whether the function is guaranteed to not raise effects.
   case MayNotRaiseEffects
   case Config(modify: hkmc2.Config => hkmc2.Config)
@@ -52,13 +56,15 @@ enum Annot extends AutoLocated:
   
   def subTerms: Vector[Term] = this match
     case Trm(trm) => Vector.single(trm)
-    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize | Dynamic | Static
+    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize | Dynamic | Static | NoInline
+      | Generator | Async | RaiseEffects
       | MayNotRaiseEffects | _: Config | _: Affine => Vector.empty
   
   def children: Vector[Located] = this match
     case Trm(trm) => Vector.single(trm)
     // case Modifier(kw) => Vector.single(kw) // TODO: make `kw` a `Keywrd`
-    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize | Dynamic | Static
+    case _: Modifier | Untyped | TailRec | TailCall | Inline | Special | Specialize | Dynamic | Static | NoInline
+      | Generator | Async | RaiseEffects
       | MayNotRaiseEffects | _: Config | _: Affine => Vector.empty
   
   def show(using Scope, ShowCfg, Raise): Document = this match
@@ -68,6 +74,10 @@ enum Annot extends AutoLocated:
     case Specialize => doc"@specialize"
     case Dynamic => doc"@dynamic"
     case Static => doc"@static"
+    case NoInline => doc"@noInline"
+    case Generator => doc"@generator"
+    case Async => doc"@async"
+    case RaiseEffects => doc"@raiseEffects"
     case TailRec => doc"@tailrec"
     case TailCall => doc"@tailcall"
     case Affine(n) => doc"@affine($n)"
@@ -87,6 +97,10 @@ enum Annot extends AutoLocated:
     case Specialize => Specialize
     case Dynamic => Dynamic
     case Static => Static
+    case NoInline => NoInline
+    case Generator => Generator
+    case Async => Async
+    case RaiseEffects => RaiseEffects
     case MayNotRaiseEffects => MayNotRaiseEffects
     case c: Config => c
     case a: Affine => a
@@ -94,6 +108,10 @@ enum Annot extends AutoLocated:
 object Annot:
   
   val Private = Modifier(Keyword.`private`)
+  
+  /** The `declare` modifier in `annotations`, if present. */
+  def declareModifierOf(annotations: Ls[Annot]): Opt[Annot.Modifier] = annotations.collectFirst:
+    case mod @ Annot.Modifier(Keyword.`declare`) => mod
   
 end Annot
 
@@ -322,7 +340,7 @@ object SrcScope:
   given s: Ctx => SrcScope = summon[Ctx].scope
 
 enum Term extends Statement:
-  case Error
+  case Error()
   case UnitVal()
   case Missing // Placeholder terms that were not elaborated due to the "lightweight" elaboration mode `Mode.Light`
   case Lit(lit: Literal)
@@ -355,6 +373,12 @@ enum Term extends Statement:
    *  split are correctly resolved. In the future, we might look for a way to
    *  remove `SynthIf` by generating IR `Match` blocks directly. */
   case SynthIf(split: Split)
+  /** `while` loops synthesized by the pattern compiler, subject to the same
+   *  restrictions as `SynthIf`. The split's branch consequents are evaluated
+   *  for their effects and the loop is re-entered; the loop exits when no
+   *  branch matches. Used by `ups.FixedPointCompiler` to drive the generated
+   *  matcher machine. */
+  case SynthWhile(split: Split)
   case Lam(params: ParamList, body: Term)
   case FunTy(lhs: Term, rhs: Term, eff: Opt[Term])
   case Forall(tvs: Ls[QuantVar], outer: Opt[VarSymbol], body: Term)
@@ -458,6 +482,7 @@ enum Term extends Statement:
       Term.blkFreeVars(stats, res.freeVars)
     case IfLike(_, _, split) => split.freeVars
     case SynthIf(split) => split.freeVars
+    case SynthWhile(split) => split.freeVars
     case Region(name, body) =>
       body.freeVars - name.nme
     case Handle(lhs, rhs, args, _, defs, body) =>
@@ -488,7 +513,7 @@ enum Term extends Statement:
   
   override def mkClone(using State): Term = 
     val that = this match
-      case Error => Error
+      case Error() => Error()
       case UnitVal() => UnitVal()
       case Missing => Missing
       case Lit(Tree.StrLit(value)) => Lit(Tree.StrLit(value))
@@ -515,6 +540,7 @@ enum Term extends Statement:
       })(term.tree)
       case IfLike(kw, form, split) => IfLike(kw, form, split.mkClone)
       case SynthIf(split) => SynthIf(split.mkClone)
+      case SynthWhile(split) => SynthWhile(split.mkClone)
       case Lam(params, body) => Lam(params, body.mkClone)
       case FunTy(lhs, rhs, eff) => FunTy(lhs.mkClone, rhs.mkClone, eff.map(_.mkClone))
       case Forall(tvs, outer, body) => Forall(tvs, outer, body.mkClone)
@@ -606,6 +632,7 @@ extension (self: Blk)
 
 
 case class ShowCfg(
+  showErasedTypes: Bool,
   showExpansionMappings: Bool,
   showFlowSymbols: Bool,
   debug: Bool,
@@ -617,6 +644,7 @@ end ShowCfg
 object ShowCfg:
   // * For use when displaying things for internal use (not for end users)
   val internal = ShowCfg(
+    showErasedTypes = true,
     showFlowSymbols = true,
     showExpansionMappings = false,
     debug = false,
@@ -638,7 +666,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
   
   def describe: Str =
     val desc = this match
-      case Error => "‹error›"
+      case Error() => "‹error›"
       case UnitVal() => "unit value"
       case Lit(lit) => lit.describeLit
       case Ref(sym) => "reference"
@@ -653,6 +681,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case IfLike(_, IfLikeForm.ImperativeIf, body) => "`if` statement"
       case IfLike(_, IfLikeForm.While, body) => "`while` statement"
       case SynthIf(split) => "synthetic `if` expression"
+      case SynthWhile(split) => "synthetic `while` expression"
       case Lam(params, body) => "function literal"
       case FunTy(lhs, rhs, eff) => "function type"
       case Forall(tvs, outer, body) => "universal quantification"
@@ -664,7 +693,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case New(cls, args, rft) => "object creation"
       case SelProj(pre, cls, proj) => "field selection"
       case Asc(term, ty) => "type ascription"
-      case CompType(lhs, rhs, pol) => "composed type"
+      case CompType(lhs, rhs, pol) => if pol then "alternation" else "composition"
       case Neg(rhs) => "negation type"
       case Region(name, body) => "region expression"
       case RegRef(reg, value) => "reference creation"
@@ -701,7 +730,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Blk(stats, res) => stats.toVector :+ res
     case _ => subTerms
   def subTerms: Vector[Term] = this match
-    case Error | Missing | _: Lit | _: Ref | _: UnitVal => Vector.empty
+    case Error() | Missing | _: Lit | _: Ref | _: UnitVal => Vector.empty
     case Resolved(t, sym) => Vector.single(t)
     case App(lhs, rhs) => Vector.double(lhs, rhs)
     case RcdField(lhs, rhs) => Vector.double(lhs, rhs)
@@ -716,6 +745,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case CtxTup(fields) => fields.flatMap(_.subTerms).toVector
     case IfLike(_, _, split) => split.subTerms
     case SynthIf(split) => split.subTerms
+    case SynthWhile(split) => split.subTerms
     case Lam(params, body) => params.allParams.iterator.flatMap(_.sign).toVector :+ body
     case Blk(stats, res) => stats.flatMap(_.subTerms).toVector :+ res
     case Rcd(mut, stats) => stats.flatMap(_.subTerms).toVector
@@ -773,6 +803,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case t: App => treeOrSubterms(t.tree)
     case IfLike(_, _, split) => Vector.single(split)
     case SynthIf(split) => Vector.single(split)
+    case SynthWhile(split) => Vector.single(split)
     case SynthSel(pre, nme) => Vector.double(pre, nme)
     case Sel(pre, nme) => Vector.double(pre, nme)
     case SelProj(prefix, cls, proj) => Vector.triple(prefix, cls, proj)
@@ -839,7 +870,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
       case imp: Import =>
         doc"import ${"\""}.../${imp.file.last}${"\""} as ${imp.sym.showName}"
       case LeadingDotSel(name) => doc"_?_.${name.name}"
-      case Error => doc"‹error›"
+      case Error() => doc"‹error›"
       case _ =>
         doc"TODO[show:${getClass.getSimpleName}](${toString})"
     this match
@@ -899,6 +930,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case DynSel(pre, fld, _) => s"${pre.showDbg}[${fld.showDbg}]"
     case IfLike(kw, _, split) => s"${kw.name} { ${split.showDbg} }"
     case SynthIf(split) => s"if { ${split.showDbg} }"
+    case SynthWhile(split) => s"while { ${split.showDbg} }"
     case Lam(params, body) => s"λ${params.showDbg}. ${body.showDbg}"
     case Blk(stats, res) =>
       (stats.map(_.showDbg + "; ") :+ (res match { case Lit(Tree.UnitLit(false)) => "" case x => x.showDbg + " " }))
@@ -925,7 +957,7 @@ sealed trait Statement extends AutoLocated, ProductWithExtraInfo:
     case Deref(term) => s"!$term"
     case Neg(ty) => s"~${ty.showDbg}"
     case CompType(lhs, rhs, pol) => s"${lhs.showDbg} ${if pol then "|" else "&"} ${rhs.showDbg}"
-    case Error => "<error>"
+    case Error() => "<error>"
     case Tup(fields) => fields.map(_.showDbg).mkString("[", ", ", "]")
     case Mut(und) => s"mut ${und.showDbg}"
     case CtxTup(fields) => fields.map(_.showDbg).mkString("‹using›[", ", ", "]")
@@ -1071,10 +1103,21 @@ object ObjBody:
       else R:
         nme -> syms.head._1
     
+    val memMap = mems.toMap
+    val aliasEntries = mems.toList.flatMap: (nme, sym) =>
+      sym.sourceAliases.filter(_ =/= nme).map(_ -> sym)
+    val aliasConflicts = aliasEntries.groupMap(_._1)(_._2).collect:
+      case (alias, syms) if syms.distinct.sizeCompare(1) > 0 =>
+        ErrorReport(msg"Duplicate definition of member alias '${alias}'." -> N :: Nil)
+      case (alias, sym :: _) if memMap.get(alias).exists(_ isnt sym) =>
+        ErrorReport(msg"Member alias '${alias}' conflicts with an existing member." -> N :: Nil)
+
     if errs.nonEmpty then
       L(errs.map(ErrorReport(_)).toList)
+    else if aliasConflicts.nonEmpty then
+      L(aliasConflicts.toList)
     else
-      R(mems.toMap)
+      R(memMap ++ aliasEntries)
 
 case class ObjBody(blk: Term.Blk):
   
@@ -1121,8 +1164,7 @@ sealed abstract class Declaration:
 sealed abstract class Definition extends Declaration, Statement:
   val annotations: Ls[Annot]
   def bsym: BlockMemberSymbol
-  def hasDeclareModifier: Opt[Annot.Modifier] = annotations.collectFirst:
-    case mod @ Annot.Modifier(Keyword.`declare`) => mod
+  def hasDeclareModifier: Opt[Annot.Modifier] = Annot.declareModifierOf(annotations)
   def hasStagedModifier: Opt[Annot.Modifier] = annotations.collectFirst:
     case mod @ Annot.Modifier(Keyword.`staged`) => mod
 
@@ -1360,7 +1402,7 @@ final case class TyParam(flags: FldFlags, vce: Opt[Bool], sym: VarSymbol) extend
     (if isCovariant then
       if isContravariant then "" else "out "
       else if isContravariant then "in " else "in out ") +
-    flags.show + sym
+    "‹" + flags.show + "›" + sym
 
 
 object Param:
@@ -1463,4 +1505,3 @@ trait BlkImpl:
     (stats ::: (res match
       case Lit(Tree.UnitLit(false)) => Nil
       case res => res :: Nil)).map(_.show).mkDocument(doc", # ")
-

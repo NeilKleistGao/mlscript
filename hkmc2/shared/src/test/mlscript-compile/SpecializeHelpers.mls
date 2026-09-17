@@ -8,7 +8,6 @@ import "./Predef.mls"
 import "./Runtime.mls"
 
 open Block
-open Shape
 open Option
 open Predef
 open ShapeSet
@@ -20,13 +19,14 @@ fun wrapScoped(symbols, block) =
   else Scoped(symbols, block)
 
 fun showCtxPath(p) = if p is
-  Select(qual, Symbol(name)) then showCtxPath(qual) + "." + name
+  Cast(value, _, _) then showCtxPath(value)
+  Select(qual, Block.Symbol(name)) then showCtxPath(qual) + "." + name
   DynSelect(qual, fld, _) then showCtxPath(qual) + ".(" + showCtxPath(fld) + ")" 
-  ValueSimpleRef(l) | ValueMemberRef(l) and
+  (ValueSimpleRef(l) | ValueMemberRef(l)) and
     l is
       ConcreteClassSymbol(n, v, _, _, _) then "ClassSymbol(" + n + ")"
       ModuleSymbol(n, v, _) then "ModuleSymbol(" + n + ")"
-      Symbol(n) then "Symbol(" + n + ")"
+      Block.Symbol(n) then "Symbol(" + n + ")"
       else throw Error(l)
   ValueLit(lit) then "Lit(" + lit.toString() + ")"
   ValueThis then "this"
@@ -170,9 +170,9 @@ class FunCache(
       ModuleSymbol then ""
 
     // process preCtor: inline temp variable when printing
-    class InlinePrinter(ctx: Map[Symbol, String]) extends Printer(Some(owner)) with
+    class InlinePrinter(ctx: Map[Block.Symbol, String]) extends Printer(Some(owner)) with
       fun showPath(p) = if p is
-        ValueSimpleRef(s) | ValueMemberRef(s) and ctx.has(s) then ctx.get(s)
+        (ValueSimpleRef(s) | ValueMemberRef(s)) and ctx.has(s) then ctx.get(s)
         Select(qual, name) and qual is
           // let elaborator disambiguate ValueThis
           ValueThis(_) then this.showSymbol(name)
@@ -186,7 +186,7 @@ class FunCache(
     
     fun inlineResult(ctx: Map[Result, String])(r) = InlinePrinter(ctx).showResult(r)
     
-    fun inlineAssigments(ctx: Map[Symbol, String])(b) = if b is 
+    fun inlineAssigments(ctx: Map[Block.Symbol, String])(b) = if b is 
       Return(res) then inlineResult(ctx)(res)
       Scoped(syms, rest) then
         let ctx = syms.reduce((ctx, sym) => ctx.set(sym, sym.nme), ctx)
@@ -241,7 +241,7 @@ open StagingUtility
 // shape of value
 fun sov(v): ShapeSet = 
   if 
-    typeof(v) is "number" | "string" | "boolean" then mkLit(v)
+    typeof(v) is ("number" | "string" | "boolean") then mkLit(v)
     Array.isArray(v) then
       mkArr(v.map(sov))
     not (v is undefined) and not (v.constructor is undefined) and not (v.constructor.(Symbols.definitionMetadata) is undefined) and
@@ -250,10 +250,10 @@ fun sov(v): ShapeSet =
       // if class field is not public, then definitionMetadata in the corresponding field is null
       let paramsOpt = if meta.length < 3 
         then None
-        else Some(meta.2.map(p => if p is null then Symbol("") else Symbol(p)))
+        else Some(meta.2.map(p => if p is null then Block.Symbol("") else Block.Symbol(p)))
       let classSymbol = Runtime.SymbolMap.classMap.get(v.constructor)
       // TODO: non-staged classes not already referenced in staged code will default to dynamic here
-      classSymbol is Symbol then
+      classSymbol is Block.Symbol then
         let argsMap = new Map()
         if not (paramsOpt is None) do
           meta.2.forEach((n, _, _) => argsMap.set(n, sov(v.(n))))
@@ -264,27 +264,27 @@ fun sov(v): ShapeSet =
 fun sop(ctx, p): ShapeSet = if ctx.get(p) is
   Some(s) then s
   None and p is 
-    ValueSimpleRef(clsSymb) | ValueMemberRef(clsSymb) and clsSymb is ObjectSymbol then
+    (ValueSimpleRef(clsSymb) | ValueMemberRef(clsSymb)) and clsSymb is ObjectSymbol then
       mkClass(clsSymb, [], false)
     Select(ValueThis(ModuleSymbol), clsSymb) and clsSymb is ConcreteClassSymbol and clsSymb.paramsOpt is None then
       mkClass(clsSymb, [], false)
     Select(ValueMemberRef(ModuleSymbol), clsSymb) and clsSymb is ConcreteClassSymbol and clsSymb.paramsOpt is None then
       mkClass(clsSymb, [], false)
-    Select(ValueMemberRef(clsSymb), Symbol(name)) and clsSymb is ConcreteClassSymbol then
+    Select(ValueMemberRef(clsSymb), Block.Symbol(name)) and clsSymb is ConcreteClassSymbol then
       if ctx.thisShape is Some(thisShape) then // this.name
         selSet(thisShape, mkLit(name))
       else if ctx.getValDefn(name) is Some(s) then s // variables defined in valdefn (this is for constructor propagation only)
       else throw Error("member not found: " + name)
-    Select(ValueThis(clsSymb), Symbol(name)) and clsSymb is ConcreteClassSymbol then
+    Select(ValueThis(clsSymb), Block.Symbol(name)) and clsSymb is ConcreteClassSymbol then
       if ctx.thisShape is Some(thisShape) then // this.name
         selSet(thisShape, mkLit(name))
       else if ctx.getValDefn(name) is Some(s) then s // variables defined in valdefn (this is for constructor propagation only)
       else throw Error("member not found: " + name)
-    Select(qual, Symbol(name)) and // object property
+    Select(qual, Block.Symbol(name)) and // object property
       name is "length" and // special handle array .length
         let qualShape = sop(ctx, qual)
         let vals = qualShape.values()
-        vals.length > 0 and vals.every(_ is Arr) and
+        vals.length > 0 and vals.every(_ is Shape.Arr) and
           let firstLen = vals.0.shapes.length
           vals.every(v => v.shapes.length == firstLen) then
             mkLit(firstLen)
@@ -296,13 +296,16 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
     ValueThis(clsSymb) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then thisShape
     ValueSimpleRef | ValueMemberRef then mkDyn()
 
+fun subLitRef(ctx, p) =
+  let s = sop(ctx, p)
+  if s.values() is [Shape.Lit(lit)] then ValueLit(lit) else p
+
 // This sub p.(n) to p.1 if n -> 1
 fun subLitPath(ctx, p) = if p is
   DynSelect(qual, fld, b) then DynSelect(subLitPath(ctx, qual), subLitPath(ctx, fld), b)
   Select(qual, name) then Select(subLitPath(ctx, qual), name)
-  ValueSimpleRef | ValueMemberRef and
-    let s = sop(ctx, p)
-    s.values() is [Lit(lit)] then ValueLit(lit)
+  ValueSimpleRef then subLitRef(ctx, p)
+  ValueMemberRef then subLitRef(ctx, p)
   else p
 
 
@@ -312,7 +315,7 @@ class SplitResult(val knownMap: Map[Class, [ConcreteClassSymbol, ShapeSet]], val
 fun fsplit(pss) = 
   let knownMap = new Map()
   let unkShape = foldl((acc, s) => if s is
-    Class(sym, params, _, _) and isStagedClass(sym.value) then
+    Shape.Class(sym, params, _, _) and isStagedClass(sym.value) then
       let key = getActualClass(sym.value)
       if knownMap.has(key) then
         let entry = knownMap.get(key)
@@ -388,11 +391,11 @@ fun sorStaticModuleCall(ctx, f, value, fld, args, isSpecial, argShapes) =
       else sorUnknownCall(ctx, f, args, isSpecial)
 
 fun sorCall(ctx, r, f, args, isSpecial, argShapes) = if f is
-  Select(Select(ValueMemberRef(Symbol("runtime")), Symbol("Tuple")), Symbol("get")) // runtime.Tuple.get is generated by the compiler in the IR
+  Select(Select(ValueMemberRef(Block.Symbol("runtime")), Block.Symbol("Tuple")), Block.Symbol("get")) // runtime.Tuple.get is generated by the compiler in the IR
     and args is [Arg(scrut), Arg(litArg)] then
       let recovered = DynSelect(scrut, litArg, false)
       [End(), recovered, sop(ctx, recovered)]
-  Select(Select(ValueMemberRef(Symbol("runtime")), Symbol("Tuple")), Symbol("slice")) then
+  Select(Select(ValueMemberRef(Block.Symbol("runtime")), Block.Symbol("Tuple")), Block.Symbol("slice")) then
     throw Error("runtime.Tuple.slice not handled in shape propagation")
   Select(ValueMemberRef(ModuleSymbol(name, value, _)), clsSymb) and clsSymb is ConcreteClassSymbol then // class within module
     [End(), r, mkClass(clsSymb, argShapes, false)]
@@ -407,7 +410,7 @@ fun sorCall(ctx, r, f, args, isSpecial, argShapes) = if f is
       else throw Error("class is staged but cache not found")
     else [End(), r, mkClass(clsSymb, argShapes, false)]
   ValueSimpleRef(symb) | ValueMemberRef(symb) then sorBuiltinOp(ctx, r, f, symb.name, args, isSpecial)  // built-in or top-level
-  Select(ValueThis(ModuleSymbol(name, value, redir)), Symbol(fld)) and
+  Select(ValueThis(ModuleSymbol(name, value, redir)), Block.Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
     let cachePropName = getCacheName(name, false)
     let genMap = value.(mapPropName)
@@ -415,17 +418,17 @@ fun sorCall(ctx, r, f, args, isSpecial, argShapes) = if f is
       let f_gen = genMap.get(fld)
       not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
-        [End(), Call(Select(ValueThis(ModuleSymbol(name, value, redir)), Symbol(res.0)), args, isSpecial), res.1]
+        [End(), Call(Select(ValueThis(ModuleSymbol(name, value, redir)), Block.Symbol(res.0)), args, isSpecial), res.1]
       else
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
-  Select(ValueMemberRef(ModuleSymbol(name, value, redir)), Symbol(fld)) and
+  Select(ValueMemberRef(ModuleSymbol(name, value, redir)), Block.Symbol(fld)) and
     let mapPropName = getGenMapName(name, false)
     let genMap = value.(mapPropName)
     not (genMap is undefined) and
       let f_gen = genMap.get(fld)
       not (f_gen is Runtime.Unit) then  // staged function
         let res = f_gen(...argShapes)
-        let callPath = if res.0 == fld then Select(ValueMemberRef(ModuleSymbol(name, value, redir)), Symbol(res.0)) else ValueSimpleRef(Symbol(res.0))
+        let callPath = if res.0 == fld then Select(ValueMemberRef(ModuleSymbol(name, value, redir)), Block.Symbol(res.0)) else ValueSimpleRef(Block.Symbol(res.0))
         [End(), Call(callPath, args, isSpecial), res.1]
       else 
         throw Error("module " + name + " is staged but function " + fld + " is not found in generator map")
@@ -461,7 +464,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args, isSpecial) =
 
   if knownMap.size is 
     0 and
-      let dfltMatch = Call(Select(p, Symbol(f)), args, isSpecial)
+      let dfltMatch = Call(Select(p, Block.Symbol(f)), args, isSpecial)
       isRet then
         [Return(dfltMatch), mkDyn()]
       else
@@ -476,7 +479,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args, isSpecial) =
       let ret = f_gen(ss_i)(...argShapes)
       let retSym = ret.0
       let retShape = ret.1
-      let callRes = Call(ValueSimpleRef(Symbol(retSym)), [Arg(p), ...args], isSpecial)
+      let callRes = Call(ValueSimpleRef(Block.Symbol(retSym)), [Arg(p), ...args], isSpecial)
       isRet then
         [Return(callRes), retShape]
       else
@@ -491,7 +494,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args, isSpecial) =
         let retData = f_gen(ss_i)(...argShapes)
         let retSym = retData.0
         let retShape = retData.1
-        let callRes = Call(ValueSimpleRef(Symbol(retSym)), [Arg(p), ...args], isSpecial)
+        let callRes = Call(ValueSimpleRef(Block.Symbol(retSym)), [Arg(p), ...args], isSpecial)
         if isRet then
           [Arm(Cls(C_i, p), Return(callRes)), retShape]
         else
@@ -501,7 +504,7 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args, isSpecial) =
       let armsAcc = armsRet.map(_.0)
       let totalStagedRetShape = foldl((acc, x) => union2(acc, x.1))(mkBot(), ...armsRet)
       let dfltRet = if unkShape.isEmpty() then [None, mkBot()] else
-        let dfltMatch = Call(Select(p, Symbol(f)), args, isSpecial)
+        let dfltMatch = Call(Select(p, Block.Symbol(f)), args, isSpecial)
         if isRet then
           [Some(Return(dfltMatch)), mkDyn()]
         else
@@ -515,12 +518,14 @@ fun dispatchMethodCall(ctx, xOpt, p, f, args, isSpecial) =
       [matchBody, totalRetShape]
 
 fun isDispatchPath(p) = if p is
+  Cast(value, _, _) then isDispatchPath(value)
   ValueSimpleRef(symb) | ValueMemberRef(symb) then not symb is ModuleSymbol
   ValueThis(ConcreteClassSymbol) then true
   Select(p', _) then isDispatchPath(p')
   else false
 
 fun isClassCallPath(p) = if p is
+  Cast(value, _, _) then isClassCallPath(value)
   ValueMemberRef(ConcreteClassSymbol) then true
   Select(ValueThis(ModuleSymbol), ConcreteClassSymbol) then true
   Select(ValueMemberRef(ModuleSymbol), ConcreteClassSymbol) then true
@@ -528,9 +533,9 @@ fun isClassCallPath(p) = if p is
 
 fun flattenUCSShape(s: Shape): Array[Shape] =
   if s is
-    Class(sym, fields, superShape, true) and fields.some(_.values().length > 1) then
+    Shape.Class(sym, fields, superShape, true) and fields.some(_.values().length > 1) then
       prod(fields.map(_.values())).map(fieldShapes =>
-        Class(sym, fieldShapes.map(lift), superShape, true)
+        Shape.Class(sym, fieldShapes.map(lift), superShape, true)
       )
     else [s]
 
@@ -540,8 +545,8 @@ fun prepareUCSShapes(pss) =
 fun needsUCS(pss) =
   let shapes = pss.values()
   shapes.length > 1 and shapes.some(s =>
-    s is Class(sym, _, _, true) and shapes.some(other =>
-      other !== s and other is Class(otherSym, _, _, _) and
+    s is Shape.Class(sym, _, _, true) and shapes.some(other =>
+      other !== s and other is Shape.Class(otherSym, _, _, _) and
         getActualClass(sym.value) == getActualClass(otherSym.value)
     )
   )
@@ -566,9 +571,9 @@ fun orderedUCSShapes(pss) =
   let shapes = pss.values()
   // Exact patterns must precede broad class patterns, and Dyn is the final wildcard.
   [
-    ...shapes.filter(_ is Class(_, _, _, true)),
-    ...shapes.filter(s => s is Class(_, _, _, false)),
-    ...shapes.filter(s => not (s is Class)),
+    ...shapes.filter(_ is Shape.Class(_, _, _, true)),
+    ...shapes.filter(s => s is Shape.Class(_, _, _, false)),
+    ...shapes.filter(s => not (s is Shape.Class)),
   ]
 
 fun mergeAssigned(acc, assigned) =
@@ -625,7 +630,7 @@ fun propUCSMatch(ctx, p, arms, dflt, restBlock, pss) =
 // [retBlock, retShape, canReachEnd]
 fun prop(ctx, b) = if b is
     End() then [b, mkBot(), true]
-    Return(Call(Select(p, Symbol(f)), args, isSpecial)) and isDispatchPath(p) then
+    Return(Call(Select(p, Block.Symbol(f)), args, isSpecial)) and isDispatchPath(p) then
       let pss = prepareUCSShapes(sop(ctx, p))
       withDynamicSpecialization(pss, hasSingleDispatchBranch(pss), () =>
         if needsUCS(pss) then propUCSReturn(ctx, p, f, args, isSpecial, pss)
@@ -642,7 +647,7 @@ fun prop(ctx, b) = if b is
       // preCtor$ is usually scoped, so commit a super() shape discovered inside the scope.
       ctx.setSuperShape(newCtx.getSuperShape())
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
-    Assign(x, Call(Select(p, Symbol(f)), args, isSpecial), restBlock) and isDispatchPath(p) then
+    Assign(x, Call(Select(p, Block.Symbol(f)), args, isSpecial), restBlock) and isDispatchPath(p) then
       let pss = prepareUCSShapes(sop(ctx, p))
       if needsUCS(pss) then
         withDynamicSpecialization(pss, false, () => propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss))
@@ -716,11 +721,11 @@ fun propStub(ctx, body) =
   [body, mkDyn()]
 
 fun buildShapeName(s: Shape): Str = if s is
-  Dyn then "Dyn"
-  Lit(lit) and lit is Str then "Str" + lit
-  Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
-  Arr(shapes) then "Arr_" + shapes.map(buildShapeSetName).join("_") + "_end"
-  Class(sym, params, superShape, isSpecial) and
+  Shape.Dyn then "Dyn"
+  Shape.Lit(lit) and lit is Str then "Str" + lit
+  Shape.Lit(lit) then "Lit" + lit.toString().replace(".", "_p_")
+  Shape.Arr(shapes) then "Arr_" + shapes.map(buildShapeSetName).join("_") + "_end"
+  Shape.Class(sym, params, superShape, isSpecial) and
     let superName = if superShape.isEmpty() then "" else "_Super_" + buildShapeSetName(superShape) + "_end"
     params.length is
       0 then sym.name + superName + (if isSpecial then "_Special" else "")
@@ -759,7 +764,7 @@ fun dynamicSpecializationShapes(cache, isMethod, ps, shapes) =
   let paramShapes = if isMethod then shapes.slice(1) else shapes
   let dynamicShapes = dynamicParamShapes(ps, paramShapes)
   if isMethod and cache.owner is ConcreteClassSymbol then
-    [[lift(silh(Cls(cache.owner, ValueMemberRef(cache.owner))))], ...dynamicShapes]
+    [[lift(Shape.silh(Cls(cache.owner, ValueMemberRef(cache.owner))))], ...dynamicShapes]
   else dynamicShapes
 
 fun hasAllDynamicParams(isMethod, ps, shapes) =
@@ -776,7 +781,7 @@ fun specializeName(cache, funName, isMethod, ps, shapes) =
   else cache.freshName(funName)
 
 fun isStaticShapePath(s: Shape) = if s is
-  Lit(_) then true
+  Shape.Lit(_) then true
   // Arr(shapes) then shapes.every(x => x is Lit)
   // Class(_, fields) then fields.every(x => x is Lit)
   else false
@@ -793,7 +798,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
   // so we need to read the annotations by running dflt() anyway
   // which prevent the possibilily of not running dflt when specialized function already exists in cache
   let defn = dflt()
-  if defn is FunDefn(Symbol(_), ps, body) then
+  if defn is FunDefn(Block.Symbol(_), ps, body) then
     let isMethod = cache.owner is ConcreteClassSymbol
     let contextName = specializationContextName(cache, funName)
     let effectiveShapes =
@@ -822,7 +827,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
           ctx.add(ValueSimpleRef(p2.sym), shape)
         ))
         
-        cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, body), mkDyn(), isPrivate))
+        cache.setFun(specializationKey, FunEntry(FunDefn(Block.Symbol(newName), ps, body), mkDyn(), isPrivate))
 
         let oldSpecialization = currentSpecialization
         set currentSpecialization = Some(contextName)
@@ -839,7 +844,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
         else bodyWithScoped
 
         // Update cache with finalized body and actual return shape
-        let entry = cache.setFun(specializationKey, FunEntry(FunDefn(Symbol(newName), ps, finalBody), actualRetShape, isPrivate))
+        let entry = cache.setFun(specializationKey, FunEntry(FunDefn(Block.Symbol(newName), ps, finalBody), actualRetShape, isPrivate))
 
 
         [entry.defn.sym.name, entry.retShape]
@@ -849,7 +854,7 @@ fun specialize(cache: FunCache, funName, dflt, shapes) =
 fun specializeCtor(classSymb: ConcreteClassSymbol, argShapes: Array[ShapeSet], ctx: Ctx, isSpecial: Bool) =
   let actualClass = getActualClass(classSymb.value)
   let defn = actualClass."class$ctor$_instr"()
-  if defn is FunDefn(Symbol(_), ps, body) then
+  if defn is FunDefn(Block.Symbol(_), ps, body) then
     ps.forEach((p, i, _) => p.forEach((p2, j, _) => ctx.add(ValueSimpleRef(p2.sym), argShapes.(j))))
     if not (actualClass."preCtor$_instr" is undefined) and actualClass."preCtor$_instr"() is FunDefn(_, _, preCtorBody) then do 
       prop(ctx, preCtorBody)

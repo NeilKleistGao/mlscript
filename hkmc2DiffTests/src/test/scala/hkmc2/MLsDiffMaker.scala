@@ -16,7 +16,8 @@ abstract class MLsDiffMaker extends DiffMaker:
   val rootPath: Str // * Absolute path to the root of the project
   val preludeFile: io.Path // * Contains declarations of JS builtins
   val predefFile: io.Path // * Contains MLscript standard library definitions
-  val runtimeFile: io.Path = predefFile.up / "Runtime.mjs" // * Contains MLscript runtime definitions
+  val runtimeFile: io.Path = predefFile.up / "Runtime.mjs" // * Contains MLscript runtime
+  val runtimeSourceFile: io.Path = predefFile.up / "Runtime.mls" // * Contains MLscript runtime sources
   val termFile: io.Path = predefFile.up / "Term.mjs" // * Contains MLscript runtime term definitions
   val blockFile: io.Path = predefFile.up / "Block.mjs" // * Contains MLscript runtime block definitions
   val optionFile: io.Path = predefFile.up / "Option.mjs" // * Contains MLscipt runtime option definition
@@ -48,6 +49,10 @@ abstract class MLsDiffMaker extends DiffMaker:
   val showOptimizedTree = NullaryCommand("olot")
   val debugOptimizations = NullaryCommand("dopt")
   val noOptimizations = NullaryCommand("noOpt")
+  val showIRErasedTypes = NullaryCommand("siret", () =>
+    if showIR.isUnset && showOptimizedIR.isUnset then
+      output("Option ':siret' only has an effect if ':sir' or ':soir' is also set")
+  )
   val showContext = NullaryCommand("ctx")
   val parseOnly = NullaryCommand("parseOnly")
   val funcToCls = NullaryCommand("ftc")
@@ -69,6 +74,7 @@ abstract class MLsDiffMaker extends DiffMaker:
   // * Compiler configuration
   
   val noSanityCheck = NullaryCommand("noSanityCheck")
+  val noCheckCasts = NullaryCommand("noCheckCasts")
   val noFreeze = NullaryCommand("noFreeze")
   val noModuleCheck = NullaryCommand("noModuleCheck")
   val effectHandlers = Command("effectHandlers")(_.trim)
@@ -126,8 +132,10 @@ abstract class MLsDiffMaker extends DiffMaker:
     if inlineThreshold.isSet && noInlineOpt.isSet then
       output(s"$errMarker Option ':noInline' conflicts with option ':inlineThreshold'")
     Config(
+      language = Config.Language.default,
       baseDir = wd,
       sanityChecks = Opt.when(noSanityCheck.isUnset)(SanityChecks(light = true, checkUnreachable = true)),
+      checkCasts = !noCheckCasts.isSet,
       effectHandlers = Opt.when(effectHandlers.isSet)(EffectHandlers(
         debug = effectHandlers.get.contains("debug"),
         stackSafety = stackSafe.get.flatMap:
@@ -155,22 +163,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       stageCode = stageCode.isSet,
       target = if wasm.isSet then CompilationTarget.Wasm else CompilationTarget.JS,
       rewriteWhileLoops = rewriteWhile.isSet,
-      tailRecOpt = !noTailRecOpt.isSet,
-      deforest = Opt.when(deforest.isSet):
-        val flags = parseFlags(deforest.get)
-        reportUnknownFlags(":deforest", flags, DeforestKnownFlags)
-        reportExclusiveFlagConflict(":deforest", flags, "trackNonAffine", "noTrackNonAffine")
-        reportExclusiveFlagConflict(":deforest", flags, "trackAccumulator", "noTrackAccumulator")
-        reportExclusiveFlagConflict(":deforest", flags, "logNonAffine", "noLogNonAffine")
-        reportExclusiveFlagConflict(":deforest", flags, "logAccumulator", "noLogAccumulator")
-        Deforest(FlowAnalysisConfig(
-          debug = true,
-          mono = flags.contains("mono"),
-          trackNonAffine = resolveFlag(flags, "trackNonAffine", "noTrackNonAffine", default = true),
-          trackAccumulator = resolveFlag(flags, "trackAccumulator", "noTrackAccumulator", default = flags.contains("logAccumulator")),
-          logNonAffine = resolveFlag(flags, "logNonAffine", "noLogNonAffine", default = false),
-          logAccumulator = resolveFlag(flags, "logAccumulator", "noLogAccumulator", default = false),
-        )),
+
       etaExpansion =
         val etaExpansionFlags =
           if etaExpansion.isUnset then Set.empty[Str]
@@ -181,33 +174,52 @@ abstract class MLsDiffMaker extends DiffMaker:
             reportExclusiveFlagConflict(":etaExpansion", etaExpansionFlags, "on", "off")
             if etaExpansionFlags.contains("off") then N
             else S(EtaExpansion.withDebug(etaExpansionFlags.contains("debug"))),
-      inlining = Opt.when(!noInlineOpt.isSet)(Config.Inliner(inlineThreshold =
-        inlineThreshold.get.getOrElse(Config.default.inlineThreshold))),
-      deadBranchRemoval = Config.default.deadBranchRemoval,
-      disableDataFlowAnalysis = false,
       qqEnabled = importQQ.isSet,
       funcToCls = funcToCls.isSet,
       commentGeneratedCode = debug.isSet,
       noFreeze = noFreeze.isSet,
       noModuleCheck = noModuleCheck.isSet,
-      deadParamElim =
-        if deadParamElim.isUnset then S(DeadParamElim.default)
-        else
-          val flags = parseFlags(deadParamElim.get)
-          reportUnknownFlags(":deadParamElim", flags, DeadParamElimKnownFlags)
-          reportExclusiveFlagConflict(":deadParamElim", flags, "mono", "poly")
-          if flags.contains("off") && (flags - "off").nonEmpty then
-            output(s"$errMarker ':deadParamElim off' conflicts with other flags")
-          if flags.contains("off") then N
+      optimizer = Optimizer(
+        deforest = Opt.when(deforest.isSet):
+          val flags = parseFlags(deforest.get)
+          reportUnknownFlags(":deforest", flags, DeforestKnownFlags)
+          reportExclusiveFlagConflict(":deforest", flags, "trackNonAffine", "noTrackNonAffine")
+          reportExclusiveFlagConflict(":deforest", flags, "trackAccumulator", "noTrackAccumulator")
+          reportExclusiveFlagConflict(":deforest", flags, "logNonAffine", "noLogNonAffine")
+          reportExclusiveFlagConflict(":deforest", flags, "logAccumulator", "noLogAccumulator")
+          Deforest(FlowAnalysisConfig(
+            debug = true,
+            mono = flags.contains("mono"),
+            trackNonAffine = resolveFlag(flags, "trackNonAffine", "noTrackNonAffine", default = true),
+            trackAccumulator = resolveFlag(flags, "trackAccumulator", "noTrackAccumulator", default = flags.contains("logAccumulator")),
+            logNonAffine = resolveFlag(flags, "logNonAffine", "noLogNonAffine", default = false),
+            logAccumulator = resolveFlag(flags, "logAccumulator", "noLogAccumulator", default = false),
+          )),
+        tailRecOpt = !noTailRecOpt.isSet,
+        inlining = Opt.when(!noInlineOpt.isSet)(Config.Inliner(inlineThreshold =
+          inlineThreshold.get.getOrElse(Config.default.inlineThreshold))),
+        deadBranchRemoval = Config.default.deadBranchRemoval,
+        deadCodeElim = noOptimizations.isUnset,
+        deadParamElim =
+          if deadParamElim.isUnset then S(DeadParamElim.default)
           else
-            S(DeadParamElim(FlowAnalysisConfig(
-              debug = flags.contains("debug"),
-              mono = !flags.contains("poly"),
-              trackNonAffine = false,
-              trackAccumulator = false,
-              logNonAffine = false,
-              logAccumulator = false,
-            ))),
+            val flags = parseFlags(deadParamElim.get)
+            reportUnknownFlags(":deadParamElim", flags, DeadParamElimKnownFlags)
+            reportExclusiveFlagConflict(":deadParamElim", flags, "mono", "poly")
+            if flags.contains("off") && (flags - "off").nonEmpty then
+              output(s"$errMarker ':deadParamElim off' conflicts with other flags")
+            if flags.contains("off") then N
+            else
+              S(DeadParamElim(FlowAnalysisConfig(
+                debug = flags.contains("debug"),
+                mono = !flags.contains("poly"),
+                trackNonAffine = false,
+                trackAccumulator = false,
+                logNonAffine = false,
+                logAccumulator = false,
+              ))),
+        dataFlowAnalysis = noOptimizations.isUnset,
+      )
     )
   
   
@@ -285,8 +297,12 @@ abstract class MLsDiffMaker extends DiffMaker:
   override def run(): Unit =
     if file =/= preludeFile then 
       given Config = mkConfig
-      importFile(preludeFile, verbose = false)
-      prelude = curCtx
+      given Raise = d =>
+        output(s"Error: $d")
+        ()
+      val preludeArtifact = cctx.getPrelude(preludeFile)
+      curCtx = preludeArtifact.ctx
+      prelude = preludeArtifact.ctx
     super.run()
   
   
@@ -299,7 +315,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       ()
     if file != preludeFile then
       val cfg = mkConfig
-      given Config = cfg.copy(
+      given Config = cfg.copy(optimizer = cfg.optimizer.copy(
         deforest = cfg.deforest.map: d =>
           d.copy(config = d.config.copy(
             debug = false,
@@ -312,7 +328,7 @@ abstract class MLsDiffMaker extends DiffMaker:
             logAccumulator = false,
             logNonAffine = false
           ))
-      )
+      ))
       processTrees(
         PrefixApp(Keywrd(`import`), StrLit(predefFile.toString))
         :: Open(Ident("Predef"))
@@ -355,6 +371,8 @@ abstract class MLsDiffMaker extends DiffMaker:
     try
       val resBlk = new syntax.Tree.Block(res)
       val (e, newCtx) = elab.importFrom(resBlk)
+      if file.toString === runtimeSourceFile.toString then
+        summon[Elaborator.State].initRuntimeSymbolsFromBlock(e)
       val ctxWithImports = newCtx.withMembers(resBlk.definedSymbols)
       if verbose then
         output(s"Imported ${resBlk.definedSymbols.size} member(s)")
@@ -429,7 +447,7 @@ abstract class MLsDiffMaker extends DiffMaker:
     // If elaborated tree is displayed, don't show the string serialization.
     if (showElab.isSet || debug.isSet) && !showElaboratedTree.isSet then
       output(s"Elab: ${e.showDbg}")
-    showElaboratedTree.get.foreach: post =>
+    if showElaboratedTree.isSet then
       outputSeparator(s"Elaborated tree")
       output(e.showAsTree)
     
@@ -440,12 +458,15 @@ abstract class MLsDiffMaker extends DiffMaker:
   def processTerm(trm: semantics.Term.Blk, inImport: Bool)(using Config, Raise): Unit =
     given Ctx = curCtx
     given Config = Config.extractConfigFromStats(trm)
+    if file.toString =/= runtimeSourceFile.toString && file.toString =/= preludeFile.toString then
+      summon[Elaborator.State].initRuntimeSymbolsFromFile(runtimeSourceFile, prelude)(
+        using summon[TL], summon[Raise], cctx)
     val resolver = Resolver(rtl)
     curICtx = resolver.traverseBlock(trm)(using curICtx)
     
     if showResolve.isSet then
       output(s"Resolved: ${trm.showDbg}")
-    showResolvedTree.get.foreach: post =>
+    if showResolvedTree.isSet then
       outputSeparator(s"Resolved tree")
       output(trm.showAsTree)
     
@@ -457,6 +478,7 @@ abstract class MLsDiffMaker extends DiffMaker:
       if showFlows.isSet then
         import semantics.ShowCfg
         given ShowCfg = ShowCfg(
+          showErasedTypes = showIRErasedTypes.isSet,
           showExpansionMappings = true,
           showFlowSymbols = true,
           debug = debug.isSet,

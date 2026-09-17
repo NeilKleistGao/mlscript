@@ -2,23 +2,25 @@ const definitionMetadata = globalThis.Symbol.for("mlscript.definitionMetadata");
 const prettyPrint = globalThis.Symbol.for("mlscript.prettyPrint");
 import runtime from "./Runtime.mjs";
 import RuntimeJS from "./RuntimeJS.mjs";
-import Runtime from "./Runtime.mjs";
 import Rendering from "./Rendering.mjs";
 import Term from "./Term.mjs";
-let Predef1, lambda, lambda1, lambda$, lambda$1, lambda$2;
+let Predef1, lambda, lambda1, lambda2, lambda$, lambda$1, lambda$2;
 lambda$2 = (undefined, function (Predef2) {
   return (acc, x) => {
-    return lambda1(Predef2, acc, x)
+    return lambda2(Predef2, acc, x)
   }
 });
-lambda1 = (undefined, function (Predef2, acc, x) {
-  let tmp;
+lambda2 = (undefined, function (Predef2, acc, x) {
+  let tmp, args;
   if (typeof x === 'string') {
     tmp = true;
   } else {
     tmp = false;
   }
-  Predef2.check(tmp);
+  args = [
+    tmp
+  ];
+  runtime.safeCall(Predef2.js_assert(...args));
   return acc + x
 });
 lambda$1 = (undefined, function (Predef2, b) {
@@ -32,6 +34,11 @@ lambda$ = (undefined, function (Predef2, a, b) {
   return (field) => {
     return lambda(Predef2, a, b, field)
   }
+});
+lambda1 = (undefined, function (Predef2, b, a, i) {
+  let tmp;
+  tmp = runtime.safeCall(b.at(i));
+  return Predef2.equals(a, tmp)
 });
 lambda = (undefined, function (Predef2, a, b, field) {
   let scrut, scrut1;
@@ -101,14 +108,6 @@ lambda = (undefined, function (Predef2, a, b, field) {
       toString() { return runtime.render(this); }
       static [definitionMetadata] = ["object", "Refl"];
     });
-    Predef.pass1 = Rendering.pass1;
-    Predef.pass2 = Rendering.pass2;
-    Predef.pass3 = Rendering.pass3;
-    Predef.passing = Rendering.passing;
-    Predef.map = Rendering.map;
-    Predef.fold = Rendering.fold;
-    Predef.interleave = Rendering.interleave;
-    Predef.render = Rendering.render;
     Predef.js_assert = globalThis.console["assert"];
     Predef.foldl = Predef.fold;
     (class meta {
@@ -190,7 +189,7 @@ lambda = (undefined, function (Predef2, a, b, field) {
     }
   }
   static equals(a, b) {
-    let scrut, scrut1, scrut2, ac, scrut3, md, scrut4, scrut5, scrut6, scrut7, scrut8, scrut9, tmp, tmp1, lambda$here, lambda$here1;
+    let scrut, scrut1, scrut2, ac, scrut3, md, scrut4, scrut5, scrut6, scrut7, scrut8, scrut9, lambda$here, lambda$here1;
     scrut = a === b;
     if (scrut === true) {
       return true
@@ -223,26 +222,13 @@ lambda = (undefined, function (Predef2, a, b, field) {
                   lambda$here1 = lambda$(Predef, a, b);
                   scrut5 = runtime.safeCall(md[2].every(lambda$here1));
                   if (scrut5 === true) {
-                    tmp = true;
-                  } else {
-                    tmp = false;
+                    return true
                   }
-                } else {
-                  tmp = false;
+                  return false;
                 }
-                if (tmp === true) {
-                  tmp1 = true;
-                } else {
-                  tmp1 = false;
-                }
-              } else {
-                tmp1 = false;
+                return false;
               }
-            } else {
-              tmp1 = false;
-            }
-            if (tmp1 === true) {
-              return true
+              return false;
             }
             return false;
           }
@@ -258,6 +244,30 @@ lambda = (undefined, function (Predef2, a, b, field) {
     let tmp;
     tmp = Predef.equals(a, b);
     return ! tmp
+  }
+  static get pass1() {
+    return Rendering.pass1;
+  }
+  static get pass2() {
+    return Rendering.pass2;
+  }
+  static get pass3() {
+    return Rendering.pass3;
+  }
+  static get passing() {
+    return Rendering.passing;
+  }
+  static get map() {
+    return Rendering.map;
+  }
+  static get fold() {
+    return Rendering.fold;
+  }
+  static get interleave() {
+    return Rendering.interleave;
+  }
+  static get render() {
+    return Rendering.render;
   }
   static print(...xs) {
     let callPrefix, tmp;
@@ -324,12 +334,19 @@ lambda = (undefined, function (Predef2, a, b, field) {
     return instance
   }
   static enterHandleBlock(handler, body) {
-    return runtime.safeCall(Runtime.enterHandleBlock(handler, body))
+    return runtime.safeCall(runtime.enterHandleBlock(handler, body))
   }
   static raiseUnhandledEffect() {
-    return runtime.safeCall(Runtime.mkEffect(Runtime.FatalEffect, null))
+    return runtime.safeCall(runtime.mkEffect(runtime.FatalEffect, null))
   }
   toString() { return runtime.render(this); }
   static [definitionMetadata] = ["class", "Predef"];
 });
+export { Predef1 as _$_modulePrivate_$_Predef };
+export { lambda as _$_modulePrivate_$_lambda };
+export { lambda1 as _$_modulePrivate_$_lambda1 };
+export { lambda2 as _$_modulePrivate_$_lambda2 };
+export { lambda$ as _$_modulePrivate_$_lambda$ };
+export { lambda$1 as _$_modulePrivate_$_lambda$1 };
+export { lambda$2 as _$_modulePrivate_$_lambda$2 };
 let Predef = Predef1; export default Predef;

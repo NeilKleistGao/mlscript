@@ -187,7 +187,7 @@ Infix("**", Literal(1), Literal(2)) is EvaluatedTerm
 fun evaluate(term) = if term is
   (@compile EvaluatedTerm) as v then Some(v)
   else None
-//│ Lines of IR: 3624
+//│ Lines of IR: 3136
 
 
 evaluate of Literal(1)
@@ -220,9 +220,9 @@ pattern DropZ = ((:x, :y, :z)) => (x: x, y: y)
 //│ = false
 
 pattern ShapeArea = 
-  (((:radius)) => Math.PI * radius * radius) |  // Circle
-  (((:width, :height)) => width * height) |     // Rectangle
-  (((:base, :height)) => base * height / 2)     // Triangle
+  | ((:radius)) => Math.PI * radius * radius  // Circle
+  | ((:width, :height)) => width * height     // Rectangle
+  | ((:base, :height)) => base * height / 2   // Triangle
 
 fun area(shape) = if shape is
   ShapeArea(area) then print("area: " + area)

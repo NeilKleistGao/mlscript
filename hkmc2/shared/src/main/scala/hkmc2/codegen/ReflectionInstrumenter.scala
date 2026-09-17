@@ -66,7 +66,7 @@ def toValue(lit: Str | Int | BigDecimal | Bool): Value =
 object Helpers:
   def assign(using State)(res: Result, symName: Str = "tmp")(k: Path => Block): Block =
     // TODO: skip assignment if res: Path?
-    val sym = new TempSymbol(N, symName)
+    val sym = new TempSymbol(N, erasedType = res.erasedValueType, symName)
     Scoped(Set(sym), Assign(sym, res, k(sym.asSimpleRef)))
 
   def tuple(using State)(elems: Ls[ArgWrappable], symName: Str = "tmp")(k: Path => Block): Block =
@@ -87,8 +87,22 @@ class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id)
     ps.copy(params = ps.params.map(param => param.copy(flags = param.flags.copy(isVal = true))))
 
   override def applyClsLikeDefn(defn: ClsLikeDefn)(k: Defn => Block) =
-    val addSyms = defn.privateFields.map(f => (BlockMemberSymbol(f.name, Nil, false), f))
-    val privateFields = addSyms.map({case (b, f) => f.name -> (b, f)}).toMap
+    // A staged closure class exposes captures as data fields so its reflected
+    // representation can reconstruct the class. Do not reuse the original
+    // LetBind symbols here: LetBind members lower to JavaScript private fields,
+    // while these replacements are intentionally public.
+    val publicFields = defn.privateFields.map: field =>
+      val publicField = TermSymbol(
+        syntax.ImmutVal,
+        field.owner,
+        field.id,
+        erasedType = field.erasedType,
+      )
+      (BlockMemberSymbol(field.name, Nil, false), field, publicField)
+    val privateFields = publicFields.map:
+      case (blockSym, privateField, publicField) =>
+        privateField.name -> (blockSym, privateField, publicField)
+    .toMap
 
     val paramsOpt = defn.paramsOpt.map(applyParamList)
     val auxParams = defn.auxParams.map(applyParamList)
@@ -96,7 +110,8 @@ class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id)
     class PrivateFieldDefnRemover extends BlockTransformer(SymbolSubst.Id):
       override def applyPath(p: Path)(k: Path => Block) = p match
         // remove outdated definition symbols for private fields
-        case s @ Select(Value.This(cls), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined => k(s.copy()(N))
+        case s @ Select(Value.This(cls), Tree.Ident(n)) if cls == defn.isym && privateFields.get(n).isDefined =>
+          k(Select(s.qual, s.name)(N)(s.sanitize))
         case _ => k(p)
 
     // change private field initializations to public
@@ -104,10 +119,10 @@ class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id)
       override def applyBlock(b: Block) = b match
         case AssignField(l @ Value.This(cls), Tree.Ident(n), r, rest) if cls == defn.isym =>
           privateFields.get(n) match
-            case S((b, t)) =>
+            case S((b, _, publicField)) =>
               applyResult(r): r =>
                 assign(r): p =>
-                  Define(ValDefn(t, b, p)(N, Nil), applyBlock(rest))
+                  Define(ValDefn(publicField, b, p)(N, Nil), applyBlock(rest))
             case N => super.applyBlock(b)
         case _ => super.applyBlock(b)
     // only turn AssignField declarations for private fields to ValDefn for public fields
@@ -117,7 +132,7 @@ class DataClassTransformer(using State) extends BlockTransformer(SymbolSubst.Id)
     val newDefn = defn.copy(
       paramsOpt = paramsOpt,
       auxParams = auxParams,
-      publicFields = addSyms ++ defn.publicFields,
+      publicFields = publicFields.map((blockSym, _, publicField) => blockSym -> publicField) ++ defn.publicFields,
       privateFields = Nil,
       ctor = ctor,
       methods = methods,
@@ -303,6 +318,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformPath(qual): (x, ctx) =>
             transformPath(fld)(using ctx): (y, ctx) =>
               blockCtor("DynSelect", Ls(x, y, toValue(arrayIdx)), "dynsel")(k(_, ctx))
+        case Cast(value, target, check) =>
+          transformResult(value): (v, ctx) =>
+            blockCtor("Symbol", Ls(toValue(target.describe)), "target"): t =>
+              blockCtor("Cast", Ls(v, t, toValue(check)), "cast")(k(_, ctx))
 
   def transformResult(r: Result)(using ctx: Context)(k: (Path, Context) => Block): Block = r match
     case p: Path => transformPath(p)(k)
@@ -331,7 +350,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
       argss match
         // desugar Runtime.Tuple.get into Select
         case Ls(Arg(_, scrut), Arg(_, Value.Lit(Tree.IntLit(idx)))) :: _ if fun == Value.SimpleRef(State.runtimeSymbol).selSN("Tuple").selSN("get") =>
-          transformPath(Select(scrut, Tree.Ident(idx.toString()))(N))(k)
+          transformPath(Select(scrut, Tree.Ident(idx.toString()))(N)(false))(k)
         case args :: Nil =>
           transformPath(fun): (stagedFun, ctx) =>
             transformArgs(args)(using ctx): (args, ctx) =>
@@ -416,7 +435,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           transformResult(r): (y, ctx) =>
             transformSymbol(ts)(using ctx): (xSym, ctx) =>
               blockCtor("ValueSimpleRef", Ls(xSym)): xStaged =>
-                  given Context = ctx.addCache(Select(lhs, nme)(S(ts)), xStaged)
+                  given Context = ctx.addCache(Select(lhs, nme)(S(ts))(false), xStaged)
                   transformBlock(rest): (z, ctx) =>
                     blockCtor("Assign", Ls(xSym, y, z), "assign")(k(_, ctx))
         case _ =>
@@ -483,23 +502,23 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     val stageSym = BlockMemberSymbol(stageSymName, Nil, false)
 
     // turn into fundefn
-    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(stageSymName))
+    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(stageSymName), erasedType = N)
     val argSyms = f.params.flatMap(_.params).map(_.sym)
     val newBody = transformFunDefn(f)(using ctx)((block, _) => Return(block))
 
     FunDefn.withFreshSymbol(f.dSym.owner, stageSym, Ls(PlainParamList(Nil)), newBody)(f.configOverride, f.annotations)
 
   def refreshParamList(ps: ParamList) = 
-    PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme)))))
+    PlainParamList(ps.params.map(p => Param.simple(VarSymbol(Tree.Ident(p.sym.nme), p.sym.erasedType))))
 
   def genMethod(cache: Path, classFun: Bool)(f: FunDefn, stagedPath: Path) =
     val genSymName = f.sym.nme + "_gen"
     val sym = BlockMemberSymbol(genSymName, Nil, false)
-    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName))
+    val dSym = TermSymbol(f.dSym.k, f.dSym.owner, Tree.Ident(genSymName), erasedType = N)
 
     // refresh parameters
     val funParams = f.params.map(refreshParamList)
-    val params = if classFun then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"))) :: Nil) :: funParams else funParams
+    val params = if classFun then PlainParamList(Param.simple(VarSymbol(Tree.Ident("cls"), erasedType = N)) :: Nil) :: funParams else funParams
     val body = params.map(ps => tuple(ps.params.map(_.sym))).collectApply: tups =>
       tuple(tups): args =>
         call(helperMod("specialize"), Ls(cache, toValue(f.sym.nme), stagedPath, args)): res =>
@@ -508,7 +527,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
   
   def stageCtor(ctorFun: FunDefn): FunDefn = 
     // refresh VarSymbols for ctor
-    val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id))).flatten.toMap
+    val paramSymMap = ctorFun.params.map(_.params.map(x => x.sym -> VarSymbol(x.sym.id, x.sym.erasedType))).flatten.toMap
     // refresh symbols after copying parameter list
     val paramRewrite = new BlockTransformer(VarSymSubst(paramSymMap))
     stageMethod(paramRewrite.applyFunDefn(ctorFun), Context(true))
@@ -523,10 +542,10 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
     import cfg._
     // for storing specialized functions in each staged module
     val cacheSym = BlockMemberSymbol(cacheNme, Nil, true)
-    val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme))
+    val cacheTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(cacheNme), erasedType = N)
     val cachePath = modSym.asPath.selSN(cacheNme)
     val generatorMapSym = BlockMemberSymbol(generatorMapNme, Nil, true)
-    val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(generatorMapNme))
+    val generatorMapTsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(generatorMapNme), erasedType = N)
 
     // TODO: remove generator function for ctor, we only need the staged function
     val (stagedMethods, generatorMethods, generatorEntries) = methods.map(f =>
@@ -593,8 +612,8 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
           call(blockMod("codegen"), Ls(toValue(modSym.nme), cachePath, sourceSym, psym, codegenClasses), true, "tmp")(_ => End())
     val entryFunDef =
       val sym = BlockMemberSymbol("generate", Nil)
-      val sourceSym = VarSymbol(Ident("source"))
-      val psym = VarSymbol(Ident("path"))
+      val sourceSym = VarSymbol(Ident("source"), erasedType = N)
+      val psym = VarSymbol(Ident("path"), erasedType = N)
       val params = PlainParamList(Param.simple(sourceSym) :: Param.simple(psym) :: Nil)
       FunDefn.withFreshSymbol(S(modSym), sym, params :: Nil, genOutputBody(sourceSym, psym))(N, Nil)
     
@@ -613,7 +632,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case (c: ClassSymbol, s) if !Elaborator.ctx.builtins.virtualClasses(c) && c != ownerSym => (c, s)
       }).map((key, nme) =>
         val name = nme + "$" + scope.allocateOrGetName(ownerSym)
-        val tsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(name))
+        val tsym = TermSymbol(syntax.ImmutVal, S(modSym), Tree.Ident(name), erasedType = N)
         val sym = BlockMemberSymbol(name, Nil)
 
         // reconstructs the Path from the top-level to the current symbol
@@ -625,7 +644,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
                 case l: ClsLikeDefn => l.owner
               owner match
               case S(owner: DefinitionSymbol[ModuleOrObjectDef | ClassDef]) =>
-                Select(reconstruct(owner), Tree.Ident(s.nme))(N)
+                Select(reconstruct(owner), Tree.Ident(s.nme))(N)(false)
               case N => defn match
                 case l: (ModuleOrObjectDef | ClassDef) => Value.MemberRef(l.bsym, s)
                 case l: ClsLikeDefn => Value.MemberRef(l.sym, s)
@@ -758,6 +777,6 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
         case _ => super.applyDefn(defn)
     transformer.applyBlock(b)
 
-  def apply(b: Block) =
-    mkDefnMap(b)
-    applyBlock(b)
+  def apply(prog: Program) =
+    mkDefnMap(prog.main)
+    applyProgram(prog)

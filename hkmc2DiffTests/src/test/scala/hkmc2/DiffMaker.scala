@@ -6,36 +6,14 @@ import hkmc2.utils.*
 
 
 
-class Outputter(val out: java.io.PrintWriter):
+object DiffMaker:
   
-  val outputMarker = "//│ "
-  // val oldOutputMarker = "/// "
-
-  val diffBegMarker = "<<<<<<<"
-  val diffMidMarker = "======="
-  val diff3MidMarker = "|||||||" // * Appears under `git config merge.conflictstyle diff3` (https://stackoverflow.com/a/18131595/1518588)
-  val diffEndMarker = ">>>>>>>"
-
-  val ColWidth = 100
-  val exitMarker = "=" * ColWidth
-  val blockSeparator = "—" * 80
+  /** The project root, resolved from the directory SBT runs a subproject's tests in.
+    * For some reason, when run from ~hkmc2JVM/Test/run in sbt, the pwd is ".../hkmc2/jvm". */
+  def projectRoot(pwd: os.Path): os.Path =
+    if pwd.last == "hkmc2DiffTests" then pwd/os.up else pwd
   
-  val fullBlockSeparator = outputMarker + blockSeparator
-  
-  /** Tracks the net difference between lines written to the output and lines
-    * consumed from the original file so far. Adding a new output line (via
-    * [[apply]]) increments it; consuming an original output line (starting
-    * with [[outputMarker]]) decrements it. This is used to adjust block
-    * line numbers so they refer to positions in the output file rather than
-    * the original, avoiding the need for a second run to stabilize them. */
-  var linesDelta: Int = 0
-  
-  def apply(str: String) =
-    // out.println(outputMarker + str)
-    val ls = str.splitSane('\n')
-    linesDelta += ls.size
-    ls.foreach(l => out.println(outputMarker + l))
-
+end DiffMaker
 
 
 abstract class DiffMaker:

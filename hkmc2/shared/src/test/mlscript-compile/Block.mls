@@ -63,7 +63,9 @@ class ClassSymbol(val name: Str) extends Symbol(name)
 class VirtualClassSymbol(val name: Str) extends ClassSymbol(name)
 class ConcreteClassSymbol(val name: Str, val value: Class, val paramsOpt: Opt[ParamList], val auxParams: Array[ParamList], val redirect: Bool) extends ClassSymbol(name)
 class ObjectSymbol(val name: Str, val value: Class, val redirect: Bool) extends ConcreteClassSymbol(name, value, None, [], redirect)
-class ModuleSymbol(val name: Str, val value: Class, val redirect: Bool) extends Symbol(name)
+// Modules are singleton values rather than class constructors. Keep the runtime
+// value unconstrained so reflected module symbols type-check in full mode.
+class ModuleSymbol(val name: Str, val value: Any, val redirect: Bool) extends Symbol(name)
 class NoSymbol() extends Symbol("$no_symbol$")
 
 class Annotation with
@@ -115,6 +117,7 @@ class Path extends Result with
     ValueMemberRef(val l: Symbol)
     ValueLit(val lit: Literal)
     ValueThis(val sym: Symbol)
+    Cast(val value: Result, val target: Symbol, val check: Bool)
 
 class Defn with 
   constructor 
@@ -197,6 +200,8 @@ class Printer(val owner: Opt[Symbol]) with
       ValueSimpleRef(l) | ValueMemberRef(l) then showSymbol(l)
       ValueLit(lit) then showLiteral(lit)
       ValueThis then "this"
+      Cast(value, target, true) then "(" + showResult(value) + " as! " + showSymbol(target) + ")"
+      Cast(value, target, false) then "(" + showResult(value) + " as!! " + showSymbol(target) + ")"
 
   fun showArg(arg: Arg) =
     showPath(arg.value)
@@ -224,10 +229,7 @@ class Printer(val owner: Opt[Symbol]) with
               ValueSimpleRef(Symbol("!")) then "not " + showArg(arg)
             // use infix
             args is [lhs, rhs] and fun_ is
-              ValueSimpleRef(Symbol(op)) and op is
-                "+" | "-" | "*" | "/" | "%" |
-                "==" | "!=" | "<" | "<=" | ">" | ">=" |
-                "===" | "!==" | "&&" | "||" then
+              ValueSimpleRef(Symbol(op)) and op is ("+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "===" | "!==" | "&&" | "||") then
                   showArg(lhs) + " " + op + " " + showArg(rhs)
             else showPath(fun_) + "(" + showArgs(args) + ")"
       Instantiate(cls, args, _) then
@@ -326,7 +328,7 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showFunDefn(prefix: Str, sym: Symbol, ps: Array[ParamList], body: Block): Str =
     prefix + "fun " + showDefnSymbol(sym) + showParamList(ps) + " =" +
-    (if body is Return | End then " " else "\n  ") + indent(showBlock(body))
+    (if body is (Return | End) then " " else "\n  ") + indent(showBlock(body))
 
   fun showMethods(methods: Array[FunDefn]): Str =
     let printer = this

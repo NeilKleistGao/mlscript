@@ -97,7 +97,7 @@ fun c(x) = if x is AA(_) then 0
 let p = AA(10) in
   c(p) + c(p)
 //│ deforest > >>> non-affine syms >>>
-//│ deforest > p@1
+//│ deforest > p@3
 //│ deforest > <<< non-affine syms <<<
 //│ deforest > >>> fusing >>>
 //│ deforest > <<< fusing <<<
@@ -110,11 +110,11 @@ apply(c, AA(3))
 //│ deforest > >>> non-affine syms >>>
 //│ deforest > c_for_c@29
 //│ deforest > cap_ub_(term:c,0)_for_c@32
-//│ deforest > f_for_apply@20
-//│ deforest > f_for_apply@45
+//│ deforest > f_for_apply@21
+//│ deforest > f_for_apply@46
 //│ deforest > tmp@1
-//│ deforest > x_for_apply@21
-//│ deforest > x_for_apply@46
+//│ deforest > x_for_apply@20
+//│ deforest > x_for_apply@45
 //│ deforest > <<< non-affine syms <<<
 //│ deforest > >>> fusing >>>
 //│ deforest > <<< fusing <<<
@@ -161,9 +161,9 @@ fun c2(x) = if x is AA(AA(_)) then 1 else 0
 let p = AA(AA(AA(10))) in
   c1(p) + c2(p)
 //│ deforest > >>> non-affine syms >>>
-//│ deforest > p@2
-//│ deforest > tmp@1
-//│ deforest > tmp@3
+//│ deforest > p@3
+//│ deforest > tmp@2
+//│ deforest > tmp@4
 //│ deforest > <<< non-affine syms <<<
 //│ deforest > >>> fusing >>>
 //│ deforest > <<< fusing <<<
@@ -314,12 +314,12 @@ sum(append(id(Nil), Nil), 0)
 //│ deforest > >>> accumulator syms >>>
 //│ deforest > <<< accumulator syms <<<
 //│ deforest > >>> fusing >>>
-//│ deforest > Nil⁰ ->
-//│ deforest > 	match: ls²
 //│ deforest > Cons⁰(h², tmp³) ->
 //│ deforest > 	match: ls²
 //│ deforest > 	fields: ls².h¹
 //│ deforest > 	fields: ls².t⁰
+//│ deforest > Nil⁰ ->
+//│ deforest > 	match: ls²
 //│ deforest > <<< fusing <<<
 //│ = 0
 
@@ -336,6 +336,10 @@ sum(append(id(Nil), Nil), 0)
 // === `append(h, h :: ys)`
 // which then means the flow analysis sees
 // the spurious flow `h :: ys` --> `ys`
+//
+// Updated note after keeping only `upperBounds(p.s.uid) ::= c` during constraint solving (var < var case):
+// `ys` is now not reported below as an accumulator just by accident
+// and this does not mean the problem/limitation above is properly fixed.
 fun length(ls) = if ls is
   h :: t then 1 + length(t)
   Nil then 0
@@ -349,10 +353,14 @@ length(flatten(id((1 :: Nil) :: Nil)))
 //│ deforest > >>> non-affine syms >>>
 //│ deforest > <<< non-affine syms <<<
 //│ deforest > >>> accumulator syms >>>
-//│ deforest > ys_for_append_for_flatten@140
-//│ deforest > ys_for_append_for_flatten@73
 //│ deforest > <<< accumulator syms <<<
 //│ deforest > >>> fusing >>>
+//│ deforest > Cons⁰(h³, tmp⁴) ->
+//│ deforest > 	match: ls³
+//│ deforest > 	fields: ls³.h¹
+//│ deforest > 	fields: ls³.t⁰
+//│ deforest > Nil⁰ ->
+//│ deforest > 	match: ls³
 //│ deforest > <<< fusing <<<
 //│ = 1
 
@@ -417,6 +425,5 @@ foo of AA of () => 1
 //│ deforest > 	fields: a¹.x⁰
 //│ deforest > <<< fusing <<<
 //│ = 2
-
 
 

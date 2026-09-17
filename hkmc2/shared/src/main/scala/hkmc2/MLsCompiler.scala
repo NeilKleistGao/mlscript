@@ -1,33 +1,24 @@
 package hkmc2
 
-import scala.collection.mutable
-
 import hkmc2.utils.*, shorthands.*
 import hkmc2.io
 import utils.*
 
 import hkmc2.semantics.*
-import hkmc2.syntax.Keyword.`override`
-import semantics.Elaborator.{Ctx, State}
 
 
-class ParserSetup(file: io.Path, dbgParsing: Bool)(using state: Elaborator.State, raise: Raise, cctx: CompilerCtx):
+class ParserSetup(file: io.Path)(using Elaborator.State, Raise, CompilerCtx):
   
-  val block = cctx.fs.read(file)
+  val block = CompilerCtx.get.fs.read(file)
   val fph = new FastParseHelpers(block)
   val origin = Origin(file, 0, fph)
   
-  val lexer = new syntax.Lexer(origin, dbg = dbgParsing)
+  val lexer = new syntax.Lexer(origin, dbg = false)
   val tokens = lexer.bracketedTokens
   
-  // if showParse.isSet || dbgParsing.isSet then
-  //   output(syntax.Lexer.printTokens(tokens))
-  
   val rules = syntax.ParseRules()
-  val parser = new syntax.Parser(origin, tokens, rules, raise, dbg = dbgParsing):
-    def doPrintDbg(msg: => Str): Unit =
-      // if dbg then output(msg)
-      if dbg then println(msg)
+  val parser = new syntax.Parser(origin, tokens, rules, raise, dbg = false):
+    def doPrintDbg(msg: => Str): Unit = ()
   
   val result = parser.parseAll(parser.block(allowNewlines = true))
   
@@ -38,6 +29,7 @@ object MLsCompiler:
   trait Paths:
     def preludeFile: io.Path
     def runtimeFile: io.Path
+    def runtimeSourceFile: io.Path
     def termFile: io.Path
     def blockFile: io.Path
     def specializeHelpersFile: io.Path
@@ -47,118 +39,46 @@ object MLsCompiler:
 /**
   * The compiler that compiles MLscript code into JavaScript modules.
   *
-  * @param paths required paths needed by the compiler
   * @param mkRaise generates a separate `Raise` function for each file.
-  * @param config the compiler's configuration object
-  * @param fs the file system interface
   */
 class MLsCompiler
-    (paths: MLsCompiler.Paths, mkRaise: io.Path => Raise)
-    (using cctx: CompilerCtx, config: Config):
-  import paths.*
+    (mkRaise: io.Path => Raise)
+    (using cctx: CompilerCtx):
   
-  
-  
-  var dbgParsing = false
-  var dbgElab = false
+  // * The paths and the configuration are properties of the compilation session,
+  // * carried by the context so that nothing can disagree with what is cached in it.
+  private given Config = cctx.rootConfig
+  import cctx.paths.*
   
   
   def compileModule(file: io.Path): Unit =
     
-    val wd = file.up
-    
     given Raise = mkRaise(file)
+    given DebugPrinter = new DebugPrinter
     
-    given Elaborator.State = new Elaborator.State:
-      override def dbg: Bool = dbgElab
+    val compilerTL = new TraceLogger:
+      override def doTrace: Bool = false
     
-    // TODO adapt logic
-    given SymbolPrinter = new SymbolPrinter(
-      Scope.empty(Scope.Cfg.default.copy(
-        escapeChars = false,
-        useSuperscripts = true,
-        includeZero = true,
-      ))
-    )
-    val etl = new TraceLogger{override def doTrace: Bool = false}
-    val ltl = new TraceLogger{override def doTrace: Bool = false}
-    val dtl = new TraceLogger{override def doTrace: Bool = false}
-    // val ltl = new TraceLogger{override def doTrace: Bool = true}
-    val rtl = new TraceLogger{override def doTrace: Bool = false}
+    val preludeCtx = cctx.getPrelude(preludeFile)(using compilerTL, summon[Raise]).ctx
+    val artifact = cctx.getElaboratedBlock(file, preludeCtx)(using compilerTL)
+    val exportedSymbol = artifact.compilationUnit.defaultExport
     
-    val preludeParse = ParserSetup(preludeFile, dbgParsing)
-    val mainParse = ParserSetup(file, dbgParsing)
-    
-    val elab = Elaborator(etl, wd, Ctx.empty)
-    
-    val initState = State.init.nestLocal("prelude")
-    
-    val (pblk, newCtx) = elab.importFrom(preludeParse.resultBlk)(using initState)
-    
-    newCtx.nestLocal("file:"+file.baseName).givenIn:
-      given CompilerCtx = cctx.derive(file)
-      val elab = Elaborator(etl, wd, newCtx)
-      val parsed = mainParse.resultBlk
-      val (blk0, _) = elab.importFrom(parsed)
-      Config.extractConfigFromStats(blk0).givenIn {
-      val resolver = Resolver(rtl)
-      resolver.traverseBlock(blk0)(using Resolver.ICtx.empty)
-      def findQuote(t: semantics.Statement): Bool = t match
-        case Term.Quoted(_) | Term.Unquoted(_) => true
-        case Term.Ref(sym) => sym === State.termSymbol
-        case _ => t.subTerms.exists(findQuote)
-      def findStage(t: semantics.Statement): Bool = t match
-        case d: semantics.Definition => d.hasStagedModifier.isDefined
-        case _ => t.subStatements.exists(findStage)
-      
-      val hasQuote = findQuote(blk0)
-      val isStaged = findStage(blk0)
-      // println(s"yydz: ${blk0.subTerms}")
-      val blk = new Term.Blk(
-        Import(State.runtimeSymbol, runtimeFile.toString, runtimeFile) ::
-          // Only import files when necessary.
-          (if hasQuote then
-            Import(State.termSymbol, termFile.toString, termFile) :: Nil
-          else
-            Nil) :::
-          (if isStaged then
-            Import(State.optionSymbol, optionFile.toString, optionFile) ::
-            Import(State.shapeSetSymbol, shapeSetFile.toString, shapeSetFile) ::
-            Import(State.blockSymbol, blockFile.toString, blockFile) ::
-            Import(State.specializeHelpersSymbol, specializeHelpersFile.toString, specializeHelpersFile) :: Nil
-          else
-            Nil) ::: blk0.stats,
-        blk0.res
-      )
-      val low = ltl.givenIn:
-        new codegen.Lowering()
-          with codegen.LoweringSelSanityChecks
-      val jsb = ltl.givenIn:
-        codegen.js.JSBuilder()
-      val lowered = low.program(blk, symbolsToPreserve = Set.empty)
-      var optimized = lowered
-      val nme = file.baseName
-      val exportedSymbol = parsed.definedSymbols.find(_._1 === nme).map(_._2)
-      optimized =
-        val printer = (p: codegen.Program) => p.showAsTree // TODO: proper printing like in diff-tests
-        optimized = codegen.WorkerWrapper(exportedSymbol.toSet, dtl, printer)(optimized)
-        codegen.BlockSimplifier(exportedSymbol.toSet, dtl, printer)(optimized)
-      ltl.givenIn:
-        optimized = codegen.DeadParamElim(optimized)
-      val baseScp: utils.Scope =
-        utils.Scope.empty(utils.Scope.Cfg.default)
-      // * This line serves for `import.meta.url`, which retrieves directory and file names of mjs files.
-      // * Having `module id"import" with ...` in `prelude.mls` will generate `globalThis.import` that is undefined.
-      baseScp.addToBindings(Elaborator.State.importSymbol, "import", shadow = false)
-      val nestedScp = baseScp.nest
-      val je = nestedScp.givenIn:
-        jsb.program(optimized, exportedSymbol, wd)
-      val jsStr = je.stripBreaks.mkString(100)
-      val out = file.up / io.RelPath(file.baseName + ".mjs")
-      cctx.fs.write(out, jsStr)
-      }
+    given Elaborator.State = artifact.state
+    given Config = artifact.config
+    given Elaborator.Ctx = artifact.ctx
+    val jsb = compilerTL.givenIn:
+      codegen.js.JSBuilder()
+    val baseScp: utils.Scope =
+      utils.Scope.empty(utils.Scope.Cfg.default)
+    // * This line serves for `import.meta.url`, which retrieves directory and file names of mjs files.
+    // * Having `module id"import" with ...` in `prelude.mls` will generate `globalThis.import` that is undefined.
+    baseScp.addToBindings(Elaborator.State.importSymbol, "import", shadow = false)
+    val nestedScp = baseScp.nest
+    val out = file.up / io.RelPath(file.baseName + ".mjs")
+    val je = nestedScp.givenIn:
+      jsb.program(artifact.ir, exportedSymbol, out)
+    val jsStr = je.stripBreaks.mkString(100)
+    cctx.fs.write(out, jsStr)
   
   
 end MLsCompiler
-
-

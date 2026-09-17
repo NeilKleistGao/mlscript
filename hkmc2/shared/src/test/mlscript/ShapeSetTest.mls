@@ -34,11 +34,11 @@ mkArr([x, y])
 //│ = {Arr([{Lit(1),Lit(2)}, {Arr([Lit(1)]),Arr([Lit(2)])}])}
 
 class C(val a)
-val clsSym = ConcreteClassSymbol("C", C, Some([Param(None, Symbol("a"))]), [], false)
+val clsSym = ConcreteClassSymbol("C", C, Some([Param([], Symbol("a"))]), [], false)
 //│ clsSym = ConcreteClassSymbol(
 //│   "C",
 //│   fun C { class: class C },
-//│   Some([Param(None, Symbol("a"))]),
+//│   Some([Param([], Symbol("a"))]),
 //│   [],
 //│   false
 //│ )
@@ -48,21 +48,21 @@ let x = liftMany([Class(clsSym, [mkLit(42)], mkBot(), false), Arr([mkLit(1), mkL
 let y = liftMany([Lit(1), Lit("a")])
 selSet(x, y)
 //│ ═══[RUNTIME ERROR] Error: Array out of bound
-//│ x = {Arr([{Lit(1)}, {Lit("a")}]),Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [{Lit(42)}], {}, false)}
+//│ x = {Arr([{Lit(1)}, {Lit("a")}]),Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param([], Symbol("a"))]), [], false), [{Lit(42)}], {}, false)}
 //│ y = {Lit("a"),Lit(1)}
 
 mkClass(clsSym, [mkLit(1)], false)
-//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param(None, Symbol("a"))]), [], false), [{Lit(1)}], {}, false)}
+//│ = {Class(ConcreteClassSymbol("C", fun C { class: class C }, Some([Param([], Symbol("a"))]), [], false), [{Lit(1)}], {}, false)}
 
 filterSet(liftMany([Lit(1), Lit("s"), Arr([Lit(1), Lit(2), Lit(3)])]), Tup(3))
 //│ = {Arr([Lit(1), Lit(2), Lit(3)])}
 
 let x = mkLit(1)
-let y = Block.Cls(Block.Symbol("Bool"), 0)
+let y = Block.Cls(Block.Symbol("Bool"), Block.ValueLit(0))
 filterSet(x, y)
 //│ = {}
 //│ x = {Lit(1)}
-//│ y = Cls(Symbol("Bool"), 0)
+//│ y = Cls(Symbol("Bool"), ValueLit(0))
 
 Shape.filter(Shape.Lit(1), Block.Lit(1))
 //│ = [Lit(1)]
