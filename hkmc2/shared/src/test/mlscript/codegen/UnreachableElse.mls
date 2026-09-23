@@ -2,6 +2,7 @@
 
 
 class Foo(val x)
+class Bar(val x)
 
 
 :ssjs
@@ -14,11 +15,8 @@ fun foo(x) =
 //│ foo = function foo(x) {
 //│   runtime.checkArgs("foo", 1, true, arguments.length);
 //│   let arg$Foo$0$;
-//│   if (x instanceof Foo1.class) {
-//│     arg$Foo$0$ = x.x;
-//│     return arg$Foo$0$ + 1
-//│   }
-//│   return globalThis.branch.unreachable;
+//│   arg$Foo$0$ = x.x;
+//│   return arg$Foo$0$ + 1
 //│ };
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
 
@@ -26,3 +24,24 @@ fun foo(x) =
 :expect 1
 foo(Foo(0))
 //│ = 1
+
+
+:ssjs
+fun fooOrBar(x) =
+  if x is
+    Foo(x) then x + 1
+    Bar(x) then x + 2
+    else branch.unreachable
+//│ —————————————| JS (sanitized) |—————————————————————————————————————————————————————————————————————
+//│ let fooOrBar;
+//│ fooOrBar = function fooOrBar(x) {
+//│   runtime.checkArgs("fooOrBar", 1, true, arguments.length);
+//│   let arg$Bar$0$, arg$Foo$0$1;
+//│   if (x instanceof Foo1.class) {
+//│     arg$Foo$0$1 = x.x;
+//│     return arg$Foo$0$1 + 1
+//│   }
+//│   arg$Bar$0$ = x.x;
+//│   return arg$Bar$0$ + 2;
+//│ };
+//│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

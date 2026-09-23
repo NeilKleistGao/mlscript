@@ -52,6 +52,8 @@ class CompilationPipeline(using Config, Raise, State, Ctx, SymbolPrinter):
     runPass("Flattening")(blockPass(_.flattened))
     runPass("BufferableTransform")(BufferableTransform().transform)
     runPass("MergeMatchArmTransformer")(MergeMatchArmTransformer.applyProgram)
+    runPass("FlattenUnreachableMatchTransformer"):
+      FlattenUnreachableMatchTransformer(summon[Ctx].builtins.branch.unreachable).applyProgram
     runPass("FirstClassFunctionTransformer"): prog =>
       if config.funcToCls then
         blockPass(FirstClassFunctionTransformer().transform(_))(prog)

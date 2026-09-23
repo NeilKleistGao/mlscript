@@ -1724,13 +1724,20 @@ final class FlattenUnreachableMatchTransformer(mkUnreachableBuiltin: => BlockMem
 extends BlockTransformer(SymbolSubst.Id):
   private lazy val unreachableBuiltin = mkUnreachableBuiltin
 
+  private def resultTargetSymbol(result: Result): Opt[DefinitionSymbol[?]] = result match
+    case Cast(value, _, _) => resultTargetSymbol(value)
+    case path: Path => path.targetSymbol
+    case _ => N
+
   private def isUnreachableBranch(body: Block): Bool = body match
-    case Return(path: Path) =>
-      path.targetSymbol.flatMap(_.asBlkMember).exists(_ is unreachableBuiltin)
+    case Return(result) =>
+      resultTargetSymbol(result).flatMap(_.asBlkMember).exists(_ is unreachableBuiltin)
     case _ => false
 
   override def applyBlock(b: Block): Block = super.applyBlock(b) match
-    case Match(_, (_ -> body) :: Nil, Some(dflt), rest)
+    case Match(scrut, arms @ (_ :: _), Some(dflt), rest)
         if isUnreachableBranch(dflt) =>
-      Begin(body, rest)
+      arms match
+        case (_ -> body) :: Nil => Begin(body, rest)
+        case _ => Match(scrut, arms.init, S(arms.last._2), rest)
     case b => b
