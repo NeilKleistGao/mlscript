@@ -294,16 +294,27 @@ fun sop(ctx, p): ShapeSet = if ctx.get(p) is
       selSet(sop(ctx, qual), sop(ctx, fld))
     ValueLit(lit) then mkLit(lit)
     ValueThis(clsSymb) and clsSymb is ConcreteClassSymbol and ctx.thisShape is Some(thisShape) then thisShape
+    Cast(value, _, _) then sop(ctx, value)
+    ValueThis then throw Error("missing this shape in shape propagation")
     ValueSimpleRef | ValueMemberRef then mkDyn()
 
 fun subLitRef(ctx, p) =
   let s = sop(ctx, p)
   if s.values() is [Shape.Lit(lit)] then ValueLit(lit) else p
 
+fun classSpecificField(ctx, qual, name) =
+  if qual is ValueThis(ModuleSymbol) then name
+  else if sop(ctx, qual).values() is [Shape.Class(sym, _, _, _), ...rest] and
+    rest.every(s =>
+      s is Shape.Class(other, _, _, _) and
+        getActualClass(sym.value) == getActualClass(other.value)
+    ) then Block.Symbol(sym.name + "#" + name.name)
+  else name
+
 // This sub p.(n) to p.1 if n -> 1
 fun subLitPath(ctx, p) = if p is
   DynSelect(qual, fld, b) then DynSelect(subLitPath(ctx, qual), subLitPath(ctx, fld), b)
-  Select(qual, name) then Select(subLitPath(ctx, qual), name)
+  Select(qual, name) then Select(subLitPath(ctx, qual), classSpecificField(ctx, qual, name))
   ValueSimpleRef then subLitRef(ctx, p)
   ValueMemberRef then subLitRef(ctx, p)
   else p

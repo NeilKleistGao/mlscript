@@ -136,7 +136,7 @@ print(If2."cache$If2")
 //│ > private fun f_If2_sp_0(x) = 3
 //│ > private fun f_If2_sp_1(x) =
 //│ >   let {y, tmp}
-//│ >   y = x.n
+//│ >   y = x.C#n
 //│ >   tmp = runtime.Unit
 //│ >   y + 1
 //│ > private fun f_If2_sp_2(x) = 1
@@ -305,6 +305,21 @@ print(B.class."class$cache$B")
 //│ > class B(val x) with
 //│ >   ()
 //│ > private fun f_B_sp_0(self, y) = 3
+
+staged class FieldOwner(val value)
+staged module FieldSelection with
+  fun read(x) = x.value
+  fun test(value) = read(FieldOwner(value))
+
+FieldSelection."test_gen"(mkDyn())
+print(FieldSelection."cache$FieldSelection")
+//│ > module FieldSelection with
+//│ >   ()
+//│ >   fun test(value) =
+//│ >     let {tmp}
+//│ >     tmp = FieldOwner(value)
+//│ >     read_FieldSelection_sp_0(tmp)
+//│ > private fun read_FieldSelection_sp_0(x) = x.FieldOwner#value
 
 staged class B(val x, val y) with
   val z = x + y

@@ -183,6 +183,10 @@ class Printer(val owner: Opt[Symbol]) with
         else owner.name + ".\"" + s.name + "$" + owner.name + "\""
     else s.name.replaceAll("$", "_")
 
+  fun showSelectionQualifier(p: Path, shown: Str) =
+    if p is Select(_, Symbol(name)) and name.includes("#") then "(" + shown + ")"
+    else shown
+
   fun showPath(p: Path): Str =
     if p is
       Select(qual, name) and
@@ -195,8 +199,8 @@ class Printer(val owner: Opt[Symbol]) with
           // NOTE: ValueThis carries information about the class, but the elaborator can infer it for us
           ValueThis then showSymbol(name)
         else showPath(qual) + "." + showSymbol(name)
-      DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
-      DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
+      DynSelect(qual, fld, false) then showSelectionQualifier(qual, showPath(qual)) + ".(" + showPath(fld) + ")"
+      DynSelect(qual, fld, true) then showSelectionQualifier(qual, showPath(qual)) + ".[" + showPath(fld) + "]"
       ValueSimpleRef(l) | ValueMemberRef(l) then showSymbol(l)
       ValueLit(lit) then showLiteral(lit)
       ValueThis then "this"
@@ -373,8 +377,8 @@ class Printer(val owner: Opt[Symbol]) with
                   ValueMemberRef(sym) and owner is Some(owner) and sym === owner and owner is ConcreteClassSymbol then this.showSymbol(selfSym) + "." + this.showSymbol(name)
                   ValueMemberRef(sym) and owner is Some(owner) and sym === owner then this.showSymbol(name)
                 else showPath(qual) + "." + this.showSymbol(name)
-              DynSelect(qual, fld, false) then showPath(qual) + ".(" + showPath(fld) + ")"
-              DynSelect(qual, fld, true) then showPath(qual) + ".[" + showPath(fld) + "]"
+              DynSelect(qual, fld, false) then showSelectionQualifier(qual, showPath(qual)) + ".(" + showPath(fld) + ")"
+              DynSelect(qual, fld, true) then showSelectionQualifier(qual, showPath(qual)) + ".[" + showPath(fld) + "]"
               ValueSimpleRef(l) | ValueMemberRef(l) then this.showSymbol(l)
               ValueLit(lit) then this.showLiteral(lit)
               ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym)
