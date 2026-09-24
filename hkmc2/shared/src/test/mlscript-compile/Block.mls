@@ -352,7 +352,7 @@ class Printer(val owner: Opt[Symbol]) with
 
   fun showPrivateDefn(d: Defn): Str =
     if d is
-      FunDefn(sym, ps, body) then showFunDefn("", sym, ps, body)
+      FunDefn(sym, ps, body) then showFunDefn("private ", sym, ps, body)
       else showDefn(d)
 
   fun showPrivateMethodDefn(d: Defn): Str =
@@ -378,7 +378,7 @@ class Printer(val owner: Opt[Symbol]) with
               ValueSimpleRef(l) | ValueMemberRef(l) then this.showSymbol(l)
               ValueLit(lit) then this.showLiteral(lit)
               ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym)
-        SelfPrinter(selfSym).showFunDefn("", sym, psWithSelf, body)
+        SelfPrinter(selfSym).showFunDefn("private ", sym, psWithSelf, body)
       else showPrivateDefn(d)
 
   fun showBlock(b) =
