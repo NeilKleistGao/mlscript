@@ -636,7 +636,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         val p1 = Param(FldFlags.empty, VarSymbol(t1, erasedType = N), N, Modulefulness.none)
         val p2 = Param(FldFlags.empty, VarSymbol(t2, erasedType = N), N, Modulefulness.none)
         val ps = PlainParamList(p1 :: p2 :: Nil)
-        val bod = st.App(ref, st.Tup(List(st.Ref(p1.sym)(t1, 666, N).resolve, st.Ref(p2.sym)(t2, 666, N).resolve))
+        val bod = st.App(ref, st.Tup(List(st.Ref(p1.sym)(t1, N).resolve, st.Ref(p2.sym)(t2, N).resolve))
           (Tree.Tup(Nil // FIXME should not be required (using dummy value)
             )))(
             Tree.App(Tree.Empty(), Tree.Empty()), // FIXME should not be required (using dummy value)
@@ -651,7 +651,7 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         val t1 = new Tree.Ident("arg")
         val p1 = Param(FldFlags.empty, VarSymbol(t1, erasedType = N), N, Modulefulness.none)
         val ps = PlainParamList(p1 :: Nil)
-        val bod = st.App(ref, st.Tup(List(st.Ref(p1.sym)(t1, 666, N).resolve))
+        val bod = st.App(ref, st.Tup(List(st.Ref(p1.sym)(t1, N).resolve))
           (Tree.Tup(Nil // FIXME should not be required (using dummy value)
             )))(
             Tree.App(Tree.Empty(), Tree.Empty()), // FIXME should not be required (using dummy value)
@@ -1062,15 +1062,17 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
     case st.Lam(params, body) =>
       warnStmt
       val (paramLists, bodyBlock) = setupFunctionDef(params :: Nil, body, N, N)
+      val affineAnnots = annots.collect:
+        case a @ Annot.Affine(0) => a
       if k.isInstanceOf[TailOp] || bodyBlock.size <= 5
-      then k(Lambda(paramLists.head, bodyBlock)(Nil))
+      then k(Lambda(paramLists.head, bodyBlock)(affineAnnots))
       else
         val lamSym = new BlockMemberSymbol("lambda", Nil, false)
         loweringCtx.collectScopedSym(lamSym)
         // Preserve the configuration under which this lambda was lowered. Its definition may be
         // copied into another compilation unit by cross-unit optimization.
         val lamDef = FunDefn.withFreshSymbol(N, lamSym, paramLists, bodyBlock)(
-          configOverride = S(config), annotations = Nil)
+          configOverride = S(config), annotations = affineAnnots)
         Define(
           lamDef,
           k(lamDef.asPath))
@@ -1549,7 +1551,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         case _ => warn(a)
       case Annot.Modifier(syntax.Keyword.`public` | syntax.Keyword.`private` | syntax.Keyword.`virtual`) => ()
       case Annot.Modifier(syntax.Keyword("staged")) => ()
-      case Annot.MayNotRaiseEffects => ()
+      case Annot.Pure => ()
+      case a: Annot.Affine => target match
+        case TermDefinition(k = syntax.Fun) => ()
+        case _ => warn(a)
       case _: Annot.Config => () // Config annotations are handled during FunDefn creation
       case annot => warn(annot)
   
@@ -1579,6 +1584,10 @@ class Lowering()(using Config, TL, Raise, State, Ctx, SymbolPrinter):
         case st.App(Ref(_: BuiltinSymbol), _) => warn(a, S(msg"The @tailcall annotation has no effect on calls to built-in symbols."))
         case st.App(_, _) => ()
         case st.Resolved(_, defnSym) if isImplicitNullaryCall(defnSym) => ()
+        case _ => warn(a)
+      // a lambda has a single parameter list, so only `@affine(0)` means anything on it
+      case a @ Annot.Affine(0) => receiver match
+        case _: st.Lam => ()
         case _ => warn(a)
       case annot => warn(annot)
 
