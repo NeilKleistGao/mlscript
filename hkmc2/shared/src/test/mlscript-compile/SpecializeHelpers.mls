@@ -159,7 +159,8 @@ class FunCache(
       ModuleSymbol then "module "
     let runtimeClass = if owner is
       ObjectSymbol then owner.value.class
-      ConcreteClassSymbol(_, _, Some, _, _) then owner.value.class
+      ConcreteClassSymbol(_, value, Some, _, _) then
+        if value.class is undefined then value else value.class
       else owner.value
     
     let p = printer
