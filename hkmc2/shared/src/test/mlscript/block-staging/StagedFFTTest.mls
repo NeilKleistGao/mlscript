@@ -1,0 +1,227 @@
+:js
+:staging
+:noModuleCheck
+
+
+// Distinct factorizations of the same length are algebraically equal but not
+// bit-identical, so spectra are compared after rounding to six decimals.
+fun round6(x) =
+  let y = Math.round(x * 1000000)
+  if y == 0 then 0 else y / 1000000
+
+fun show(arr) = arr.map((x, _, _) => round6(x))
+
+fun same(a, b) = show(a).join(",") == show(b).join(",")
+
+:silent
+let impulse8 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+let ramp8 = [0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0]
+let sig6 = [1, 0, 2, -1, 0, 1, -1, 2, 3, 0, 0, -2]
+let sig12 = [1, 0, 2, -1, 0, 1, -1, 2, 3, 0, 0, -2, 4, 1, -2, 3, 1, -1, 0, 0, 2, 2, -3, 1]
+
+
+// ===========================================================================
+// The unstaged baseline: the same algorithm, run without specializing it.
+// ===========================================================================
+
+import "../../mlscript-compile/NaiveFFT.mls"
+
+
+// The transform of a unit impulse is flat.
+show(NaiveFFT.fft8(impulse8))
+//│ = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+
+// A real ramp: X[0] is the sum of the samples and the spectrum is conjugate
+// symmetric about k = 4.
+show(NaiveFFT.fft8(ramp8))
+//│ = [
+//│   28,
+//│   0,
+//│   -4,
+//│   9.656854,
+//│   -4,
+//│   4,
+//│   -4,
+//│   1.656854,
+//│   -4,
+//│   0,
+//│   -4,
+//│   -1.656854,
+//│   -4,
+//│   -4,
+//│   -4,
+//│   -9.656854
+//│ ]
+
+
+// Each factorization agrees with the direct O(n^2) DFT.
+
+:expect true
+same(NaiveFFT.fft8(ramp8), NaiveFFT.dft(ramp8))
+//│ = true
+
+:expect true
+same(NaiveFFT.fft8_42(ramp8), NaiveFFT.dft(ramp8))
+//│ = true
+
+:expect true
+same(NaiveFFT.fft8_24(ramp8), NaiveFFT.dft(ramp8))
+//│ = true
+
+:expect true
+same(NaiveFFT.fft6(sig6), NaiveFFT.dft(sig6))
+//│ = true
+
+:expect true
+same(NaiveFFT.fft12(sig12), NaiveFFT.dft(sig12))
+//│ = true
+
+
+// ===========================================================================
+// The staged version, specialized on the radix sequence.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/StagedFFT.mls"
+
+
+StagedFFT."generate"("../StagedFFT.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/StagedFFT.mls")
+
+
+import "../../mlscript-compile/staging/out/StagedFFT.mls"
+
+open StagedFFT
+
+
+// `radices8` is a run-time value, so `fft` below stays unspecialized.
+fun radices8() = new Cons(2, new Cons(2, new Cons(2, Nil)))
+
+
+show(fft8(impulse8))
+//│ = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+
+show(fft8(ramp8))
+//│ = [
+//│   28,
+//│   0,
+//│   -4,
+//│   9.656854,
+//│   -4,
+//│   4,
+//│   -4,
+//│   1.656854,
+//│   -4,
+//│   0,
+//│   -4,
+//│   -1.656854,
+//│   -4,
+//│   -4,
+//│   -4,
+//│   -9.656854
+//│ ]
+
+
+// Every specialized transform agrees with the direct O(n^2) DFT.
+
+:expect true
+same(fft8(impulse8), dft(impulse8))
+//│ = true
+
+:expect true
+same(fft8(ramp8), dft(ramp8))
+//│ = true
+
+// 8 = 4*2
+:expect true
+same(fft8_42(ramp8), dft(ramp8))
+//│ = true
+
+// 8 = 2*4
+:expect true
+same(fft8_24(ramp8), dft(ramp8))
+//│ = true
+
+// 6 = 3*2
+:expect true
+same(fft6(sig6), dft(sig6))
+//│ = true
+
+// 12 = 3*2*2
+:expect true
+same(fft12(sig12), dft(sig12))
+//│ = true
+
+
+// The unspecialized entry point, driven by a run-time radix list, agrees too.
+:expect true
+same(fft(ramp8, radices8()), fft8(ramp8))
+//│ = true
+
+
+// Specializing preserved the semantics: each staged entry point matches its
+// unstaged counterpart exactly.
+
+:expect true
+same(fft8(ramp8), NaiveFFT.fft8(ramp8))
+//│ = true
+
+:expect true
+same(fft8_42(ramp8), NaiveFFT.fft8_42(ramp8))
+//│ = true
+
+:expect true
+same(fft8_24(ramp8), NaiveFFT.fft8_24(ramp8))
+//│ = true
+
+:expect true
+same(fft6(sig6), NaiveFFT.fft6(sig6))
+//│ = true
+
+:expect true
+same(fft12(sig12), NaiveFFT.fft12(sig12))
+//│ = true
+
+
+// The genuinely mixed-radix spectra, for the record.
+show(fft6(sig6))
+//│ = [
+//│   5,
+//│   0,
+//│   3.232051,
+//│   -3.133975,
+//│   -2.5,
+//│   -1.330127,
+//│   3,
+//│   2,
+//│   -2.5,
+//│   7.330127,
+//│   -0.232051,
+//│   -4.866025
+//│ ]
+
+show(fft12(sig12))
+//│ = [
+//│   7,
+//│   6,
+//│   -4.633975,
+//│   -2.366025,
+//│   2.366025,
+//│   -0.633975,
+//│   -10,
+//│   -13,
+//│   6.830127,
+//│   -4.562178,
+//│   -6.366025,
+//│   -0.633975,
+//│   15,
+//│   0,
+//│   -3.366025,
+//│   4.366025,
+//│   -1.830127,
+//│   7.562178,
+//│   8,
+//│   3,
+//│   0.633975,
+//│   -2.366025,
+//│   -1.633975,
+//│   2.633975
+//│ ]

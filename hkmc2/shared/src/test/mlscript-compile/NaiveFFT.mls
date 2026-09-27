@@ -1,0 +1,214 @@
+#config(noFreeze: true)
+
+// Mixed-radix Cooley–Tukey FFT: the unstaged baseline for
+// `staging/StagedFFT.mls`, kept deliberately line-for-line identical to it so
+// that a benchmark measures the effect of specialization and nothing else.
+//
+// Everything the staged version resolves at specialization time is paid for at
+// run time here: walking the radix list, rebuilding the cons spine of samples
+// and sub-transforms, the `nth` lookups in `row`/`column`, computing the
+// twiddle factors, and dispatching on `Twiddle.kind`.
+//
+// Signals are exchanged as flat arrays of `2*n` numbers holding interleaved
+// real and imaginary parts; internally a signal is a list of `Complex` values.
+
+// `FFTMath` holds the trigonometry and the array mutation. In `StagedFFT` this
+// module being unstaged is what lets the twiddle factors fold to literals;
+// here it is just a helper.
+module FFTMath with
+  // W_n^e = exp(-2*pi*i*e/n)
+  fun cosW(e, n) = Math.cos(-6.283185307179586 * e / n)
+  fun sinW(e, n) = Math.sin(-6.283185307179586 * e / n)
+  fun mkArr(len) = globalThis.Array(len).fill(0)
+  fun setAt(a, i, v) =
+    set a.(i) = v
+    a
+  fun len(a) = a.length
+
+module NaiveFFT with
+
+  // ---------------------------------------------------------------------------
+  // Lists of radices, of samples, and of sub-transforms.
+  // ---------------------------------------------------------------------------
+
+  object Nil
+  class Cons(val head, val tail)
+
+  fun prod(radices) =
+    if radices is
+      Cons(r, rest) then r * prod(rest)
+      else 1
+
+  // The out-of-range case is unreachable for the indices used below.
+  fun nth(xs, i) =
+    if xs is
+      Cons(x, rest) then
+        if i == 0 then x else nth(rest, i - 1)
+      else czero()
+
+  fun appendL(xs, ys) =
+    if xs is
+      Cons(x, rest) then new Cons(x, appendL(rest, ys))
+      else ys
+
+  // ---------------------------------------------------------------------------
+  // Complex arithmetic.
+  // ---------------------------------------------------------------------------
+
+  class Complex(val re, val im)
+
+  fun czero() = new Complex(0.0, 0.0)
+
+  fun cadd(a, b) = new Complex(a.re + b.re, a.im + b.im)
+
+  // A twiddle factor W_n^e.  `kind` names the four exponents at which the
+  // factor is a quarter turn; giving those cases exactly (instead of letting
+  // `Math.cos`/`Math.sin` return values that are only nearly 0 and ±1) keeps
+  // this module numerically in step with the staged one, which additionally
+  // gets to drop the multiplication.
+  class Twiddle(val kind, val re, val im)
+
+  fun twiddle(e, n) =
+    let e' = e % n
+    if
+      e' == 0 then new Twiddle(0, 1.0, 0.0)
+      4 * e' == n then new Twiddle(1, 0.0, -1.0)
+      2 * e' == n then new Twiddle(2, -1.0, 0.0)
+      4 * e' == 3 * n then new Twiddle(3, 0.0, 1.0)
+      else new Twiddle(4, FFTMath.cosW(e', n), FFTMath.sinW(e', n))
+
+  fun cmulT(w, x) =
+    if w.kind is
+      0 then x
+      1 then new Complex(x.im, -x.re)
+      2 then new Complex(-x.re, -x.im)
+      3 then new Complex(-x.im, x.re)
+      else new Complex(w.re * x.re - w.im * x.im, w.re * x.im + w.im * x.re)
+
+  // ---------------------------------------------------------------------------
+  // The transform.
+  //
+  // With n = r * m, decimating the input in time gives r sub-signals
+  //   sub_j[i] = x[j + i*r],   Y_j = DFT_m(sub_j)
+  // which recombine as
+  //   X[k + q*m] = sum_j W_n^(j*k) * Y_j[k] * W_r^(j*q)
+  // for k in 0..m-1 and q in 0..r-1.  The `W_n^(j*k) * Y_j[k]` products are
+  // shared across all q, so they are computed once per k, in `column`.
+  // ---------------------------------------------------------------------------
+
+  // every r-th element of xs, starting at offset j
+  fun stride(xs, j, r) =
+    if xs is
+      Cons(x, rest) then
+        if j == 0 then new Cons(x, stride(rest, r - 1, r))
+        else stride(rest, j - 1, r)
+      else Nil
+
+  // the r sub-signals of xs, as a list of lists indexed by j
+  fun subSeqs(xs, j, r) =
+    if j == r then Nil
+    else new Cons(stride(xs, j, r), subSeqs(xs, j + 1, r))
+
+  fun mapFFT(subs, m, radices) =
+    if subs is
+      Cons(sub, rest) then new Cons(fftRec(sub, m, radices), mapFFT(rest, m, radices))
+      else Nil
+
+  // z_j = W_n^(j*k) * Y_j[k], for j = 0..r-1
+  fun column(ys, j, k, n) =
+    if ys is
+      Cons(y, rest) then
+        new Cons(cmulT(twiddle(j * k, n), nth(y, k)), column(rest, j + 1, k, n))
+      else Nil
+
+  fun columns(ys, k, m, n) =
+    if k == m then Nil
+    else new Cons(column(ys, 0, k, n), columns(ys, k + 1, m, n))
+
+  // sum_j z_j * W_r^(j*q)
+  fun dftSum(zs, j, q, r) =
+    if zs is
+      Cons(z, rest) then
+        let t = cmulT(twiddle(j * q, r), z)
+        if rest is Nil then t
+        else cadd(t, dftSum(rest, j + 1, q, r))
+      else czero()
+
+  // X[q*m + k] for k = 0..m-1
+  fun row(cols, k, q, r, m) =
+    if k == m then Nil
+    else new Cons(dftSum(nth(cols, k), 0, q, r), row(cols, k + 1, q, r, m))
+
+  fun combine(cols, q, r, m) =
+    if q == r then Nil
+    else appendL(row(cols, 0, q, r, m), combine(cols, q + 1, r, m))
+
+  fun fftRec(xs, n, radices) =
+    if radices is
+      Cons(r, rest) then
+        let m = n / r
+        let ys = mapFFT(subSeqs(xs, 0, r), m, rest)
+        combine(columns(ys, 0, m, n), 0, r, m)
+      else xs
+
+  // ---------------------------------------------------------------------------
+  // Marshalling between flat arrays and the internal list representation.
+  // ---------------------------------------------------------------------------
+
+  fun load(xs, i, n) =
+    if i == n then Nil
+    else new Cons(new Complex(xs.(2 * i), xs.(2 * i + 1)), load(xs, i + 1, n))
+
+  fun store(zs, acc, i) =
+    if zs is
+      Cons(z, rest) then store(rest, FFTMath.setAt(FFTMath.setAt(acc, 2 * i, z.re), 2 * i + 1, z.im), i + 1)
+      else acc
+
+  fun run(xs, radices) =
+    let n = prod(radices)
+    store(fftRec(load(xs, 0, n), n, radices), FFTMath.mkArr(2 * n), 0)
+
+  // ---------------------------------------------------------------------------
+  // Reference implementation: a direct O(n^2) DFT, used by the tests to check
+  // the transforms above.
+  // ---------------------------------------------------------------------------
+
+  fun dftTerm(xs, n, k, t, re, im) =
+    if t == n then new Complex(re, im)
+    else
+      let c = FFTMath.cosW(k * t, n)
+      let s = FFTMath.sinW(k * t, n)
+      dftTerm(xs, n, k, t + 1,
+        re + xs.(2 * t) * c - xs.(2 * t + 1) * s,
+        im + xs.(2 * t) * s + xs.(2 * t + 1) * c)
+
+  fun dftAll(xs, n, k, acc) =
+    if k == n then acc
+    else
+      let z = dftTerm(xs, n, k, 0, 0.0, 0.0)
+      dftAll(xs, n, k + 1, FFTMath.setAt(FFTMath.setAt(acc, 2 * k, z.re), 2 * k + 1, z.im))
+
+  fun dft(xs) =
+    let n = FFTMath.len(xs) / 2
+    dftAll(xs, n, 0, FFTMath.mkArr(2 * n))
+
+  // ---------------------------------------------------------------------------
+  // Entry points, matching `StagedFFT` one for one.
+  // ---------------------------------------------------------------------------
+
+  fun fft(xs, radices) = run(xs, radices)
+
+  // 8 = 2*2*2
+  fun fft8(xs) = run(xs, new Cons(2, new Cons(2, new Cons(2, Nil))))
+
+  // 8 = 4*2
+  fun fft8_42(xs) = run(xs, new Cons(4, new Cons(2, Nil)))
+
+  // 8 = 2*4
+  fun fft8_24(xs) = run(xs, new Cons(2, new Cons(4, Nil)))
+
+  // 6 = 3*2
+  fun fft6(xs) = run(xs, new Cons(3, new Cons(2, Nil)))
+
+  // 12 = 3*2*2
+  fun fft12(xs) = run(xs, new Cons(3, new Cons(2, new Cons(2, Nil))))
