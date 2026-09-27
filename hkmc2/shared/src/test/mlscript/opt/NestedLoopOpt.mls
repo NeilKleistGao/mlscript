@@ -107,8 +107,6 @@ fun innerReturnDoesNotPolluteOuterExit(flag) =
   x
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ define innerReturnDoesNotPolluteOuterExit⁰ as fun innerReturnDoesNotPolluteOuterExit¹(flag) {
-//│   let x;
-//│   set x = 1;
 //│   loop lbl:
 //│     match flag
 //│       true =>
@@ -122,7 +120,7 @@ fun innerReturnDoesNotPolluteOuterExit(flag) =
 //│       else
 //│         end
 //│     end
-//│   return x
+//│   return 1
 //│ };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————
@@ -192,14 +190,13 @@ fun labelContinueFiltersPath(limit) =
     loop.continue
 //│ ——————————————| Optimized IR |——————————————————————————————————————————————————————————————————————
 //│ define labelContinueFiltersPath⁰ as fun labelContinueFiltersPath¹(limit) {
-//│   let i, acc, loop$result, scrut, scrut1, tmp, tmp1, tmp2, tmp3;
+//│   let i, acc, scrut, scrut1, tmp, tmp1, tmp2, tmp3;
 //│   set i = 0;
 //│   set acc = 0;
 //│   loop loop:
 //│     set scrut = >=⁰(i, limit);
 //│     match scrut
 //│       true =>
-//│         set loop$result = acc;
 //│         end
 //│       else
 //│         set tmp = %⁰(i, 2);
@@ -217,7 +214,7 @@ fun labelContinueFiltersPath(limit) =
 //│             continue loop
 //│         end
 //│     end
-//│   return loop$result
+//│   return acc
 //│ };
 //│ end
 //│ —————————————————| Output |—————————————————————————————————————————————————————————————————————————

@@ -13,6 +13,15 @@ module JsonParser with
 
   class ParseResult(val next, val res)
 
+  class StrSlice(val s, val begin, val len) with
+    fun eqRec(s', i) =
+      if i == len then true
+      else if s.(begin + i) == s'.(i) then eqRec(s', i + 1)
+      else false
+    fun eq(s') =
+      if len == s'.length then eqRec(s', 0)
+      else false
+
   fun isDigit(c) = 48 <= c and c <= 57
 
   fun rev(ls, res) =
@@ -38,7 +47,7 @@ module JsonParser with
     if i + j < s.length then
       let c = s.(i + j)
       if c
-        == "'" then new ParseResult(i + j + 1, new Some(s.substring(i, i + j)))
+        == "'" then new ParseResult(i + j + 1, new Some(new StrSlice(s, i, j)))
         else parseStringImpl(s, i, j + 1)
     else new ParseResult(i, None)
 

@@ -15,6 +15,15 @@ staged module StagedJsonSchemaParser with
 
   class ParseResult(val next, val res)
 
+  staged class StrSlice(val s, val begin, val len) with
+    fun eqRec(@specialize s', i) =
+      if i == len then true
+      else if s.(begin + i) == s'.(i) then eqRec(s', i + 1)
+      else false
+    fun eq(@specialize s') =
+      if len == s'.length then eqRec(s', 0)
+      else false
+
   fun isDigit(c) = 48 <= c and c <= 57
 
   fun rev(ls, res) =
@@ -42,7 +51,7 @@ staged module StagedJsonSchemaParser with
     if i + j < s.length then
       let c = s.(i + j)
       if c
-        == "'" then new ParseResult(i + j + 1, new Some(s.substring(i, i + j)))
+        == "'" then new ParseResult(i + j + 1, new Some(new StrSlice(s, i, j)))
         else parseStringImpl(s, i, j + 1)
     else new ParseResult(i, None)
 
@@ -148,11 +157,14 @@ staged module StagedJsonSchemaParser with
   fun parseWithSchemaPairRec(s, i, @specialize pairs, k) =
     if pairs is
       Cons(p, ps) then
-        if p.key == k then
-          let res = p.schema.parse(s, i)
-          if res.res is Some then res
+        if k is
+          StrSlice then
+            if k.eq(p.key) then
+              let res = p.schema.parse(s, i)
+              if res.res is Some then res
+              else parseWithSchemaPairRec(s, i, ps, k)
+            else parseWithSchemaPairRec(s, i, ps, k)
           else parseWithSchemaPairRec(s, i, ps, k)
-        else parseWithSchemaPairRec(s, i, ps, k)
       else new ParseResult(i, None)
 
   fun parseKVWithSchema(s, i, @specialize schemas, k, split) =
@@ -228,10 +240,10 @@ staged module StagedJsonSchemaParser with
       let r = parseString(s, i)
       if r is ParseResult(j, Some(s')) then
         let t1 = if minLen is
-          Some(lb) then s'.length >= lb
+          Some(lb) then s'.len >= lb
           else true
         let t2 = if maxLen is
-          Some(ub) then s'.length <= ub
+          Some(ub) then s'.len <= ub
           else true
         if t1 then
           if t2 then r

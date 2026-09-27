@@ -1,0 +1,183 @@
+:js
+
+// Fixed-point patterns may recurse indirectly through other definitions:
+// The semantics is alternation: the steps fire in cycle order
+// (`UnBox`, `UnTag`, `UnBox`, ...) and stops when the input is neither.
+
+open annotations { compile }
+
+data class Box(val value)
+data class Tag(val value)
+
+pattern UnBox = Box(x) => x
+pattern UnTag = Tag(x) => x
+
+pattern StepsA = UnBox as StepsB | _
+pattern StepsB = UnTag as StepsA | _
+
+fun makeStepsA(x) = if x is @compile StepsA(y) then y
+fun makeStepsB(x) = if x is @compile StepsB(y) then y
+
+let mixed = Box(Tag(Box(42)))
+//│ mixed = Box(Tag(Box(42)))
+
+:expect 42
+if mixed is StepsA(r) then r else -1
+//│ = 42
+
+:expect 42
+makeStepsA of mixed
+//│ = 42
+
+// The alternation is strict: after a box, a tag must follow, so the second
+// box is left alone.
+let doubleBox = Box(Box(42))
+//│ doubleBox = Box(Box(42))
+
+:expect Box(42)
+if doubleBox is StepsA(r) then r else "<no match>"
+//│ = Box(42)
+
+:expect Box(42)
+makeStepsA of doubleBox
+//│ = Box(42)
+
+
+let tagged = Tag(Box(42))
+//│ tagged = Tag(Box(42))
+
+:expect Tag(Box(42))
+if tagged is StepsA(r) then r else "no match"
+//│ = Tag(Box(42))
+
+:expect Tag(Box(42))
+makeStepsA of tagged
+//│ = Tag(Box(42))
+
+:expect 42
+if tagged is StepsB(r) then r else -1
+//│ = 42
+
+:expect 42
+makeStepsB of tagged
+//│ = 42
+
+
+
+// `PeelA` is non-catch-all: after unboxing, a tag must follow (via `PeelB`),
+// or — when the value is not a box and so cannot be unboxed — it must be the
+// literal `42`. `PeelB` ends in `_`, so after untagging anything goes.
+pattern PeelA = UnBox as PeelB | 42
+pattern PeelB = UnTag as PeelA | _
+
+// This cycle mixes a link whose alternatives are partial (`42`) with one whose
+// alternatives are total (`_`): the machine can fail at `PeelA` on the final
+// term while `PeelB`'s wildcard would have accepted an earlier intermediate —
+// as it does just below, where the run ends on `7` but the result is `Tag(7)`.
+// The machine keeps no intermediates, so the definition is compiled naively.
+:w
+fun runPeelA(x) = if x is @compile PeelA(y) then y
+//│ ╔══[WARNING] This fixed-point pattern is not supported by pattern compilation.
+//│ ║  l.79: 	fun runPeelA(x) = if x is @compile PeelA(y) then y
+//│ ║        	                                   ^^^^^^^
+//│ ╟── One of its recursive parts accepts any term
+//│ ║  l.71: 	pattern PeelB = UnTag as PeelA | _
+//│ ║        	                ^^^^^^^^^^^^^^^^^^
+//│ ╟── while another can fail.
+//│ ║  l.70: 	pattern PeelA = UnBox as PeelB | 42
+//│ ║        	                ^^^^^^^^^^^^^^^^^^^
+//│ ╙── Falling back to the naive translation.
+
+:expect 42
+if Box(42) is PeelA(r) then r else "<no match>"
+//│ = 42
+
+:expect 42
+runPeelA of Box(42)
+//│ = 42
+
+:expect Tag(7)
+if Box(Tag(7)) is PeelA(r) then r else "<no match>"
+//│ = Tag(7)
+
+:expect Tag(7)
+runPeelA of Box(Tag(7))
+//│ = Tag(7)
+
+:expect 42
+if Box(Tag(Box(42))) is PeelA(r) then r
+//│ = 42
+
+:expect 42
+runPeelA of Box(Tag(Box(42)))
+//│ = 42
+
+
+
+data class Bin(content)
+
+pattern UnBin = Bin(x) => x
+
+pattern Cycle1 = UnBox as Cycle2 | _
+pattern Cycle2 = UnTag as Cycle3 | _
+pattern Cycle3 = UnBin as Cycle1 | _
+
+let chained = Box(Tag(Bin(Box(Tag(Bin(1))))))
+//│ chained = Box(Tag(Bin(Box(Tag(Bin(1))))))
+
+fun unwrapCycle1(x) = if x is @compile Cycle1(y) then y
+
+:expect 1
+if chained is Cycle1(r) then r else -1
+//│ = 1
+
+:expect 1
+unwrapCycle1 of chained
+//│ = 1
+
+:expect 0
+unwrapCycle1 of Box(Tag(0))
+//│ = 0
+
+:expect Bin(0)
+unwrapCycle1 of Box(Bin(0)) // Stops at `Bin`.
+//│ = Bin(0)
+
+
+
+// ————— One-or-more links —————
+//
+// `step as (Next | _)` requires its step to fire — a run with zero steps is a
+// match failure — whereas the cycle machine tracks no progress and would let
+// the failing link's alternatives process the scrutinee anyway. Such cycles
+// are therefore compiled naively.
+
+pattern AtLeastOneA = UnBox as (AtLeastOneB | _)
+pattern AtLeastOneB = UnTag as (AtLeastOneA | _)
+
+fun atLeastOneSlow(x) = if x is AtLeastOneA(r) then r else "<no match>"
+
+:w
+fun atLeastOneFast(x) = if x is @compile AtLeastOneA(r) then r else "<no match>"
+//│ ╔══[WARNING] This fixed-point pattern is not supported by pattern compilation.
+//│ ║  l.161: 	fun atLeastOneFast(x) = if x is @compile AtLeastOneA(r) then r else "<no match>"
+//│ ║         	                                         ^^^^^^^^^^^^^
+//│ ╟── `AtLeastOneA` does not match unless its first pattern does, which is not supported for mutually recursive definitions.
+//│ ╙── Falling back to the naive translation.
+
+// The first step cannot fire, so the match fails — it must not yield `7`.
+:expect "<no match>"
+atLeastOneSlow of 7
+//│ = "<no match>"
+
+:expect "<no match>"
+atLeastOneFast of 7
+//│ = "<no match>"
+
+:expect 42
+atLeastOneSlow of Box(Tag(42))
+//│ = 42
+
+:expect 42
+atLeastOneFast of Box(Tag(42))
+//│ = 42

@@ -1,0 +1,5078 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None)
+import "../StagedFFT.mls" as StagedFFT__Legacy
+module StagedFFT with
+    object Nil
+    class Cons(val head, val tail)
+    class Complex(val re, val im)
+    class Twiddle(val kind, val re, val im)
+    fun appendL(xs, ys) =
+      let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+      if xs is
+        Cons then
+          arg_Cons_0_2 = xs.Cons#head
+          arg_Cons_1_2 = xs.Cons#tail
+          rest2 = arg_Cons_1_2
+          x1 = arg_Cons_0_2
+          tmp2 = appendL(rest2, ys)
+          new Cons(x1, tmp2)
+        else ys
+    fun cadd(a, b) =
+      let {tmp3, tmp4}
+      tmp3 = a.re + b.re
+      tmp4 = a.im + b.im
+      new Complex(tmp3, tmp4)
+    fun cmulT(w, x) =
+      let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+      scrut5 = w.kind
+      if scrut5 is
+        0 then x
+        1 then
+          tmp13 = -(x.re)
+          new Complex(x.im, tmp13)
+        2 then
+          tmp14 = -(x.re)
+          tmp15 = -(x.im)
+          new Complex(tmp14, tmp15)
+        3 then
+          tmp16 = -(x.im)
+          new Complex(tmp16, x.re)
+        else
+          tmp17 = w.re * x.re
+          tmp18 = w.im * x.im
+          tmp19 = tmp17 - tmp18
+          tmp20 = w.re * x.im
+          tmp21 = w.im * x.re
+          tmp22 = tmp20 + tmp21
+          new Complex(tmp19, tmp22)
+    fun column(ys, j, k, n) =
+      let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+      if ys is
+        Cons then
+          arg_Cons_0_5 = ys.Cons#head
+          arg_Cons_1_5 = ys.Cons#tail
+          rest5 = arg_Cons_1_5
+          y = arg_Cons_0_5
+          tmp31 = j * k
+          tmp32 = twiddle(tmp31, n)
+          tmp33 = nth(y, k)
+          tmp34 = cmulT_StagedFFT_sp_0(tmp32, tmp33)
+          tmp35 = j + 1
+          tmp36 = column(rest5, tmp35, k, n)
+          new Cons(tmp34, tmp36)
+        else Nil
+    fun columns(ys, k, m, n) =
+      let {scrut8, tmp37, tmp38, tmp39}
+      scrut8 = k == m
+      if scrut8 is
+        true then Nil
+        else
+          tmp37 = column_StagedFFT_sp_1(ys, 0, k, n)
+          tmp38 = k + 1
+          tmp39 = columns(ys, tmp38, m, n)
+          new Cons(tmp37, tmp39)
+    fun combine(cols, q, r, m) =
+      let {scrut10, tmp48, tmp49, tmp50}
+      scrut10 = q == r
+      if scrut10 is
+        true then Nil
+        else
+          tmp48 = row_StagedFFT_sp_1(cols, 0, q, r, m)
+          tmp49 = q + 1
+          tmp50 = combine(cols, tmp49, r, m)
+          appendL_StagedFFT_sp_0(tmp48, tmp50)
+    fun czero() = new Complex(0, 0)
+    fun dft(xs) =
+      let {n8, tmp92, tmp93, tmp94}
+      tmp92 = StagedFFT__Legacy."FFTMath$StagedFFT".len(xs)
+      n8 = tmp92 / 2
+      tmp93 = 2 * n8
+      tmp94 = StagedFFT__Legacy."FFTMath$StagedFFT".mkArr(tmp93)
+      dftAll_StagedFFT_sp_0(xs, n8, 0, tmp94)
+    fun dftAll(xs, n, k, acc) =
+      let {scrut13, z2, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91}
+      scrut13 = k == n
+      if scrut13 is
+        true then acc
+        else
+          z2 = dftTerm_StagedFFT_sp_0(xs, n, k, 0, 0, 0)
+          tmp86 = k + 1
+          tmp87 = 2 * k
+          tmp88 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, tmp87, z2.re)
+          tmp89 = 2 * k
+          tmp90 = tmp89 + 1
+          tmp91 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp88, tmp90, z2.im)
+          dftAll(xs, n, tmp86, tmp91)
+    fun dftSum(zs, j, q, r) =
+      let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+      if zs is
+        Cons then
+          arg_Cons_0_6 = zs.Cons#head
+          arg_Cons_1_6 = zs.Cons#tail
+          rest6 = arg_Cons_1_6
+          z = arg_Cons_0_6
+          tmp40 = j * q
+          tmp41 = twiddle(tmp40, r)
+          t = cmulT_StagedFFT_sp_0(tmp41, z)
+          if rest6 is
+            Nil then t
+            else
+              tmp42 = j + 1
+              tmp43 = dftSum(rest6, tmp42, q, r)
+              cadd(t, tmp43)
+        else czero()
+    fun dftTerm(xs, n, k, t, re, im) =
+      let {scrut12, c, s, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85}
+      scrut12 = t == n
+      if scrut12 is
+        true then new Complex(re, im)
+        else
+          tmp69 = k * t
+          c = StagedFFT__Legacy."FFTMath$StagedFFT".cosW(tmp69, n)
+          tmp70 = k * t
+          s = StagedFFT__Legacy."FFTMath$StagedFFT".sinW(tmp70, n)
+          tmp71 = t + 1
+          tmp72 = 2 * t
+          tmp73 = xs.(tmp72) * c
+          tmp74 = re + tmp73
+          tmp75 = 2 * t
+          tmp76 = tmp75 + 1
+          tmp77 = xs.(tmp76) * s
+          tmp78 = tmp74 - tmp77
+          tmp79 = 2 * t
+          tmp80 = xs.(tmp79) * s
+          tmp81 = im + tmp80
+          tmp82 = 2 * t
+          tmp83 = tmp82 + 1
+          tmp84 = xs.(tmp83) * c
+          tmp85 = tmp81 + tmp84
+          dftTerm(xs, n, k, tmp71, tmp78, tmp85)
+    fun fft(xs, radices) = run(xs, radices)
+    fun fft12(xs) =
+      let {tmp104, tmp105, tmp106}
+      tmp104 = new Cons(2, Nil)
+      tmp105 = new Cons(2, tmp104)
+      tmp106 = new Cons(3, tmp105)
+      run_StagedFFT_sp_4(xs, tmp106)
+    fun fft6(xs) =
+      let {tmp102, tmp103}
+      tmp102 = new Cons(2, Nil)
+      tmp103 = new Cons(3, tmp102)
+      run_StagedFFT_sp_3(xs, tmp103)
+    fun fft8(xs) =
+      let {tmp95, tmp96, tmp97}
+      tmp95 = new Cons(2, Nil)
+      tmp96 = new Cons(2, tmp95)
+      tmp97 = new Cons(2, tmp96)
+      run_StagedFFT_sp_0(xs, tmp97)
+    fun fft8_24(xs) =
+      let {tmp100, tmp101}
+      tmp100 = new Cons(4, Nil)
+      tmp101 = new Cons(2, tmp100)
+      run_StagedFFT_sp_2(xs, tmp101)
+    fun fft8_42(xs) =
+      let {tmp98, tmp99}
+      tmp98 = new Cons(2, Nil)
+      tmp99 = new Cons(4, tmp98)
+      run_StagedFFT_sp_1(xs, tmp99)
+    fun fftRec(xs, n, radices) =
+      let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+      if radices is
+        Cons then
+          arg_Cons_0_7 = radices.Cons#head
+          arg_Cons_1_7 = radices.Cons#tail
+          rest7 = arg_Cons_1_7
+          r6 = arg_Cons_0_7
+          m4 = n / r6
+          tmp51 = subSeqs_StagedFFT_sp_0(xs, 0, r6)
+          ys3 = mapFFT(tmp51, m4, rest7)
+          tmp52 = columns_StagedFFT_sp_0(ys3, 0, m4, n)
+          combine_StagedFFT_sp_0(tmp52, 0, r6, m4)
+        else xs
+    fun load(xs, i, n) =
+      let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+      scrut11 = i == n
+      if scrut11 is
+        true then Nil
+        else
+          tmp53 = 2 * i
+          tmp54 = 2 * i
+          tmp55 = tmp54 + 1
+          tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+          tmp57 = i + 1
+          tmp58 = load(xs, tmp57, n)
+          new Cons(tmp56, tmp58)
+    fun mapFFT(subs, m, radices) =
+      let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+      if subs is
+        Cons then
+          arg_Cons_0_4 = subs.Cons#head
+          arg_Cons_1_4 = subs.Cons#tail
+          rest4 = arg_Cons_1_4
+          sub = arg_Cons_0_4
+          tmp29 = fftRec(sub, m, radices)
+          tmp30 = mapFFT(rest4, m, radices)
+          new Cons(tmp29, tmp30)
+        else Nil
+    fun nth(xs, i) =
+      let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+      if xs is
+        Cons then
+          arg_Cons_0_1 = xs.Cons#head
+          arg_Cons_1_1 = xs.Cons#tail
+          rest1 = arg_Cons_1_1
+          x = arg_Cons_0_1
+          scrut = i == 0
+          if scrut is
+            true then x
+            else
+              tmp1 = i - 1
+              nth(rest1, tmp1)
+        else czero()
+    fun prod(radices) =
+      let {rest, r, arg_Cons_0_, arg_Cons_1_, tmp}
+      if radices is
+        Cons then
+          arg_Cons_0_ = radices.Cons#head
+          arg_Cons_1_ = radices.Cons#tail
+          rest = arg_Cons_1_
+          r = arg_Cons_0_
+          tmp = prod(rest)
+          r * tmp
+        else 1
+    fun row(cols, k, q, r, m) =
+      let {scrut9, tmp44, tmp45, tmp46, tmp47}
+      scrut9 = k == m
+      if scrut9 is
+        true then Nil
+        else
+          tmp44 = nth(cols, k)
+          tmp45 = dftSum_StagedFFT_sp_1(tmp44, 0, q, r)
+          tmp46 = k + 1
+          tmp47 = row(cols, tmp46, q, r, m)
+          new Cons(tmp45, tmp47)
+    fun run(xs, radices) =
+      let {n5, tmp65, tmp66, tmp67, tmp68}
+      n5 = prod(radices)
+      tmp65 = load_StagedFFT_sp_0(xs, 0, n5)
+      tmp66 = fftRec_StagedFFT_sp_0(tmp65, n5, radices)
+      tmp67 = 2 * n5
+      tmp68 = StagedFFT__Legacy."FFTMath$StagedFFT".mkArr(tmp67)
+      store_StagedFFT_sp_0(tmp66, tmp68, 0)
+    fun store(zs, acc, i) =
+      let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+      if zs is
+        Cons then
+          arg_Cons_0_8 = zs.Cons#head
+          arg_Cons_1_8 = zs.Cons#tail
+          rest8 = arg_Cons_1_8
+          z1 = arg_Cons_0_8
+          tmp59 = 2 * i
+          tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, tmp59, z1.re)
+          tmp61 = 2 * i
+          tmp62 = tmp61 + 1
+          tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, tmp62, z1.im)
+          tmp64 = i + 1
+          store(rest8, tmp63, tmp64)
+        else acc
+    fun stride(xs, j, r) =
+      let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+      if xs is
+        Cons then
+          arg_Cons_0_3 = xs.Cons#head
+          arg_Cons_1_3 = xs.Cons#tail
+          rest3 = arg_Cons_1_3
+          x3 = arg_Cons_0_3
+          scrut6 = j == 0
+          if scrut6 is
+            true then
+              tmp23 = r - 1
+              tmp24 = stride(rest3, tmp23, r)
+              new Cons(x3, tmp24)
+            else
+              tmp25 = j - 1
+              stride(rest3, tmp25, r)
+        else Nil
+    fun subSeqs(xs, j, r) =
+      let {scrut7, tmp26, tmp27, tmp28}
+      scrut7 = j == r
+      if scrut7 is
+        true then Nil
+        else
+          tmp26 = stride(xs, j, r)
+          tmp27 = j + 1
+          tmp28 = subSeqs(xs, tmp27, r)
+          new Cons(tmp26, tmp28)
+    fun twiddle(e, n) =
+      let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+      e__ = e % n
+      scrut1 = e__ == 0
+      if scrut1 is
+        true then new Twiddle(0, 1, 0)
+        else
+          tmp5 = 4 * e__
+          scrut2 = tmp5 == n
+          if scrut2 is
+            true then
+              tmp6 = -1
+              new Twiddle(1, 0, tmp6)
+            else
+              tmp7 = 2 * e__
+              scrut3 = tmp7 == n
+              if scrut3 is
+                true then
+                  tmp8 = -1
+                  new Twiddle(2, tmp8, 0)
+                else
+                  tmp9 = 4 * e__
+                  tmp10 = 3 * n
+                  scrut4 = tmp9 == tmp10
+                  if scrut4 is
+                    true then new Twiddle(3, 0, 1)
+                    else
+                      tmp11 = StagedFFT__Legacy."FFTMath$StagedFFT".cosW(e__, n)
+                      tmp12 = StagedFFT__Legacy."FFTMath$StagedFFT".sinW(e__, n)
+                      new Twiddle(4, tmp11, tmp12)
+open StagedFFT
+private fun appendL_StagedFFT_sp_0(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  if xs is
+    Cons then
+      arg_Cons_0_2 = xs.Cons#head
+      arg_Cons_1_2 = xs.Cons#tail
+      rest2 = arg_Cons_1_2
+      x1 = arg_Cons_0_2
+      tmp2 = appendL(rest2, ys)
+      new Cons(x1, tmp2)
+    else ys
+private fun appendL_StagedFFT_sp_1(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_2(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_10(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_5(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_11(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_12(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_12(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_13(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_13(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_14(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_14(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_15(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_15(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  ys
+private fun appendL_StagedFFT_sp_16(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_17(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_17(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_18(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_18(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  ys
+private fun appendL_StagedFFT_sp_19(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_20(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_2(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  ys
+private fun appendL_StagedFFT_sp_20(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  ys
+private fun appendL_StagedFFT_sp_21(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_22(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_22(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_23(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_23(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_24(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_24(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_25(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_25(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  ys
+private fun appendL_StagedFFT_sp_3(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_4(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_4(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  ys
+private fun appendL_StagedFFT_sp_5(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_1(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_6(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_7(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_7(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_8(rest2, ys)
+  new Cons(x1, tmp2)
+private fun appendL_StagedFFT_sp_8(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  ys
+private fun appendL_StagedFFT_sp_9(xs, ys) =
+  let {x1, rest2, arg_Cons_0_2, arg_Cons_1_2, tmp2}
+  arg_Cons_0_2 = xs.Cons#head
+  arg_Cons_1_2 = xs.Cons#tail
+  rest2 = arg_Cons_1_2
+  x1 = arg_Cons_0_2
+  tmp2 = appendL_StagedFFT_sp_10(rest2, ys)
+  new Cons(x1, tmp2)
+private fun cadd_StagedFFT_sp_0(a, b) =
+  let {tmp3, tmp4}
+  tmp3 = a.Complex#re + b.Complex#re
+  tmp4 = a.Complex#im + b.Complex#im
+  new Complex(tmp3, tmp4)
+private fun cmulT_StagedFFT_sp_0(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  if scrut5 is
+    0 then x
+    1 then
+      tmp13 = -(x.re)
+      new Complex(x.im, tmp13)
+    2 then
+      tmp14 = -(x.re)
+      tmp15 = -(x.im)
+      new Complex(tmp14, tmp15)
+    3 then
+      tmp16 = -(x.im)
+      new Complex(tmp16, x.re)
+    else
+      tmp17 = w.Twiddle#re * x.re
+      tmp18 = w.Twiddle#im * x.im
+      tmp19 = tmp17 - tmp18
+      tmp20 = w.Twiddle#re * x.im
+      tmp21 = w.Twiddle#im * x.re
+      tmp22 = tmp20 + tmp21
+      new Complex(tmp19, tmp22)
+private fun cmulT_StagedFFT_sp_1(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  x
+private fun cmulT_StagedFFT_sp_10(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp17 = 0.8660254037844387 * x.Complex#re
+  tmp18 = -0.49999999999999994 * x.Complex#im
+  tmp19 = tmp17 - tmp18
+  tmp20 = 0.8660254037844387 * x.Complex#im
+  tmp21 = -0.49999999999999994 * x.Complex#re
+  tmp22 = tmp20 + tmp21
+  new Complex(tmp19, tmp22)
+private fun cmulT_StagedFFT_sp_2(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp14 = -(x.Complex#re)
+  tmp15 = -(x.Complex#im)
+  new Complex(tmp14, tmp15)
+private fun cmulT_StagedFFT_sp_3(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp13 = -(x.Complex#re)
+  new Complex(x.im, tmp13)
+private fun cmulT_StagedFFT_sp_4(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp17 = 0.7071067811865476 * x.Complex#re
+  tmp18 = -0.7071067811865475 * x.Complex#im
+  tmp19 = tmp17 - tmp18
+  tmp20 = 0.7071067811865476 * x.Complex#im
+  tmp21 = -0.7071067811865475 * x.Complex#re
+  tmp22 = tmp20 + tmp21
+  new Complex(tmp19, tmp22)
+private fun cmulT_StagedFFT_sp_5(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp17 = -0.7071067811865475 * x.Complex#re
+  tmp18 = -0.7071067811865476 * x.Complex#im
+  tmp19 = tmp17 - tmp18
+  tmp20 = -0.7071067811865475 * x.Complex#im
+  tmp21 = -0.7071067811865476 * x.Complex#re
+  tmp22 = tmp20 + tmp21
+  new Complex(tmp19, tmp22)
+private fun cmulT_StagedFFT_sp_6(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp16 = -(x.Complex#im)
+  new Complex(tmp16, x.re)
+private fun cmulT_StagedFFT_sp_7(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp17 = 0.5000000000000001 * x.Complex#re
+  tmp18 = -0.8660254037844386 * x.Complex#im
+  tmp19 = tmp17 - tmp18
+  tmp20 = 0.5000000000000001 * x.Complex#im
+  tmp21 = -0.8660254037844386 * x.Complex#re
+  tmp22 = tmp20 + tmp21
+  new Complex(tmp19, tmp22)
+private fun cmulT_StagedFFT_sp_8(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp17 = -0.4999999999999998 * x.Complex#re
+  tmp18 = -0.8660254037844387 * x.Complex#im
+  tmp19 = tmp17 - tmp18
+  tmp20 = -0.4999999999999998 * x.Complex#im
+  tmp21 = -0.8660254037844387 * x.Complex#re
+  tmp22 = tmp20 + tmp21
+  new Complex(tmp19, tmp22)
+private fun cmulT_StagedFFT_sp_9(w, x) =
+  let {scrut5, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22}
+  scrut5 = w.Twiddle#kind
+  tmp17 = -0.5000000000000004 * x.Complex#re
+  tmp18 = 0.8660254037844385 * x.Complex#im
+  tmp19 = tmp17 - tmp18
+  tmp20 = -0.5000000000000004 * x.Complex#im
+  tmp21 = 0.8660254037844385 * x.Complex#re
+  tmp22 = tmp20 + tmp21
+  new Complex(tmp19, tmp22)
+private fun column_StagedFFT_sp_0(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  if ys is
+    Cons then
+      arg_Cons_0_5 = ys.Cons#head
+      arg_Cons_1_5 = ys.Cons#tail
+      rest5 = arg_Cons_1_5
+      y = arg_Cons_0_5
+      tmp31 = 0
+      tmp32 = twiddle_StagedFFT_sp_0(tmp31, n)
+      tmp33 = nth_StagedFFT_sp_0(y, k)
+      tmp34 = cmulT_StagedFFT_sp_0(tmp32, tmp33)
+      tmp35 = 1
+      tmp36 = column(rest5, tmp35, k, n)
+      new Cons(tmp34, tmp36)
+    else Nil
+private fun column_StagedFFT_sp_1(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  if ys is
+    Cons then
+      arg_Cons_0_5 = ys.Cons#head
+      arg_Cons_1_5 = ys.Cons#tail
+      rest5 = arg_Cons_1_5
+      y = arg_Cons_0_5
+      tmp31 = 0
+      tmp32 = twiddle_StagedFFT_sp_0(tmp31, n)
+      tmp33 = nth(y, k)
+      tmp34 = cmulT_StagedFFT_sp_0(tmp32, tmp33)
+      tmp35 = 1
+      tmp36 = column(rest5, tmp35, k, n)
+      new Cons(tmp34, tmp36)
+    else Nil
+private fun column_StagedFFT_sp_10(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 1
+  tmp32 = twiddle_StagedFFT_sp_4(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_3(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_11(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_11(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_12(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_8(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_13(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_13(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_8(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_14(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_14(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_15(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_9(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_16(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_16(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 1
+  tmp32 = twiddle_StagedFFT_sp_6(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_9(y, k)
+  tmp34 = cmulT_StagedFFT_sp_4(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_17(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_17(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_18(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_11(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_19(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_19(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 2
+  tmp32 = twiddle_StagedFFT_sp_7(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_11(y, k)
+  tmp34 = cmulT_StagedFFT_sp_3(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_20(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_2(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  if ys is
+    Cons then
+      arg_Cons_0_5 = ys.Cons#head
+      arg_Cons_1_5 = ys.Cons#tail
+      rest5 = arg_Cons_1_5
+      y = arg_Cons_0_5
+      tmp31 = 0
+      tmp32 = twiddle_StagedFFT_sp_0(tmp31, n)
+      tmp33 = nth_StagedFFT_sp_0(y, k)
+      tmp34 = cmulT_StagedFFT_sp_0(tmp32, tmp33)
+      tmp35 = 1
+      tmp36 = column(rest5, tmp35, k, n)
+      new Cons(tmp34, tmp36)
+    else Nil
+private fun column_StagedFFT_sp_20(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_21(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_13(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_22(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_22(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 3
+  tmp32 = twiddle_StagedFFT_sp_8(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_13(y, k)
+  tmp34 = cmulT_StagedFFT_sp_5(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_23(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_23(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_24(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_25(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_25(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_26(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_26(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_27(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_27(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 4
+  tmp36 = column_StagedFFT_sp_28(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_28(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_29(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_5(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_30(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_3(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_1(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_2(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_4(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_30(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 1
+  tmp32 = twiddle_StagedFFT_sp_6(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_4(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_31(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_31(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 2
+  tmp32 = twiddle_StagedFFT_sp_7(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_3(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_32(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_32(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 3
+  tmp32 = twiddle_StagedFFT_sp_8(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_5(tmp32, tmp33)
+  tmp35 = 4
+  tmp36 = column_StagedFFT_sp_33(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_33(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_34(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_3(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_2(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_35(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_35(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_3(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_2(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_36(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_36(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_3(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_2(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_37(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_37(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_3(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_2(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 4
+  tmp36 = column_StagedFFT_sp_38(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_38(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_39(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_14(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_40(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_4(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_1(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_2(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_5(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_40(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_14(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_41(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_41(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_14(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_42(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_42(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_43(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_14(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_44(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_44(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 1
+  tmp32 = twiddle_StagedFFT_sp_15(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_7(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_45(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_45(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 2
+  tmp32 = twiddle_StagedFFT_sp_16(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_8(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_46(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_46(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_47(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_21(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_8(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_48(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_48(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_21(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_8(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_49(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_49(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_21(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_8(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_50(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_5(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_50(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_51(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_21(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_9(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_52(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_52(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 1
+  tmp32 = twiddle_StagedFFT_sp_22(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_9(y, k)
+  tmp34 = cmulT_StagedFFT_sp_10(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_53(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_53(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 2
+  tmp32 = twiddle_StagedFFT_sp_23(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_9(y, k)
+  tmp34 = cmulT_StagedFFT_sp_7(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_54(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_54(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_55(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_21(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_11(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_56(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_56(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 2
+  tmp32 = twiddle_StagedFFT_sp_23(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_11(y, k)
+  tmp34 = cmulT_StagedFFT_sp_7(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_57(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_57(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 4
+  tmp32 = twiddle_StagedFFT_sp_24(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_11(y, k)
+  tmp34 = cmulT_StagedFFT_sp_8(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_58(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_58(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_59(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_21(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_13(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_60(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_6(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_3(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_7(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_60(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 3
+  tmp32 = twiddle_StagedFFT_sp_25(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_13(y, k)
+  tmp34 = cmulT_StagedFFT_sp_3(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_61(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_61(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 6
+  tmp32 = twiddle_StagedFFT_sp_26(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_13(y, k)
+  tmp34 = cmulT_StagedFFT_sp_2(tmp32, tmp33)
+  tmp35 = 3
+  tmp36 = column_StagedFFT_sp_62(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_62(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_7(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_3(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_4(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 2
+  tmp36 = column_StagedFFT_sp_8(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun column_StagedFFT_sp_8(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  Nil
+private fun column_StagedFFT_sp_9(ys, j, k, n) =
+  let {y, rest5, arg_Cons_0_5, arg_Cons_1_5, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
+  arg_Cons_0_5 = ys.Cons#head
+  arg_Cons_1_5 = ys.Cons#tail
+  rest5 = arg_Cons_1_5
+  y = arg_Cons_0_5
+  tmp31 = 0
+  tmp32 = twiddle_StagedFFT_sp_3(tmp31, n)
+  tmp33 = nth_StagedFFT_sp_5(y, k)
+  tmp34 = cmulT_StagedFFT_sp_1(tmp32, tmp33)
+  tmp35 = 1
+  tmp36 = column_StagedFFT_sp_10(rest5, tmp35, k, n)
+  new Cons(tmp34, tmp36)
+private fun columns_StagedFFT_sp_0(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = 0 == m
+  if scrut8 is
+    true then Nil
+    else
+      tmp37 = column_StagedFFT_sp_0(ys, 0, k, n)
+      tmp38 = 1
+      tmp39 = columns(ys, tmp38, m, n)
+      new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_1(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = 0 == m
+  if scrut8 is
+    true then Nil
+    else
+      tmp37 = column_StagedFFT_sp_2(ys, 0, k, n)
+      tmp38 = 1
+      tmp39 = columns(ys, tmp38, m, n)
+      new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_10(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_21(ys, 0, k, n)
+  tmp38 = 4
+  tmp39 = columns_StagedFFT_sp_11(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_11(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = true
+  Nil
+private fun columns_StagedFFT_sp_12(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_24(ys, 0, k, n)
+  tmp38 = 1
+  tmp39 = columns_StagedFFT_sp_13(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_13(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_29(ys, 0, k, n)
+  tmp38 = 2
+  tmp39 = columns_StagedFFT_sp_14(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_14(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = true
+  Nil
+private fun columns_StagedFFT_sp_15(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_34(ys, 0, k, n)
+  tmp38 = 1
+  tmp39 = columns_StagedFFT_sp_16(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_16(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = true
+  Nil
+private fun columns_StagedFFT_sp_17(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_39(ys, 0, k, n)
+  tmp38 = 1
+  tmp39 = columns_StagedFFT_sp_18(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_18(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_43(ys, 0, k, n)
+  tmp38 = 2
+  tmp39 = columns_StagedFFT_sp_19(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_19(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = true
+  Nil
+private fun columns_StagedFFT_sp_2(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_3(ys, 0, k, n)
+  tmp38 = 1
+  tmp39 = columns_StagedFFT_sp_3(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_20(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_47(ys, 0, k, n)
+  tmp38 = 1
+  tmp39 = columns_StagedFFT_sp_21(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_21(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_51(ys, 0, k, n)
+  tmp38 = 2
+  tmp39 = columns_StagedFFT_sp_22(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_22(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_55(ys, 0, k, n)
+  tmp38 = 3
+  tmp39 = columns_StagedFFT_sp_23(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_23(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_59(ys, 0, k, n)
+  tmp38 = 4
+  tmp39 = columns_StagedFFT_sp_24(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_24(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = true
+  Nil
+private fun columns_StagedFFT_sp_3(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = true
+  Nil
+private fun columns_StagedFFT_sp_4(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_6(ys, 0, k, n)
+  tmp38 = 1
+  tmp39 = columns_StagedFFT_sp_5(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_5(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_9(ys, 0, k, n)
+  tmp38 = 2
+  tmp39 = columns_StagedFFT_sp_6(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_6(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = true
+  Nil
+private fun columns_StagedFFT_sp_7(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_12(ys, 0, k, n)
+  tmp38 = 1
+  tmp39 = columns_StagedFFT_sp_8(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_8(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_15(ys, 0, k, n)
+  tmp38 = 2
+  tmp39 = columns_StagedFFT_sp_9(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun columns_StagedFFT_sp_9(ys, k, m, n) =
+  let {scrut8, tmp37, tmp38, tmp39}
+  scrut8 = false
+  tmp37 = column_StagedFFT_sp_18(ys, 0, k, n)
+  tmp38 = 3
+  tmp39 = columns_StagedFFT_sp_10(ys, tmp38, m, n)
+  new Cons(tmp37, tmp39)
+private fun combine_StagedFFT_sp_0(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = 0 == r
+  if scrut10 is
+    true then Nil
+    else
+      tmp48 = row_StagedFFT_sp_0(cols, 0, q, r, m)
+      tmp49 = 1
+      tmp50 = combine(cols, tmp49, r, m)
+      appendL_StagedFFT_sp_0(tmp48, tmp50)
+private fun combine_StagedFFT_sp_1(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_2(cols, 0, q, r, m)
+  tmp49 = 1
+  tmp50 = combine_StagedFFT_sp_2(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_3(tmp48, tmp50)
+private fun combine_StagedFFT_sp_10(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_22(cols, 0, q, r, m)
+  tmp49 = 1
+  tmp50 = combine_StagedFFT_sp_11(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_16(tmp48, tmp50)
+private fun combine_StagedFFT_sp_11(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_25(cols, 0, q, r, m)
+  tmp49 = 2
+  tmp50 = combine_StagedFFT_sp_12(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_13(tmp48, tmp50)
+private fun combine_StagedFFT_sp_12(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_28(cols, 0, q, r, m)
+  tmp49 = 3
+  tmp50 = combine_StagedFFT_sp_13(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_6(tmp48, tmp50)
+private fun combine_StagedFFT_sp_13(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_31(cols, 0, q, r, m)
+  tmp49 = 4
+  tmp50 = combine_StagedFFT_sp_14(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_5(tmp48, tmp50)
+private fun combine_StagedFFT_sp_14(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = true
+  Nil
+private fun combine_StagedFFT_sp_15(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_34(cols, 0, q, r, m)
+  tmp49 = 1
+  tmp50 = combine_StagedFFT_sp_16(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_19(tmp48, tmp50)
+private fun combine_StagedFFT_sp_16(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_36(cols, 0, q, r, m)
+  tmp49 = 2
+  tmp50 = combine_StagedFFT_sp_17(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_7(tmp48, tmp50)
+private fun combine_StagedFFT_sp_17(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_38(cols, 0, q, r, m)
+  tmp49 = 3
+  tmp50 = combine_StagedFFT_sp_18(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_3(tmp48, tmp50)
+private fun combine_StagedFFT_sp_18(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_40(cols, 0, q, r, m)
+  tmp49 = 4
+  tmp50 = combine_StagedFFT_sp_19(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_1(tmp48, tmp50)
+private fun combine_StagedFFT_sp_19(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = true
+  Nil
+private fun combine_StagedFFT_sp_2(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_4(cols, 0, q, r, m)
+  tmp49 = 2
+  tmp50 = combine_StagedFFT_sp_3(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_1(tmp48, tmp50)
+private fun combine_StagedFFT_sp_20(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_42(cols, 0, q, r, m)
+  tmp49 = 1
+  tmp50 = combine_StagedFFT_sp_21(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_13(tmp48, tmp50)
+private fun combine_StagedFFT_sp_21(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_45(cols, 0, q, r, m)
+  tmp49 = 2
+  tmp50 = combine_StagedFFT_sp_22(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_6(tmp48, tmp50)
+private fun combine_StagedFFT_sp_22(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_48(cols, 0, q, r, m)
+  tmp49 = 3
+  tmp50 = combine_StagedFFT_sp_23(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_5(tmp48, tmp50)
+private fun combine_StagedFFT_sp_23(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = true
+  Nil
+private fun combine_StagedFFT_sp_24(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_51(cols, 0, q, r, m)
+  tmp49 = 1
+  tmp50 = combine_StagedFFT_sp_25(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_21(tmp48, tmp50)
+private fun combine_StagedFFT_sp_25(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_56(cols, 0, q, r, m)
+  tmp49 = 2
+  tmp50 = combine_StagedFFT_sp_26(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_11(tmp48, tmp50)
+private fun combine_StagedFFT_sp_26(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_61(cols, 0, q, r, m)
+  tmp49 = 3
+  tmp50 = combine_StagedFFT_sp_27(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_9(tmp48, tmp50)
+private fun combine_StagedFFT_sp_27(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = true
+  Nil
+private fun combine_StagedFFT_sp_3(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = true
+  Nil
+private fun combine_StagedFFT_sp_4(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_6(cols, 0, q, r, m)
+  tmp49 = 1
+  tmp50 = combine_StagedFFT_sp_5(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_6(tmp48, tmp50)
+private fun combine_StagedFFT_sp_5(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_9(cols, 0, q, r, m)
+  tmp49 = 2
+  tmp50 = combine_StagedFFT_sp_6(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_5(tmp48, tmp50)
+private fun combine_StagedFFT_sp_6(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = true
+  Nil
+private fun combine_StagedFFT_sp_7(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_12(cols, 0, q, r, m)
+  tmp49 = 1
+  tmp50 = combine_StagedFFT_sp_8(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_11(tmp48, tmp50)
+private fun combine_StagedFFT_sp_8(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = false
+  tmp48 = row_StagedFFT_sp_17(cols, 0, q, r, m)
+  tmp49 = 2
+  tmp50 = combine_StagedFFT_sp_9(cols, tmp49, r, m)
+  appendL_StagedFFT_sp_9(tmp48, tmp50)
+private fun combine_StagedFFT_sp_9(cols, q, r, m) =
+  let {scrut10, tmp48, tmp49, tmp50}
+  scrut10 = true
+  Nil
+private fun dftAll_StagedFFT_sp_0(xs, n, k, acc) =
+  let {scrut13, z2, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91}
+  scrut13 = 0 == n
+  if scrut13 is
+    true then acc
+    else
+      z2 = dftTerm_StagedFFT_sp_1(xs, n, k, 0, 0, 0)
+      tmp86 = 1
+      tmp87 = 0
+      tmp88 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 0, z2.re)
+      tmp89 = 0
+      tmp90 = 1
+      tmp91 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp88, 1, z2.im)
+      dftAll(xs, n, tmp86, tmp91)
+private fun dftSum_StagedFFT_sp_0(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  if zs is
+    Cons then
+      arg_Cons_0_6 = zs.Cons#head
+      arg_Cons_1_6 = zs.Cons#tail
+      rest6 = arg_Cons_1_6
+      z = arg_Cons_0_6
+      tmp40 = 0
+      tmp41 = twiddle_StagedFFT_sp_0(tmp40, r)
+      t = cmulT_StagedFFT_sp_0(tmp41, z)
+      if rest6 is
+        Nil then t
+        else
+          tmp42 = 1
+          tmp43 = dftSum(rest6, tmp42, q, r)
+          cadd(t, tmp43)
+    else czero()
+private fun dftSum_StagedFFT_sp_1(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  if zs is
+    Cons then
+      arg_Cons_0_6 = zs.Cons#head
+      arg_Cons_1_6 = zs.Cons#tail
+      rest6 = arg_Cons_1_6
+      z = arg_Cons_0_6
+      tmp40 = 0
+      tmp41 = twiddle_StagedFFT_sp_0(tmp40, r)
+      t = cmulT_StagedFFT_sp_0(tmp41, z)
+      if rest6 is
+        Nil then t
+        else
+          tmp42 = 1
+          tmp43 = dftSum(rest6, tmp42, q, r)
+          cadd(t, tmp43)
+    else czero()
+private fun dftSum_StagedFFT_sp_10(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_3(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_11(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_11(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 1
+  tmp41 = twiddle_StagedFFT_sp_4(tmp40, r)
+  t = cmulT_StagedFFT_sp_3(tmp41, z)
+  tmp42 = 2
+  tmp43 = dftSum_StagedFFT_sp_12(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_12(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 2
+  tmp41 = twiddle_StagedFFT_sp_9(tmp40, r)
+  t = cmulT_StagedFFT_sp_2(tmp41, z)
+  tmp42 = 3
+  tmp43 = dftSum_StagedFFT_sp_13(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_13(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 3
+  tmp41 = twiddle_StagedFFT_sp_10(tmp40, r)
+  t = cmulT_StagedFFT_sp_6(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_14(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_3(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_15(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_15(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 2
+  tmp41 = twiddle_StagedFFT_sp_9(tmp40, r)
+  t = cmulT_StagedFFT_sp_2(tmp41, z)
+  tmp42 = 2
+  tmp43 = dftSum_StagedFFT_sp_16(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_16(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 4
+  tmp41 = twiddle_StagedFFT_sp_11(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 3
+  tmp43 = dftSum_StagedFFT_sp_17(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_17(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 6
+  tmp41 = twiddle_StagedFFT_sp_12(tmp40, r)
+  t = cmulT_StagedFFT_sp_2(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_18(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_3(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_19(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_19(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 3
+  tmp41 = twiddle_StagedFFT_sp_10(tmp40, r)
+  t = cmulT_StagedFFT_sp_6(tmp41, z)
+  tmp42 = 2
+  tmp43 = dftSum_StagedFFT_sp_20(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_2(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_1(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_3(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_20(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 6
+  tmp41 = twiddle_StagedFFT_sp_12(tmp40, r)
+  t = cmulT_StagedFFT_sp_2(tmp41, z)
+  tmp42 = 3
+  tmp43 = dftSum_StagedFFT_sp_21(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_21(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 9
+  tmp41 = twiddle_StagedFFT_sp_13(tmp40, r)
+  t = cmulT_StagedFFT_sp_3(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_22(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_17(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_23(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_23(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_17(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 2
+  tmp43 = dftSum_StagedFFT_sp_24(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_24(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_17(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_25(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_17(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_26(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_26(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 1
+  tmp41 = twiddle_StagedFFT_sp_18(tmp40, r)
+  t = cmulT_StagedFFT_sp_8(tmp41, z)
+  tmp42 = 2
+  tmp43 = dftSum_StagedFFT_sp_27(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_27(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 2
+  tmp41 = twiddle_StagedFFT_sp_19(tmp40, r)
+  t = cmulT_StagedFFT_sp_9(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_28(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_17(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_29(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_29(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 2
+  tmp41 = twiddle_StagedFFT_sp_19(tmp40, r)
+  t = cmulT_StagedFFT_sp_9(tmp41, z)
+  tmp42 = 2
+  tmp43 = dftSum_StagedFFT_sp_30(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_3(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_1(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_30(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 4
+  tmp41 = twiddle_StagedFFT_sp_20(tmp40, r)
+  t = cmulT_StagedFFT_sp_8(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_4(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_1(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_5(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_5(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 1
+  tmp41 = twiddle_StagedFFT_sp_2(tmp40, r)
+  t = cmulT_StagedFFT_sp_2(tmp41, z)
+  t
+private fun dftSum_StagedFFT_sp_6(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_3(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 1
+  tmp43 = dftSum_StagedFFT_sp_7(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_7(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_3(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 2
+  tmp43 = dftSum_StagedFFT_sp_8(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_8(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_3(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  tmp42 = 3
+  tmp43 = dftSum_StagedFFT_sp_9(rest6, tmp42, q, r)
+  cadd_StagedFFT_sp_0(t, tmp43)
+private fun dftSum_StagedFFT_sp_9(zs, j, q, r) =
+  let {rest6, z, t, arg_Cons_0_6, arg_Cons_1_6, tmp40, tmp41, tmp42, tmp43}
+  arg_Cons_0_6 = zs.Cons#head
+  arg_Cons_1_6 = zs.Cons#tail
+  rest6 = arg_Cons_1_6
+  z = arg_Cons_0_6
+  tmp40 = 0
+  tmp41 = twiddle_StagedFFT_sp_3(tmp40, r)
+  t = cmulT_StagedFFT_sp_1(tmp41, z)
+  t
+private fun dftTerm_StagedFFT_sp_0(xs, n, k, t, re, im) =
+  let {scrut12, c, s, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85}
+  scrut12 = 0 == n
+  if scrut12 is
+    true then new Complex(re, im)
+    else
+      tmp69 = 0
+      c = StagedFFT__Legacy."FFTMath$StagedFFT".cosW(0, n)
+      tmp70 = 0
+      s = StagedFFT__Legacy."FFTMath$StagedFFT".sinW(0, n)
+      tmp71 = 1
+      tmp72 = 0
+      tmp73 = xs.(0) * c
+      tmp74 = 0 + tmp73
+      tmp75 = 0
+      tmp76 = 1
+      tmp77 = xs.(1) * s
+      tmp78 = tmp74 - tmp77
+      tmp79 = 0
+      tmp80 = xs.(0) * s
+      tmp81 = 0 + tmp80
+      tmp82 = 0
+      tmp83 = 1
+      tmp84 = xs.(1) * c
+      tmp85 = tmp81 + tmp84
+      dftTerm(xs, n, k, tmp71, tmp78, tmp85)
+private fun dftTerm_StagedFFT_sp_1(xs, n, k, t, re, im) =
+  let {scrut12, c, s, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85}
+  scrut12 = 0 == n
+  if scrut12 is
+    true then new Complex(re, im)
+    else
+      tmp69 = 0
+      c = StagedFFT__Legacy."FFTMath$StagedFFT".cosW(0, n)
+      tmp70 = 0
+      s = StagedFFT__Legacy."FFTMath$StagedFFT".sinW(0, n)
+      tmp71 = 1
+      tmp72 = 0
+      tmp73 = xs.(0) * c
+      tmp74 = 0 + tmp73
+      tmp75 = 0
+      tmp76 = 1
+      tmp77 = xs.(1) * s
+      tmp78 = tmp74 - tmp77
+      tmp79 = 0
+      tmp80 = xs.(0) * s
+      tmp81 = 0 + tmp80
+      tmp82 = 0
+      tmp83 = 1
+      tmp84 = xs.(1) * c
+      tmp85 = tmp81 + tmp84
+      dftTerm(xs, n, k, tmp71, tmp78, tmp85)
+private fun fftRec_StagedFFT_sp_0(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  if radices is
+    Cons then
+      arg_Cons_0_7 = radices.Cons#head
+      arg_Cons_1_7 = radices.Cons#tail
+      rest7 = arg_Cons_1_7
+      r6 = arg_Cons_0_7
+      m4 = n / r6
+      tmp51 = subSeqs_StagedFFT_sp_1(xs, 0, r6)
+      ys3 = mapFFT_StagedFFT_sp_0(tmp51, m4, rest7)
+      tmp52 = columns_StagedFFT_sp_1(ys3, 0, m4, n)
+      combine_StagedFFT_sp_0(tmp52, 0, r6, m4)
+    else xs
+private fun fftRec_StagedFFT_sp_1(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 2
+  m4 = 4
+  tmp51 = subSeqs_StagedFFT_sp_2(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_1(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_7(ys3, 0, m4, n)
+  combine_StagedFFT_sp_7(tmp52, 0, r6, m4)
+private fun fftRec_StagedFFT_sp_2(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 2
+  m4 = 2
+  tmp51 = subSeqs_StagedFFT_sp_5(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_2(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_4(ys3, 0, m4, n)
+  combine_StagedFFT_sp_4(tmp52, 0, r6, m4)
+private fun fftRec_StagedFFT_sp_3(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 2
+  m4 = 1
+  tmp51 = subSeqs_StagedFFT_sp_8(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_3(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_2(ys3, 0, m4, n)
+  combine_StagedFFT_sp_1(tmp52, 0, r6, m4)
+private fun fftRec_StagedFFT_sp_4(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  xs
+private fun fftRec_StagedFFT_sp_5(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 4
+  m4 = 2
+  tmp51 = subSeqs_StagedFFT_sp_11(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_10(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_12(ys3, 0, m4, n)
+  combine_StagedFFT_sp_10(tmp52, 0, r6, m4)
+private fun fftRec_StagedFFT_sp_6(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 2
+  m4 = 4
+  tmp51 = subSeqs_StagedFFT_sp_2(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_12(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_7(ys3, 0, m4, n)
+  combine_StagedFFT_sp_7(tmp52, 0, r6, m4)
+private fun fftRec_StagedFFT_sp_7(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 4
+  m4 = 1
+  tmp51 = subSeqs_StagedFFT_sp_16(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_13(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_15(ys3, 0, m4, n)
+  combine_StagedFFT_sp_15(tmp52, 0, r6, m4)
+private fun fftRec_StagedFFT_sp_8(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 3
+  m4 = 2
+  tmp51 = subSeqs_StagedFFT_sp_21(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_11(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_17(ys3, 0, m4, n)
+  combine_StagedFFT_sp_20(tmp52, 0, r6, m4)
+private fun fftRec_StagedFFT_sp_9(xs, n, radices) =
+  let {rest7, r6, m4, ys3, arg_Cons_0_7, arg_Cons_1_7, tmp51, tmp52}
+  arg_Cons_0_7 = radices.Cons#head
+  arg_Cons_1_7 = radices.Cons#tail
+  rest7 = arg_Cons_1_7
+  r6 = 3
+  m4 = 4
+  tmp51 = subSeqs_StagedFFT_sp_25(xs, 0, r6)
+  ys3 = mapFFT_StagedFFT_sp_17(tmp51, m4, rest7)
+  tmp52 = columns_StagedFFT_sp_20(ys3, 0, m4, n)
+  combine_StagedFFT_sp_24(tmp52, 0, r6, m4)
+private fun load_StagedFFT_sp_0(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = 0 == n
+  if scrut11 is
+    true then Nil
+    else
+      tmp53 = 0
+      tmp54 = 0
+      tmp55 = 1
+      tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+      tmp57 = 1
+      tmp58 = load(xs, tmp57, n)
+      new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_1(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 0
+  tmp54 = 0
+  tmp55 = 1
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 1
+  tmp58 = load_StagedFFT_sp_2(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_10(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 0
+  tmp54 = 0
+  tmp55 = 1
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 1
+  tmp58 = load_StagedFFT_sp_11(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_11(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 2
+  tmp54 = 2
+  tmp55 = 3
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 2
+  tmp58 = load_StagedFFT_sp_12(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_12(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 4
+  tmp54 = 4
+  tmp55 = 5
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 3
+  tmp58 = load_StagedFFT_sp_13(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_13(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 6
+  tmp54 = 6
+  tmp55 = 7
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 4
+  tmp58 = load_StagedFFT_sp_14(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_14(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 8
+  tmp54 = 8
+  tmp55 = 9
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 5
+  tmp58 = load_StagedFFT_sp_15(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_15(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 10
+  tmp54 = 10
+  tmp55 = 11
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 6
+  tmp58 = load_StagedFFT_sp_16(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_16(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = true
+  Nil
+private fun load_StagedFFT_sp_17(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 0
+  tmp54 = 0
+  tmp55 = 1
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 1
+  tmp58 = load_StagedFFT_sp_18(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_18(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 2
+  tmp54 = 2
+  tmp55 = 3
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 2
+  tmp58 = load_StagedFFT_sp_19(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_19(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 4
+  tmp54 = 4
+  tmp55 = 5
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 3
+  tmp58 = load_StagedFFT_sp_20(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_2(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 2
+  tmp54 = 2
+  tmp55 = 3
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 2
+  tmp58 = load_StagedFFT_sp_3(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_20(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 6
+  tmp54 = 6
+  tmp55 = 7
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 4
+  tmp58 = load_StagedFFT_sp_21(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_21(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 8
+  tmp54 = 8
+  tmp55 = 9
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 5
+  tmp58 = load_StagedFFT_sp_22(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_22(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 10
+  tmp54 = 10
+  tmp55 = 11
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 6
+  tmp58 = load_StagedFFT_sp_23(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_23(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 12
+  tmp54 = 12
+  tmp55 = 13
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 7
+  tmp58 = load_StagedFFT_sp_24(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_24(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 14
+  tmp54 = 14
+  tmp55 = 15
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 8
+  tmp58 = load_StagedFFT_sp_25(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_25(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 16
+  tmp54 = 16
+  tmp55 = 17
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 9
+  tmp58 = load_StagedFFT_sp_26(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_26(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 18
+  tmp54 = 18
+  tmp55 = 19
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 10
+  tmp58 = load_StagedFFT_sp_27(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_27(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 20
+  tmp54 = 20
+  tmp55 = 21
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 11
+  tmp58 = load_StagedFFT_sp_28(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_28(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 22
+  tmp54 = 22
+  tmp55 = 23
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 12
+  tmp58 = load_StagedFFT_sp_29(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_29(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = true
+  Nil
+private fun load_StagedFFT_sp_3(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 4
+  tmp54 = 4
+  tmp55 = 5
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 3
+  tmp58 = load_StagedFFT_sp_4(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_4(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 6
+  tmp54 = 6
+  tmp55 = 7
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 4
+  tmp58 = load_StagedFFT_sp_5(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_5(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 8
+  tmp54 = 8
+  tmp55 = 9
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 5
+  tmp58 = load_StagedFFT_sp_6(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_6(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 10
+  tmp54 = 10
+  tmp55 = 11
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 6
+  tmp58 = load_StagedFFT_sp_7(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_7(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 12
+  tmp54 = 12
+  tmp55 = 13
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 7
+  tmp58 = load_StagedFFT_sp_8(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_8(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = false
+  tmp53 = 14
+  tmp54 = 14
+  tmp55 = 15
+  tmp56 = new Complex(xs.(tmp53), xs.(tmp55))
+  tmp57 = 8
+  tmp58 = load_StagedFFT_sp_9(xs, tmp57, n)
+  new Cons(tmp56, tmp58)
+private fun load_StagedFFT_sp_9(xs, i, n) =
+  let {scrut11, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58}
+  scrut11 = true
+  Nil
+private fun mapFFT_StagedFFT_sp_0(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  if subs is
+    Cons then
+      arg_Cons_0_4 = subs.Cons#head
+      arg_Cons_1_4 = subs.Cons#tail
+      rest4 = arg_Cons_1_4
+      sub = arg_Cons_0_4
+      tmp29 = fftRec(sub, m, radices)
+      tmp30 = mapFFT(rest4, m, radices)
+      new Cons(tmp29, tmp30)
+    else Nil
+private fun mapFFT_StagedFFT_sp_1(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_2(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_8(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_10(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_3(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_11(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_11(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_3(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_2(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_12(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_7(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_15(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_13(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_4(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_14(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_14(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_4(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_3(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_15(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_7(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_16(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_16(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  Nil
+private fun mapFFT_StagedFFT_sp_17(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_2(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_1(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_2(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_3(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_6(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_3(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_4(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_4(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_4(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_4(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_5(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_5(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  Nil
+private fun mapFFT_StagedFFT_sp_6(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_3(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_7(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_7(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  Nil
+private fun mapFFT_StagedFFT_sp_8(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  arg_Cons_0_4 = subs.Cons#head
+  arg_Cons_1_4 = subs.Cons#tail
+  rest4 = arg_Cons_1_4
+  sub = arg_Cons_0_4
+  tmp29 = fftRec_StagedFFT_sp_2(sub, m, radices)
+  tmp30 = mapFFT_StagedFFT_sp_9(rest4, m, radices)
+  new Cons(tmp29, tmp30)
+private fun mapFFT_StagedFFT_sp_9(subs, m, radices) =
+  let {rest4, sub, arg_Cons_0_4, arg_Cons_1_4, tmp29, tmp30}
+  Nil
+private fun nth_StagedFFT_sp_0(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  if xs is
+    Cons then
+      arg_Cons_0_1 = xs.Cons#head
+      arg_Cons_1_1 = xs.Cons#tail
+      rest1 = arg_Cons_1_1
+      x = arg_Cons_0_1
+      scrut = true
+      x
+    else czero()
+private fun nth_StagedFFT_sp_1(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  if xs is
+    Cons then
+      arg_Cons_0_1 = xs.Cons#head
+      arg_Cons_1_1 = xs.Cons#tail
+      rest1 = arg_Cons_1_1
+      x = arg_Cons_0_1
+      scrut = true
+      x
+    else czero()
+private fun nth_StagedFFT_sp_10(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_11(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 1
+  nth_StagedFFT_sp_12(rest1, tmp1)
+private fun nth_StagedFFT_sp_12(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_4(rest1, tmp1)
+private fun nth_StagedFFT_sp_13(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 2
+  nth_StagedFFT_sp_14(rest1, tmp1)
+private fun nth_StagedFFT_sp_14(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 1
+  nth_StagedFFT_sp_5(rest1, tmp1)
+private fun nth_StagedFFT_sp_15(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_16(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_17(rest1, tmp1)
+private fun nth_StagedFFT_sp_17(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_18(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 1
+  nth_StagedFFT_sp_19(rest1, tmp1)
+private fun nth_StagedFFT_sp_19(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_6(rest1, tmp1)
+private fun nth_StagedFFT_sp_2(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_20(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 2
+  nth_StagedFFT_sp_21(rest1, tmp1)
+private fun nth_StagedFFT_sp_21(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 1
+  nth_StagedFFT_sp_7(rest1, tmp1)
+private fun nth_StagedFFT_sp_22(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_23(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_24(rest1, tmp1)
+private fun nth_StagedFFT_sp_24(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_25(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_26(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_27(rest1, tmp1)
+private fun nth_StagedFFT_sp_27(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_28(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_29(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_30(rest1, tmp1)
+private fun nth_StagedFFT_sp_3(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_30(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_31(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 1
+  nth_StagedFFT_sp_32(rest1, tmp1)
+private fun nth_StagedFFT_sp_32(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_25(rest1, tmp1)
+private fun nth_StagedFFT_sp_33(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 2
+  nth_StagedFFT_sp_34(rest1, tmp1)
+private fun nth_StagedFFT_sp_34(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 1
+  nth_StagedFFT_sp_26(rest1, tmp1)
+private fun nth_StagedFFT_sp_4(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_5(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_2(rest1, tmp1)
+private fun nth_StagedFFT_sp_6(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_7(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_3(rest1, tmp1)
+private fun nth_StagedFFT_sp_8(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = true
+  x
+private fun nth_StagedFFT_sp_9(xs, i) =
+  let {x, rest1, scrut, arg_Cons_0_1, arg_Cons_1_1, tmp1}
+  arg_Cons_0_1 = xs.Cons#head
+  arg_Cons_1_1 = xs.Cons#tail
+  rest1 = arg_Cons_1_1
+  x = arg_Cons_0_1
+  scrut = false
+  tmp1 = 0
+  nth_StagedFFT_sp_10(rest1, tmp1)
+private fun prod_StagedFFT_sp_0(radices) = 8
+private fun prod_StagedFFT_sp_1(radices) = 4
+private fun prod_StagedFFT_sp_2(radices) = 2
+private fun prod_StagedFFT_sp_3(radices) = 1
+private fun prod_StagedFFT_sp_4(radices) = 8
+private fun prod_StagedFFT_sp_5(radices) = 8
+private fun prod_StagedFFT_sp_6(radices) = 4
+private fun prod_StagedFFT_sp_7(radices) = 6
+private fun prod_StagedFFT_sp_8(radices) = 12
+private fun row_StagedFFT_sp_0(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = 0 == m
+  if scrut9 is
+    true then Nil
+    else
+      tmp44 = nth_StagedFFT_sp_1(cols, k)
+      tmp45 = dftSum_StagedFFT_sp_0(tmp44, 0, q, r)
+      tmp46 = 1
+      tmp47 = row(cols, tmp46, q, r, m)
+      new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_1(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = 0 == m
+  if scrut9 is
+    true then Nil
+    else
+      tmp44 = nth_StagedFFT_sp_0(cols, k)
+      tmp45 = dftSum_StagedFFT_sp_1(tmp44, 0, q, r)
+      tmp46 = 1
+      tmp47 = row(cols, tmp46, q, r, m)
+      new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_10(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_7(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_4(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_11(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_11(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_12(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_15(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_2(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_13(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_13(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_16(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_2(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_14(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_14(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_18(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_2(tmp44, 0, q, r)
+  tmp46 = 3
+  tmp47 = row_StagedFFT_sp_15(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_15(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_20(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_2(tmp44, 0, q, r)
+  tmp46 = 4
+  tmp47 = row_StagedFFT_sp_16(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_16(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_17(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_15(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_4(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_18(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_18(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_16(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_4(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_19(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_19(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_18(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_4(tmp44, 0, q, r)
+  tmp46 = 3
+  tmp47 = row_StagedFFT_sp_20(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_2(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_3(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_2(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_3(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_20(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_20(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_4(tmp44, 0, q, r)
+  tmp46 = 4
+  tmp47 = row_StagedFFT_sp_21(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_21(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_22(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_22(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_6(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_23(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_23(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_23(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_6(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_24(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_24(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_25(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_22(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_10(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_26(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_26(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_23(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_10(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_27(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_27(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_28(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_22(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_14(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_29(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_29(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_23(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_14(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_30(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_3(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_30(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_31(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_22(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_18(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_32(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_32(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_23(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_18(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_33(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_33(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_34(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_24(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_6(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_35(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_35(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_36(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_24(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_10(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_37(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_37(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_38(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_24(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_14(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_39(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_39(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_4(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_3(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_4(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_5(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_40(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_24(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_18(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_41(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_41(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_42(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_25(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_22(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_43(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_43(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_26(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_22(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_44(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_44(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_45(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_25(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_25(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_46(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_46(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_26(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_25(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_47(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_47(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_48(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_25(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_28(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_49(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_49(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_26(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_28(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_50(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_5(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_50(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_51(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_28(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_22(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_52(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_52(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_29(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_22(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_53(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_53(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_31(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_22(tmp44, 0, q, r)
+  tmp46 = 3
+  tmp47 = row_StagedFFT_sp_54(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_54(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_33(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_22(tmp44, 0, q, r)
+  tmp46 = 4
+  tmp47 = row_StagedFFT_sp_55(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_55(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_56(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_28(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_25(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_57(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_57(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_29(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_25(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_58(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_58(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_31(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_25(tmp44, 0, q, r)
+  tmp46 = 3
+  tmp47 = row_StagedFFT_sp_59(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_59(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_33(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_25(tmp44, 0, q, r)
+  tmp46 = 4
+  tmp47 = row_StagedFFT_sp_60(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_6(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_6(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_2(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_7(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_60(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_61(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_28(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_28(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_62(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_62(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_29(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_28(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_63(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_63(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_31(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_28(tmp44, 0, q, r)
+  tmp46 = 3
+  tmp47 = row_StagedFFT_sp_64(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_64(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_33(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_28(tmp44, 0, q, r)
+  tmp46 = 4
+  tmp47 = row_StagedFFT_sp_65(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_65(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_7(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_7(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_2(tmp44, 0, q, r)
+  tmp46 = 2
+  tmp47 = row_StagedFFT_sp_8(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun row_StagedFFT_sp_8(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = true
+  Nil
+private fun row_StagedFFT_sp_9(cols, k, q, r, m) =
+  let {scrut9, tmp44, tmp45, tmp46, tmp47}
+  scrut9 = false
+  tmp44 = nth_StagedFFT_sp_6(cols, k)
+  tmp45 = dftSum_StagedFFT_sp_4(tmp44, 0, q, r)
+  tmp46 = 1
+  tmp47 = row_StagedFFT_sp_10(cols, tmp46, q, r, m)
+  new Cons(tmp45, tmp47)
+private fun run_StagedFFT_sp_0(xs, radices) =
+  let {n5, tmp65, tmp66, tmp67, tmp68, tup_1}
+  n5 = prod_StagedFFT_sp_0(radices)
+  tmp65 = load_StagedFFT_sp_1(xs, 0, n5)
+  tmp66 = fftRec_StagedFFT_sp_1(tmp65, n5, radices)
+  tmp67 = 16
+  tup_1 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  tmp68 = tup_1
+  store_StagedFFT_sp_1(tmp66, tmp68, 0)
+private fun run_StagedFFT_sp_1(xs, radices) =
+  let {n5, tmp65, tmp66, tmp67, tmp68, tup_2}
+  n5 = prod_StagedFFT_sp_4(radices)
+  tmp65 = load_StagedFFT_sp_1(xs, 0, n5)
+  tmp66 = fftRec_StagedFFT_sp_5(tmp65, n5, radices)
+  tmp67 = 16
+  tup_2 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  tmp68 = tup_2
+  store_StagedFFT_sp_1(tmp66, tmp68, 0)
+private fun run_StagedFFT_sp_2(xs, radices) =
+  let {n5, tmp65, tmp66, tmp67, tmp68, tup_3}
+  n5 = prod_StagedFFT_sp_5(radices)
+  tmp65 = load_StagedFFT_sp_1(xs, 0, n5)
+  tmp66 = fftRec_StagedFFT_sp_6(tmp65, n5, radices)
+  tmp67 = 16
+  tup_3 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  tmp68 = tup_3
+  store_StagedFFT_sp_1(tmp66, tmp68, 0)
+private fun run_StagedFFT_sp_3(xs, radices) =
+  let {n5, tmp65, tmp66, tmp67, tmp68, tup_4}
+  n5 = prod_StagedFFT_sp_7(radices)
+  tmp65 = load_StagedFFT_sp_10(xs, 0, n5)
+  tmp66 = fftRec_StagedFFT_sp_8(tmp65, n5, radices)
+  tmp67 = 12
+  tup_4 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  tmp68 = tup_4
+  store_StagedFFT_sp_10(tmp66, tmp68, 0)
+private fun run_StagedFFT_sp_4(xs, radices) =
+  let {n5, tmp65, tmp66, tmp67, tmp68, tup_5}
+  n5 = prod_StagedFFT_sp_8(radices)
+  tmp65 = load_StagedFFT_sp_17(xs, 0, n5)
+  tmp66 = fftRec_StagedFFT_sp_9(tmp65, n5, radices)
+  tmp67 = 24
+  tup_5 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  tmp68 = tup_5
+  store_StagedFFT_sp_17(tmp66, tmp68, 0)
+private fun store_StagedFFT_sp_0(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  if zs is
+    Cons then
+      arg_Cons_0_8 = zs.Cons#head
+      arg_Cons_1_8 = zs.Cons#tail
+      rest8 = arg_Cons_1_8
+      z1 = arg_Cons_0_8
+      tmp59 = 0
+      tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 0, z1.re)
+      tmp61 = 0
+      tmp62 = 1
+      tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 1, z1.im)
+      tmp64 = 1
+      store(rest8, tmp63, tmp64)
+    else acc
+private fun store_StagedFFT_sp_1(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 0
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 0, z1.Complex#re)
+  tmp61 = 0
+  tmp62 = 1
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 1, z1.Complex#im)
+  tmp64 = 1
+  store_StagedFFT_sp_2(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_10(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 0
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 0, z1.Complex#re)
+  tmp61 = 0
+  tmp62 = 1
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 1, z1.Complex#im)
+  tmp64 = 1
+  store_StagedFFT_sp_11(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_11(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 2
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 2, z1.Complex#re)
+  tmp61 = 2
+  tmp62 = 3
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 3, z1.Complex#im)
+  tmp64 = 2
+  store_StagedFFT_sp_12(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_12(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 4
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 4, z1.Complex#re)
+  tmp61 = 4
+  tmp62 = 5
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 5, z1.Complex#im)
+  tmp64 = 3
+  store_StagedFFT_sp_13(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_13(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 6
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 6, z1.Complex#re)
+  tmp61 = 6
+  tmp62 = 7
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 7, z1.Complex#im)
+  tmp64 = 4
+  store_StagedFFT_sp_14(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_14(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 8
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 8, z1.Complex#re)
+  tmp61 = 8
+  tmp62 = 9
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 9, z1.Complex#im)
+  tmp64 = 5
+  store_StagedFFT_sp_15(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_15(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 10
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 10, z1.Complex#re)
+  tmp61 = 10
+  tmp62 = 11
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 11, z1.Complex#im)
+  tmp64 = 6
+  store_StagedFFT_sp_16(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_16(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  acc
+private fun store_StagedFFT_sp_17(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 0
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 0, z1.Complex#re)
+  tmp61 = 0
+  tmp62 = 1
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 1, z1.Complex#im)
+  tmp64 = 1
+  store_StagedFFT_sp_18(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_18(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 2
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 2, z1.Complex#re)
+  tmp61 = 2
+  tmp62 = 3
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 3, z1.Complex#im)
+  tmp64 = 2
+  store_StagedFFT_sp_19(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_19(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 4
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 4, z1.Complex#re)
+  tmp61 = 4
+  tmp62 = 5
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 5, z1.Complex#im)
+  tmp64 = 3
+  store_StagedFFT_sp_20(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_2(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 2
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 2, z1.Complex#re)
+  tmp61 = 2
+  tmp62 = 3
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 3, z1.Complex#im)
+  tmp64 = 2
+  store_StagedFFT_sp_3(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_20(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 6
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 6, z1.Complex#re)
+  tmp61 = 6
+  tmp62 = 7
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 7, z1.Complex#im)
+  tmp64 = 4
+  store_StagedFFT_sp_21(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_21(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 8
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 8, z1.Complex#re)
+  tmp61 = 8
+  tmp62 = 9
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 9, z1.Complex#im)
+  tmp64 = 5
+  store_StagedFFT_sp_22(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_22(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 10
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 10, z1.Complex#re)
+  tmp61 = 10
+  tmp62 = 11
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 11, z1.Complex#im)
+  tmp64 = 6
+  store_StagedFFT_sp_23(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_23(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 12
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 12, z1.Complex#re)
+  tmp61 = 12
+  tmp62 = 13
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 13, z1.Complex#im)
+  tmp64 = 7
+  store_StagedFFT_sp_24(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_24(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 14
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 14, z1.Complex#re)
+  tmp61 = 14
+  tmp62 = 15
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 15, z1.Complex#im)
+  tmp64 = 8
+  store_StagedFFT_sp_25(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_25(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 16
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 16, z1.Complex#re)
+  tmp61 = 16
+  tmp62 = 17
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 17, z1.Complex#im)
+  tmp64 = 9
+  store_StagedFFT_sp_26(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_26(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 18
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 18, z1.Complex#re)
+  tmp61 = 18
+  tmp62 = 19
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 19, z1.Complex#im)
+  tmp64 = 10
+  store_StagedFFT_sp_27(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_27(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 20
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 20, z1.Complex#re)
+  tmp61 = 20
+  tmp62 = 21
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 21, z1.Complex#im)
+  tmp64 = 11
+  store_StagedFFT_sp_28(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_28(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 22
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 22, z1.Complex#re)
+  tmp61 = 22
+  tmp62 = 23
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 23, z1.Complex#im)
+  tmp64 = 12
+  store_StagedFFT_sp_29(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_29(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  acc
+private fun store_StagedFFT_sp_3(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 4
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 4, z1.Complex#re)
+  tmp61 = 4
+  tmp62 = 5
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 5, z1.Complex#im)
+  tmp64 = 3
+  store_StagedFFT_sp_4(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_4(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 6
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 6, z1.Complex#re)
+  tmp61 = 6
+  tmp62 = 7
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 7, z1.Complex#im)
+  tmp64 = 4
+  store_StagedFFT_sp_5(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_5(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 8
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 8, z1.Complex#re)
+  tmp61 = 8
+  tmp62 = 9
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 9, z1.Complex#im)
+  tmp64 = 5
+  store_StagedFFT_sp_6(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_6(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 10
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 10, z1.Complex#re)
+  tmp61 = 10
+  tmp62 = 11
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 11, z1.Complex#im)
+  tmp64 = 6
+  store_StagedFFT_sp_7(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_7(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 12
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 12, z1.Complex#re)
+  tmp61 = 12
+  tmp62 = 13
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 13, z1.Complex#im)
+  tmp64 = 7
+  store_StagedFFT_sp_8(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_8(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  arg_Cons_0_8 = zs.Cons#head
+  arg_Cons_1_8 = zs.Cons#tail
+  rest8 = arg_Cons_1_8
+  z1 = arg_Cons_0_8
+  tmp59 = 14
+  tmp60 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(acc, 14, z1.Complex#re)
+  tmp61 = 14
+  tmp62 = 15
+  tmp63 = StagedFFT__Legacy."FFTMath$StagedFFT".setAt(tmp60, 15, z1.Complex#im)
+  tmp64 = 8
+  store_StagedFFT_sp_9(rest8, tmp63, tmp64)
+private fun store_StagedFFT_sp_9(zs, acc, i) =
+  let {rest8, z1, arg_Cons_0_8, arg_Cons_1_8, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+  acc
+private fun stride_StagedFFT_sp_0(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  if xs is
+    Cons then
+      arg_Cons_0_3 = xs.Cons#head
+      arg_Cons_1_3 = xs.Cons#tail
+      rest3 = arg_Cons_1_3
+      x3 = arg_Cons_0_3
+      scrut6 = true
+      tmp23 = r - 1
+      tmp24 = stride(rest3, tmp23, r)
+      new Cons(x3, tmp24)
+    else Nil
+private fun stride_StagedFFT_sp_1(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  if xs is
+    Cons then
+      arg_Cons_0_3 = xs.Cons#head
+      arg_Cons_1_3 = xs.Cons#tail
+      rest3 = arg_Cons_1_3
+      x3 = arg_Cons_0_3
+      scrut6 = true
+      tmp23 = r - 1
+      tmp24 = stride(rest3, tmp23, r)
+      new Cons(x3, tmp24)
+    else Nil
+private fun stride_StagedFFT_sp_10(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_11(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_12(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_12(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_13(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_13(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_14(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_14(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_15(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_15(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_16(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_16(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_17(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_17(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_18(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_18(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_19(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_19(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_2(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_3(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_20(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_21(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_21(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_22(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_22(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_23(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_23(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_24(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_24(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_25(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_25(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_26(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_26(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_27(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_27(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_28(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_28(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_29(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_30(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_3(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_4(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_30(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_31(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_31(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_32(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_32(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_33(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_33(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_34(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_34(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_35(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_35(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_36(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_36(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_37(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_37(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_38(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_39(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_39(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_40(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_4(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_5(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_40(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_41(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_41(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_42(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_42(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_43(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_43(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_44(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_44(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_45(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_45(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_46(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_46(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_47(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_48(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_48(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_49(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_49(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_50(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_5(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_6(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_50(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_51(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_51(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 2
+  stride_StagedFFT_sp_52(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_52(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_53(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_53(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_54(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_54(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 3
+  tmp24 = stride_StagedFFT_sp_55(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_55(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_56(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_57(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_57(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_58(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_58(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_59(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_59(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_60(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_6(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_7(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_60(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_61(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_61(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_62(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_62(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_63(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_64(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_64(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_65(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_65(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_66(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_66(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_67(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_67(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_68(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_68(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_69(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_69(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_7(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_8(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_70(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_71(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_71(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_72(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_72(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_73(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_73(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_74(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_74(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_75(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_75(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_76(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_76(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  Nil
+private fun stride_StagedFFT_sp_77(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_78(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_78(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_79(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_79(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_80(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_8(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 1
+  tmp24 = stride_StagedFFT_sp_9(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_80(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_81(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_81(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_82(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_82(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_56(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_83(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_84(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_84(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_85(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_85(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_86(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_86(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_87(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_87(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_88(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_88(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_63(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_89(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_90(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_9(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_10(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_90(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_91(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_91(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_92(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun stride_StagedFFT_sp_92(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 1
+  stride_StagedFFT_sp_93(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_93(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = false
+  tmp25 = 0
+  stride_StagedFFT_sp_94(rest3, tmp25, r)
+private fun stride_StagedFFT_sp_94(xs, j, r) =
+  let {x3, rest3, scrut6, arg_Cons_0_3, arg_Cons_1_3, tmp23, tmp24, tmp25}
+  arg_Cons_0_3 = xs.Cons#head
+  arg_Cons_1_3 = xs.Cons#tail
+  rest3 = arg_Cons_1_3
+  x3 = arg_Cons_0_3
+  scrut6 = true
+  tmp23 = 2
+  tmp24 = stride_StagedFFT_sp_70(rest3, tmp23, r)
+  new Cons(x3, tmp24)
+private fun subSeqs_StagedFFT_sp_0(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = 0 == r
+  if scrut7 is
+    true then Nil
+    else
+      tmp26 = stride_StagedFFT_sp_0(xs, j, r)
+      tmp27 = 1
+      tmp28 = subSeqs(xs, tmp27, r)
+      new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_1(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = 0 == r
+  if scrut7 is
+    true then Nil
+    else
+      tmp26 = stride_StagedFFT_sp_1(xs, j, r)
+      tmp27 = 1
+      tmp28 = subSeqs(xs, tmp27, r)
+      new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_10(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = true
+  Nil
+private fun subSeqs_StagedFFT_sp_11(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_20(xs, j, r)
+  tmp27 = 1
+  tmp28 = subSeqs_StagedFFT_sp_12(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_12(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_29(xs, j, r)
+  tmp27 = 2
+  tmp28 = subSeqs_StagedFFT_sp_13(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_13(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_38(xs, j, r)
+  tmp27 = 3
+  tmp28 = subSeqs_StagedFFT_sp_14(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_14(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_47(xs, j, r)
+  tmp27 = 4
+  tmp28 = subSeqs_StagedFFT_sp_15(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_15(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = true
+  Nil
+private fun subSeqs_StagedFFT_sp_16(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_24(xs, j, r)
+  tmp27 = 1
+  tmp28 = subSeqs_StagedFFT_sp_17(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_17(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_33(xs, j, r)
+  tmp27 = 2
+  tmp28 = subSeqs_StagedFFT_sp_18(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_18(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_42(xs, j, r)
+  tmp27 = 3
+  tmp28 = subSeqs_StagedFFT_sp_19(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_19(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_51(xs, j, r)
+  tmp27 = 4
+  tmp28 = subSeqs_StagedFFT_sp_20(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_2(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_2(xs, j, r)
+  tmp27 = 1
+  tmp28 = subSeqs_StagedFFT_sp_3(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_20(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = true
+  Nil
+private fun subSeqs_StagedFFT_sp_21(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_56(xs, j, r)
+  tmp27 = 1
+  tmp28 = subSeqs_StagedFFT_sp_22(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_22(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_63(xs, j, r)
+  tmp27 = 2
+  tmp28 = subSeqs_StagedFFT_sp_23(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_23(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_70(xs, j, r)
+  tmp27 = 3
+  tmp28 = subSeqs_StagedFFT_sp_24(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_24(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = true
+  Nil
+private fun subSeqs_StagedFFT_sp_25(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_77(xs, j, r)
+  tmp27 = 1
+  tmp28 = subSeqs_StagedFFT_sp_26(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_26(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_83(xs, j, r)
+  tmp27 = 2
+  tmp28 = subSeqs_StagedFFT_sp_27(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_27(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_89(xs, j, r)
+  tmp27 = 3
+  tmp28 = subSeqs_StagedFFT_sp_28(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_28(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = true
+  Nil
+private fun subSeqs_StagedFFT_sp_3(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_11(xs, j, r)
+  tmp27 = 2
+  tmp28 = subSeqs_StagedFFT_sp_4(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_4(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = true
+  Nil
+private fun subSeqs_StagedFFT_sp_5(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_6(xs, j, r)
+  tmp27 = 1
+  tmp28 = subSeqs_StagedFFT_sp_6(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_6(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_15(xs, j, r)
+  tmp27 = 2
+  tmp28 = subSeqs_StagedFFT_sp_7(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_7(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = true
+  Nil
+private fun subSeqs_StagedFFT_sp_8(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_8(xs, j, r)
+  tmp27 = 1
+  tmp28 = subSeqs_StagedFFT_sp_9(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun subSeqs_StagedFFT_sp_9(xs, j, r) =
+  let {scrut7, tmp26, tmp27, tmp28}
+  scrut7 = false
+  tmp26 = stride_StagedFFT_sp_17(xs, j, r)
+  tmp27 = 2
+  tmp28 = subSeqs_StagedFFT_sp_10(xs, tmp27, r)
+  new Cons(tmp26, tmp28)
+private fun twiddle_StagedFFT_sp_0(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0 % n
+  scrut1 = e__ == 0
+  if scrut1 is
+    true then new Twiddle(0, 1, 0)
+    else
+      tmp5 = 4 * e__
+      scrut2 = tmp5 == n
+      if scrut2 is
+        true then
+          tmp6 = -1
+          new Twiddle(1, 0, tmp6)
+        else
+          tmp7 = 2 * e__
+          scrut3 = tmp7 == n
+          if scrut3 is
+            true then
+              tmp8 = -1
+              new Twiddle(2, tmp8, 0)
+            else
+              tmp9 = 4 * e__
+              tmp10 = 3 * n
+              scrut4 = tmp9 == tmp10
+              if scrut4 is
+                true then new Twiddle(3, 0, 1)
+                else
+                  tmp11 = StagedFFT__Legacy."FFTMath$StagedFFT".cosW(e__, n)
+                  tmp12 = StagedFFT__Legacy."FFTMath$StagedFFT".sinW(e__, n)
+                  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_1(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0
+  scrut1 = true
+  new Twiddle(0, 1, 0)
+private fun twiddle_StagedFFT_sp_10(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 3
+  scrut1 = false
+  tmp5 = 12
+  scrut2 = false
+  tmp7 = 6
+  scrut3 = false
+  tmp9 = 12
+  tmp10 = 12
+  scrut4 = true
+  new Twiddle(3, 0, 1)
+private fun twiddle_StagedFFT_sp_11(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0
+  scrut1 = true
+  new Twiddle(0, 1, 0)
+private fun twiddle_StagedFFT_sp_12(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 2
+  scrut1 = false
+  tmp5 = 8
+  scrut2 = false
+  tmp7 = 4
+  scrut3 = true
+  tmp8 = -1
+  new Twiddle(2, tmp8, 0)
+private fun twiddle_StagedFFT_sp_13(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = true
+  tmp6 = -1
+  new Twiddle(1, 0, tmp6)
+private fun twiddle_StagedFFT_sp_14(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0
+  scrut1 = true
+  new Twiddle(0, 1, 0)
+private fun twiddle_StagedFFT_sp_15(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = false
+  tmp7 = 2
+  scrut3 = false
+  tmp9 = 4
+  tmp10 = 18
+  scrut4 = false
+  tmp11 = 0.5000000000000001
+  tmp12 = -0.8660254037844386
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_16(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 2
+  scrut1 = false
+  tmp5 = 8
+  scrut2 = false
+  tmp7 = 4
+  scrut3 = false
+  tmp9 = 8
+  tmp10 = 18
+  scrut4 = false
+  tmp11 = -0.4999999999999998
+  tmp12 = -0.8660254037844387
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_17(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0
+  scrut1 = true
+  new Twiddle(0, 1, 0)
+private fun twiddle_StagedFFT_sp_18(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = false
+  tmp7 = 2
+  scrut3 = false
+  tmp9 = 4
+  tmp10 = 9
+  scrut4 = false
+  tmp11 = -0.4999999999999998
+  tmp12 = -0.8660254037844387
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_19(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 2
+  scrut1 = false
+  tmp5 = 8
+  scrut2 = false
+  tmp7 = 4
+  scrut3 = false
+  tmp9 = 8
+  tmp10 = 9
+  scrut4 = false
+  tmp11 = -0.5000000000000004
+  tmp12 = 0.8660254037844385
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_2(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = false
+  tmp7 = 2
+  scrut3 = true
+  tmp8 = -1
+  new Twiddle(2, tmp8, 0)
+private fun twiddle_StagedFFT_sp_20(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = false
+  tmp7 = 2
+  scrut3 = false
+  tmp9 = 4
+  tmp10 = 9
+  scrut4 = false
+  tmp11 = -0.4999999999999998
+  tmp12 = -0.8660254037844387
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_21(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0
+  scrut1 = true
+  new Twiddle(0, 1, 0)
+private fun twiddle_StagedFFT_sp_22(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = false
+  tmp7 = 2
+  scrut3 = false
+  tmp9 = 4
+  tmp10 = 36
+  scrut4 = false
+  tmp11 = 0.8660254037844387
+  tmp12 = -0.49999999999999994
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_23(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 2
+  scrut1 = false
+  tmp5 = 8
+  scrut2 = false
+  tmp7 = 4
+  scrut3 = false
+  tmp9 = 8
+  tmp10 = 36
+  scrut4 = false
+  tmp11 = 0.5000000000000001
+  tmp12 = -0.8660254037844386
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_24(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 4
+  scrut1 = false
+  tmp5 = 16
+  scrut2 = false
+  tmp7 = 8
+  scrut3 = false
+  tmp9 = 16
+  tmp10 = 36
+  scrut4 = false
+  tmp11 = -0.4999999999999998
+  tmp12 = -0.8660254037844387
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_25(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 3
+  scrut1 = false
+  tmp5 = 12
+  scrut2 = true
+  tmp6 = -1
+  new Twiddle(1, 0, tmp6)
+private fun twiddle_StagedFFT_sp_26(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 6
+  scrut1 = false
+  tmp5 = 24
+  scrut2 = false
+  tmp7 = 12
+  scrut3 = true
+  tmp8 = -1
+  new Twiddle(2, tmp8, 0)
+private fun twiddle_StagedFFT_sp_3(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0
+  scrut1 = true
+  new Twiddle(0, 1, 0)
+private fun twiddle_StagedFFT_sp_4(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = true
+  tmp6 = -1
+  new Twiddle(1, 0, tmp6)
+private fun twiddle_StagedFFT_sp_5(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 0
+  scrut1 = true
+  new Twiddle(0, 1, 0)
+private fun twiddle_StagedFFT_sp_6(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 1
+  scrut1 = false
+  tmp5 = 4
+  scrut2 = false
+  tmp7 = 2
+  scrut3 = false
+  tmp9 = 4
+  tmp10 = 24
+  scrut4 = false
+  tmp11 = 0.7071067811865476
+  tmp12 = -0.7071067811865475
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_7(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 2
+  scrut1 = false
+  tmp5 = 8
+  scrut2 = true
+  tmp6 = -1
+  new Twiddle(1, 0, tmp6)
+private fun twiddle_StagedFFT_sp_8(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 3
+  scrut1 = false
+  tmp5 = 12
+  scrut2 = false
+  tmp7 = 6
+  scrut3 = false
+  tmp9 = 12
+  tmp10 = 24
+  scrut4 = false
+  tmp11 = -0.7071067811865475
+  tmp12 = -0.7071067811865476
+  new Twiddle(4, tmp11, tmp12)
+private fun twiddle_StagedFFT_sp_9(e, n) =
+  let {e__, scrut1, scrut2, scrut3, scrut4, tmp5, tmp6, tmp7, tmp8, tmp9, tmp10, tmp11, tmp12}
+  e__ = 2
+  scrut1 = false
+  tmp5 = 8
+  scrut2 = false
+  tmp7 = 4
+  scrut3 = true
+  tmp8 = -1
+  new Twiddle(2, tmp8, 0)

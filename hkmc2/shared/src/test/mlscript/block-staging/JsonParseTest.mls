@@ -6,7 +6,7 @@
 import "../../mlscript-compile/JsonParser.mls"
 
 JsonParser.parseString("'abc'", 0)
-//│ = ParseResult(5, Some("abc"))
+//│ = ParseResult(5, Some(StrSlice("'abc'", 1, 3)))
 
 JsonParser.parseString("abc", 0)
 //│ = ParseResult(0, 1)
@@ -24,7 +24,10 @@ JsonParser.parseArray("[1, 2, 3]", 0)
 //│ = ParseResult(9, Some(JsonArray(Cons(1, Cons(2, Cons(3, Nil))))))
 
 JsonParser.parseArray("[1, '5']", 0)
-//│ = ParseResult(8, Some(JsonArray(Cons(1, Cons("5", Nil)))))
+//│ = ParseResult(
+//│   8,
+//│   Some(JsonArray(Cons(1, Cons(StrSlice("[1, '5']", 5, 1), Nil))))
+//│ )
 
 JsonParser.parseArray("[[]]", 0)
 //│ = ParseResult(4, Some(JsonArray(Cons(JsonArray(Nil), Nil))))
@@ -46,17 +49,51 @@ JsonParser.parseObject("{}", 0)
 //│ = ParseResult(2, Some(JsonObject(Nil)))
 
 JsonParser.parseObject("{'name': 'Red'}", 0)
-//│ = ParseResult(15, Some(JsonObject(Cons(KVPair("name", "Red"), Nil))))
+//│ = ParseResult(
+//│   15,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair(
+//│           StrSlice("{'name': 'Red'}", 2, 4),
+//│           StrSlice("{'name': 'Red'}", 10, 3)
+//│         ),
+//│         Nil
+//│       )
+//│     )
+//│   )
+//│ )
 
 JsonParser.parseObject("{ 'name' : 'Red' }", 0)
-//│ = ParseResult(18, Some(JsonObject(Cons(KVPair("name", "Red"), Nil))))
+//│ = ParseResult(
+//│   18,
+//│   Some(
+//│     JsonObject(
+//│       Cons(
+//│         KVPair(
+//│           StrSlice("{ 'name' : 'Red' }", 3, 4),
+//│           StrSlice("{ 'name' : 'Red' }", 12, 3)
+//│         ),
+//│         Nil
+//│       )
+//│     )
+//│   )
+//│ )
 
 
 JsonParser.parseObject("{'name': 'Red', 'count': 5}", 0)
 //│ = ParseResult(
 //│   27,
 //│   Some(
-//│     JsonObject(Cons(KVPair("name", "Red"), Cons(KVPair("count", 5), Nil)))
+//│     JsonObject(
+//│       Cons(
+//│         KVPair(
+//│           StrSlice("{'name': 'Red', 'count': 5}", 2, 4),
+//│           StrSlice("{'name': 'Red', 'count': 5}", 10, 3)
+//│         ),
+//│         Cons(KVPair(StrSlice("{'name': 'Red', 'count': 5}", 17, 5), 5), Nil)
+//│       )
+//│     )
 //│   )
 //│ )
 
@@ -66,14 +103,71 @@ JsonParser.parseObject("{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P',
 //│   Some(
 //│     JsonObject(
 //│       Cons(
-//│         KVPair("name", "Red"),
+//│         KVPair(
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│             2,
+//│             4
+//│           ),
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│             10,
+//│             3
+//│           )
+//│         ),
 //│         Cons(
-//│           KVPair("count", 5),
+//│           KVPair(
+//│             StrSlice(
+//│               "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│               17,
+//│               5
+//│             ),
+//│             5
+//│           ),
 //│           Cons(
 //│             KVPair(
-//│               "list",
+//│               StrSlice(
+//│                 "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                 29,
+//│                 4
+//│               ),
 //│               JsonArray(
-//│                 Cons("R", Cons("F", Cons("O", Cons("P", Cons("S", Nil)))))
+//│                 Cons(
+//│                   StrSlice(
+//│                     "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                     38,
+//│                     1
+//│                   ),
+//│                   Cons(
+//│                     StrSlice(
+//│                       "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                       43,
+//│                       1
+//│                     ),
+//│                     Cons(
+//│                       StrSlice(
+//│                         "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                         48,
+//│                         1
+//│                       ),
+//│                       Cons(
+//│                         StrSlice(
+//│                           "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                           53,
+//│                           1
+//│                         ),
+//│                         Cons(
+//│                           StrSlice(
+//│                             "{'name': 'Red', 'count': 5, 'list': ['R', 'F', 'O', 'P', 'S']}",
+//│                             58,
+//│                             1
+//│                           ),
+//│                           Nil
+//│                         )
+//│                       )
+//│                     )
+//│                   )
+//│                 )
 //│               )
 //│             ),
 //│             Nil
@@ -90,20 +184,83 @@ JsonParser.parseObject("{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O':
 //│   Some(
 //│     JsonObject(
 //│       Cons(
-//│         KVPair("name", "Red"),
+//│         KVPair(
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│             2,
+//│             4
+//│           ),
+//│           StrSlice(
+//│             "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│             10,
+//│             3
+//│           )
+//│         ),
 //│         Cons(
-//│           KVPair("count", 5),
+//│           KVPair(
+//│             StrSlice(
+//│               "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│               17,
+//│               5
+//│             ),
+//│             5
+//│           ),
 //│           Cons(
 //│             KVPair(
-//│               "set",
+//│               StrSlice(
+//│                 "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                 29,
+//│                 3
+//│               ),
 //│               JsonObject(
 //│                 Cons(
-//│                   KVPair("R", 6),
+//│                   KVPair(
+//│                     StrSlice(
+//│                       "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                       37,
+//│                       1
+//│                     ),
+//│                     6
+//│                   ),
 //│                   Cons(
-//│                     KVPair("F", 6),
+//│                     KVPair(
+//│                       StrSlice(
+//│                         "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                         45,
+//│                         1
+//│                       ),
+//│                       6
+//│                     ),
 //│                     Cons(
-//│                       KVPair("O", 7),
-//│                       Cons(KVPair("P", 8), Cons(KVPair("S", 12), Nil))
+//│                       KVPair(
+//│                         StrSlice(
+//│                           "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                           53,
+//│                           1
+//│                         ),
+//│                         7
+//│                       ),
+//│                       Cons(
+//│                         KVPair(
+//│                           StrSlice(
+//│                             "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                             61,
+//│                             1
+//│                           ),
+//│                           8
+//│                         ),
+//│                         Cons(
+//│                           KVPair(
+//│                             StrSlice(
+//│                               "{'name': 'Red', 'count': 5, 'set': {'R': 6, 'F': 6, 'O': 7, 'P': 8, 'S': 12}}",
+//│                               69,
+//│                               1
+//│                             ),
+//│                             12
+//│                           ),
+//│                           Nil
+//│                         )
+//│                       )
 //│                     )
 //│                   )
 //│                 )

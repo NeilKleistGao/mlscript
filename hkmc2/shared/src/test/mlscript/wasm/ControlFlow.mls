@@ -18,40 +18,9 @@ let i = 0 in
 //│   (type $Object (sub (struct (field $$typeinfo (mut (ref $TypeInfoBase))))))
 //│   (type $lt_impl (func (param $lhs (ref null any)) (param $rhs (ref null any)) (result (ref null any))))
 //│   (type $plus_impl (func (param $lhs (ref null any)) (param $rhs (ref null any)) (result (ref null any))))
-//│   (type $Unit_typeinfo (sub $TypeInfoBase (struct (field $$tag i32) (field $$parent (ref null $TypeInfoBase)))))
-//│   (type $Unit (sub $Object (struct (field $$typeinfo (mut (ref $TypeInfoBase))))))
-//│   (type $Unit_init (func (param $this (ref null any)) (result (ref null any))))
-//│   (type $Unit_ctor (func (result (ref null any))))
 //│   (type $entry (func (result (ref null any))))
-//│   (type $start (func))
 //│   (import "system" "lt_impl" (func $lt_impl (type $lt_impl)))
 //│   (import "system" "plus_impl" (func $plus_impl (type $plus_impl)))
-//│   (global $Unit_typeinfo (export "Unit_typeinfo") (ref $Unit_typeinfo) (struct.new $Unit_typeinfo
-//│     (i32.const 1)
-//│     (ref.null $TypeInfoBase)))
-//│   (global $Unit$inst (export "Unit$inst") (mut (ref null $Unit)) (ref.null $Unit))
-//│   (func $Unit_init (type $Unit_init) (param $this (ref null any)) (result (ref null any))
-//│     (block (result (ref null any))
-//│       (nop)
-//│       (nop)
-//│       (return
-//│         (local.get $this))))
-//│   (func $Unit_Unit (type $Unit_ctor) (result (ref null any))
-//│     (local $this (ref null any))
-//│     (block (result (ref null any))
-//│       (local.set $this
-//│         (struct.new $Unit
-//│           (global.get $Unit_typeinfo)))
-//│       (drop
-//│         (call $Unit_init
-//│           (local.get $this)))
-//│       (return
-//│         (local.get $this))))
-//│   (func $start (type $start)
-//│     (block
-//│       (global.set $Unit$inst
-//│         (ref.cast (ref null $Unit)
-//│           (call $Unit_Unit)))))
 //│   (func $entry (export "entry") (type $entry) (result (ref null any))
 //│     (local $i (ref null any))
 //│     (local $scrut (ref null any))
@@ -61,54 +30,38 @@ let i = 0 in
 //│       (local.set $i
 //│         (ref.i31
 //│           (i32.const 0)))
-//│       (block (result (ref null any))
-//│         (block $lbl
-//│           (loop $lbl_cont
-//│             (drop
-//│               (block (result (ref null any))
-//│                 (local.set $scrut
-//│                   (call $lt_impl
-//│                     (local.get $i)
-//│                     (ref.i31
-//│                       (i32.const 10))))
-//│                 (block (result (ref null any))
-//│                   (block $match
-//│                     (local.set $matchRes
-//│                       (ref.null any))
-//│                     (if
-//│                       (i32.eq
-//│                         (i31.get_s
-//│                           (ref.cast (ref null i31)
-//│                             (local.get $scrut)))
-//│                         (i32.const 1))
-//│                       (then
-//│                         (block $arm
-//│                           (block
-//│                             (block
-//│                               (local.set $tmp
-//│                                 (call $plus_impl
-//│                                   (local.get $i)
-//│                                   (ref.i31
-//│                                     (i32.const 1))))
-//│                               (block
-//│                                 (local.set $i
-//│                                   (local.get $tmp))
-//│                                 (br $lbl_cont)))
-//│                             (local.set $matchRes
-//│                               (global.get $Unit$inst)))
-//│                           (br $match))))
-//│                     (block
-//│                       (nop)
-//│                       (local.set $matchRes
-//│                         (global.get $Unit$inst))))
-//│                   (local.get $matchRes))))))
-//│         (return
-//│           (local.get $i)))))
-//│   (elem $Unit_init declare func $Unit_init)
-//│   (elem $Unit_Unit declare func $Unit_Unit)
-//│   (elem $start declare func $start)
-//│   (elem $entry declare func $entry)
-//│   (start $start))
+//│       (block $lbl
+//│         (loop $lbl_cont
+//│           (drop
+//│             (block (result (ref null any))
+//│               (local.set $scrut
+//│                 (call $lt_impl
+//│                   (local.get $i)
+//│                   (ref.i31
+//│                     (i32.const 10))))
+//│               (block $match
+//│                 (local.set $matchRes
+//│                   (ref.null any))
+//│                 (if
+//│                   (i32.eq
+//│                     (i31.get_s
+//│                       (ref.cast (ref null i31)
+//│                         (local.get $scrut)))
+//│                     (i32.const 1))
+//│                   (then
+//│                     (block $arm
+//│                       (local.set $tmp
+//│                         (call $plus_impl
+//│                           (local.get $i)
+//│                           (ref.i31
+//│                             (i32.const 1))))
+//│                       (local.set $i
+//│                         (local.get $tmp))
+//│                       (br $lbl_cont)))))
+//│               (local.get $matchRes)))))
+//│       (return
+//│         (local.get $i))))
+//│   (elem $entry declare func $entry))
 //│ Wasm result:
 //│ = 10
 
@@ -192,10 +145,10 @@ tailMatchAllValue(1)
 //│   (type $TypeInfoBase (sub (struct (field $$tag i32) (field $$parent (ref null $TypeInfoBase)))))
 //│   (type $Object (sub (struct (field $$typeinfo (mut (ref $TypeInfoBase))))))
 //│   (type $tailMatchAllValue (func (param $x (ref null any)) (result (ref null any))))
-//│   (type $entry (func (result (ref null any))))
+//│   (type $entry (func (result (ref null i31))))
 //│   (func $tailMatchAllValue (export "tailMatchAllValue") (type $tailMatchAllValue) (param $x (ref null any)) (result (ref null any))
 //│     (local $matchRes (ref null any))
-//│     (block (result (ref null any))
+//│     (block
 //│       (block $match
 //│         (local.set $matchRes
 //│           (ref.null any))
@@ -209,8 +162,7 @@ tailMatchAllValue(1)
 //│             (block $arm
 //│               (return
 //│                 (ref.i31
-//│                   (i32.const 10)))
-//│               (br $match))))
+//│                   (i32.const 10))))))
 //│         (if
 //│           (i32.eq
 //│             (i31.get_s
@@ -221,50 +173,45 @@ tailMatchAllValue(1)
 //│             (block $arm
 //│               (return
 //│                 (ref.i31
-//│                   (i32.const 20)))
-//│               (br $match))))
+//│                   (i32.const 20))))))
 //│         (return
 //│           (ref.i31
 //│             (i32.const 30))))
-//│       (local.get $matchRes)))
-//│   (func $entry (export "entry") (type $entry) (result (ref null any))
+//│       (unreachable)))
+//│   (func $entry (export "entry") (type $entry) (result (ref null i31))
 //│     (local $matchRes (ref null any))
-//│     (block (result (ref null any))
-//│       (nop)
-//│       (block (result (ref null any))
-//│         (block $match
-//│           (local.set $matchRes
-//│             (ref.null any))
-//│           (if
-//│             (i32.eq
-//│               (i31.get_s
-//│                 (ref.cast (ref null i31)
-//│                   (ref.i31
-//│                     (i32.const 1))))
-//│               (i32.const 0))
-//│             (then
-//│               (block $arm
-//│                 (return
-//│                   (ref.i31
-//│                     (i32.const 10)))
-//│                 (br $match))))
-//│           (if
-//│             (i32.eq
-//│               (i31.get_s
-//│                 (ref.cast (ref null i31)
-//│                   (ref.i31
-//│                     (i32.const 1))))
-//│               (i32.const 1))
-//│             (then
-//│               (block $arm
-//│                 (return
-//│                   (ref.i31
-//│                     (i32.const 20)))
-//│                 (br $match))))
-//│           (return
-//│             (ref.i31
-//│               (i32.const 30))))
-//│         (local.get $matchRes))))
+//│     (block
+//│       (block $match
+//│         (local.set $matchRes
+//│           (ref.null any))
+//│         (if
+//│           (i32.eq
+//│             (i31.get_s
+//│               (ref.cast (ref null i31)
+//│                 (ref.i31
+//│                   (i32.const 1))))
+//│             (i32.const 0))
+//│           (then
+//│             (block $arm
+//│               (return
+//│                 (ref.i31
+//│                   (i32.const 10))))))
+//│         (if
+//│           (i32.eq
+//│             (i31.get_s
+//│               (ref.cast (ref null i31)
+//│                 (ref.i31
+//│                   (i32.const 1))))
+//│             (i32.const 1))
+//│           (then
+//│             (block $arm
+//│               (return
+//│                 (ref.i31
+//│                   (i32.const 20))))))
+//│         (return
+//│           (ref.i31
+//│             (i32.const 30))))
+//│       (unreachable)))
 //│   (elem $tailMatchAllValue declare func $tailMatchAllValue)
 //│   (elem $entry declare func $entry))
 //│ Wasm result:
@@ -303,3 +250,52 @@ fun nonTailStmtMatch(x) =
 nonTailStmtMatch(0)
 //│ Wasm result:
 //│ = 1
+
+
+// Control: an Int32 conditional can be returned directly.
+:noInline
+fun chooseDirect(b: Bool): Int32 = if b then wasm.i32.const(1) else wasm.i32.const(2)
+chooseDirect(true)
+//│ Wasm result:
+//│ = 1
+
+
+// Introducing an explicitly typed local must preserve the same primitive representation.
+// The temporary holding the conditional's result takes the join of its branches' representations,
+// so both i32 branches keep it instead of being forced through anyref.
+:noInline
+fun chooseLocal(b: Bool): Int32 =
+  val x: Int32 = if b then wasm.i32.const(1) else wasm.i32.const(2)
+  x
+chooseLocal(true)
+//│ Wasm result:
+//│ = 1
+
+
+// Mutual tail recursion, which `TailRecOpt` merges into a single dispatcher.
+fun sccP(n: Int): Int = sccQ(n)
+fun sccQ(n: Int): Int = if n <= 0 then 99 else sccP(n - 1)
+sccP(3)
+//│ Wasm result:
+//│ = 99
+
+
+// Members of differing arity, so the dispatcher pads the unused parameter slot with the unit filler.
+// `sccArityQ` also returns a parameter directly, which the merge leaves untyped - without the return
+// coercion the dispatcher would yield `anyref` against its declared `Int` and fail Wasm validation.
+fun sccArityP(n: Int): Int = sccArityQ(n, 1)
+fun sccArityQ(n: Int, k: Int): Int = if n <= 0 then k else sccArityP(n - 1)
+sccArityP(4)
+//│ Wasm result:
+//│ = 1
+
+
+// Mutual recursion where neither edge is a tail call, so no merge can remove the call to `m2` from `m1`'s
+// body - the one shape that leaves a genuine forward reference between top-level functions.
+// If the inliner or `TailRecOpt` ever removes this shape, this test keeps passing while no longer exercising
+// a forward reference - it would then need a new shape, not a new expected value.
+fun m1(n: Int): Int = if n <= 0 then 0 else m2(n - 1) + 1
+fun m2(n: Int): Int = m1(n) + 1
+m1(3)
+//│ Wasm result:
+//│ = 6

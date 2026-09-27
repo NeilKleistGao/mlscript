@@ -8,8 +8,8 @@ import "./Shape.mls"
 import "./StrOps.mls"
 import "./Runtime.mls"
 
-open Block {ConcreteClassSymbol, ObjectSymbol, Path, Symbol, Param}
-open Shape {Dyn, Lit, Arr, Class}
+open Block {ConcreteClassSymbol, ObjectSymbol, Path, Param}
+open Shape {Dyn, Lit, Arr}
 open Predef
 open Option
 open StrOps
@@ -72,7 +72,7 @@ fun mkArr(shapes: Array[ShapeSet]) =
   lift(Arr(shapes))
 
 fun mkClass(sym: ConcreteClassSymbol, params: Array[ShapeSet], isSpecial: Bool) =
-  lift(Class(sym, params, mkBot(), isSpecial))
+  lift(Shape.Class(sym, params, mkBot(), isSpecial))
 
 fun mkClassFromMapWithSuper(
   sym: ConcreteClassSymbol,
@@ -84,7 +84,7 @@ fun mkClassFromMapWithSuper(
   if sym is ConcreteClassSymbol(name, value, paramsOpt, auxParams, redir) then
     let entries = [...paramsMap.entries()]
     let keys = entries.map(a =>
-      let s = Symbol(a.0)
+      let s = Block.Symbol(a.0)
       if psOpt is Some(pss) then 
         let found = pss.flat().find(p => p.sym.name === a.0)
         if found is Runtime.Unit then Param([], s)
@@ -93,7 +93,7 @@ fun mkClassFromMapWithSuper(
     )
     let params = entries.map(_.1)
     let newSym = ConcreteClassSymbol(name, value, Some(keys), auxParams, redir)
-    lift(Class(newSym, params, superShape, isSpecial))
+    lift(Shape.Class(newSym, params, superShape, isSpecial))
 
 fun mkClassFromMap(sym: ConcreteClassSymbol, paramsMap: Map[String, ShapeSet], psOpt: Option[Array[Array[Param]]], isSpecial: Bool) =
   mkClassFromMapWithSuper(sym, paramsMap, psOpt, mkBot(), isSpecial)
@@ -176,8 +176,8 @@ fun valOf(s : Shape) =
     Dyn() then throw Error("valOf on Dyn")
     Lit(l) then l
     Arr(shapes) then shapes.map((x, _, _) => valOfSet(x))
-    Class(sym, [], _, _) and sym is ObjectSymbol then sym.value
-    Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params, _, _) then new! value(...params.map(valOfSet))
+    Shape.Class(sym, [], _, _) and sym is ObjectSymbol then sym.value
+    Shape.Class(ConcreteClassSymbol(name, value, paramsOpt, auxParams, _), params, _, _) then new! value(...params.map(valOfSet))
     else throw Error("Unknown shape: " + s)
 
 fun valOfSet(s : ShapeSet) = 
@@ -204,9 +204,9 @@ private fun shape2path(s: Shape, allocs) =
       let tupAssign = Block.Assign(tupSym, Block.Tuple(paths.map(Block.Arg(_))), Block.End())
       let fullBlock = foldr((acc, b) => Block.concat(b, acc))(tupAssign, ...blocks)
       [fullBlock, Block.ValueSimpleRef(tupSym)]
-    Class(sym, [], _, _) and sym is ObjectSymbol then
+    Shape.Class(sym, [], _, _) and sym is ObjectSymbol then
       [Block.End(), Block.ValueMemberRef(sym)]
-    Class(sym, fields, _, isSpecial) then
+    Shape.Class(sym, fields, _, isSpecial) then
       let mapped = fields.map(shapeset2path(_, allocs))
       let blocks = mapped.map(_.0)
       blocks.reverse()

@@ -10,7 +10,7 @@ import hkmc2.syntax.Tree
 
 object LambdaRewriter:
   
-  def desugar(b: Block)(using State) =
+  def desugar(b: Program)(using State, Config) =
     
     val transformer = new BlockTransformer(SymbolSubst.Id):
       
@@ -19,7 +19,8 @@ object LambdaRewriter:
           val sym = BlockMemberSymbol("lambda", Nil, nameIsMeaningful = false)
           val lam2 = super.applyLam(lam)
           val Lambda(params, body) = lam2
-          val lamDefn = FunDefn.withFreshSymbol(N, sym, params :: Nil, body)(N, annotations = Annot.Private :: lam2.annot)
+          val lamDefn = FunDefn.withFreshSymbol(N, sym, params :: Nil, body)(
+            S(config), annotations = Annot.Private :: lam2.annot)
           Scoped(Set.single(sym), Define(lamDefn, k(lamDefn.asPath)))
         case _ => super.applyResult(r)(k)
       
@@ -30,7 +31,7 @@ object LambdaRewriter:
             nameIsMeaningful = true // TODO: lhs.nme is not always meaningful
           )
           val defn = FunDefn.withFreshSymbol(N, newSym, params :: Nil, applyBlock(body))
-            (N, annotations = Annot.Private :: lam.annot)
+            (S(config), annotations = Annot.Private :: lam.annot)
           val blk = blockBuilder
             .define(defn)
             .assign(lhs, defn.asPath)
@@ -38,6 +39,6 @@ object LambdaRewriter:
           Scoped(Set.single(newSym), blk)
         case _ => super.applyBlock(b)
     
-    transformer.applyBlock(b)
+    transformer.applyProgram(b)
   
   
