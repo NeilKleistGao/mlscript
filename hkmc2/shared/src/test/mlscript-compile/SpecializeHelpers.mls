@@ -651,11 +651,12 @@ fun prop(ctx, b) = if b is
     Return(res) and sor(ctx, res) is [blk, r1, s1] then
       [concat(blk, Return(r1)), s1, false]
     Scoped(symbols, rest) then
-      symbols.forEach(x => ctx.add(ValueSimpleRef(x), mkBot()))
       let newAllocs = mut []
       let newCtx = Ctx(new Map(ctx.ctx), ctx.valDefnCtx, new Map(ctx.staticCallCtx), newAllocs, ctx.thisShape)
       newCtx.setSuperShape(ctx.getSuperShape())
+      symbols.forEach(x => newCtx.add(ValueSimpleRef(x), mkBot()))
       let res = prop(newCtx, rest)
+      mergeAssigned(ctx.ctx, newCtx.sub(ctx))
       // preCtor$ is usually scoped, so commit a super() shape discovered inside the scope.
       ctx.setSuperShape(newCtx.getSuperShape())
       [wrapScoped([...symbols, ...newAllocs], res.0), res.1, res.2]
