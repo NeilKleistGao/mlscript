@@ -3,19 +3,19 @@ import "../SimpleStagedExample.mls" as SimpleStagedExample__Legacy
 module SimpleStagedExample with
     class Bar(val x) with
       ()
-      fun bar() = x
+      fun bar() = this.Bar#x
     class Foo(val x) with
       ()
       fun foo(b) =
         let {tmp, tmp1}
         if b is
           1 then
-            tmp = x.bar()
+            tmp = this.Foo#x.bar()
             tmp + 1
           2 then
-            tmp1 = x.bar()
+            tmp1 = this.Foo#x.bar()
             tmp1 + 2
-          else x.bar()
+          else this.Foo#x.bar()
     fun baz() = 2
     fun bazbaz(x) = not x
     fun f(x, y) = x + y
@@ -72,6 +72,14 @@ private fun inc_SimpleStagedExample_sp_0(x, s) =
     true then 0
     else
       tmp12 = 1
-      inc(tmp12, s)
+      inc_SimpleStagedExample_sp_1(1, s)
+private fun inc_SimpleStagedExample_sp_1(x, s) =
+  let {scrut, tmp12}
+  scrut = x == s
+  if scrut is
+    true then x
+    else
+      tmp12 = x + 1
+      inc_SimpleStagedExample_sp_1(tmp12, s)
 private fun bar_Bar_sp_0(self) = 1
 private fun foo_Foo_sp_0(self, b) = 2

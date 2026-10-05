@@ -12,7 +12,7 @@ module InterpreterVar with
       ()
       fun eval(s, e) =
         let {tmp}
-        tmp = new Cons(v, s)
+        tmp = new Cons(this.Push#v, s)
         [tmp, e]
     class Neg() extends Instruction() with
       ()
@@ -43,7 +43,7 @@ module InterpreterVar with
                 rest1 = arg_Cons_1_2
                 y = arg_Cons_0_2
                 x3 = arg_Cons_0_1
-                scrut = le
+                scrut = this.Comp#le
                 if scrut is
                   true then
                     tmp3 = x3 <= y
@@ -92,8 +92,8 @@ module InterpreterVar with
             rest3 = arg_Cons_1_5
             c = arg_Cons_0_5
             if c is
-              true then evalAll(t, rest3, e)
-              else evalAll(f, rest3, e)
+              true then evalAll(this.Branch#t, rest3, e)
+              else evalAll(this.Branch#f, rest3, e)
           else new Error()
     class Def(val name) extends Instruction() with
       ()
@@ -113,7 +113,7 @@ module InterpreterVar with
       ()
       fun eval(s, e) =
         let {opt, v2, arg_Some_0_, tmp9}
-        opt = get(e, name)
+        opt = get(e, this.Load#name)
         if opt is
           Some then
             arg_Some_0_ = opt.Some#x
@@ -337,11 +337,11 @@ private fun get_InterpreterVar_sp_0(env, name) =
   new Some(v3)
 private fun eval_Push_sp_0(self, s, e) =
   let {tmp}
-  tmp = new Cons(self.v, s)
+  tmp = new Cons(self.Push#v, s)
   [tmp, e]
 private fun eval_Push_sp_1(self, s, e) =
   let {tmp}
-  tmp = new Cons(self.v, s)
+  tmp = new Cons(self.Push#v, s)
   [tmp, e]
 private fun eval_Neg_sp_0(self, s, e) =
   let {x2, rest, arg_Cons_0_, arg_Cons_1_, tmp1, tmp2}
@@ -372,8 +372,8 @@ private fun eval_Branch_sp_0(self, s, e) =
   rest3 = arg_Cons_1_5
   c = arg_Cons_0_5
   if c is
-    true then evalAll_InterpreterVar_sp_6(self.t, rest3, e)
-    else evalAll_InterpreterVar_sp_8(self.f, rest3, e)
+    true then evalAll_InterpreterVar_sp_6(self.Branch#t, rest3, e)
+    else evalAll_InterpreterVar_sp_8(self.Branch#f, rest3, e)
 private fun eval_Def_sp_0(self, s, e) =
   let {rest4, v1, arg_Cons_0_6, arg_Cons_1_6, tmp7, tmp8}
   arg_Cons_0_6 = s.Cons#x
@@ -385,7 +385,7 @@ private fun eval_Def_sp_0(self, s, e) =
   [rest4, tmp8]
 private fun eval_Load_sp_0(self, s, e) =
   let {opt, v2, arg_Some_0_, tmp9}
-  opt = get_InterpreterVar_sp_0(e, self.name)
+  opt = get_InterpreterVar_sp_0(e, self.Load#name)
   arg_Some_0_ = opt.Some#x
   v2 = arg_Some_0_
   tmp9 = new Cons(v2, s)

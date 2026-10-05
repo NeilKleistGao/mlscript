@@ -10,7 +10,7 @@ module Interpreter with
       ()
     class Push(val v) extends Instruction() with
       ()
-      fun eval(s) = new Cons(v, s)
+      fun eval(s) = new Cons(this.Push#v, s)
     class Comp(val le) extends Instruction() with
       ()
       fun eval(s) =
@@ -26,7 +26,7 @@ module Interpreter with
                 rest = arg_Cons_1_1
                 y = arg_Cons_0_1
                 x2 = arg_Cons_0_
-                scrut = le
+                scrut = this.Comp#le
                 if scrut is
                   true then
                     tmp = x2 <= y
@@ -56,13 +56,13 @@ module Interpreter with
                     if y1 is
                       true then
                         tmp1 = true
-                        new Cons(tmp1, rest1)
+                        new Cons(true, rest1)
                       else
                         tmp1 = false
-                        new Cons(tmp1, rest1)
+                        new Cons(false, rest1)
                   else
                     tmp1 = false
-                    new Cons(tmp1, rest1)
+                    new Cons(false, rest1)
               else new Error()
           else new Error()
     class Branch(val t, val f) extends Instruction() with
@@ -76,8 +76,8 @@ module Interpreter with
             rest2 = arg_Cons_1_4
             c = arg_Cons_0_4
             if c is
-              true then evalAll(t, rest2)
-              else evalAll(f, rest2)
+              true then evalAll(this.Branch#t, rest2)
+              else evalAll(this.Branch#f, rest2)
           else new Error()
     fun evalAll(insts, s) =
       let {rest3, inst, res, arg_Cons_0_5, arg_Cons_1_5}
@@ -269,11 +269,11 @@ private fun exec_Interpreter_sp_0(insts, s) =
         else new Error()
     Nil then new None()
     else new Error()
-private fun eval_Push_sp_0(self, s) = new Cons(self.v, s)
-private fun eval_Push_sp_1(self, s) = new Cons(self.v, s)
-private fun eval_Push_sp_2(self, s) = new Cons(self.v, s)
-private fun eval_Push_sp_3(self, s) = new Cons(self.v, s)
-private fun eval_Push_sp_4(self, s) = new Cons(self.v, s)
+private fun eval_Push_sp_0(self, s) = new Cons(self.Push#v, s)
+private fun eval_Push_sp_1(self, s) = new Cons(self.Push#v, s)
+private fun eval_Push_sp_2(self, s) = new Cons(self.Push#v, s)
+private fun eval_Push_sp_3(self, s) = new Cons(self.Push#v, s)
+private fun eval_Push_sp_4(self, s) = new Cons(self.Push#v, s)
 private fun eval_Comp_sp_0(self, s) =
   let {x2, y, rest, scrut, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp}
   arg_Cons_0_ = s.Cons#x
@@ -327,13 +327,13 @@ private fun eval_And_sp_0(self, s) =
               if y1 is
                 true then
                   tmp1 = true
-                  new Cons(tmp1, rest1)
+                  new Cons(true, rest1)
                 else
                   tmp1 = false
-                  new Cons(tmp1, rest1)
+                  new Cons(false, rest1)
             else
               tmp1 = false
-              new Cons(tmp1, rest1)
+              new Cons(false, rest1)
         else new Error()
     else new Error()
 private fun eval_Branch_sp_0(self, s) =
@@ -343,8 +343,8 @@ private fun eval_Branch_sp_0(self, s) =
   rest2 = arg_Cons_1_4
   c = arg_Cons_0_4
   if c is
-    true then evalAll_Interpreter_sp_4(self.t, rest2)
-    else evalAll_Interpreter_sp_6(self.f, rest2)
+    true then evalAll_Interpreter_sp_4(self.Branch#t, rest2)
+    else evalAll_Interpreter_sp_6(self.Branch#f, rest2)
 private fun eval_Branch_sp_1(self, s) =
   let {rest2, c, arg_Cons_0_4, arg_Cons_1_4}
   if s is
@@ -354,6 +354,6 @@ private fun eval_Branch_sp_1(self, s) =
       rest2 = arg_Cons_1_4
       c = arg_Cons_0_4
       if c is
-        true then evalAll_Interpreter_sp_4(self.t, rest2)
-        else evalAll_Interpreter_sp_6(self.f, rest2)
+        true then evalAll_Interpreter_sp_4(self.Branch#t, rest2)
+        else evalAll_Interpreter_sp_6(self.Branch#f, rest2)
     else new Error()

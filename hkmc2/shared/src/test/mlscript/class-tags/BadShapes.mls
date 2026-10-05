@@ -136,7 +136,6 @@ fun missingPatternArgument(t) =
 //│ <<< end class-tags transform-phase
 
 
-:ge
 fun foo() =
   let t = new C(0)
   @matchShapes(D(_)) shape.match of t,
@@ -153,16 +152,7 @@ fun foo() =
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > allocated tag 0 for C(x: 0)
 //│ class-tags transform-phase > match shapes D(x: _) against C(x: 0)@0
-//│ ╔══[COMPILATION ERROR] Annotated shape.match does not cover every possible scrutinee shape.
-//│ ║  l.142: 	  @matchShapes(D(_)) shape.match of t,
-//│ ║         	               ^^^^^^^^^^^^^^^^^^^^^^^
-//│ ║  l.143: 	    () => t.D#x
-//│ ║         	^^^^^^^^^^^^^^^^
-//│ ╟── Shape C(x: 0) with tag 0 does not match any @matchShapes pattern.
-//│ ║  l.142: 	  @matchShapes(D(_)) shape.match of t,
-//│ ║         	               ^^^^^^^^^^^^^^^^^^^^^^^
-//│ ║  l.143: 	    () => t.D#x
-//│ ╙──       	^^^^^^^^^^^^^^^^
+//│ class-tags transform-phase > uncovered shape tags 0 fall through to a runtime error
 //│ <<< end class-tags transform-phase
 
 
@@ -183,13 +173,13 @@ fun overlap() =
 //│ class-tags transform-phase > allocated tag 0 for Box(x: 0)
 //│ class-tags transform-phase > match shapes Box(x: _), _ against Box(x: 0)@0
 //│ ╔══[COMPILATION ERROR] Shape tag 0 for Box(x: 0) can fall into more than one shape.match branch.
-//│ ║  l.172: 	  @matchShapes(Box(_), _) shape.match of value, () => 1, () => 2
+//│ ║  l.162: 	  @matchShapes(Box(_), _) shape.match of value, () => 1, () => 2
 //│ ║         	               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ ╟── It can fall into branch 1, matched by Box(x: _).
-//│ ║  l.172: 	  @matchShapes(Box(_), _) shape.match of value, () => 1, () => 2
+//│ ║  l.162: 	  @matchShapes(Box(_), _) shape.match of value, () => 1, () => 2
 //│ ║         	               ^^^^^
 //│ ╟── It can fall into branch 2, matched by _.
-//│ ║  l.172: 	  @matchShapes(Box(_), _) shape.match of value, () => 1, () => 2
+//│ ║  l.162: 	  @matchShapes(Box(_), _) shape.match of value, () => 1, () => 2
 //│ ╙──       	                       ^
 //│ <<< end class-tags transform-phase
 
@@ -204,9 +194,9 @@ fun unknownScrutinee(t) =
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > match shapes C(x: _) against <none>
 //│ ╔══[COMPILATION ERROR] Annotated shape.match has no tagged class shapes for its scrutinee.
-//│ ║  l.200: 	  @matchShapes(C(_)) shape.match of t,
+//│ ║  l.190: 	  @matchShapes(C(_)) shape.match of t,
 //│ ║         	               ^^^^^^^^^^^^^^^^^^^^^^^
-//│ ║  l.201: 	    () => 0
+//│ ║  l.191: 	    () => 0
 //│ ╙──       	^^^^^^^^^^^
 //│ <<< end class-tags transform-phase
 
@@ -232,11 +222,11 @@ fun mutatedField() =
 //│ <<< end class-tags collection-phase
 //│ >>> start class-tags transform-phase
 //│ ╔══[COMPILATION ERROR] Class tags do not support set operations yet.
-//│ ║  l.229: 	  set value.MutableBox#x = new B(0)
+//│ ║  l.219: 	  set value.MutableBox#x = new B(0)
 //│ ╙──       	      ^^^^^
 //│ class-tags transform-phase > match shapes MutableBox(x: A(x: _)), MutableBox(x: B(x: _)) against <none>
 //│ ╔══[COMPILATION ERROR] Annotated shape.match has no tagged class shapes for its scrutinee.
-//│ ║  l.230: 	  @matchShapes(MutableBox(A(_)), MutableBox(B(_))) shape.match of value, () => 1, () => 2
+//│ ║  l.220: 	  @matchShapes(MutableBox(A(_)), MutableBox(B(_))) shape.match of value, () => 1, () => 2
 //│ ╙──       	               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ <<< end class-tags transform-phase
 
@@ -260,14 +250,13 @@ fun constructorMutation() =
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > allocated tag 0 for A(x: 0)
 //│ ╔══[COMPILATION ERROR] Class tags do not support mutable fields yet.
-//│ ║  l.246: 	class Altered(mut val x) with
+//│ ║  l.236: 	class Altered(mut val x) with
 //│ ╙──       	                      ^
 //│ class-tags transform-phase > allocated tag 1 for Altered(x: A(x: 0))
 //│ class-tags transform-phase > match shapes Altered(x: A(x: _)), Altered(x: B(x: _)) against Altered(x: A(x: 0))@1
 //│ <<< end class-tags transform-phase
 
 
-:ge
 fun dynamicField(flag, external) =
   let field = if flag then new A(0) else external
   let value = new Box(field)
@@ -283,15 +272,9 @@ fun dynamicField(flag, external) =
 //│ <<< end class-tags web-computation-phase
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > allocated tag 0 for A(x: 0)
-//│ class-tags transform-phase > allocated tag 1 for Box(x: A(x: 0))
-//│ class-tags transform-phase > allocated tag 2 for Box(x: _)
-//│ ╔══[COMPILATION ERROR] Cannot insert a class tag using constructor arguments that may come from outside.
-//│ ║  l.273: 	  let value = new Box(field)
-//│ ║         	                  ^^^^^^^^^
-//│ ╟── Field x cannot be checked using a class tag.
-//│ ║  l.273: 	  let value = new Box(field)
-//│ ╙──       	                      ^^^^^
-//│ class-tags transform-phase > match shapes Box(x: _) against Box(x: A(x: 0))@1, Box(x: _)@2
+//│ class-tags transform-phase > allocated tag 1 for Box(x: _)
+//│ class-tags transform-phase > allocated tag 2 for Box(x: A(x: 0))
+//│ class-tags transform-phase > match shapes Box(x: _) against Box(x: _)@1, Box(x: A(x: 0))@2
 //│ <<< end class-tags transform-phase
 
 
@@ -305,7 +288,7 @@ fun unknownAlternative(flag, external) =
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > match shapes A(x: _), B(x: _) against <none>
 //│ ╔══[COMPILATION ERROR] Annotated shape.match has no tagged class shapes for its scrutinee.
-//│ ║  l.302: 	  @matchShapes(A(_), B(_)) shape.match of value, () => 1, () => 2
+//│ ║  l.285: 	  @matchShapes(A(_), B(_)) shape.match of value, () => 1, () => 2
 //│ ╙──       	               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ <<< end class-tags transform-phase
 
@@ -321,14 +304,13 @@ fun escapingAlternative() =
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > match shapes A(x: _) against <none>
 //│ ╔══[COMPILATION ERROR] Annotated shape.match has no tagged class shapes for its scrutinee.
-//│ ║  l.317: 	  let _ = @matchShapes(A(_)) shape.match of value, () => 1
+//│ ║  l.300: 	  let _ = @matchShapes(A(_)) shape.match of value, () => 1
 //│ ╙──       	                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ <<< end class-tags transform-phase
 
 
 // this would not happen in the generated code
 // since bar(false) should be specialized and become another function
-:ge
 private fun bar(x) =
   if x then new C(bar(false)) else new D(0)
 fun foo() =
@@ -349,10 +331,6 @@ fun foo() =
 //│ class-tags transform-phase > allocated tag 0 for C(x: D(x: 0))
 //│ class-tags transform-phase > allocated tag 1 for C(x: _)
 //│ class-tags transform-phase > allocated tag 2 for D(x: 0)
-//│ ╔══[COMPILATION ERROR] Cannot insert a class tag using constructor arguments that may come from outside.
-//│ ║  l.333: 	  if x then new C(bar(false)) else new D(0)
-//│ ║         	                ^
-//│ ╙── Field x cannot be checked using a class tag.
 //│ class-tags transform-phase > match shapes C(x: _), D(x: _) against C(x: D(x: 0))@0, C(x: _)@1, D(x: 0)@2
 //│ <<< end class-tags transform-phase
 
@@ -375,10 +353,10 @@ fun curriedBranch() =
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > allocated tag 0 for Box(x: 0)
 //│ ╔══[COMPILATION ERROR] Annotated shape.match branches must be anonymous functions.
-//│ ║  l.364: 	  let result = @matchShapes(Box(_)) shape.match of value, curried
+//│ ║  l.342: 	  let result = @matchShapes(Box(_)) shape.match of value, curried
 //│ ║         	                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ ╟── This branch is a named function.
-//│ ║  l.364: 	  let result = @matchShapes(Box(_)) shape.match of value, curried
+//│ ║  l.342: 	  let result = @matchShapes(Box(_)) shape.match of value, curried
 //│ ╙──       	                                                          ^^^^^^^
 //│ <<< end class-tags transform-phase
 
@@ -401,10 +379,10 @@ fun uncurriedBranch() =
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > allocated tag 0 for C(x: 0)
 //│ ╔══[COMPILATION ERROR] Annotated shape.match branches must be anonymous functions.
-//│ ║  l.390: 	  let result = @matchShapes(C(_)) shape.match of value, f
+//│ ║  l.368: 	  let result = @matchShapes(C(_)) shape.match of value, f
 //│ ║         	                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ ╟── This branch is a named function.
-//│ ║  l.390: 	  let result = @matchShapes(C(_)) shape.match of value, f
+//│ ║  l.368: 	  let result = @matchShapes(C(_)) shape.match of value, f
 //│ ╙──       	                                                        ^
 //│ <<< end class-tags transform-phase
 
@@ -428,14 +406,11 @@ fun recursiveMatch() = recursiveBranch()
 //│ <<< end class-tags web-computation-phase
 //│ >>> start class-tags transform-phase
 //│ class-tags transform-phase > allocated tag 0 for Box(x: 0)
-//│ ╔══[COMPILATION ERROR] Class tags do not support set operations yet.
-//│ ║  l.412: 	let remaining = 1
-//│ ╙──       	    ^^^^^^^^^
 //│ ╔══[COMPILATION ERROR] Annotated shape.match branches must be anonymous functions.
-//│ ║  l.417: 	    @matchShapes(Box(_)) shape.match of value, recursiveBranch
+//│ ║  l.395: 	    @matchShapes(Box(_)) shape.match of value, recursiveBranch
 //│ ║         	                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ ╟── This branch is a named function.
-//│ ║  l.417: 	    @matchShapes(Box(_)) shape.match of value, recursiveBranch
+//│ ║  l.395: 	    @matchShapes(Box(_)) shape.match of value, recursiveBranch
 //│ ╙──       	                                               ^^^^^^^^^^^^^^^
 //│ <<< end class-tags transform-phase
 //│ remaining = 1
@@ -458,13 +433,13 @@ fun flattenBudget(flag) =
 //│ class-tags web-computation-phase >   pattern matches: match@4
 //│ <<< end class-tags web-computation-phase
 //│ >>> start class-tags transform-phase
-//│ ╔══[COMPILATION ERROR] Flattening this shape would produce more than 256 alternatives.
-//│ ║  l.449: 	  let value = new TooManyShapes(field, field, field, field, field, field, field, field, field)
+//│ ╔══[COMPILATION ERROR] Flattening this shape would produce 512 alternatives, over the budget of 256.
+//│ ║  l.424: 	  let value = new TooManyShapes(field, field, field, field, field, field, field, field, field)
 //│ ╙──       	                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ class-tags transform-phase > allocated tag 0 for A(x: 0)
 //│ class-tags transform-phase > allocated tag 1 for B(x: 0)
-//│ class-tags transform-phase > match shapes TooManyShapes(c: _, d: _, i: _, e: _, a: _, f: _, h: _, b: _, g: _) against <none>
+//│ class-tags transform-phase > match shapes TooManyShapes(b: _, h: _, d: _, e: _, g: _, a: _, f: _, c: _, i: _) against <none>
 //│ ╔══[COMPILATION ERROR] Annotated shape.match has no tagged class shapes for its scrutinee.
-//│ ║  l.450: 	  @matchShapes(TooManyShapes(_, _, _, _, _, _, _, _, _)) shape.match of value, () => 1
+//│ ║  l.425: 	  @matchShapes(TooManyShapes(_, _, _, _, _, _, _, _, _)) shape.match of value, () => 1
 //│ ╙──       	               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //│ <<< end class-tags transform-phase

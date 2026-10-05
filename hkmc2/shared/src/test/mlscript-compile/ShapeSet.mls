@@ -36,11 +36,58 @@ class ShapeSet(val shapeset: Map[String, Shape]) extends CachedHash with
 module ShapeSet with
   fun empty = ShapeSet(new Map)
 
+// A union keeps at most this many top-level members of the same class apart. Past that
+// the members of that class collapse into a single `C(_, ..., _)`: a scrutinee that
+// gains one member per loop iteration would otherwise turn every one of them into its
+// own specialization and its own branch of the generated `shape.match`. Members of the
+// other classes in the same union are left alone. `UnionShape.mkUnion` in
+// `ClassTagsTransformer.scala` bounds its unions the same way, so that the shapes the
+// class-tags pass computes still satisfy the patterns printed from these.
+val classDecayThreshold = 16
+
+fun classFieldCount(s: Shape) = if s is Shape.Class(_, fields, _, _) then fields.length else 0
+
+// What a class whose members outgrew the threshold decays to: the class is still known,
+// nothing else is. The shape is not `isSpecial`, which is exactly the shape that carries
+// no reliable field information. The arity comes from the widest member, since a shape
+// built from a constructor's `val` definitions need not mention every field.
+fun decayClassGroup(group: Array[Shape]) =
+  let widest = group.reduce((best, s) =>
+    if classFieldCount(s) > classFieldCount(best) then s else best
+  )
+  if widest is Shape.Class(sym, fields, _, _) then
+    Shape.Class(sym, fields.map(_ => mkDyn()), mkDyn(), false)
+
+// Members are grouped by the class they are actually instances of, the way `fsplit` and
+// `needsUCS` group them: two symbols may stand for the same class. A symbol built by
+// hand carries no runtime class, so such a shape is grouped by name instead.
+fun classGroupKey(sym) =
+  if sym.value is undefined then sym.name else Shape.getActualClass(sym.value)
+
+fun decayWideClasses(shapeMap: Map[String, Shape]) =
+  let groups = new Map()
+  shapeMap.forEach((s, _, _) =>
+    if s is Shape.Class(sym, _, _, _) do
+      let key = classGroupKey(sym)
+      if groups.has(key) then groups.get(key).push(s)
+      else do groups.set(key, mut [s])
+  )
+  let wide = [...groups.values()].filter(g => g.length > classDecayThreshold)
+  if wide.length is 0 then shapeMap
+  else
+    let res = new Map(shapeMap)
+    wide.forEach(g =>
+      g.forEach(s => res.delete(s.hash()))
+      let decayed = decayClassGroup(g)
+      res.set(decayed.hash(), decayed)
+    )
+    res
+
 fun mkShapeSet(entries) =
   let shapeMap = new Map(entries)
   let dyn = Dyn()
   if shapeMap.has(dyn.hash()) then ShapeSet(new Map([[dyn.hash(), dyn]]))
-  else ShapeSet(shapeMap)
+  else ShapeSet(decayWideClasses(shapeMap))
 
 fun lift(s: Shape) = mkShapeSet([[s.hash(), s]])
 

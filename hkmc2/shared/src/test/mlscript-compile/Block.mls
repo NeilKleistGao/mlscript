@@ -149,6 +149,10 @@ fun concat(b1: Block, b2: Block) = if b1 is
 
 fun indent(s: Str) = s.replaceAll("\n", "\n  ")
 
+// A field name of the form `C#x` names the field of a specific class; it is only
+// meaningful as a selection, so the qualifier must not be dropped.
+fun isClassQualifiedName(s: Symbol) = s.name.includes("#")
+
 // we write .map(f(_)) instead of .map(f) here because of method debinding, see https://github.com/hkust-taco/mlscript/issues/450
 class Printer(val owner: Opt[Symbol]) with
   fun showLiteral(l: Literal) =
@@ -195,9 +199,9 @@ class Printer(val owner: Opt[Symbol]) with
           ValueMemberRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit, _) then "()"
           // remove selection to owner for values defined within the owner
           // TODO: does this pattern exist, or is it replaced by the case below?
-          ValueMemberRef(sym) and owner is Some(owner) and sym === owner then showSymbol(name)
+          ValueMemberRef(sym) and owner is Some(owner) and sym === owner and not isClassQualifiedName(name) then showSymbol(name)
           // NOTE: ValueThis carries information about the class, but the elaborator can infer it for us
-          ValueThis then showSymbol(name)
+          ValueThis and not isClassQualifiedName(name) then showSymbol(name)
         else showPath(qual) + "." + showSymbol(name)
       DynSelect(qual, fld, false) then showSelectionQualifier(qual, showPath(qual)) + ".(" + showPath(fld) + ")"
       DynSelect(qual, fld, true) then showSelectionQualifier(qual, showPath(qual)) + ".[" + showPath(fld) + "]"
@@ -213,16 +217,11 @@ class Printer(val owner: Opt[Symbol]) with
   fun showArgs(args: Array[Arg]) =
     args.map(showArg(_)).join(", ")
   
-  fun hasClassValue(cls: Path) =
-    if cls is
-      Select(ValueMemberRef(sym), name) and
-        owner is Some(owner) and sym == owner and isGeneratedStagedClass(name) then false
-      ValueMemberRef(ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
-      Select(_, ConcreteClassSymbol(_, value, _, _, _)) then not (value."class" is undefined)
-      else false
-
+  // Always instantiate through the class name itself. `new X.class(...)` selects a
+  // member that has no symbol, so the flow analysis cannot see it as a constructor
+  // (`CtorProducer` matches on `MemberRefTo`) and the object is never tagged.
   fun showInstantiatePath(cls: Path) =
-    showPath(cls) + (if hasClassValue(cls) then ".class" else "")
+    showPath(cls)
 
   fun showResult(r: Result): Str =
     if r is
@@ -255,8 +254,15 @@ class Printer(val owner: Opt[Symbol]) with
   fun showArm(a) =
     showCase(a.cse) + " then" + (if a.body is Return then " " else "\n  ") + indent(showBlock(a.body))
 
-  fun showUCSArm(a, branchShapes) =
-    a.0.toUCSPattern(this, branchShapes) + " then" + (if a.1 is Return then " " else "\n  ") + indent(showBlock(a.1))
+  // A branch of a `shape.match` is an anonymous, argument-less function; the
+  // class-tags pass inlines it back into the enclosing function, so a branch may
+  // keep assigning the temporaries declared by the enclosing `Scoped`.
+  fun showUCSBranch(a) =
+    "() =>" + (if a.1 is Return then " " else "\n  ") + indent(showBlock(a.1))
+
+  // The ordered form, used when the branches cannot be told apart by their patterns.
+  fun showUCSOrderedArm(ptn: Str, body: Block) =
+    ptn + " then" + (if body is Return then " " else "\n  ") + indent(showBlock(body))
 
   fun showParams(pl: ParamList) =
     // do not print annotations to next stage
@@ -373,9 +379,9 @@ class Printer(val owner: Opt[Symbol]) with
                   // avoids needing to import the runtime module
                   ValueMemberRef(Symbol("runtime")) and name is ModuleSymbol("Unit", Runtime.Unit, _) then "()"
                   ValueThis(ConcreteClassSymbol) then this.showSymbol(selfSym) + "." + this.showSymbol(name)
-                  ValueThis then this.showSymbol(name)
+                  ValueThis and not isClassQualifiedName(name) then this.showSymbol(name)
                   ValueMemberRef(sym) and owner is Some(owner) and sym === owner and owner is ConcreteClassSymbol then this.showSymbol(selfSym) + "." + this.showSymbol(name)
-                  ValueMemberRef(sym) and owner is Some(owner) and sym === owner then this.showSymbol(name)
+                  ValueMemberRef(sym) and owner is Some(owner) and sym === owner and not isClassQualifiedName(name) then this.showSymbol(name)
                 else showPath(qual) + "." + this.showSymbol(name)
               DynSelect(qual, fld, false) then showSelectionQualifier(qual, showPath(qual)) + ".(" + showPath(fld) + ")"
               DynSelect(qual, fld, true) then showSelectionQualifier(qual, showPath(qual)) + ".[" + showPath(fld) + "]"
@@ -401,9 +407,20 @@ class Printer(val owner: Opt[Symbol]) with
       UCS(scrut, arms) then
         let printer = this
         let branchShapes = arms.map(_.0)
-        "if " + showPath(scrut) + " is"
-        + indent("\n" + arms.map(a => printer.showUCSArm(a, branchShapes)).join("\n"))
-        + indent("\nelse branch.unreachable")
+        let patterns = arms.map(a => a.0.toUCSPattern(printer, branchShapes))
+        // `shape.match` picks a branch by tag, so its patterns have to be pairwise
+        // distinct. A field we know only as a union prints as `_`, which can collapse
+        // two different branch shapes onto one pattern; the ordered form still works
+        // there, because it takes the first branch that matches.
+        if new Set(patterns).size == patterns.length then
+          // tag-dispatched: the class-tags pass turns these into integer comparisons
+          "@matchShapes(" + patterns.join(", ") + ")"
+          + " shape.match of " + showPath(scrut) + ","
+          + indent("\n" + arms.map(a => printer.showUCSBranch(a)).join("\n"))
+        else
+          "if " + showPath(scrut) + " is"
+          + indent("\n" + arms.map((a, i, _) => printer.showUCSOrderedArm(patterns.(i), a.1)).join("\n"))
+          + indent("\nelse branch.unreachable")
       Scoped(symbols, rest) then
         // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
