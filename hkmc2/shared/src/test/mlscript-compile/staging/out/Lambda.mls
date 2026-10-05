@@ -1,9 +1,9 @@
-#config(noFreeze: true, noModuleCheck: true, liftDefns: None)
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, classTags: Some(ClassTags(debug: false, mono: true)))
 import "../Lambda.mls" as Lambda__Legacy
 module Lambda with
     class FunctionClosure(val x) with
       ()
-      fun call() = lambda_1(x)
+      fun call() = lambda_1(this.FunctionClosure#x)
     fun bar(y) =
       let {baseCall}
       baseCall = foo(y)
@@ -23,13 +23,15 @@ open Lambda
 private fun bar_Lambda_sp_0(y) = 1
 private fun foo_Lambda_sp_0(x) =
   let {lambda_here}
-  lambda_here = lambda__Lambda_sp_0(x)
+  lambda_here = lambda__Lambda_sp_0(0)
   lambda_here
-private fun lambda_1_Lambda_sp_0(x) = 1
-private fun lambda_Lambda_sp_0(x) = 1
+private fun lambda_1_Lambda_sp_0(x) = lambda_Lambda_sp_0(x)
+private fun lambda_1_Lambda_sp_1(x) = 1
+private fun lambda_Lambda_sp_0(x) = x + 1
+private fun lambda_Lambda_sp_1(x) = 1
 private fun lambda__Lambda_sp_0(x) =
   let {tmp}
-  tmp = new FunctionClosure(x)
+  tmp = new FunctionClosure(0)
   tmp
-private fun call_FunctionClosure_sp_0(self) = lambda_1(self.x)
+private fun call_FunctionClosure_sp_0(self) = lambda_1_Lambda_sp_0(self.FunctionClosure#x)
 private fun call_FunctionClosure_sp_1(self) = 1

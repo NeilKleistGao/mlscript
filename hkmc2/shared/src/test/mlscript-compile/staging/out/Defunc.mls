@@ -1,0 +1,59 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, classTags: Some(ClassTags(debug: false, mono: true)))
+import "../Defunc.mls" as Defunc__Legacy
+module Defunc with
+    class FunctionClosure2() with
+      ()
+      fun call(x) = lambda(x)
+    class FunctionClosure1() with
+      ()
+      fun call(x) = lambda1(x)
+    class FunctionClosure() with
+      ()
+      fun call(x) = lambda2(x)
+    fun foo(b) =
+      let {y, m, tmp1, tmp2, tmp3}
+      tmp3 = new FunctionClosure2()
+      y = twice_Defunc_sp_0(tmp3, 5)
+      if b is
+        true then
+          let {tmp4}
+          tmp4 = new FunctionClosure1()
+          tmp1 = tmp4
+        else
+          let {tmp5}
+          tmp5 = new FunctionClosure()
+          tmp1 = tmp5
+      m = tmp1
+      tmp2 = twice_Defunc_sp_1(m, 5)
+      tmp2 + 9
+    fun lambda(x) = x + 2
+    fun lambda1(x) = x
+    fun lambda2(x) = x * 2
+    fun twice(f, x) =
+      let {tmp}
+      tmp = f.call(x)
+      f.call(tmp)
+open Defunc
+private fun lambda1_Defunc_sp_0(x) = 5
+private fun lambda1_Defunc_sp_1(x) = x
+private fun lambda2_Defunc_sp_0(x) = 10
+private fun lambda2_Defunc_sp_1(x) = x * 2
+private fun lambda_Defunc_sp_0(x) = 7
+private fun lambda_Defunc_sp_1(x) = 9
+private fun twice_Defunc_sp_0(f, x) = 9
+private fun twice_Defunc_sp_1(f, x) =
+  let {tmp}
+  if f is
+    FunctionClosure1 then
+      tmp = call_FunctionClosure1_sp_0(f, 5)
+    FunctionClosure then
+      tmp = call_FunctionClosure_sp_0(f, 5)
+  if f is
+    FunctionClosure1 then call_FunctionClosure1_sp_1(f, tmp)
+    FunctionClosure then call_FunctionClosure_sp_1(f, tmp)
+private fun call_FunctionClosure2_sp_0(self, x) = 7
+private fun call_FunctionClosure2_sp_1(self, x) = 9
+private fun call_FunctionClosure1_sp_0(self, x) = 5
+private fun call_FunctionClosure1_sp_1(self, x) = lambda1_Defunc_sp_1(x)
+private fun call_FunctionClosure_sp_0(self, x) = 10
+private fun call_FunctionClosure_sp_1(self, x) = lambda2_Defunc_sp_1(x)

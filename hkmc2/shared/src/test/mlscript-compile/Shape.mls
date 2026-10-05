@@ -36,8 +36,22 @@ fun show(s: Shape) =
         ", " + superShape.toString() +
         (if isSpecial then ", true)" else ")")
 
+// `@matchShapes` requires every constructor field to be spelled out, so unknown
+// fields become explicit wildcards instead of being elided as in a UCS pattern.
+fun classArity(sym: ConcreteClassSymbol) =
+  if sym.paramsOpt is Some(ps) then ps.length else 0
+
 fun showPatternSet(s: ShSet, printer) =
   if s.values() is [shape] then showPattern(shape, printer) else "_"
+
+// mask marks the field positions that should be printed as wildcards regardless
+// of the shape we know for them.
+fun showPatternFields(fields: Array[ShSet], arity: Int, mask: Array[Bool], printer) =
+  Array(arity).fill(0).map((_, i, _) =>
+    if i < mask.length and mask.(i) then "_"
+    else if i < fields.length then showPatternSet(fields.(i), printer)
+    else "_"
+  ).join(", ")
 
 fun showPattern(s: Shape, printer) =
   if s is
@@ -46,8 +60,10 @@ fun showPattern(s: Shape, printer) =
     Arr(shapes) then "[" + shapes.map(showPatternSet(_, printer)).join(", ") + "]"
     Class(sym, fields, _, isSpecial) then
       let cls = printer.showSymbol(sym)
-      if isSpecial then cls + "(" + fields.map(showPatternSet(_, printer)).join(", ") + ")"
-      else cls
+      let arity = classArity(sym)
+      if arity is 0 then cls
+      // a non-special shape carries no reliable field information
+      else cls + "(" + showPatternFields(if isSpecial then fields else [], arity, [], printer) + ")"
 
 // This mask only simplifies emitted UCS patterns; the branch shapes remain unchanged.
 fun sharedPatternFields(s: Shape, branchShapes: Array[Shape]) =
@@ -69,12 +85,9 @@ fun sharedPatternFields(s: Shape, branchShapes: Array[Shape]) =
 
 fun showUCSPattern(s: Shape, printer, branchShapes: Array[Shape]) =
   if s is
-    Class(sym, fields, _, true) then
-      let sharedFields = sharedPatternFields(s, branchShapes)
+    Class(sym, fields, _, true) and classArity(sym) > 0 then
       printer.showSymbol(sym) + "(" +
-        fields.map((field, i, _) =>
-          if sharedFields.(i) then "_" else showPatternSet(field, printer)
-        ).join(", ") + ")"
+        showPatternFields(fields, classArity(sym), sharedPatternFields(s, branchShapes), printer) + ")"
     else showPattern(s, printer)
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] =

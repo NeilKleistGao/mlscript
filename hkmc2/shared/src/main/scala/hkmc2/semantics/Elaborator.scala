@@ -354,12 +354,15 @@ object Elaborator:
         val buffered = assumeObject("buffered")
         val bufferable = assumeObject("bufferable")
         val pure = assumeObject("pure")
+        val matchShapes = assumeObject("matchShapes")
       object handlers extends VirtualModule(assumeBuiltinMod("handlers")):
         val await = assumeObject("await").asTrm.get
       object scope extends VirtualModule(assumeBuiltinMod("scope")):
         val locally = assumeObject("locally")
       object branch extends VirtualModule(assumeBuiltinMod("branch")):
         val unreachable = assumeObject("unreachable")
+      object shape extends VirtualModule(assumeBuiltinMod("shape")):
+        val `match` = assumeObject("match")
       object runtime extends VirtualModule(assumeBuiltinMod("runtime")):
         val suspend = assumeObject("suspend")
         val handle_suspension = assumeObject("handle_suspension")
@@ -675,6 +678,8 @@ extends Importer:
     case App(Ident("config"), Tup(args)) =>
       val modify = ConfigParser.parseOverrides(args)
       S(Annot.Config(modify))
+    case App(Ident("matchShapes"), Tup(patterns)) =>
+      S(Annot.MatchShapes(patterns.map(pattern)))
     case App(Ident("affine"), Tup(IntLit(whichParamList) :: Nil)) =>
       S(Annot.Affine(whichParamList.toInt).withLocOf(tree))
     case _ => term(tree) match

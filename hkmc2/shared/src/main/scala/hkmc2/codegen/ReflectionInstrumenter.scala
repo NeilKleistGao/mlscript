@@ -558,7 +558,7 @@ class ReflectionInstrumenter(using State, Raise, Ctx) extends BlockTransformer(S
 
   case class StagingCfg(ownerSym: DefinitionSymbol[? <: ClassLikeDef] & InnerSymbol, modSym: InnerSymbol, nestedPropagates: Ls[Path], codegenClasses: Ls[BlockMemberSymbol]):
     val forClass = ownerSym != modSym
-    val suffix = "$" + scope.allocateOrGetName(ownerSym)
+    val suffix = "$" + ownerSym.nme
     val cacheNme = (if forClass then "class$" else "") + "cache" + suffix
     val generatorMapNme = (if forClass then "class$" else "") + "generatorMap" + suffix
 
