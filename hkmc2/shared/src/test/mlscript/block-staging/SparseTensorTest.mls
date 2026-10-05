@@ -1,0 +1,177 @@
+:js
+:staging
+:noModuleCheck
+
+
+// Sparse matrix-vector products over a statically known sparsity pattern.
+//
+// Three implementations of the same kernels are checked against each other and
+// against a dense reference:
+//
+//   * `NaiveSparseTensor`   -- unstaged; walks the pattern at run time.
+//   * `StagedSparseTensor`  -- staged; each entry point that names one pattern
+//                              is unrolled, `spmvStencil` is not.
+//   * `SpecialSparseTensor` -- staged with `@special`, so `spmvStencil` is
+//                              specialized per stencil too.
+
+fun same(a, b) = a.join(",") == b.join(",")
+
+// 1 .. n, which is enough for a wrong index to show up in the result.
+fun iota(n) = globalThis.Array(n).fill(0).map((_, i, _) => i + 1)
+
+// `pat45` has 7 nonzeros over 4 rows of 5 columns; the tridiagonal stencil on
+// n points has 2 + (n-2)*3 + 2 nonzeros, so 22 for n = 8, 190 for n = 64 and
+// 382 for n = 128.
+:silent
+let vals45 = [1, 2, 3, 4, 5, 6, 7]
+let x5 = [1, 2, 3, 4, 5]
+let valsTri8 = iota(22)
+let x8 = [1, 2, 3, 4, 5, 6, 7, 8]
+let ones8 = [1, 1, 1, 1, 1, 1, 1, 1]
+let valsTri64 = iota(190)
+let x64 = iota(64)
+let valsTri128 = iota(382)
+let x128 = iota(128)
+
+
+// ===========================================================================
+// The unstaged baseline: the same algorithm, run without specializing it.
+// ===========================================================================
+
+import "../../mlscript-compile/NaiveSparseTensor.mls"
+
+
+// The patterns are the shape the comments claim.
+[NaiveSparseTensor.numRows(NaiveSparseTensor.pat45()), NaiveSparseTensor.nnz(NaiveSparseTensor.pat45())]
+//│ = [4, 7]
+
+[NaiveSparseTensor.numRows(NaiveSparseTensor.patTri8()), NaiveSparseTensor.nnz(NaiveSparseTensor.patTri8())]
+//│ = [8, 22]
+
+[NaiveSparseTensor.numRows(NaiveSparseTensor.patTri64()), NaiveSparseTensor.nnz(NaiveSparseTensor.patTri64())]
+//│ = [64, 190]
+
+[NaiveSparseTensor.numRows(NaiveSparseTensor.patTri128()), NaiveSparseTensor.nnz(NaiveSparseTensor.patTri128())]
+//│ = [128, 382]
+
+
+// Rows [0,2], [1], [0,3,4], [4] against x = [1,2,3,4,5]:
+//   y0 = 1*1 + 2*3, y1 = 3*2, y2 = 4*1 + 5*4 + 6*5, y3 = 7*5
+NaiveSparseTensor.spmv45(vals45, x5)
+//│ = [7, 6, 54, 35]
+
+// With x all ones each row sums its own values.
+NaiveSparseTensor.spmvTri8(valsTri8, ones8)
+//│ = [3, 12, 21, 30, 39, 48, 57, 43]
+
+NaiveSparseTensor.spmvTri8(valsTri8, x8)
+//│ = [5, 26, 65, 122, 197, 290, 401, 323]
+
+
+// Scattering the nonzeros into a dense matrix and multiplying densely gives
+// the same answer.
+same(NaiveSparseTensor.spmvTri8(valsTri8, x8),
+  NaiveSparseTensor.denseMul(NaiveSparseTensor.toDense(NaiveSparseTensor.patTri8(), valsTri8, 8), x8, 8, 8))
+//│ = true
+
+same(NaiveSparseTensor.spmvTri64(valsTri64, x64),
+  NaiveSparseTensor.denseMul(NaiveSparseTensor.toDense(NaiveSparseTensor.patTri64(), valsTri64, 64), x64, 64, 64))
+//│ = true
+
+same(NaiveSparseTensor.spmvTri128(valsTri128, x128),
+  NaiveSparseTensor.denseMul(NaiveSparseTensor.toDense(NaiveSparseTensor.patTri128(), valsTri128, 128), x128, 128, 128))
+//│ = true
+
+same(NaiveSparseTensor.spmv45(vals45, x5),
+  NaiveSparseTensor.denseMul(NaiveSparseTensor.toDense(NaiveSparseTensor.pat45(), vals45, 5), x5, 4, 5))
+//│ = true
+
+
+// `spmvStencil` picks the pattern by index.
+same(NaiveSparseTensor.spmvStencil(0, vals45, x5), NaiveSparseTensor.spmv45(vals45, x5))
+//│ = true
+
+same(NaiveSparseTensor.spmvStencil(1, valsTri64, x64), NaiveSparseTensor.spmvTri64(valsTri64, x64))
+//│ = true
+
+same(NaiveSparseTensor.spmvStencil(2, valsTri128, x128), NaiveSparseTensor.spmvTri128(valsTri128, x128))
+//│ = true
+
+
+// ===========================================================================
+// Specializing on the pattern.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/StagedSparseTensor.mls"
+
+
+StagedSparseTensor."generate"("../StagedSparseTensor.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/StagedSparseTensor.mls")
+
+
+import "../../mlscript-compile/staging/out/StagedSparseTensor.mls"
+
+
+StagedSparseTensor.spmv45(vals45, x5)
+//│ = [7, 6, 54, 35]
+
+StagedSparseTensor.spmvTri8(valsTri8, ones8)
+//│ = [3, 12, 21, 30, 39, 48, 57, 43]
+
+StagedSparseTensor.spmvTri8(valsTri8, x8)
+//│ = [5, 26, 65, 122, 197, 290, 401, 323]
+
+same(StagedSparseTensor.spmvTri64(valsTri64, x64), NaiveSparseTensor.spmvTri64(valsTri64, x64))
+//│ = true
+
+same(StagedSparseTensor.spmvTri128(valsTri128, x128), NaiveSparseTensor.spmvTri128(valsTri128, x128))
+//│ = true
+
+same(StagedSparseTensor.spmvStencil(0, vals45, x5), NaiveSparseTensor.spmvStencil(0, vals45, x5))
+//│ = true
+
+same(StagedSparseTensor.spmvStencil(1, valsTri64, x64), NaiveSparseTensor.spmvStencil(1, valsTri64, x64))
+//│ = true
+
+same(StagedSparseTensor.spmvStencil(2, valsTri128, x128), NaiveSparseTensor.spmvStencil(2, valsTri128, x128))
+//│ = true
+
+same(StagedSparseTensor.toDense(StagedSparseTensor.patTri8(), valsTri8, 8),
+  NaiveSparseTensor.toDense(NaiveSparseTensor.patTri8(), valsTri8, 8))
+//│ = true
+
+
+// ===========================================================================
+// Specializing a pattern that is only chosen at run time.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/SpecialSparseTensor.mls"
+
+
+SpecialSparseTensor."generate"("../SpecialSparseTensor.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SpecialSparseTensor.mls")
+
+
+import "../../mlscript-compile/staging/out/SpecialSparseTensor.mls"
+
+
+SpecialSparseTensor.spmv45(vals45, x5)
+//│ = [7, 6, 54, 35]
+
+SpecialSparseTensor.spmvTri8(valsTri8, x8)
+//│ = [5, 26, 65, 122, 197, 290, 401, 323]
+
+same(SpecialSparseTensor.spmvTri64(valsTri64, x64), NaiveSparseTensor.spmvTri64(valsTri64, x64))
+//│ = true
+
+same(SpecialSparseTensor.spmvTri128(valsTri128, x128), NaiveSparseTensor.spmvTri128(valsTri128, x128))
+//│ = true
+
+// The point of the `@special` version: each stencil the run-time choice can
+// land on is still specialized.
+same(SpecialSparseTensor.spmvStencil(0, vals45, x5), NaiveSparseTensor.spmvStencil(0, vals45, x5))
+//│ = true
+
+same(SpecialSparseTensor.spmvStencil(1, valsTri64, x64), NaiveSparseTensor.spmvStencil(1, valsTri64, x64))
+//│ = true
+
+same(SpecialSparseTensor.spmvStencil(2, valsTri128, x128), NaiveSparseTensor.spmvStencil(2, valsTri128, x128))
+//│ = true

@@ -8,11 +8,12 @@ import hkmc2.utils.*
 /**
  * A helper class to manipulate an interactive Node.js process.
  */
-class ReplHost(rootPath: Str)(using TL):
-  
+class ReplHost(rootPath: Str, stackSizeKB: Opt[Int] = N)(using TL):
+
   private val builder = new java.lang.ProcessBuilder()
   // `--interactive` always enters the REPL even if stdin is not a terminal.
-  builder.command("node", "--interactive")
+  builder.command(
+    ("node" :: "--interactive" :: stackSizeKB.map(kb => s"--stack-size=$kb").toList)*)
   private val proc = builder.start()
 
   private val stdin = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream))
@@ -126,6 +127,22 @@ class ReplHost(rootPath: Str)(using TL):
   def terminate(): Unit = proc.destroy()
 
 object ReplHost:
+
+  /** The `--stack-size` (in KB) to give a REPL that has to run the specializer.
+    *
+    * The specializer recurses once per node of the program it residualizes, so
+    * an unrolled staged module overflows Node's ~1MB default during `generate`
+    * well before it runs out of anything else.
+    *
+    * This has to stay below the OS thread stack limit (`ulimit -s`, commonly
+    * 8MB): V8 does not check `--stack-size` against it, so asking for more than
+    * the thread actually has segfaults the process instead of throwing. 7000KB
+    * leaves that headroom while giving roughly 7x the default depth.
+    *
+    * It is deliberately *not* the default for every REPL: tests such as
+    * `handlers/NoStackSafety` recurse a fixed 10000 deep and expect the
+    * overflow, so raising the stack under them changes what they assert. */
+  val stagingStackSizeKB: Int = 7000
 
   /**
     * The syntax error beginning text from Node.js.

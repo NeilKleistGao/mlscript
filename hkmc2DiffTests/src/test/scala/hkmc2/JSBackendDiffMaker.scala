@@ -64,7 +64,11 @@ abstract class JSBackendDiffMaker extends MLsDiffMaker:
   lazy val host =
     hostCreated = true
     given TL = replTL
-    val h = ReplHost(rootPath)
+    // A `:staging` file runs the specializer inside this REPL, which needs far
+    // more stack than Node's default; every other file keeps the default,
+    // since some of them assert where the overflow falls.
+    val h = ReplHost(rootPath,
+      if stageCode.isSet then S(ReplHost.stagingStackSizeKB) else N)
     def importRuntimeModule(name: Str, file: io.Path) =
       h.execute(s"const $name = (await import(\"${file}\")).default;") match
       case ReplHost.Result(msg) =>
