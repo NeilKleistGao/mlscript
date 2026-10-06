@@ -1,5 +1,7 @@
 #config(noFreeze: true)
 
+open annotations { special, specialize }
+
 module Mx with
   fun init(len, dft) = globalThis.Array(len).fill(dft)
   fun setAt(a, i, v) =
@@ -15,7 +17,7 @@ module Mx with
   fun sin(a) = Math.sin(a)
   fun cos(a) = Math.cos(a)
 
-staged module Transform3D with
+staged module SpecialTransform3D with
   class Matrix(val arr, val r, val c)
 
   fun iter(sum, x, y, colX, i, j, k) =
@@ -119,10 +121,13 @@ staged module Transform3D with
   staged class Preset(val px, val py, val pz, val sx, val sy, val sz, val rx, val ry, val rz) with
     fun applyTo(local) = model(local, [px, py, pz], [sx, sy, sz], [rx, ry, rz])
 
+  // Each alternative is `@special`, so `applyTo` is specialized once per
+  // preset: the angles are then known, the sines and cosines fold to literals
+  // and the matrix chain collapses to straight-line arithmetic.
   fun preset(k) =
     if k is
-      0 then new Preset(11, 4, 51, 0.4, 0.19, 0.19, 0.8 * 3.14159265, 3.1415926535, 0.0)
-      1 then new Preset(-3, 7, 12, 1.5, 0.5, 2.0, 0.25 * 3.14159265, 0.0, 1.5707963268)
-      else new Preset(0, 0, 0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0)
+      0 then (@special new Preset(11, 4, 51, 0.4, 0.19, 0.19, 0.8 * 3.14159265, 3.1415926535, 0.0))
+      1 then (@special new Preset(-3, 7, 12, 1.5, 0.5, 2.0, 0.25 * 3.14159265, 0.0, 1.5707963268))
+      else (@special new Preset(0, 0, 0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0))
 
   fun modelPreset(k, local) = preset(k).applyTo(local)

@@ -215,3 +215,24 @@ staged module StagedFFT with
 
   // 12 = 3*2*2
   fun fft12(xs) = run(xs, new Cons(3, new Cons(2, new Cons(2, Nil))))
+
+  // ---------------------------------------------------------------------------
+  // Choosing the factorization at run time.
+  //
+  // `fft` above takes the radix list as an ordinary argument, so nothing about
+  // it is static and the transform stays interpreted.  Wrapping each candidate
+  // list in a class instead makes the run-time choice a choice between
+  // *instances*, which is the form the specializer can keep apart across the
+  // join; all three factor 8, so any 8-point signal is valid for any of them.
+  // ---------------------------------------------------------------------------
+
+  staged class Plan(val radices) with
+    fun transform(xs) = run(xs, radices)
+
+  fun plan(k) =
+    if k is
+      0 then new Plan(new Cons(2, new Cons(2, new Cons(2, Nil))))
+      1 then new Plan(new Cons(4, new Cons(2, Nil)))
+      else new Plan(new Cons(2, new Cons(4, Nil)))
+
+  fun fftPlan(k, xs) = plan(k).transform(xs)

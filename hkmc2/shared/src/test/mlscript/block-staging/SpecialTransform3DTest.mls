@@ -1,0 +1,124 @@
+:js
+:staging
+:noModuleCheck
+
+
+// The placement chosen at run time.
+//
+// `NaiveTransform3D`, `Transform3D` and `SpecialTransform3D` all expose
+// `modelPreset(k, local)`, which picks between three placements.  Only the
+// last marks the candidates `@special`, so only it can specialize past the
+// choice; all three must agree.
+//
+// Unlike the FFT plans, the three presets compute genuinely different
+// transforms, so a collapsed dispatch shows up directly as a wrong answer --
+// the `differ` checks below are what pin that down.
+
+fun round6(x) =
+  let y = Math.round(x * 1000000)
+  if y == 0 then 0 else y / 1000000
+
+fun show(arr) = arr.map((x, _, _) => round6(x))
+
+fun same(a, b) = show(a).join(",") == show(b).join(",")
+
+fun differ(a, b) = show(a).join(",") != show(b).join(",")
+
+:silent
+let p1 = [1, 2, 3]
+let p2 = [-4.5, 0.25, 7]
+let p3 = [0, 0, 0]
+
+
+import "../../mlscript-compile/NaiveTransform3D.mls"
+
+
+// Preset 0 is the placement `model0` already fixed.
+same(NaiveTransform3D.modelPreset(0, p1), NaiveTransform3D.model0(p1))
+//│ = true
+
+// The three presets really are different transforms.
+differ(NaiveTransform3D.modelPreset(0, p1), NaiveTransform3D.modelPreset(1, p1))
+//│ = true
+
+differ(NaiveTransform3D.modelPreset(0, p1), NaiveTransform3D.modelPreset(2, p1))
+//│ = true
+
+differ(NaiveTransform3D.modelPreset(1, p1), NaiveTransform3D.modelPreset(2, p1))
+//│ = true
+
+// Preset 2 is the identity placement, so it returns the point unchanged.
+show(NaiveTransform3D.modelPreset(2, p2))
+//│ = [-4.5, 0.25, 7]
+
+show(NaiveTransform3D.modelPreset(2, p3))
+//│ = [0, 0, 0]
+
+
+// ===========================================================================
+// Specializing the matrix chain, placement still dynamic.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/Transform3D.mls"
+
+
+Transform3D."generate"("../Transform3D.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/Transform3D.mls")
+
+
+import "../../mlscript-compile/staging/out/Transform3D.mls"
+
+
+same(Transform3D.modelPreset(0, p1), NaiveTransform3D.modelPreset(0, p1))
+//│ = true
+
+same(Transform3D.modelPreset(1, p1), NaiveTransform3D.modelPreset(1, p1))
+//│ = true
+
+same(Transform3D.modelPreset(2, p1), NaiveTransform3D.modelPreset(2, p1))
+//│ = true
+
+same(Transform3D.modelPreset(1, p2), NaiveTransform3D.modelPreset(1, p2))
+//│ = true
+
+
+// ===========================================================================
+// Specializing past a placement only chosen at run time.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/SpecialTransform3D.mls"
+
+
+SpecialTransform3D."generate"("../SpecialTransform3D.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SpecialTransform3D.mls")
+
+
+import "../../mlscript-compile/staging/out/SpecialTransform3D.mls"
+
+
+same(SpecialTransform3D.modelPreset(0, p1), NaiveTransform3D.modelPreset(0, p1))
+//│ = true
+
+same(SpecialTransform3D.modelPreset(1, p1), NaiveTransform3D.modelPreset(1, p1))
+//│ = true
+
+same(SpecialTransform3D.modelPreset(2, p1), NaiveTransform3D.modelPreset(2, p1))
+//│ = true
+
+same(SpecialTransform3D.modelPreset(1, p2), NaiveTransform3D.modelPreset(1, p2))
+//│ = true
+
+same(SpecialTransform3D.modelPreset(2, p2), NaiveTransform3D.modelPreset(2, p2))
+//│ = true
+
+// A dispatch that collapsed to one preset would break these.
+differ(SpecialTransform3D.modelPreset(0, p1), SpecialTransform3D.modelPreset(1, p1))
+//│ = true
+
+differ(SpecialTransform3D.modelPreset(0, p1), SpecialTransform3D.modelPreset(2, p1))
+//│ = true
+
+differ(SpecialTransform3D.modelPreset(1, p1), SpecialTransform3D.modelPreset(2, p1))
+//│ = true
+
+// The entry point that names one placement still works in this module.
+same(SpecialTransform3D.model0(p1), NaiveTransform3D.model0(p1))
+//│ = true

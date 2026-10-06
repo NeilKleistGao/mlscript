@@ -1,20 +1,23 @@
 #config(noFreeze: true)
 
-// Mixed-radix Cooley–Tukey FFT: the unstaged baseline for
-// `staging/StagedFFT.mls`, kept deliberately line-for-line identical to it so
-// that a benchmark measures the effect of specialization and nothing else.
+open annotations { special, specialize }
+
+// Mixed-radix Cooley–Tukey FFT, specialized on the radix sequence.
 //
-// Everything the staged version resolves at specialization time is paid for at
-// run time here: walking the radix list, rebuilding the cons spine of samples
-// and sub-transforms, the `nth` lookups in `row`/`column`, computing the
-// twiddle factors, and dispatching on `Twiddle.kind`.
+// The entry points at the bottom of the module each fix a factorization of the
+// transform length (e.g. 8 = 2*2*2 or 8 = 4*2).  The radix list, the transform
+// length, every index and every twiddle factor are then known during
+// specialization, so each entry point is unrolled into a fixed butterfly
+// network over the (unknown) input samples.
 //
 // Signals are exchanged as flat arrays of `2*n` numbers holding interleaved
-// real and imaginary parts; internally a signal is a list of `Complex` values.
+// real and imaginary parts, which is what the surrounding benchmark harness
+// will want; internally a signal is a static list of `Complex` values.
 
-// `FFTMath` holds the trigonometry and the array mutation. In `StagedFFT` this
-// module being unstaged is what lets the twiddle factors fold to literals;
-// here it is just a helper.
+// `FFTMath` is not staged, so calls to it whose arguments are all statically
+// known are evaluated during specialization.  This is what turns the twiddle
+// factors into literals; `mkArr`/`setAt` also give us the array mutation that
+// the staged IR itself does not provide.
 module FFTMath with
   // W_n^e = exp(-2*pi*i*e/n)
   fun cosW(e, n) = Math.cos(-6.283185307179586 * e / n)
@@ -25,10 +28,10 @@ module FFTMath with
     a
   fun len(a) = a.length
 
-module NaiveFFT with
+staged module SpecialFFT with
 
   // ---------------------------------------------------------------------------
-  // Lists of radices, of samples, and of sub-transforms.
+  // Static spine: lists of radices, of samples, and of sub-transforms.
   // ---------------------------------------------------------------------------
 
   object Nil
@@ -39,7 +42,8 @@ module NaiveFFT with
       Cons(r, rest) then r * prod(rest)
       else 1
 
-  // The out-of-range case is unreachable for the indices used below.
+  // The out-of-range case is unreachable for the indices used below, but it has
+  // to return something of the right shape for specialization to go through.
   fun nth(xs, i) =
     if xs is
       Cons(x, rest) then
@@ -52,7 +56,7 @@ module NaiveFFT with
       else ys
 
   // ---------------------------------------------------------------------------
-  // Complex arithmetic.
+  // Complex arithmetic.  The values are dynamic; only the structure is static.
   // ---------------------------------------------------------------------------
 
   class Complex(val re, val im)
@@ -63,9 +67,8 @@ module NaiveFFT with
 
   // A twiddle factor W_n^e.  `kind` names the four exponents at which the
   // factor is a quarter turn; giving those cases exactly (instead of letting
-  // `Math.cos`/`Math.sin` return values that are only nearly 0 and ±1) keeps
-  // this module numerically in step with the staged one, which additionally
-  // gets to drop the multiplication.
+  // `Math.cos`/`Math.sin` return values that are only nearly 0 and ±1) is what
+  // lets `cmulT` decide statically that no multiplication is needed.
   class Twiddle(val kind, val re, val im)
 
   fun twiddle(e, n) =
@@ -169,8 +172,9 @@ module NaiveFFT with
     store(fftRec(load(xs, 0, n), n, radices), FFTMath.mkArr(2 * n), 0)
 
   // ---------------------------------------------------------------------------
-  // Reference implementation: a direct O(n^2) DFT, used by the tests to check
-  // the transforms above.
+  // Reference implementation: a direct O(n^2) DFT.  Nothing here is static, so
+  // it survives specialization as an ordinary loop and the tests can use it to
+  // check the specialized transforms.
   // ---------------------------------------------------------------------------
 
   fun dftTerm(xs, n, k, t, re, im) =
@@ -193,7 +197,8 @@ module NaiveFFT with
     dftAll(xs, n, 0, FFTMath.mkArr(2 * n))
 
   // ---------------------------------------------------------------------------
-  // Entry points, matching `StagedFFT` one for one.
+  // Entry points.  `fft` keeps the radix sequence dynamic and is therefore not
+  // specialized; the others fix it and are.
   // ---------------------------------------------------------------------------
 
   fun fft(xs, radices) = run(xs, radices)
@@ -223,13 +228,20 @@ module NaiveFFT with
   // join; all three factor 8, so any 8-point signal is valid for any of them.
   // ---------------------------------------------------------------------------
 
-  class Plan(val radices) with
+  staged class Plan(val radices) with
     fun transform(xs) = run(xs, radices)
 
+  // Each alternative is `@special`, so `transform` is specialized once per
+  // factorization and the only thing left at run time is the choice itself.
+  // `@special` is not deep: marking only the `Plan` leaves the radix list a
+  // plain value, every alternative's shape widens to `Plan(Cons(_, _))`, and
+  // the three branches become indistinguishable -- the first one then always
+  // wins and `k` is silently ignored.  The cons cells have to be marked too,
+  // the way `StagedJsonSchemaParser` marks the cells of its schema lists.
   fun plan(k) =
     if k is
-      0 then new Plan(new Cons(2, new Cons(2, new Cons(2, Nil))))
-      1 then new Plan(new Cons(4, new Cons(2, Nil)))
-      else new Plan(new Cons(2, new Cons(4, Nil)))
+      0 then (@special new Plan((@special new Cons(2, (@special new Cons(2, (@special new Cons(2, Nil))))))))
+      1 then (@special new Plan((@special new Cons(4, (@special new Cons(2, Nil))))))
+      else (@special new Plan((@special new Cons(2, (@special new Cons(4, Nil))))))
 
   fun fftPlan(k, xs) = plan(k).transform(xs)

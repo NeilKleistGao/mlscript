@@ -1,0 +1,2704 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, classTags: Some(ClassTags(debug: false, mono: true)))
+import "../SpecialFib.mls" as SpecialFib__Legacy
+module SpecialFib with
+    class Cons(val x, val xs)
+    object Nil
+    class Some(val x)
+    object None
+    object Error
+    class Closure(val name, val ps, val body, val env)
+    class Instruction() with
+      ()
+    class Push(val v) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {tmp}
+        tmp = new Cons(this.Push#v, s)
+        [tmp, e, d]
+    object Add with
+      fun eval(s, e, d) =
+        let {x2, y, rest, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp1, tmp2}
+        if s is
+          Cons then
+            arg_Cons_0_ = s.Cons#x
+            arg_Cons_1_ = s.Cons#xs
+            if arg_Cons_1_ is
+              Cons then
+                arg_Cons_0_1 = arg_Cons_1_.Cons#x
+                arg_Cons_1_1 = arg_Cons_1_.Cons#xs
+                rest = arg_Cons_1_1
+                y = arg_Cons_0_1
+                x2 = arg_Cons_0_
+                tmp1 = x2 + y
+                tmp2 = new Cons(tmp1, rest)
+                [tmp2, e, d]
+              else Error
+          else Error
+    object Sub with
+      fun eval(s, e, d) =
+        let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+        if s is
+          Cons then
+            arg_Cons_0_2 = s.Cons#x
+            arg_Cons_1_2 = s.Cons#xs
+            if arg_Cons_1_2 is
+              Cons then
+                arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+                arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
+                rest1 = arg_Cons_1_3
+                y1 = arg_Cons_0_3
+                x3 = arg_Cons_0_2
+                tmp3 = y1 - x3
+                tmp4 = new Cons(tmp3, rest1)
+                [tmp4, e, d]
+              else Error
+          else Error
+    class Comp(val le) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {x4, y2, rest2, scrut, arg_Cons_0_4, arg_Cons_1_4, arg_Cons_0_5, arg_Cons_1_5, tmp5, tmp6}
+        if s is
+          Cons then
+            arg_Cons_0_4 = s.Cons#x
+            arg_Cons_1_4 = s.Cons#xs
+            if arg_Cons_1_4 is
+              Cons then
+                arg_Cons_0_5 = arg_Cons_1_4.Cons#x
+                arg_Cons_1_5 = arg_Cons_1_4.Cons#xs
+                rest2 = arg_Cons_1_5
+                y2 = arg_Cons_0_5
+                x4 = arg_Cons_0_4
+                scrut = this.Comp#le
+                if scrut is
+                  true then
+                    tmp5 = x4 <= y2
+                  else
+                    tmp5 = x4 >= y2
+                tmp6 = new Cons(tmp5, rest2)
+                [tmp6, e, d]
+              else Error
+          else Error
+    class Branch(val t, val f) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {rest3, c, arg_Cons_0_6, arg_Cons_1_6}
+        if s is
+          Cons then
+            arg_Cons_0_6 = s.Cons#x
+            arg_Cons_1_6 = s.Cons#xs
+            rest3 = arg_Cons_1_6
+            c = arg_Cons_0_6
+            if c is
+              true then evalAll(this.Branch#t, rest3, e, d)
+              else evalAll(this.Branch#f, rest3, e, d)
+          else Error
+    class Load(val name) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+        opt = get(e, this.Load#name)
+        if opt is
+          Some then
+            arg_Some_0_ = opt.Some#x
+            v1 = arg_Some_0_
+            tmp7 = new Cons(v1, s)
+            [tmp7, e, d]
+          else
+            f1 = get(d, this.Load#name)
+            if f1 is
+              Some then
+                arg_Some_0_1 = f1.Some#x
+                g = arg_Some_0_1
+                tmp8 = new Cons(g, s)
+                [tmp8, e, d]
+              else Error
+    class Fun(val name, val ps, val body) extends Instruction() with
+      ()
+      fun eval(s, e, d) =
+        let {tmp9, tmp10, tmp11}
+        tmp9 = new Closure(this.Fun#name, this.Fun#ps, this.Fun#body, e)
+        tmp10 = [name, tmp9]
+        tmp11 = new Cons(tmp10, d)
+        [s, e, tmp11]
+    object Call with
+      fun eval(s, e, d) =
+        let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+        if s is
+          Cons then
+            arg_Cons_0_7 = s.Cons#x
+            arg_Cons_1_7 = s.Cons#xs
+            s__ = arg_Cons_1_7
+            v2 = arg_Cons_0_7
+            if v2 is
+              Closure then
+                arg_Closure_0_ = v2.Closure#name
+                arg_Closure_1_ = v2.Closure#ps
+                arg_Closure_2_ = v2.Closure#body
+                arg_Closure_3_ = v2.Closure#env
+                e__ = arg_Closure_3_
+                body2 = arg_Closure_2_
+                ps2 = arg_Closure_1_
+                name3 = arg_Closure_0_
+                t1 = bind(ps2, s__, e__)
+                if t1 is
+                  [_, _] then
+                    element0_ = t1.0
+                    element1_ = t1.1
+                    ee = element1_
+                    ss = element0_
+                    res = evalAll(body2, ss, ee, d)
+                    if res is
+                      [_, _, _] then
+                        element0_1 = res.0
+                        element1_1 = res.1
+                        element2_ = res.2
+                        nd = element2_
+                        rest4 = element0_1
+                        [rest4, e, nd]
+                      else Error
+                  else Error
+              else Error
+          else Error
+    class Program(val body) with
+      ()
+      fun run(n) =
+        let {tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+        tmp12 = mkCons_SpecialFib_sp_0("x", Nil)
+        tmp13 = mkFun_SpecialFib_sp_0("f", tmp12, this.Program#body)
+        tmp14 = mkPush(n)
+        tmp15 = mkLoad_SpecialFib_sp_0("f")
+        tmp16 = mkCons_SpecialFib_sp_1(Call, Nil)
+        tmp17 = mkCons_SpecialFib_sp_2(tmp15, tmp16)
+        tmp18 = mkCons_SpecialFib_sp_3(tmp14, tmp17)
+        tmp19 = mkCons_SpecialFib_sp_4(tmp13, tmp18)
+        exec_SpecialFib_sp_0(tmp19, Nil, Nil, Nil)
+    fun bind(ps, s, e) =
+      let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp20, tmp21}
+      scrut2 = [ps, s]
+      element0_3 = scrut2.0
+      element1_3 = scrut2.1
+      if element0_3 is
+        Cons then
+          arg_Cons_0_9 = element0_3.Cons#x
+          arg_Cons_1_9 = element0_3.Cons#xs
+          if element1_3 is
+            Cons then
+              arg_Cons_0_10 = element1_3.Cons#x
+              arg_Cons_1_10 = element1_3.Cons#xs
+              r2 = arg_Cons_1_10
+              v4 = arg_Cons_0_10
+              r1 = arg_Cons_1_9
+              p = arg_Cons_0_9
+              tmp20 = [p, v4]
+              tmp21 = new Cons(tmp20, e)
+              bind(r1, r2, tmp21)
+            else Error
+        Nil then
+          ss1 = element1_3
+          [ss1, e]
+        else Error
+    fun evalAll(insts, s, e, d) =
+      let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+      if insts is
+        Cons then
+          arg_Cons_0_11 = insts.Cons#x
+          arg_Cons_1_11 = insts.Cons#xs
+          rest6 = arg_Cons_1_11
+          inst = arg_Cons_0_11
+          res1 = inst.eval(s, e, d)
+          if res1 is
+            [_, _, _] then
+              element0_4 = res1.0
+              element1_4 = res1.1
+              element2_1 = res1.2
+              nd1 = element2_1
+              ne = element1_4
+              ss2 = element0_4
+              evalAll(rest6, ss2, ne, nd1)
+            else res1
+        else [s, e, d]
+    fun exec(insts, s, e, d) =
+      let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+      ss3 = evalAll(insts, s, e, d)
+      if ss3 is
+        [_, _, _] then
+          element0_5 = ss3.0
+          element1_5 = ss3.1
+          element2_2 = ss3.2
+          if element0_5 is
+            Cons then
+              arg_Cons_0_12 = element0_5.Cons#x
+              arg_Cons_1_12 = element0_5.Cons#xs
+              if arg_Cons_1_12 is
+                Nil then
+                  x5 = arg_Cons_0_12
+                  new Some(x5)
+                else Error
+            Nil then None
+            else Error
+        else Error
+    fun fibBody(guard, base) =
+      let {tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81}
+      tmp56 = mkLoad_SpecialFib_sp_1("x")
+      tmp57 = mkPush(guard)
+      tmp58 = mkComp_SpecialFib_sp_0(false)
+      tmp59 = mkPush(base)
+      tmp60 = mkCons_SpecialFib_sp_5(tmp59, Nil)
+      tmp61 = mkLoad_SpecialFib_sp_1("x")
+      tmp62 = mkPush_SpecialFib_sp_0(1)
+      tmp63 = mkLoad_SpecialFib_sp_0("f")
+      tmp64 = mkLoad_SpecialFib_sp_1("x")
+      tmp65 = mkPush_SpecialFib_sp_1(2)
+      tmp66 = mkLoad_SpecialFib_sp_0("f")
+      tmp67 = mkCons_SpecialFib_sp_6(Add, Nil)
+      tmp68 = mkCons_SpecialFib_sp_7(Call, tmp67)
+      tmp69 = mkCons_SpecialFib_sp_8(tmp66, tmp68)
+      tmp70 = mkCons_SpecialFib_sp_9(Sub, tmp69)
+      tmp71 = mkCons_SpecialFib_sp_10(tmp65, tmp70)
+      tmp72 = mkCons_SpecialFib_sp_11(tmp64, tmp71)
+      tmp73 = mkCons_SpecialFib_sp_12(Call, tmp72)
+      tmp74 = mkCons_SpecialFib_sp_13(tmp63, tmp73)
+      tmp75 = mkCons_SpecialFib_sp_14(Sub, tmp74)
+      tmp76 = mkCons_SpecialFib_sp_15(tmp62, tmp75)
+      tmp77 = mkCons_SpecialFib_sp_16(tmp61, tmp76)
+      tmp78 = mkBranch_SpecialFib_sp_0(tmp60, tmp77)
+      tmp79 = mkCons_SpecialFib_sp_17(tmp78, Nil)
+      tmp80 = mkCons_SpecialFib_sp_18(tmp58, tmp79)
+      tmp81 = mkCons_SpecialFib_sp_19(tmp57, tmp80)
+      mkCons_SpecialFib_sp_20(tmp56, tmp81)
+    fun get(env, name) =
+      let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+      if env is
+        Cons then
+          arg_Cons_0_8 = env.Cons#x
+          arg_Cons_1_8 = env.Cons#xs
+          if arg_Cons_0_8 is
+            [_, _] then
+              element0_2 = arg_Cons_0_8.0
+              element1_2 = arg_Cons_0_8.1
+              rest5 = arg_Cons_1_8
+              v3 = element1_2
+              n1 = element0_2
+              scrut1 = n1 == name
+              if scrut1 is
+                true then new Some(v3)
+                else get(rest5, name)
+            else None
+        else None
+    fun mkBranch(t, f) = new Branch(t, f)
+    fun mkComp(le) = new Comp(le)
+    fun mkCons(x, xs) = new Cons(x, xs)
+    fun mkFib(n) =
+      let {insts2, tmp22, tmp23, tmp24, tmp25, tmp26, tmp27, tmp28, tmp29, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52, tmp53, tmp54, tmp55}
+      tmp22 = new Cons("x", Nil)
+      tmp23 = new Load("x")
+      tmp24 = new Push(1)
+      tmp25 = new Comp(false)
+      tmp26 = new Push(1)
+      tmp27 = new Cons(tmp26, Nil)
+      tmp28 = new Load("x")
+      tmp29 = new Push(1)
+      tmp30 = new Load("fib")
+      tmp31 = new Load("x")
+      tmp32 = new Push(2)
+      tmp33 = new Load("fib")
+      tmp34 = new Cons(Add, Nil)
+      tmp35 = new Cons(Call, tmp34)
+      tmp36 = new Cons(tmp33, tmp35)
+      tmp37 = new Cons(Sub, tmp36)
+      tmp38 = new Cons(tmp32, tmp37)
+      tmp39 = new Cons(tmp31, tmp38)
+      tmp40 = new Cons(Call, tmp39)
+      tmp41 = new Cons(tmp30, tmp40)
+      tmp42 = new Cons(Sub, tmp41)
+      tmp43 = new Cons(tmp29, tmp42)
+      tmp44 = new Cons(tmp28, tmp43)
+      tmp45 = new Branch(tmp27, tmp44)
+      tmp46 = new Cons(tmp45, Nil)
+      tmp47 = new Cons(tmp25, tmp46)
+      tmp48 = new Cons(tmp24, tmp47)
+      tmp49 = new Cons(tmp23, tmp48)
+      tmp50 = new Fun("fib", tmp22, tmp49)
+      tmp51 = new Push(n)
+      tmp52 = new Load("fib")
+      tmp53 = new Cons(Call, Nil)
+      tmp54 = new Cons(tmp52, tmp53)
+      tmp55 = new Cons(tmp51, tmp54)
+      insts2 = new Cons(tmp50, tmp55)
+      exec_SpecialFib_sp_1(insts2, Nil, Nil, Nil)
+    fun mkFun(name, ps, body) = new Fun(name, ps, body)
+    fun mkLoad(n) = new Load(n)
+    fun mkPush(v) = new Push(v)
+    fun program(k) =
+      let {tmp82, tmp83, tmp84}
+      if k is
+        0 then
+          tmp82 = fibBody_SpecialFib_sp_0(1, 1)
+          new Program(tmp82)
+        1 then
+          tmp83 = fibBody_SpecialFib_sp_1(2, 1)
+          new Program(tmp83)
+        else
+          tmp84 = fibBody_SpecialFib_sp_2(1, 2)
+          new Program(tmp84)
+    fun runProgram(k, n) =
+      let {tmp85}
+      tmp85 = program(k)
+      @matchShapes(Program(Cons(Load("x"), Cons(Push(1), Cons(Comp(false), Cons(Branch(Cons(Push(1), Nil), Cons(Load("x"), Cons(Push(1), Cons(Sub, Cons(Load("f"), Cons(Call, Cons(Load("x"), Cons(Push(2), Cons(Sub, Cons(Load("f"), Cons(Call, Cons(Add, Nil)))))))))))), Nil))))), Program(Cons(Load("x"), Cons(Push(2), Cons(Comp(false), Cons(Branch(Cons(Push(1), Nil), Cons(Load("x"), Cons(Push(1), Cons(Sub, Cons(Load("f"), Cons(Call, Cons(Load("x"), Cons(Push(2), Cons(Sub, Cons(Load("f"), Cons(Call, Cons(Add, Nil)))))))))))), Nil))))), Program(Cons(Load("x"), Cons(Push(1), Cons(Comp(false), Cons(Branch(Cons(Push(2), Nil), Cons(Load("x"), Cons(Push(1), Cons(Sub, Cons(Load("f"), Cons(Call, Cons(Load("x"), Cons(Push(2), Cons(Sub, Cons(Load("f"), Cons(Call, Cons(Add, Nil)))))))))))), Nil)))))) shape.match of tmp85,
+        () => run_Program_sp_0(tmp85, n)
+        () => run_Program_sp_1(tmp85, n)
+        () => run_Program_sp_2(tmp85, n)
+open SpecialFib
+private fun bind_SpecialFib_sp_0(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp20, tmp21}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_9 = element0_3.Cons#x
+  arg_Cons_1_9 = element0_3.Cons#xs
+  arg_Cons_0_10 = element1_3.Cons#x
+  arg_Cons_1_10 = element1_3.Cons#xs
+  r2 = arg_Cons_1_10
+  v4 = arg_Cons_0_10
+  r1 = arg_Cons_1_9
+  p = "x"
+  tmp20 = [p, v4]
+  tmp21 = new Cons(tmp20, e)
+  bind_SpecialFib_sp_1(r1, r2, tmp21)
+private fun bind_SpecialFib_sp_1(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp20, tmp21}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  ss1 = element1_3
+  [ss1, e]
+private fun bind_SpecialFib_sp_2(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp20, tmp21}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  arg_Cons_0_9 = element0_3.Cons#x
+  arg_Cons_1_9 = element0_3.Cons#xs
+  arg_Cons_0_10 = element1_3.Cons#x
+  arg_Cons_1_10 = element1_3.Cons#xs
+  r2 = arg_Cons_1_10
+  v4 = arg_Cons_0_10
+  r1 = arg_Cons_1_9
+  p = "x"
+  tmp20 = [p, v4]
+  tmp21 = new Cons(tmp20, e)
+  bind_SpecialFib_sp_1(r1, r2, tmp21)
+private fun bind_SpecialFib_sp_3(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp20, tmp21}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  if element0_3 is
+    Cons then
+      arg_Cons_0_9 = element0_3.Cons#x
+      arg_Cons_1_9 = element0_3.Cons#xs
+      arg_Cons_0_10 = element1_3.Cons#x
+      arg_Cons_1_10 = element1_3.Cons#xs
+      r2 = arg_Cons_1_10
+      v4 = arg_Cons_0_10
+      r1 = arg_Cons_1_9
+      p = arg_Cons_0_9
+      tmp20 = [p, v4]
+      tmp21 = new Cons(tmp20, e)
+      bind_SpecialFib_sp_4(r1, r2, tmp21)
+    Nil then
+      ss1 = element1_3
+      [ss1, e]
+    else Error
+private fun bind_SpecialFib_sp_4(ps, s, e) =
+  let {scrut2, v4, r1, p, r2, ss1, element1_3, element0_3, arg_Cons_0_9, arg_Cons_1_9, arg_Cons_0_10, arg_Cons_1_10, tmp20, tmp21}
+  scrut2 = [ps, s]
+  element0_3 = scrut2.0
+  element1_3 = scrut2.1
+  if element0_3 is
+    Cons then
+      arg_Cons_0_9 = element0_3.Cons#x
+      arg_Cons_1_9 = element0_3.Cons#xs
+      if element1_3 is
+        Cons then
+          arg_Cons_0_10 = element1_3.Cons#x
+          arg_Cons_1_10 = element1_3.Cons#xs
+          r2 = arg_Cons_1_10
+          v4 = arg_Cons_0_10
+          r1 = arg_Cons_1_9
+          p = arg_Cons_0_9
+          tmp20 = [p, v4]
+          tmp21 = new Cons(tmp20, e)
+          bind_SpecialFib_sp_4(r1, r2, tmp21)
+        else Error
+    Nil then
+      ss1 = element1_3
+      [ss1, e]
+    else Error
+private fun evalAll_SpecialFib_sp_0(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Fun_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_1(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_1(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_2(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_10(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_1(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_29(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_11(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_12(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_12(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_13(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_13(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Comp_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_14(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_14(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Branch_sp_0(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_29(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_15(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_3(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_16(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_16(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_17(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_18(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_18(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_19(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_19(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_20(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_2(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_0(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_3(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_20(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_3(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_21(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_21(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_2(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_22(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_22(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_4(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_23(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_23(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_4(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_24(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_24(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_25(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_25(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_5(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_26(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_26(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_3(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_27(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_27(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Add_sp_0(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_28(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_28(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_29(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_3(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_0(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_6(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_30(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Fun_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_31(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_31(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_5(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_32(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_32(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_6(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_33(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_33(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_4(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_29(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_34(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_7(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_35(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_35(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_6(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_36(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_36(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Comp_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_37(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_37(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Branch_sp_1(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_29(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_38(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_7(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_39(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_39(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_4(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  if insts is
+    Cons then
+      arg_Cons_0_11 = insts.Cons#x
+      arg_Cons_1_11 = insts.Cons#xs
+      rest6 = arg_Cons_1_11
+      inst = arg_Cons_0_11
+      res1 = inst.eval(s, e, d)
+      if res1 is
+        [_, _, _] then
+          element0_4 = res1.0
+          element1_4 = res1.1
+          element2_1 = res1.2
+          nd1 = element2_1
+          ne = element1_4
+          ss2 = element0_4
+          evalAll_SpecialFib_sp_5(rest6, ss2, ne, nd1)
+        else res1
+    else [s, e, d]
+private fun evalAll_SpecialFib_sp_40(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_7(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_41(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_41(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_6(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_42(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_42(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_43(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_43(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_8(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_44(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_44(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_5(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_45(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_45(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_9(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_46(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_46(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_8(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_47(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_47(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_48(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_48(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_10(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_49(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_49(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_3(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_50(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_5(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  if insts is
+    Cons then
+      arg_Cons_0_11 = insts.Cons#x
+      arg_Cons_1_11 = insts.Cons#xs
+      rest6 = arg_Cons_1_11
+      inst = arg_Cons_0_11
+      res1 = inst.eval(s, e, d)
+      if res1 is
+        [_, _, _] then
+          element0_4 = res1.0
+          element1_4 = res1.1
+          element2_1 = res1.2
+          nd1 = element2_1
+          ne = element1_4
+          ss2 = element0_4
+          evalAll_SpecialFib_sp_5(rest6, ss2, ne, nd1)
+        else res1
+    else [s, e, d]
+private fun evalAll_SpecialFib_sp_50(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Add_sp_0(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_28(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_51(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Fun_sp_3(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_52(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_52(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_9(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_53(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_53(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_11(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_54(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_54(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_6(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_29(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_55(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_12(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_56(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_56(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_10(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_57(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_57(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Comp_sp_2(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_58(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_58(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Branch_sp_2(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_29(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_59(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_11(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_60(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_6(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_60(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_61(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_12(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_62(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_62(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_12(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_63(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_63(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_3(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_64(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_64(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_13(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_65(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_65(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_7(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_45(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_66(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Fun_sp_4(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_67(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_67(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_13(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_68(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_68(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_14(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_69(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_69(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_8(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_81(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_7(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Fun_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_8(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_70(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_15(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_71(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_71(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_14(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_72(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_72(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Comp_sp_3(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_73(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_73(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Branch_sp_3(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_81(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_74(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_15(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_75(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_75(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_76(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_15(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_77(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_77(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_14(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_78(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_78(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Sub_sp_4(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_79(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_79(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_16(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_80(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_8(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Push_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_9(rest6, ss2, ne, nd1)
+private fun evalAll_SpecialFib_sp_80(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Call_sp_9(inst, s, e, d)
+  if res1 is
+    [_, _, _] then
+      element0_4 = res1.0
+      element1_4 = res1.1
+      element2_1 = res1.2
+      nd1 = element2_1
+      ne = element1_4
+      ss2 = element0_4
+      evalAll_SpecialFib_sp_45(rest6, ss2, ne, nd1)
+    else res1
+private fun evalAll_SpecialFib_sp_81(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  [s, e, d]
+private fun evalAll_SpecialFib_sp_9(insts, s, e, d) =
+  let {rest6, inst, res1, ss2, nd1, ne, arg_Cons_0_11, arg_Cons_1_11, element2_1, element1_4, element0_4}
+  arg_Cons_0_11 = insts.Cons#x
+  arg_Cons_1_11 = insts.Cons#xs
+  rest6 = arg_Cons_1_11
+  inst = arg_Cons_0_11
+  res1 = eval_Load_sp_1(inst, s, e, d)
+  element0_4 = res1.0
+  element1_4 = res1.1
+  element2_1 = res1.2
+  nd1 = element2_1
+  ne = element1_4
+  ss2 = element0_4
+  evalAll_SpecialFib_sp_10(rest6, ss2, ne, nd1)
+private fun exec_SpecialFib_sp_0(insts, s, e, d) =
+  let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+  ss3 = evalAll_SpecialFib_sp_0(insts, s, e, d)
+  if ss3 is
+    [_, _, _] then
+      element0_5 = ss3.0
+      element1_5 = ss3.1
+      element2_2 = ss3.2
+      if element0_5 is
+        Cons then
+          arg_Cons_0_12 = element0_5.Cons#x
+          arg_Cons_1_12 = element0_5.Cons#xs
+          if arg_Cons_1_12 is
+            Nil then
+              x5 = arg_Cons_0_12
+              new Some(x5)
+            else Error
+        Nil then None
+        else Error
+    else Error
+private fun exec_SpecialFib_sp_1(insts, s, e, d) =
+  let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+  ss3 = evalAll_SpecialFib_sp_7(insts, s, e, d)
+  if ss3 is
+    [_, _, _] then
+      element0_5 = ss3.0
+      element1_5 = ss3.1
+      element2_2 = ss3.2
+      arg_Cons_0_12 = element0_5.Cons#x
+      arg_Cons_1_12 = element0_5.Cons#xs
+      if arg_Cons_1_12 is
+        Nil then
+          x5 = arg_Cons_0_12
+          new Some(x5)
+        else Error
+    else Error
+private fun exec_SpecialFib_sp_2(insts, s, e, d) =
+  let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+  ss3 = evalAll_SpecialFib_sp_30(insts, s, e, d)
+  if ss3 is
+    [_, _, _] then
+      element0_5 = ss3.0
+      element1_5 = ss3.1
+      element2_2 = ss3.2
+      arg_Cons_0_12 = element0_5.Cons#x
+      arg_Cons_1_12 = element0_5.Cons#xs
+      if arg_Cons_1_12 is
+        Nil then
+          x5 = arg_Cons_0_12
+          new Some(x5)
+        else Error
+    else Error
+private fun exec_SpecialFib_sp_3(insts, s, e, d) =
+  let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+  ss3 = evalAll_SpecialFib_sp_51(insts, s, e, d)
+  if ss3 is
+    [_, _, _] then
+      element0_5 = ss3.0
+      element1_5 = ss3.1
+      element2_2 = ss3.2
+      arg_Cons_0_12 = element0_5.Cons#x
+      arg_Cons_1_12 = element0_5.Cons#xs
+      if arg_Cons_1_12 is
+        Nil then
+          x5 = arg_Cons_0_12
+          new Some(x5)
+        else Error
+    else Error
+private fun exec_SpecialFib_sp_4(insts, s, e, d) =
+  let {ss3, x5, element2_2, element1_5, element0_5, arg_Cons_0_12, arg_Cons_1_12}
+  ss3 = evalAll_SpecialFib_sp_66(insts, s, e, d)
+  if ss3 is
+    [_, _, _] then
+      element0_5 = ss3.0
+      element1_5 = ss3.1
+      element2_2 = ss3.2
+      arg_Cons_0_12 = element0_5.Cons#x
+      arg_Cons_1_12 = element0_5.Cons#xs
+      if arg_Cons_1_12 is
+        Nil then
+          x5 = arg_Cons_0_12
+          new Some(x5)
+        else Error
+    else Error
+private fun fibBody_SpecialFib_sp_0(guard, base) =
+  let {tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81}
+  tmp56 = mkLoad_SpecialFib_sp_1("x")
+  tmp57 = mkPush_SpecialFib_sp_0(1)
+  tmp58 = mkComp_SpecialFib_sp_0(false)
+  tmp59 = mkPush_SpecialFib_sp_0(1)
+  tmp60 = mkCons_SpecialFib_sp_21(tmp59, Nil)
+  tmp61 = mkLoad_SpecialFib_sp_1("x")
+  tmp62 = mkPush_SpecialFib_sp_0(1)
+  tmp63 = mkLoad_SpecialFib_sp_0("f")
+  tmp64 = mkLoad_SpecialFib_sp_1("x")
+  tmp65 = mkPush_SpecialFib_sp_1(2)
+  tmp66 = mkLoad_SpecialFib_sp_0("f")
+  tmp67 = mkCons_SpecialFib_sp_6(Add, Nil)
+  tmp68 = mkCons_SpecialFib_sp_7(Call, tmp67)
+  tmp69 = mkCons_SpecialFib_sp_8(tmp66, tmp68)
+  tmp70 = mkCons_SpecialFib_sp_9(Sub, tmp69)
+  tmp71 = mkCons_SpecialFib_sp_10(tmp65, tmp70)
+  tmp72 = mkCons_SpecialFib_sp_11(tmp64, tmp71)
+  tmp73 = mkCons_SpecialFib_sp_12(Call, tmp72)
+  tmp74 = mkCons_SpecialFib_sp_13(tmp63, tmp73)
+  tmp75 = mkCons_SpecialFib_sp_14(Sub, tmp74)
+  tmp76 = mkCons_SpecialFib_sp_15(tmp62, tmp75)
+  tmp77 = mkCons_SpecialFib_sp_16(tmp61, tmp76)
+  tmp78 = mkBranch_SpecialFib_sp_1(tmp60, tmp77)
+  tmp79 = mkCons_SpecialFib_sp_22(tmp78, Nil)
+  tmp80 = mkCons_SpecialFib_sp_23(tmp58, tmp79)
+  tmp81 = mkCons_SpecialFib_sp_24(tmp57, tmp80)
+  mkCons_SpecialFib_sp_25(tmp56, tmp81)
+private fun fibBody_SpecialFib_sp_1(guard, base) =
+  let {tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81}
+  tmp56 = mkLoad_SpecialFib_sp_1("x")
+  tmp57 = mkPush_SpecialFib_sp_1(2)
+  tmp58 = mkComp_SpecialFib_sp_0(false)
+  tmp59 = mkPush_SpecialFib_sp_0(1)
+  tmp60 = mkCons_SpecialFib_sp_21(tmp59, Nil)
+  tmp61 = mkLoad_SpecialFib_sp_1("x")
+  tmp62 = mkPush_SpecialFib_sp_0(1)
+  tmp63 = mkLoad_SpecialFib_sp_0("f")
+  tmp64 = mkLoad_SpecialFib_sp_1("x")
+  tmp65 = mkPush_SpecialFib_sp_1(2)
+  tmp66 = mkLoad_SpecialFib_sp_0("f")
+  tmp67 = mkCons_SpecialFib_sp_6(Add, Nil)
+  tmp68 = mkCons_SpecialFib_sp_7(Call, tmp67)
+  tmp69 = mkCons_SpecialFib_sp_8(tmp66, tmp68)
+  tmp70 = mkCons_SpecialFib_sp_9(Sub, tmp69)
+  tmp71 = mkCons_SpecialFib_sp_10(tmp65, tmp70)
+  tmp72 = mkCons_SpecialFib_sp_11(tmp64, tmp71)
+  tmp73 = mkCons_SpecialFib_sp_12(Call, tmp72)
+  tmp74 = mkCons_SpecialFib_sp_13(tmp63, tmp73)
+  tmp75 = mkCons_SpecialFib_sp_14(Sub, tmp74)
+  tmp76 = mkCons_SpecialFib_sp_15(tmp62, tmp75)
+  tmp77 = mkCons_SpecialFib_sp_16(tmp61, tmp76)
+  tmp78 = mkBranch_SpecialFib_sp_1(tmp60, tmp77)
+  tmp79 = mkCons_SpecialFib_sp_22(tmp78, Nil)
+  tmp80 = mkCons_SpecialFib_sp_23(tmp58, tmp79)
+  tmp81 = mkCons_SpecialFib_sp_26(tmp57, tmp80)
+  mkCons_SpecialFib_sp_27(tmp56, tmp81)
+private fun fibBody_SpecialFib_sp_2(guard, base) =
+  let {tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81}
+  tmp56 = mkLoad_SpecialFib_sp_1("x")
+  tmp57 = mkPush_SpecialFib_sp_0(1)
+  tmp58 = mkComp_SpecialFib_sp_0(false)
+  tmp59 = mkPush_SpecialFib_sp_1(2)
+  tmp60 = mkCons_SpecialFib_sp_28(tmp59, Nil)
+  tmp61 = mkLoad_SpecialFib_sp_1("x")
+  tmp62 = mkPush_SpecialFib_sp_0(1)
+  tmp63 = mkLoad_SpecialFib_sp_0("f")
+  tmp64 = mkLoad_SpecialFib_sp_1("x")
+  tmp65 = mkPush_SpecialFib_sp_1(2)
+  tmp66 = mkLoad_SpecialFib_sp_0("f")
+  tmp67 = mkCons_SpecialFib_sp_6(Add, Nil)
+  tmp68 = mkCons_SpecialFib_sp_7(Call, tmp67)
+  tmp69 = mkCons_SpecialFib_sp_8(tmp66, tmp68)
+  tmp70 = mkCons_SpecialFib_sp_9(Sub, tmp69)
+  tmp71 = mkCons_SpecialFib_sp_10(tmp65, tmp70)
+  tmp72 = mkCons_SpecialFib_sp_11(tmp64, tmp71)
+  tmp73 = mkCons_SpecialFib_sp_12(Call, tmp72)
+  tmp74 = mkCons_SpecialFib_sp_13(tmp63, tmp73)
+  tmp75 = mkCons_SpecialFib_sp_14(Sub, tmp74)
+  tmp76 = mkCons_SpecialFib_sp_15(tmp62, tmp75)
+  tmp77 = mkCons_SpecialFib_sp_16(tmp61, tmp76)
+  tmp78 = mkBranch_SpecialFib_sp_2(tmp60, tmp77)
+  tmp79 = mkCons_SpecialFib_sp_29(tmp78, Nil)
+  tmp80 = mkCons_SpecialFib_sp_30(tmp58, tmp79)
+  tmp81 = mkCons_SpecialFib_sp_31(tmp57, tmp80)
+  mkCons_SpecialFib_sp_32(tmp56, tmp81)
+private fun get_SpecialFib_sp_0(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  None
+private fun get_SpecialFib_sp_1(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "f"
+  scrut1 = true
+  new Some(v3)
+private fun get_SpecialFib_sp_10(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  if env is
+    Cons then
+      arg_Cons_0_8 = env.Cons#x
+      arg_Cons_1_8 = env.Cons#xs
+      if arg_Cons_0_8 is
+        [_, _] then
+          element0_2 = arg_Cons_0_8.0
+          element1_2 = arg_Cons_0_8.1
+          rest5 = arg_Cons_1_8
+          v3 = element1_2
+          n1 = element0_2
+          scrut1 = n1 == "f"
+          if scrut1 is
+            true then new Some(v3)
+            else get_SpecialFib_sp_10(rest5, "f")
+        else None
+    else None
+private fun get_SpecialFib_sp_11(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "f"
+  scrut1 = true
+  new Some(v3)
+private fun get_SpecialFib_sp_12(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "f"
+  scrut1 = true
+  new Some(v3)
+private fun get_SpecialFib_sp_2(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  None
+private fun get_SpecialFib_sp_3(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "fib"
+  scrut1 = true
+  new Some(v3)
+private fun get_SpecialFib_sp_4(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "x"
+  scrut1 = true
+  new Some(v3)
+private fun get_SpecialFib_sp_5(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "x"
+  scrut1 = false
+  get_SpecialFib_sp_2(rest5, "fib")
+private fun get_SpecialFib_sp_6(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  if env is
+    Cons then
+      arg_Cons_0_8 = env.Cons#x
+      arg_Cons_1_8 = env.Cons#xs
+      if arg_Cons_0_8 is
+        [_, _] then
+          element0_2 = arg_Cons_0_8.0
+          element1_2 = arg_Cons_0_8.1
+          rest5 = arg_Cons_1_8
+          v3 = element1_2
+          n1 = element0_2
+          scrut1 = n1 == "x"
+          if scrut1 is
+            true then new Some(v3)
+            else get_SpecialFib_sp_6(rest5, "x")
+        else None
+    else None
+private fun get_SpecialFib_sp_7(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  if env is
+    Cons then
+      arg_Cons_0_8 = env.Cons#x
+      arg_Cons_1_8 = env.Cons#xs
+      if arg_Cons_0_8 is
+        [_, _] then
+          element0_2 = arg_Cons_0_8.0
+          element1_2 = arg_Cons_0_8.1
+          rest5 = arg_Cons_1_8
+          v3 = element1_2
+          n1 = element0_2
+          scrut1 = n1 == "fib"
+          if scrut1 is
+            true then new Some(v3)
+            else get_SpecialFib_sp_7(rest5, "fib")
+        else None
+    else None
+private fun get_SpecialFib_sp_8(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "f"
+  scrut1 = true
+  new Some(v3)
+private fun get_SpecialFib_sp_9(env, name) =
+  let {n1, rest5, v3, scrut1, arg_Cons_0_8, arg_Cons_1_8, element1_2, element0_2}
+  arg_Cons_0_8 = env.Cons#x
+  arg_Cons_1_8 = env.Cons#xs
+  element0_2 = arg_Cons_0_8.0
+  element1_2 = arg_Cons_0_8.1
+  rest5 = arg_Cons_1_8
+  v3 = element1_2
+  n1 = "x"
+  scrut1 = false
+  get_SpecialFib_sp_0(rest5, "f")
+private fun mkBranch_SpecialFib_sp_0(t, f) = new Branch(t, f)
+private fun mkBranch_SpecialFib_sp_1(t, f) = new Branch(t, f)
+private fun mkBranch_SpecialFib_sp_2(t, f) = new Branch(t, f)
+private fun mkComp_SpecialFib_sp_0(le) = new Comp(false)
+private fun mkCons_SpecialFib_sp_0(x, xs) = new Cons("x", xs)
+private fun mkCons_SpecialFib_sp_1(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_10(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_11(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_12(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_13(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_14(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_15(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_16(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_17(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_18(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_19(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_2(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_20(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_21(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_22(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_23(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_24(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_25(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_26(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_27(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_28(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_29(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_3(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_30(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_31(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_32(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_33(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_34(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_35(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_4(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_5(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_6(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_7(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_8(x, xs) = new Cons(x, xs)
+private fun mkCons_SpecialFib_sp_9(x, xs) = new Cons(x, xs)
+private fun mkFun_SpecialFib_sp_0(name, ps, body) = new Fun("f", ps, body)
+private fun mkFun_SpecialFib_sp_1(name, ps, body) = new Fun("f", ps, body)
+private fun mkFun_SpecialFib_sp_2(name, ps, body) = new Fun("f", ps, body)
+private fun mkFun_SpecialFib_sp_3(name, ps, body) = new Fun("f", ps, body)
+private fun mkLoad_SpecialFib_sp_0(n) = new Load("f")
+private fun mkLoad_SpecialFib_sp_1(n) = new Load("x")
+private fun mkPush_SpecialFib_sp_0(v) = new Push(1)
+private fun mkPush_SpecialFib_sp_1(v) = new Push(2)
+private fun mkPush_SpecialFib_sp_2(v) = new Push(v)
+private fun eval_Push_sp_0(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_1(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_10(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_11(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_12(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_13(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_14(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_15(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_2(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_3(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_4(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_5(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_6(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_7(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_8(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Push_sp_9(self, s, e, d) =
+  let {tmp}
+  tmp = new Cons(self.Push#v, s)
+  [tmp, e, d]
+private fun eval_Add_sp_0(self, s, e, d) =
+  let {x2, y, rest, arg_Cons_0_, arg_Cons_1_, arg_Cons_0_1, arg_Cons_1_1, tmp1, tmp2}
+  if s is
+    Cons then
+      arg_Cons_0_ = s.Cons#x
+      arg_Cons_1_ = s.Cons#xs
+      if arg_Cons_1_ is
+        Cons then
+          arg_Cons_0_1 = arg_Cons_1_.Cons#x
+          arg_Cons_1_1 = arg_Cons_1_.Cons#xs
+          rest = arg_Cons_1_1
+          y = arg_Cons_0_1
+          x2 = arg_Cons_0_
+          tmp1 = x2 + y
+          tmp2 = new Cons(tmp1, rest)
+          [tmp2, e, d]
+        else Error
+    else Error
+private fun eval_Sub_sp_0(self, s, e, d) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+  arg_Cons_0_2 = s.Cons#x
+  arg_Cons_1_2 = s.Cons#xs
+  arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+  arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = 1
+  tmp3 = y1 - 1
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e, d]
+private fun eval_Sub_sp_1(self, s, e, d) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+  arg_Cons_0_2 = s.Cons#x
+  arg_Cons_1_2 = s.Cons#xs
+  arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+  arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = 2
+  tmp3 = y1 - 2
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e, d]
+private fun eval_Sub_sp_2(self, s, e, d) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+  arg_Cons_0_2 = s.Cons#x
+  arg_Cons_1_2 = s.Cons#xs
+  arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+  arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = 1
+  tmp3 = y1 - 1
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e, d]
+private fun eval_Sub_sp_3(self, s, e, d) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+  arg_Cons_0_2 = s.Cons#x
+  arg_Cons_1_2 = s.Cons#xs
+  arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+  arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = 1
+  tmp3 = y1 - 1
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e, d]
+private fun eval_Sub_sp_4(self, s, e, d) =
+  let {x3, y1, rest1, arg_Cons_0_2, arg_Cons_1_2, arg_Cons_0_3, arg_Cons_1_3, tmp3, tmp4}
+  arg_Cons_0_2 = s.Cons#x
+  arg_Cons_1_2 = s.Cons#xs
+  arg_Cons_0_3 = arg_Cons_1_2.Cons#x
+  arg_Cons_1_3 = arg_Cons_1_2.Cons#xs
+  rest1 = arg_Cons_1_3
+  y1 = arg_Cons_0_3
+  x3 = 1
+  tmp3 = y1 - 1
+  tmp4 = new Cons(tmp3, rest1)
+  [tmp4, e, d]
+private fun eval_Comp_sp_0(self, s, e, d) =
+  let {x4, y2, rest2, scrut, arg_Cons_0_4, arg_Cons_1_4, arg_Cons_0_5, arg_Cons_1_5, tmp5, tmp6}
+  arg_Cons_0_4 = s.Cons#x
+  arg_Cons_1_4 = s.Cons#xs
+  arg_Cons_0_5 = arg_Cons_1_4.Cons#x
+  arg_Cons_1_5 = arg_Cons_1_4.Cons#xs
+  rest2 = arg_Cons_1_5
+  y2 = arg_Cons_0_5
+  x4 = 1
+  scrut = self.Comp#le
+  tmp5 = 1 >= y2
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e, d]
+private fun eval_Comp_sp_1(self, s, e, d) =
+  let {x4, y2, rest2, scrut, arg_Cons_0_4, arg_Cons_1_4, arg_Cons_0_5, arg_Cons_1_5, tmp5, tmp6}
+  arg_Cons_0_4 = s.Cons#x
+  arg_Cons_1_4 = s.Cons#xs
+  arg_Cons_0_5 = arg_Cons_1_4.Cons#x
+  arg_Cons_1_5 = arg_Cons_1_4.Cons#xs
+  rest2 = arg_Cons_1_5
+  y2 = arg_Cons_0_5
+  x4 = 1
+  scrut = self.Comp#le
+  tmp5 = 1 >= y2
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e, d]
+private fun eval_Comp_sp_2(self, s, e, d) =
+  let {x4, y2, rest2, scrut, arg_Cons_0_4, arg_Cons_1_4, arg_Cons_0_5, arg_Cons_1_5, tmp5, tmp6}
+  arg_Cons_0_4 = s.Cons#x
+  arg_Cons_1_4 = s.Cons#xs
+  arg_Cons_0_5 = arg_Cons_1_4.Cons#x
+  arg_Cons_1_5 = arg_Cons_1_4.Cons#xs
+  rest2 = arg_Cons_1_5
+  y2 = arg_Cons_0_5
+  x4 = 2
+  scrut = self.Comp#le
+  tmp5 = 2 >= y2
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e, d]
+private fun eval_Comp_sp_3(self, s, e, d) =
+  let {x4, y2, rest2, scrut, arg_Cons_0_4, arg_Cons_1_4, arg_Cons_0_5, arg_Cons_1_5, tmp5, tmp6}
+  arg_Cons_0_4 = s.Cons#x
+  arg_Cons_1_4 = s.Cons#xs
+  arg_Cons_0_5 = arg_Cons_1_4.Cons#x
+  arg_Cons_1_5 = arg_Cons_1_4.Cons#xs
+  rest2 = arg_Cons_1_5
+  y2 = arg_Cons_0_5
+  x4 = 1
+  scrut = self.Comp#le
+  tmp5 = 1 >= y2
+  tmp6 = new Cons(tmp5, rest2)
+  [tmp6, e, d]
+private fun eval_Branch_sp_0(self, s, e, d) =
+  let {rest3, c, arg_Cons_0_6, arg_Cons_1_6}
+  arg_Cons_0_6 = s.Cons#x
+  arg_Cons_1_6 = s.Cons#xs
+  rest3 = arg_Cons_1_6
+  c = arg_Cons_0_6
+  if c is
+    true then evalAll_SpecialFib_sp_15(self.Branch#t, rest3, e, d)
+    else evalAll_SpecialFib_sp_17(self.Branch#f, rest3, e, d)
+private fun eval_Branch_sp_1(self, s, e, d) =
+  let {rest3, c, arg_Cons_0_6, arg_Cons_1_6}
+  arg_Cons_0_6 = s.Cons#x
+  arg_Cons_1_6 = s.Cons#xs
+  rest3 = arg_Cons_1_6
+  c = arg_Cons_0_6
+  if c is
+    true then evalAll_SpecialFib_sp_38(self.Branch#t, rest3, e, d)
+    else evalAll_SpecialFib_sp_40(self.Branch#f, rest3, e, d)
+private fun eval_Branch_sp_2(self, s, e, d) =
+  let {rest3, c, arg_Cons_0_6, arg_Cons_1_6}
+  arg_Cons_0_6 = s.Cons#x
+  arg_Cons_1_6 = s.Cons#xs
+  rest3 = arg_Cons_1_6
+  c = arg_Cons_0_6
+  if c is
+    true then evalAll_SpecialFib_sp_59(self.Branch#t, rest3, e, d)
+    else evalAll_SpecialFib_sp_61(self.Branch#f, rest3, e, d)
+private fun eval_Branch_sp_3(self, s, e, d) =
+  let {rest3, c, arg_Cons_0_6, arg_Cons_1_6}
+  arg_Cons_0_6 = s.Cons#x
+  arg_Cons_1_6 = s.Cons#xs
+  rest3 = arg_Cons_1_6
+  c = arg_Cons_0_6
+  if c is
+    true then evalAll_SpecialFib_sp_74(self.Branch#t, rest3, e, d)
+    else evalAll_SpecialFib_sp_76(self.Branch#f, rest3, e, d)
+private fun eval_Load_sp_0(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_0(e, self.Load#name)
+  f1 = get_SpecialFib_sp_1(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_1(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_2(e, self.Load#name)
+  f1 = get_SpecialFib_sp_3(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_10(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_10(e, self.Load#name)
+  if opt is
+    Some then
+      arg_Some_0_ = opt.Some#x
+      v1 = arg_Some_0_
+      tmp7 = new Cons(v1, s)
+      [tmp7, e, d]
+    else
+      f1 = get_SpecialFib_sp_10(d, self.Load#name)
+      if f1 is
+        Some then
+          arg_Some_0_1 = f1.Some#x
+          g = arg_Some_0_1
+          tmp8 = new Cons(g, s)
+          [tmp8, e, d]
+        else Error
+private fun eval_Load_sp_11(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_0(e, self.Load#name)
+  f1 = get_SpecialFib_sp_11(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_12(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_4(e, self.Load#name)
+  arg_Some_0_ = opt.Some#x
+  v1 = arg_Some_0_
+  tmp7 = new Cons(v1, s)
+  [tmp7, e, d]
+private fun eval_Load_sp_13(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_9(e, self.Load#name)
+  f1 = get_SpecialFib_sp_11(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_14(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_0(e, self.Load#name)
+  f1 = get_SpecialFib_sp_12(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_15(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_4(e, self.Load#name)
+  arg_Some_0_ = opt.Some#x
+  v1 = arg_Some_0_
+  tmp7 = new Cons(v1, s)
+  [tmp7, e, d]
+private fun eval_Load_sp_16(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_9(e, self.Load#name)
+  f1 = get_SpecialFib_sp_12(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_2(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_4(e, self.Load#name)
+  arg_Some_0_ = opt.Some#x
+  v1 = arg_Some_0_
+  tmp7 = new Cons(v1, s)
+  [tmp7, e, d]
+private fun eval_Load_sp_3(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_5(e, self.Load#name)
+  f1 = get_SpecialFib_sp_3(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_4(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_6(e, self.Load#name)
+  if opt is
+    Some then
+      arg_Some_0_ = opt.Some#x
+      v1 = arg_Some_0_
+      tmp7 = new Cons(v1, s)
+      [tmp7, e, d]
+    else
+      f1 = get_SpecialFib_sp_6(d, self.Load#name)
+      if f1 is
+        Some then
+          arg_Some_0_1 = f1.Some#x
+          g = arg_Some_0_1
+          tmp8 = new Cons(g, s)
+          [tmp8, e, d]
+        else Error
+private fun eval_Load_sp_5(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_7(e, self.Load#name)
+  if opt is
+    Some then
+      arg_Some_0_ = opt.Some#x
+      v1 = arg_Some_0_
+      tmp7 = new Cons(v1, s)
+      [tmp7, e, d]
+    else
+      f1 = get_SpecialFib_sp_7(d, self.Load#name)
+      if f1 is
+        Some then
+          arg_Some_0_1 = f1.Some#x
+          g = arg_Some_0_1
+          tmp8 = new Cons(g, s)
+          [tmp8, e, d]
+        else Error
+private fun eval_Load_sp_6(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_0(e, self.Load#name)
+  f1 = get_SpecialFib_sp_8(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_7(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_4(e, self.Load#name)
+  arg_Some_0_ = opt.Some#x
+  v1 = arg_Some_0_
+  tmp7 = new Cons(v1, s)
+  [tmp7, e, d]
+private fun eval_Load_sp_8(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_9(e, self.Load#name)
+  f1 = get_SpecialFib_sp_8(d, self.Load#name)
+  arg_Some_0_1 = f1.Some#x
+  g = arg_Some_0_1
+  tmp8 = new Cons(g, s)
+  [tmp8, e, d]
+private fun eval_Load_sp_9(self, s, e, d) =
+  let {opt, v1, f1, g, arg_Some_0_, tmp7, arg_Some_0_1, tmp8}
+  opt = get_SpecialFib_sp_6(e, self.Load#name)
+  if opt is
+    Some then
+      arg_Some_0_ = opt.Some#x
+      v1 = arg_Some_0_
+      tmp7 = new Cons(v1, s)
+      [tmp7, e, d]
+    else
+      f1 = get_SpecialFib_sp_6(d, self.Load#name)
+      if f1 is
+        Some then
+          arg_Some_0_1 = f1.Some#x
+          g = arg_Some_0_1
+          tmp8 = new Cons(g, s)
+          [tmp8, e, d]
+        else Error
+private fun eval_Fun_sp_0(self, s, e, d) =
+  let {tmp9, tmp10, tmp11}
+  tmp9 = new Closure(self.Fun#name, self.Fun#ps, self.Fun#body, e)
+  tmp10 = [self.name, tmp9]
+  tmp11 = new Cons(tmp10, d)
+  [s, e, tmp11]
+private fun eval_Fun_sp_1(self, s, e, d) =
+  let {tmp9, tmp10, tmp11}
+  tmp9 = new Closure(self.Fun#name, self.Fun#ps, self.Fun#body, e)
+  tmp10 = [self.name, tmp9]
+  tmp11 = new Cons(tmp10, d)
+  [s, e, tmp11]
+private fun eval_Fun_sp_2(self, s, e, d) =
+  let {tmp9, tmp10, tmp11}
+  tmp9 = new Closure(self.Fun#name, self.Fun#ps, self.Fun#body, e)
+  tmp10 = [self.name, tmp9]
+  tmp11 = new Cons(tmp10, d)
+  [s, e, tmp11]
+private fun eval_Fun_sp_3(self, s, e, d) =
+  let {tmp9, tmp10, tmp11}
+  tmp9 = new Closure(self.Fun#name, self.Fun#ps, self.Fun#body, e)
+  tmp10 = [self.name, tmp9]
+  tmp11 = new Cons(tmp10, d)
+  [s, e, tmp11]
+private fun eval_Fun_sp_4(self, s, e, d) =
+  let {tmp9, tmp10, tmp11}
+  tmp9 = new Closure(self.Fun#name, self.Fun#ps, self.Fun#body, e)
+  tmp10 = [self.name, tmp9]
+  tmp11 = new Cons(tmp10, d)
+  [s, e, tmp11]
+private fun eval_Call_sp_0(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "f"
+  t1 = bind_SpecialFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_4(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_1(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "fib"
+  t1 = bind_SpecialFib_sp_2(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_11(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_2(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "fib"
+  t1 = bind_SpecialFib_sp_2(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_11(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_3(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  if v2 is
+    Closure then
+      arg_Closure_0_ = v2.Closure#name
+      arg_Closure_1_ = v2.Closure#ps
+      arg_Closure_2_ = v2.Closure#body
+      arg_Closure_3_ = v2.Closure#env
+      e__ = arg_Closure_3_
+      body2 = arg_Closure_2_
+      ps2 = arg_Closure_1_
+      name3 = arg_Closure_0_
+      t1 = bind_SpecialFib_sp_3(ps2, s__, e__)
+      if t1 is
+        [_, _] then
+          element0_ = t1.0
+          element1_ = t1.1
+          ee = element1_
+          ss = element0_
+          res = evalAll_SpecialFib_sp_5(body2, ss, ee, d)
+          if res is
+            [_, _, _] then
+              element0_1 = res.0
+              element1_1 = res.1
+              element2_ = res.2
+              nd = element2_
+              rest4 = element0_1
+              [rest4, e, nd]
+            else Error
+        else Error
+    else Error
+private fun eval_Call_sp_4(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "f"
+  t1 = bind_SpecialFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_34(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_5(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "f"
+  t1 = bind_SpecialFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_34(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_6(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "f"
+  t1 = bind_SpecialFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_55(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_7(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "f"
+  t1 = bind_SpecialFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_55(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_8(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "f"
+  t1 = bind_SpecialFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_70(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun eval_Call_sp_9(self, s, e, d) =
+  let {v2, s__, body2, name3, ps2, e__, t1, ss, ee, res, nd, rest4, arg_Cons_0_7, arg_Cons_1_7, arg_Closure_0_, arg_Closure_1_, arg_Closure_2_, arg_Closure_3_, element1_, element0_, element2_, element1_1, element0_1}
+  arg_Cons_0_7 = s.Cons#x
+  arg_Cons_1_7 = s.Cons#xs
+  s__ = arg_Cons_1_7
+  v2 = arg_Cons_0_7
+  arg_Closure_0_ = v2.Closure#name
+  arg_Closure_1_ = v2.Closure#ps
+  arg_Closure_2_ = v2.Closure#body
+  arg_Closure_3_ = v2.Closure#env
+  e__ = arg_Closure_3_
+  body2 = arg_Closure_2_
+  ps2 = arg_Closure_1_
+  name3 = "f"
+  t1 = bind_SpecialFib_sp_0(ps2, s__, e__)
+  element0_ = t1.0
+  element1_ = t1.1
+  ee = element1_
+  ss = element0_
+  res = evalAll_SpecialFib_sp_70(body2, ss, ee, d)
+  if res is
+    [_, _, _] then
+      element0_1 = res.0
+      element1_1 = res.1
+      element2_ = res.2
+      nd = element2_
+      rest4 = element0_1
+      [rest4, e, nd]
+    else Error
+private fun run_Program_sp_0(self, n) =
+  let {tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+  tmp12 = mkCons_SpecialFib_sp_0("x", Nil)
+  tmp13 = mkFun_SpecialFib_sp_1("f", tmp12, self.Program#body)
+  tmp14 = mkPush_SpecialFib_sp_2(n)
+  tmp15 = mkLoad_SpecialFib_sp_0("f")
+  tmp16 = mkCons_SpecialFib_sp_1(Call, Nil)
+  tmp17 = mkCons_SpecialFib_sp_2(tmp15, tmp16)
+  tmp18 = mkCons_SpecialFib_sp_3(tmp14, tmp17)
+  tmp19 = mkCons_SpecialFib_sp_33(tmp13, tmp18)
+  exec_SpecialFib_sp_2(tmp19, Nil, Nil, Nil)
+private fun run_Program_sp_1(self, n) =
+  let {tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+  tmp12 = mkCons_SpecialFib_sp_0("x", Nil)
+  tmp13 = mkFun_SpecialFib_sp_2("f", tmp12, self.Program#body)
+  tmp14 = mkPush_SpecialFib_sp_2(n)
+  tmp15 = mkLoad_SpecialFib_sp_0("f")
+  tmp16 = mkCons_SpecialFib_sp_1(Call, Nil)
+  tmp17 = mkCons_SpecialFib_sp_2(tmp15, tmp16)
+  tmp18 = mkCons_SpecialFib_sp_3(tmp14, tmp17)
+  tmp19 = mkCons_SpecialFib_sp_34(tmp13, tmp18)
+  exec_SpecialFib_sp_3(tmp19, Nil, Nil, Nil)
+private fun run_Program_sp_2(self, n) =
+  let {tmp12, tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19}
+  tmp12 = mkCons_SpecialFib_sp_0("x", Nil)
+  tmp13 = mkFun_SpecialFib_sp_3("f", tmp12, self.Program#body)
+  tmp14 = mkPush_SpecialFib_sp_2(n)
+  tmp15 = mkLoad_SpecialFib_sp_0("f")
+  tmp16 = mkCons_SpecialFib_sp_1(Call, Nil)
+  tmp17 = mkCons_SpecialFib_sp_2(tmp15, tmp16)
+  tmp18 = mkCons_SpecialFib_sp_3(tmp14, tmp17)
+  tmp19 = mkCons_SpecialFib_sp_35(tmp13, tmp18)
+  exec_SpecialFib_sp_4(tmp19, Nil, Nil, Nil)

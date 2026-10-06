@@ -6,6 +6,14 @@ module Mx with
     set a.(i) = v
     a
   fun len(arr) = arr.length
+  // The trigonometry goes through this module rather than calling `Math`
+  // directly: `Mx` is unstaged, so a call whose argument is statically known is
+  // evaluated during specialization and the sine/cosine becomes a literal.
+  // Calling the `Math` global instead leaves a real call in the residual
+  // program even when the angle is known. (`FFTMath` in `StagedFFT.mls` is
+  // unstaged for the same reason.)
+  fun sin(a) = Math.sin(a)
+  fun cos(a) = Math.cos(a)
 
 module NaiveTransform3D with
   class Matrix(val arr, val r, val c)
@@ -52,8 +60,8 @@ module NaiveTransform3D with
       , 2, 2, sz
 
   fun rotateX(angle) =
-    let s = Math.sin(angle)
-    let c = Math.cos(angle)
+    let s = Mx.sin(angle)
+    let c = Mx.cos(angle)
     update of
       update of
         update of
@@ -62,8 +70,8 @@ module NaiveTransform3D with
       , 2, 2, c
 
   fun rotateY(angle) =
-    let s = Math.sin(angle)
-    let c = Math.cos(angle)
+    let s = Mx.sin(angle)
+    let c = Mx.cos(angle)
     update of
       update of
         update of
@@ -72,8 +80,8 @@ module NaiveTransform3D with
       , 2, 2, c
 
   fun rotateZ(angle) =
-    let s = Math.sin(angle)
-    let c = Math.cos(angle)
+    let s = Mx.sin(angle)
+    let c = Mx.cos(angle)
     update of
       update of
         update of
@@ -93,3 +101,24 @@ module NaiveTransform3D with
 
   fun model0(local) =
     model(local, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0])
+
+  // ---------------------------------------------------------------------------
+  // Choosing the transform at run time.
+  //
+  // `model` takes the placement as three ordinary arguments, so none of it is
+  // static and the matrix chain stays interpreted -- `Math.sin`/`Math.cos` are
+  // real calls and every matrix entry is computed.  A preset puts one
+  // placement in a class instead, so a run-time choice between presets is a
+  // choice between *instances*, which the specializer can keep apart.
+  // ---------------------------------------------------------------------------
+
+  class Preset(val px, val py, val pz, val sx, val sy, val sz, val rx, val ry, val rz) with
+    fun applyTo(local) = model(local, [px, py, pz], [sx, sy, sz], [rx, ry, rz])
+
+  fun preset(k) =
+    if k is
+      0 then new Preset(11, 4, 51, 0.4, 0.19, 0.19, 0.8 * 3.14159265, 3.1415926535, 0.0)
+      1 then new Preset(-3, 7, 12, 1.5, 0.5, 2.0, 0.25 * 3.14159265, 0.0, 1.5707963268)
+      else new Preset(0, 0, 0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0)
+
+  fun modelPreset(k, local) = preset(k).applyTo(local)

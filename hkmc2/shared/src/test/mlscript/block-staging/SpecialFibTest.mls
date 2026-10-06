@@ -1,0 +1,97 @@
+:js
+:staging
+:noModuleCheck
+
+
+// The interpreted program chosen at run time.
+//
+// `SimpleFib`, `InterpreterFib` and `SpecialFib` all expose `runProgram(k, n)`,
+// which picks between three programs for the little stack machine:
+//
+//   k = 0   f(x) = if x <= 1 then 1 else f(x-1) + f(x-2)
+//   k = 1   f(x) = if x <= 2 then 1 else f(x-1) + f(x-2)
+//   k = 2   f(x) = if x <= 1 then 2 else f(x-1) + f(x-2)
+//
+// Only `SpecialFib` marks the candidates `@special`, so only it can specialize
+// the interpreter past the choice.  The three programs compute different
+// functions, so a collapsed dispatch shows up as a wrong answer.
+
+// References for the three programs, evaluated directly.
+fun refA(x) = if x <= 1 then 1 else refA(x - 1) + refA(x - 2)
+fun refB(x) = if x <= 2 then 1 else refB(x - 1) + refB(x - 2)
+fun refC(x) = if x <= 1 then 2 else refC(x - 1) + refC(x - 2)
+
+[refA(18), refB(18), refC(18)]
+//│ = [4181, 2584, 8362]
+
+
+import "../../mlscript-compile/SimpleFib.mls"
+
+
+SimpleFib.runProgram(0, 18).x == refA(18)
+//│ = true
+
+SimpleFib.runProgram(1, 18).x == refB(18)
+//│ = true
+
+SimpleFib.runProgram(2, 18).x == refC(18)
+//│ = true
+
+// Program 0 is the one `mkFib` already names.
+SimpleFib.runProgram(0, 18).x == SimpleFib.mkFib(18).x
+//│ = true
+
+
+// ===========================================================================
+// Specializing the interpreter against a program named at the call site.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/InterpreterFib.mls"
+
+
+InterpreterFib."generate"("../InterpreterFib.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/InterpreterFib.mls")
+
+
+import "../../mlscript-compile/staging/out/InterpreterFib.mls"
+
+
+InterpreterFib.runProgram(0, 18).x == refA(18)
+//│ = true
+
+InterpreterFib.runProgram(1, 18).x == refB(18)
+//│ = true
+
+InterpreterFib.runProgram(2, 18).x == refC(18)
+//│ = true
+
+
+// ===========================================================================
+// Specializing past a program only chosen at run time.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/SpecialFib.mls"
+
+
+SpecialFib."generate"("../SpecialFib.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SpecialFib.mls")
+
+
+import "../../mlscript-compile/staging/out/SpecialFib.mls"
+
+
+// Each of these would fail if the dispatch collapsed onto one program, since
+// the three compute different functions.
+SpecialFib.runProgram(0, 18).x == refA(18)
+//│ = true
+
+SpecialFib.runProgram(1, 18).x == refB(18)
+//│ = true
+
+SpecialFib.runProgram(2, 18).x == refC(18)
+//│ = true
+
+[SpecialFib.runProgram(0, 12).x, SpecialFib.runProgram(1, 12).x, SpecialFib.runProgram(2, 12).x]
+//│ = [233, 144, 466]
+
+// The entry point that names one program still works in this module.
+SpecialFib.mkFib(18).x == refA(18)
+//│ = true

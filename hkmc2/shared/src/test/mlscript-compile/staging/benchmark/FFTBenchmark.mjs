@@ -2,6 +2,7 @@ import { run, bench, boxplot, summary } from 'mitata';
 
 import NaiveFFT from "../../NaiveFFT.mjs"
 import StagedFFT from "../out/StagedFFT.mjs"
+import SpecialFFT from "../out/SpecialFFT.mjs"
 
 // Each bench body transforms `signalCount * repeats` buffers, which keeps a
 // single measured execution well under a second.
@@ -70,6 +71,53 @@ boxplot(() => {
         }
       }
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The factorization chosen at run time.
+//
+// `fftPlan(k, xs)` picks between 8 = 2*2*2, 8 = 4*2 and 8 = 2*4.  `StagedFFT`
+// cannot specialize past that choice -- the radix list it hands to `run` is an
+// ordinary value -- so it falls back to interpreting the transform, which is
+// roughly what `NaiveFFT` does.  `SpecialFFT` marks the three candidates
+// `@special`, so it gets one unrolled butterfly network per factorization and
+// a single dispatch on `k`.
+//
+// More repeats than above, since this group's fastest bar is a specialized
+// transform and would otherwise be too short to measure reliably.
+// ---------------------------------------------------------------------------
+
+const planRepeats = 48;
+
+// A fixed, repeatable sequence of choices, so every implementation sees the
+// same mix and the dispatch is not trivially predicted into one target.
+const planPicks = Array.from({ length: signals8.length }, (_, i) => i % 3);
+
+const runPlans = (m) => {
+  for (let r = 0; r < planRepeats; ++r) {
+    for (let i = 0; i < signals8.length; ++i) {
+      m.fftPlan(planPicks[i], signals8[i]);
+    }
+  }
+};
+
+// Guard against measuring three different computations: all three must agree
+// with each other, to six decimals, on every plan.
+const round6 = (x) => { const y = Math.round(x * 1e6); return y === 0 ? 0 : y / 1e6; };
+const showArr = (a) => a.map(round6).join(",");
+for (let k = 0; k < 3; ++k) {
+  const a = showArr(NaiveFFT.fftPlan(k, signals8[0]));
+  const b = showArr(StagedFFT.fftPlan(k, signals8[0]));
+  const c = showArr(SpecialFFT.fftPlan(k, signals8[0]));
+  if (a !== b || a !== c) throw new Error(`fftPlan(${k}): implementations disagree`);
+}
+
+boxplot(() => {
+  summary(() => {
+    bench('NaiveFFT.fftPlan(49152 signals)', () => { runPlans(NaiveFFT); });
+    bench('StagedFFT.fftPlan(49152 signals)', () => { runPlans(StagedFFT); });
+    bench('SpecialFFT.fftPlan(49152 signals)', () => { runPlans(SpecialFFT); });
   });
 });
 

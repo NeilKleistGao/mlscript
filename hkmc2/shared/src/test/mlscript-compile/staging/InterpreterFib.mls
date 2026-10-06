@@ -108,3 +108,43 @@ staged module InterpreterFib with
           )), Nil))))), new Cons(new Push(n), new Cons(new Load("fib"), new Cons(Call, Nil))))
     exec(insts, Nil, Nil, Nil)
 
+  // ---------------------------------------------------------------------------
+  // Choosing the program at run time.
+  //
+  // `mkFib` names one program, so the interpreter can be specialized away
+  // against it entirely.  `runProgram` instead picks one of three programs at
+  // run time, which leaves the instruction list an ordinary value -- unless
+  // the alternatives are `@special`, in which case each one is still a known
+  // shape and the interpreter is specialized once per program.
+  // ---------------------------------------------------------------------------
+
+  fun mkCons(x, xs) = new Cons(x, xs)
+  fun mkPush(v) = new Push(v)
+  fun mkLoad(n) = new Load(n)
+  fun mkComp(le) = new Comp(le)
+  fun mkBranch(t, f) = new Branch(t, f)
+  fun mkFun(name, ps, body) = new Fun(name, ps, body)
+
+  // f(x) = if x <= guard then base else f(x - 1) + f(x - 2)
+  fun fibBody(guard, base) =
+    mkCons(mkLoad("x"), mkCons(mkPush(guard), mkCons(mkComp(false),
+      mkCons(mkBranch(
+        mkCons(mkPush(base), Nil),
+        mkCons(mkLoad("x"), mkCons(mkPush(1), mkCons(Sub, mkCons(mkLoad("f"), mkCons(Call,
+          mkCons(mkLoad("x"), mkCons(mkPush(2), mkCons(Sub, mkCons(mkLoad("f"), mkCons(Call, mkCons(Add, Nil)))))))))))
+      ), Nil))))
+
+  staged class Program(val body) with
+    fun run(n) =
+      exec of
+        mkCons(mkFun("f", mkCons("x", Nil), body),
+          mkCons(mkPush(n), mkCons(mkLoad("f"), mkCons(Call, Nil))))
+        , Nil, Nil, Nil
+
+  fun program(k) =
+    if k is
+      0 then new Program(fibBody(1, 1))
+      1 then new Program(fibBody(2, 1))
+      else new Program(fibBody(1, 2))
+
+  fun runProgram(k, n) = program(k).run(n)

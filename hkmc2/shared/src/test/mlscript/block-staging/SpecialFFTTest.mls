@@ -1,0 +1,153 @@
+:js
+:staging
+:noModuleCheck
+
+
+// The factorization picked at run time.
+//
+// `NaiveFFT`, `StagedFFT` and `SpecialFFT` all expose `fftPlan(k, xs)`, which
+// chooses between 8 = 2*2*2, 8 = 4*2 and 8 = 2*4.  Only `SpecialFFT` marks the
+// candidates `@special`, so only it can specialize past the choice; all three
+// must still agree, and must agree with the entry points that name one
+// factorization.
+//
+// Distinct factorizations of the same length are algebraically equal but not
+// bit-identical, so spectra are compared after rounding to six decimals.
+fun round6(x) =
+  let y = Math.round(x * 1000000)
+  if y == 0 then 0 else y / 1000000
+
+fun show(arr) = arr.map((x, _, _) => round6(x))
+
+fun same(a, b) = show(a).join(",") == show(b).join(",")
+
+:silent
+let impulse8 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+let ramp8 = [0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0]
+let sig8 = [1, 0, 2, -1, 0, 1, -1, 2, 3, 0, 0, -2, 4, 1, -2, 3]
+
+
+import "../../mlscript-compile/NaiveFFT.mls"
+
+
+// All three plans compute the same 8-point transform.
+same(NaiveFFT.fftPlan(0, sig8), NaiveFFT.fftPlan(1, sig8))
+//│ = true
+
+same(NaiveFFT.fftPlan(0, sig8), NaiveFFT.fftPlan(2, sig8))
+//│ = true
+
+// ... and each matches the entry point that names that factorization.
+same(NaiveFFT.fftPlan(0, sig8), NaiveFFT.fft8(sig8))
+//│ = true
+
+same(NaiveFFT.fftPlan(1, sig8), NaiveFFT.fft8_42(sig8))
+//│ = true
+
+same(NaiveFFT.fftPlan(2, sig8), NaiveFFT.fft8_24(sig8))
+//│ = true
+
+// ... and the direct O(n^2) DFT.
+same(NaiveFFT.fftPlan(0, sig8), NaiveFFT.dft(sig8))
+//│ = true
+
+// The transform of a unit impulse is flat.
+show(NaiveFFT.fftPlan(1, impulse8))
+//│ = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+
+
+// ===========================================================================
+// Specializing on a factorization named at the call site.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/StagedFFT.mls"
+
+
+StagedFFT."generate"("../StagedFFT.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/StagedFFT.mls")
+
+
+import "../../mlscript-compile/staging/out/StagedFFT.mls"
+
+
+same(StagedFFT.fftPlan(0, sig8), NaiveFFT.fftPlan(0, sig8))
+//│ = true
+
+same(StagedFFT.fftPlan(1, sig8), NaiveFFT.fftPlan(1, sig8))
+//│ = true
+
+same(StagedFFT.fftPlan(2, sig8), NaiveFFT.fftPlan(2, sig8))
+//│ = true
+
+same(StagedFFT.fftPlan(1, ramp8), NaiveFFT.fft8_42(ramp8))
+//│ = true
+
+
+// ===========================================================================
+// Specializing past a factorization only chosen at run time.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/SpecialFFT.mls"
+
+
+SpecialFFT."generate"("../SpecialFFT.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SpecialFFT.mls")
+
+
+import "../../mlscript-compile/staging/out/SpecialFFT.mls"
+
+
+same(SpecialFFT.fftPlan(0, sig8), NaiveFFT.fftPlan(0, sig8))
+//│ = true
+
+same(SpecialFFT.fftPlan(1, sig8), NaiveFFT.fftPlan(1, sig8))
+//│ = true
+
+same(SpecialFFT.fftPlan(2, sig8), NaiveFFT.fftPlan(2, sig8))
+//│ = true
+
+same(SpecialFFT.fftPlan(0, ramp8), NaiveFFT.dft(ramp8))
+//│ = true
+
+same(SpecialFFT.fftPlan(2, impulse8), NaiveFFT.fft8_24(impulse8))
+//│ = true
+
+// The entry points that name a factorization still work in this module.
+same(SpecialFFT.fft8(sig8), NaiveFFT.fft8(sig8))
+//│ = true
+
+same(SpecialFFT.fft12([1, 0, 2, -1, 0, 1, -1, 2, 3, 0, 0, -2, 4, 1, -2, 3, 1, -1, 0, 0, 2, 2, -3, 1]),
+  NaiveFFT.fft12([1, 0, 2, -1, 0, 1, -1, 2, 3, 0, 0, -2, 4, 1, -2, 3, 1, -1, 0, 0, 2, 2, -3, 1]))
+//│ = true
+
+
+// ===========================================================================
+// That the dispatch actually honours `k`.
+//
+// Comparing rounded spectra cannot catch a broken dispatch here: all three
+// factorizations compute the same transform, so running the wrong butterfly
+// network still gives the right answer to six decimals.  They differ in the
+// last float bits though, so comparing raw output against the entry point
+// that names each factorization does pin it down.
+// ===========================================================================
+
+fun exact(a, b) = a.join(",") == b.join(",")
+
+exact(NaiveFFT.fftPlan(1, sig8), NaiveFFT.fft8_42(sig8))
+//│ = true
+
+exact(StagedFFT.fftPlan(1, sig8), StagedFFT.fft8_42(sig8))
+//│ = true
+
+exact(SpecialFFT.fftPlan(1, sig8), SpecialFFT.fft8_42(sig8))
+//│ = true
+
+exact(SpecialFFT.fftPlan(0, sig8), SpecialFFT.fft8(sig8))
+//│ = true
+
+exact(SpecialFFT.fftPlan(2, sig8), SpecialFFT.fft8_24(sig8))
+//│ = true
+
+// 2*2*2 and 4*2 really are bit-different on this signal, so a dispatch that
+// collapsed the plans would make this `true`.
+exact(SpecialFFT.fftPlan(0, sig8), SpecialFFT.fftPlan(1, sig8))
+//│ = false
+
