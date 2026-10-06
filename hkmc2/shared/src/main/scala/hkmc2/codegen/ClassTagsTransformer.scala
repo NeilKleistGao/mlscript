@@ -691,7 +691,9 @@ end ShapeProp
 
 
 class ClassTagsTransformer private (
+  program: Program,
   taggedResultIds: Set[ResultId],
+  escapingResultIds: Set[ResultId],
   shapeByResultId: collection.Map[ResultId, Shape],
   funSymToFunDefn: collection.Map[TermSymbol, FunDefn],
   shapeTags: collection.Map[Shape, Int],
@@ -767,6 +769,241 @@ class ClassTagsTransformer private (
   private lazy val tagOfShape: Map[Shape, Int] =
     taggedShapes.iterator.map((shape, tag) => (shape: Shape) -> tag).toMap
 
+  /** The tags a construction may be given, most precise first -- the order in which the
+    * generated code tries them, so that a construction matching several shapes takes the
+    * precise one. Memoized because both the pass that plans the duplicated classes and
+    * the one that rewrites the constructions ask for it, and flattening the shape of a
+    * construction that takes many of them is not cheap. */
+  private val candidatesByResultId = MutMap.empty[ResultId, List[ClassShape -> Int]]
+  private def orderedCandidates(result: Result): List[ClassShape -> Int] =
+    candidatesByResultId.getOrElseUpdate(result.uid, {
+      // * the shapes this very construction was found to take, in tag order
+      val candidates = shapeByResultId.get(result.uid).toList.flatMap: shape =>
+        shape.flattenShape.collect:
+          case concrete: ClassShape => concrete
+      .flatMap(shape => tagOfShape.get(shape).map(shape -> _)).distinct
+      candidates.foldLeft(List.empty[ClassShape -> Int]): (acc, entry) =>
+        val split = acc.span(other => !strictlyBelow(entry._1, other._1))
+        split._1 ++ (entry :: split._2)
+    })
+
+  /** The definition of each class this program defines, so that it can be copied. A class
+    * another compilation unit defines is deliberately absent: there is no definition here
+    * to copy, and no place in this program to put the copy. */
+  private lazy val programClasses: collection.Map[ClassSymbol, ClsLikeDefn] =
+    val definitions = MutMap.empty[ClassSymbol, ClsLikeDefn]
+    val collector = new BlockTraverser:
+      override def applyDefn(defn: Defn): Unit =
+        defn match
+          case defn: ClsLikeDefn => defn.isym match
+            case cls: ClassSymbol => definitions(cls) = defn
+            case _ => ()
+          case _ => ()
+        super.applyDefn(defn)
+    collector.applyProgram(program)
+    definitions
+
+  /** Whether a copy of this definition can stand in for it at a construction site.
+    *
+    * What is ruled out is a `@bufferable` class, whose instances come from a pool rather
+    * than from its constructor, and the class-like definitions that are not classes --
+    * objects, modules and patterns are singletons, and a reference to one is not a
+    * construction to begin with.
+    */
+  private def canDuplicate(defn: ClsLikeDefn): Bool =
+    (defn.k is syntax.Cls)
+      && defn.bufferable.isEmpty
+      // * `ClassParamFlattener` has run, so this is what every class definition looks like
+      && defn.paramsOpt.isEmpty && (defn.auxParams.sizeIs == 1)
+      // * the tag parameter goes last, which a rest parameter would be in the way of
+      && defn.auxParams.forall(_.restParam.isEmpty)
+
+  private def duplicableDefn(cls: ClassSymbol): Opt[ClsLikeDefn] =
+    programClasses.get(cls).filter(canDuplicate)
+
+  /** A construction whose instance can be built by a duplicated class instead of being
+    * tagged after the fact, together with the pieces needed to rebuild it.
+    *
+    * An instance a caller outside this module can get hold of is not one of them. Which
+    * class an instance belongs to is part of what such a caller sees -- it is the name
+    * the value is rendered under, and the class its own patterns match against -- whereas
+    * the tag field this pass would otherwise add to it is not, since the field is absent
+    * from the class's definition metadata. So an escaping construction keeps having its
+    * tag assigned after the fact, and the copies stay an implementation detail of the
+    * module that builds them.
+    *
+    * The tag is passed as the last argument, so the arguments have to line up with the
+    * parameters one for one: a spread, or an unsaturated construction, would push the tag
+    * into another parameter's place. `ClassParamFlattener` saturates instantiations, so
+    * this is a guard against a construction no longer being what this pass assumes rather
+    * than a case that is expected to arise.
+    */
+  private object DuplicableCtor:
+    private def unapplyTo(
+      cls: ClassSymbol, path: Path, args: Ls[Arg], mut: Bool, annotations: Ls[Annot],
+    ): Opt[(
+      cls: ClassSymbol, defn: ClsLikeDefn, clsPath: Path,
+      args: Ls[Arg], mut: Bool, annotations: Ls[Annot],
+    )] =
+      duplicableDefn(cls)
+        .filter(defn => args.forall(_.spread.isEmpty)
+          && args.sizeCompare(defn.auxParams.iterator.map(_.params.size).sum) === 0)
+        .map(defn => (cls, defn, path, args, mut, annotations))
+    def unapply(result: Result): Opt[(
+      cls: ClassSymbol, defn: ClsLikeDefn, clsPath: Path,
+      args: Ls[Arg], mut: Bool, annotations: Ls[Annot],
+    )] = if escapingResultIds.contains(result.uid) then N else result match
+      case inst @ Instantiate(mut, path @ MemberRefTo(cls: ClassSymbol, _), args :: Nil) =>
+        unapplyTo(cls, path, args, mut, inst.metadata.annotations)
+      case call @ Call(path @ MemberRefTo(ctor: ClassCtorSymbol, _), args :: Nil) =>
+        // * the constructor function freezes its result, which is `Instantiate(mut = false)`
+        unapplyTo(ctor.associatedCls, path, args, false, call.metadata.annotations)
+      case _ => N
+
+  /** The duplicate of each class some tagged construction in this program builds: a
+    * subclass of it with one constructor parameter more, the tag, which its constructor
+    * stores in `__tag$` like any other field. The tag is therefore part of the instance
+    * from the moment it is built, rather than a field grown onto it afterwards -- which
+    * is what forces `:noFreeze` today and what makes a JavaScript engine give the
+    * instance a second hidden class.
+    *
+    * One copy per class is enough, and not one per tag, precisely because the tag is a
+    * constructor argument: a construction that may take several shapes computes its tag
+    * first and passes it in.
+    *
+    * The copies are planned in a pass of their own rather than as the constructions are
+    * rewritten, because a copy has to be defined next to the class it copies, which the
+    * rewrite may well reach after the construction that needs it.
+    */
+  private lazy val duplicates: Map[ClassSymbol, ClsLikeDefn] =
+    val needed = MutLinkedHashSet.empty[ClassSymbol]
+    val collector = new BlockTraverser:
+      override def applyResult(result: Result): Unit =
+        result match
+          case DuplicableCtor(cls, _, _, _, _, _)
+            if taggedResultIds.contains(result.uid) && orderedCandidates(result).nonEmpty
+          => needed += cls
+          case _ => ()
+        super.applyResult(result)
+    collector.applyProgram(program)
+    needed.iterator.map(cls => cls -> mkDuplicate(cls, programClasses(cls))).toMap
+
+  /** The copy itself: a subclass of the class it copies, taking the same constructor
+    * parameters -- which it forwards -- plus the tag, which it stores in `__tag$`.
+    *
+    * Copying by inheritance rather than by reproducing the class body is what makes this
+    * safe to do to any class, and it is also what makes it right not to copy the methods.
+    * An instance of the copy is an instance of the original, so the `Case.Cls` tests the
+    * rest of the program performs on it still hold -- which matters, because the staged
+    * programs this pass exists for test the very classes they tag. The original's own
+    * constructor still initializes the original's fields, including the ones JavaScript
+    * implements as true private (`#x`) members, which a reproduced body could not install;
+    * and the methods, along with the accessors that reach those private fields, come with
+    * the prototype.
+    *
+    * The copy keeps the original's owner, so it is defined wherever the original is and
+    * reached the same way, and it is given a source-level definition of its own -- the
+    * original's, with the tag appended to its last parameter list -- so that it looks
+    * like the class it is to the parts of the backend that read one: the renderer shows
+    * an instance of it with its field names, and the constructor-function wrapper the JS
+    * backend emits beside every parameterized class takes the tag too.
+    */
+  private def mkDuplicate(cls: ClassSymbol, defn: ClsLikeDefn): ClsLikeDefn =
+    val nme = s"${defn.sym.nme}__Tagged"
+    val sym = new BlockMemberSymbol(nme, Nil, nameIsMeaningful = false)
+    val isym = ClassSymbol(
+      syntax.Tree.DummyTypeDef(syntax.Cls), new syntax.Tree.Ident(nme))
+    val ctorSym = ClassCtorSymbol(syntax.Fun, defn.owner, isym)
+    // * one parameter per parameter of the original, to forward to its constructor
+    val forwarded = defn.auxParams.flatMap(_.params).map: param =>
+      Param(param.flags, VarSymbol(param.sym.id, param.sym.erasedType), N, param.modulefulness)
+    val tagParam = Param(
+      FldFlags.empty.copy(isVal = true),
+      VarSymbol(tagField, S(ErasedType.Int)),
+      N,
+      Modulefulness.none,
+    )
+    // * so that the tag is named in the copy's definition metadata rather than elided
+    tagParam.sym.decl = S(tagParam)
+    // * a `val` parameter, so that `__tag$` is a declared field of the copy
+    val tagMember = new BlockMemberSymbol(tagField.name, Nil, nameIsMeaningful = false)
+    val tagTerm = TermSymbol(syntax.ImmutVal, S(isym), tagField, erasedType = S(ErasedType.Int))
+    val superCall = Call(
+      State.builtinOpsMap("super").asSimpleRef,
+      forwarded.map(_.sym.asSimpleRef.asArg) ne_:: Nil,
+    )(CallMetadata.mlsFunWithEffect)
+    mkDuplicateDef(cls, isym, sym, ctorSym, tagParam).foreach(d => isym.defn = S(d))
+    ClsLikeDefn(
+      owner = defn.owner,
+      isym = isym,
+      sym = sym,
+      ctorSym = S(ctorSym),
+      k = syntax.Cls,
+      paramsOpt = N,
+      auxParams = PlainParamList(forwarded :+ tagParam) :: Nil,
+      parentPath = S(definitionSitePath(cls, defn)),
+      methods = Nil,
+      privateFields = Nil,
+      publicFields = (tagMember -> tagTerm) :: Nil,
+      preCtor = Assign(NoSymbol, superCall, End()),
+      ctor = Define(ValDefn(tagTerm, tagMember, tagParam.sym.asSimpleRef)(N, Nil), End()),
+      companion = N,
+      bufferable = N,
+    )(N, Nil)
+
+  /** The copy's source-level definition: the original's, re-pointed at the copy's symbols
+    * and with the tag parameter appended to its last parameter list, which is where
+    * `ClassParamFlattener` would have put it in the flat constructor the backend emits.
+    * The copy declares no companion of its own; the original keeps it. */
+  private def mkDuplicateDef(
+    cls: ClassSymbol, isym: ClassSymbol, sym: BlockMemberSymbol,
+    ctorSym: ClassCtorSymbol, tagParam: Param,
+  ): Opt[ClassDef] =
+    def withTag(ps: ParamList): ParamList = ps.copy(params = ps.params :+ tagParam)
+    def withTagLast(auxParams: Ls[ParamList]): Ls[ParamList] =
+      if auxParams.isEmpty then Nil else auxParams.init :+ withTag(auxParams.last)
+    cls.defn.map:
+      case d: ClassDef.Parameterized => d.copy(
+        sym = isym, bsym = sym, ctorSym = S(ctorSym), companion = N,
+        params = if d.auxParams.isEmpty then withTag(d.params) else d.params,
+        auxParams = withTagLast(d.auxParams),
+      )
+      case d: ClassDef.Plain => d.copy(
+        sym = isym, bsym = sym, ctorSym = S(ctorSym), companion = N,
+        auxParams = withTagLast(d.auxParams),
+      )
+
+  /** A path to a class that is valid where the class is defined, which is where its copy
+    * is defined too. This is the same shape the JS backend itself uses to register a
+    * class under its owner. */
+  private def definitionSitePath(cls: ClassSymbol, defn: ClsLikeDefn): Path =
+    defn.owner match
+      case S(owner) =>
+        Select(owner.asThis, new syntax.Tree.Ident(defn.sym.nme))(S(cls))(false)
+      case N => defn.sym.asMemberRef(cls)
+
+  /** The path that denotes a duplicated class, mirroring the one the construction uses to
+    * denote the original: the copy is defined right next to it and has the same owner, so
+    * the same qualifier reaches it. An owned class reached without a qualifier has nothing
+    * to mirror, and such a construction is left to the field-assignment path. */
+  private def duplicatePath(original: Path, duplicate: ClsLikeDefn): Opt[Path] =
+    (original, duplicate.owner) match
+      case (sel: Select, _) => S(Select(
+        sel.qual, new syntax.Tree.Ident(duplicate.sym.nme),
+      )(S(duplicate.isym))(sel.sanitize).withLocOf(original))
+      case (_: Value.MemberRef, N) =>
+        S(duplicate.sym.asMemberRef(duplicate.isym).withLocOf(original))
+      case _ => N
+
+  /** `result`, rebuilt as a construction of the duplicated class, with `tag` passed for
+    * its tag parameter. */
+  private def mkDuplicatedCtor(result: Result, tag: Path): Opt[Result] = result match
+    case DuplicableCtor(cls, _, clsPath, args, mut, annotations) =>
+      duplicates.get(cls).flatMap(duplicatePath(clsPath, _)).map: path =>
+        Instantiate(mut, path, (args :+ tag.asArg) :: Nil)(
+          InstantiateMetadata(annotations)).withLocOf(result)
+    case _ => N
+
   private def bindResult(result: Result)(k: Path => Block): Block = result match
     case path: Path => k(path)
     case result =>
@@ -774,8 +1011,13 @@ class ClassTagsTransformer private (
       val reference = symbol.asSimpleRef.withLocOf(result)
       Scoped(Set.single(symbol), Assign(symbol, result, k(reference)))
 
-  private def assignTag(instance: Path, tag: Int)(next: Block): Block = // TODO: make __tag$ a real field and fill the symbol for selections
-    AssignField(instance, tagField, Value.Lit(syntax.Tree.IntLit(tag)), next)(N)
+  /** How a tag is written in the generated code. */
+  private def mkTagValue(tag: Int): Path = Value.Lit(syntax.Tree.IntLit(tag))
+
+  /** The fallback for a construction no duplicated class can stand in for: the tag is
+    * grown onto the instance after the fact, which is why this pass requires `:noFreeze`. */
+  private def assignTag(instance: Path, tag: Int)(next: Block): Block = // TODO: fill the symbol for selections
+    AssignField(instance, tagField, mkTagValue(tag), next)(N)
 
   private def mkEquals(left: Path, right: Path)(k: Path => Block): Block =
     bindResult(Call(State.builtinOpsMap("===").asSimpleRef,
@@ -792,7 +1034,7 @@ class ClassTagsTransformer private (
     tagOfShape.get(shape) match
       case S(tag) => mkEquals(
         Select(argument, tagField)(N)(false).withLocOf(argument),
-        Value.Lit(syntax.Tree.IntLit(tag)),
+        mkTagValue(tag),
       )(k)
       case N => shape match
         case LitShape(lit) => mkEquals(argument, lit)(k)
@@ -889,32 +1131,38 @@ class ClassTagsTransformer private (
         mkChecks(checks, N): condition =>
           mkCandidateConditions(arguments, remaining, (S(condition) -> tag) :: acc)(k)
 
-  /** Try each candidate in turn, most precise first, and write the tag of the first one
-    * whose test passes. Only the choice of tag is conditional: every test has already
-    * been evaluated, so nothing is computed inside a branch. */
+  /** Try each candidate in turn, most precise first, and run `chosen` for the first one
+    * whose test passes. Only the choice is conditional: every test has already been
+    * evaluated, so nothing is computed inside a branch. */
   private def mkTagChoice(
-    instance: Path, arguments: List[TermSymbol -> Path], candidates: List[ClassShape -> Int],
-  ): Block =
+    arguments: List[TermSymbol -> Path], candidates: List[ClassShape -> Int],
+  )(chosen: Int => Block): Block =
     def choose(conditions: List[Opt[Path] -> Int]): Block = conditions match
       case Nil => End()
-      case (N, tag) :: _ => assignTag(instance, tag)(End())
+      case (N, tag) :: _ => chosen(tag)
       case (S(condition), tag) :: remaining =>
         new Match(
           condition,
-          Case.Lit(syntax.Tree.BoolLit(true)) -> assignTag(instance, tag)(End()) :: Nil,
+          Case.Lit(syntax.Tree.BoolLit(true)) -> chosen(tag) :: Nil,
           if remaining.isEmpty then N else S(choose(remaining)),
           End(),
         )
     mkCandidateConditions(arguments, candidates, Nil)(choose)
 
+  /** The constructor parameters of the class these candidates share, paired with the
+    * arguments this construction passes for them, so that one candidate's test can read
+    * what the construction puts in a given field. */
+  private def ctorArguments(
+    candidates: List[ClassShape -> Int], args: Ls[Arg],
+  ): List[TermSymbol -> Path] =
+    ClassTagsTransformer.classFields(candidates.head._1.ctor) match
+      case S(fields) if fields.size === args.size => fields.zip(args.map(_.value))
+      case _ => Nil
+
   private def insertShapeTag(result: Result)(k: Path => Block): Block =
     result match
       case CtorProducer(ctor, args, _) =>
-        // * the shapes this very construction was found to take, in tag order
-        val candidates = shapeByResultId.get(result.uid).toList.flatMap: shape =>
-          shape.flattenShape.collect:
-            case concrete: ClassShape => concrete
-        .flatMap(shape => tagOfShape.get(shape).map(shape -> _)).distinct
+        val candidates = orderedCandidates(result)
         candidates match
           case Nil =>
             if debug then summon[TL].emitDbg(s"class-tags transform-phase > no tag for ${
@@ -923,30 +1171,75 @@ class ClassTagsTransformer private (
             bindResult(result)(k)
           // * a single shape needs no test at all
           case (_, tag) :: Nil =>
-            bindResult(result): instance =>
-              assignTag(instance, tag)(k(instance))
+            mkDuplicatedCtor(result, mkTagValue(tag)) match
+              case S(construction) => bindResult(construction)(k)
+              case N =>
+                bindResult(result): instance =>
+                  assignTag(instance, tag)(k(instance))
           case _ =>
-            val ordered = candidates.foldLeft(List.empty[ClassShape -> Int]): (acc, entry) =>
-              val split = acc.span(other => !strictlyBelow(entry._1, other._1))
-              split._1 ++ (entry :: split._2)
-            val fields = ClassTagsTransformer.classFields(ordered.head._1.ctor) match
-              case S(fields) if fields.size === args.size => fields.zip(args.map(_.value))
-              case _ => Nil
-            bindResult(result): instance =>
-              Begin(mkTagChoice(instance, fields, ordered), k(instance))
+            val arguments = ctorArguments(candidates, args)
+            // * The tag is a constructor argument, so it is settled into a variable
+            // * before the construction, which itself stays in one place.
+            val tagSymbol = new TempSymbol(N, erasedType = S(ErasedType.Int), "shapeTag")
+            mkDuplicatedCtor(result, tagSymbol.asSimpleRef) match
+              case S(construction) =>
+                Scoped(Set.single(tagSymbol), Begin(
+                  mkTagChoice(arguments, candidates): tag =>
+                    Assign(tagSymbol, mkTagValue(tag), End()),
+                  bindResult(construction)(k),
+                ))
+              case N =>
+                bindResult(result): instance =>
+                  Begin(
+                    mkTagChoice(arguments, candidates)(assignTag(instance, _)(End())),
+                    k(instance))
       case _ => bindResult(result)(k)
 
   override def applyProgram(program: Program): Program =
+    softAssert(program is this.program,
+      "the class-tags transformer must be applied to the program it was built for")
     if debug then
       summon[TL].emitDbg(">>> start class-tags transform-phase")
     rejectUnsupportedShapeMatches(program)
     // * allocate every tag before any of them is looked up
     if tagOfShape.isEmpty && debug then
       summon[TL].emitDbg("class-tags transform-phase > no shapes to tag")
-    val result = super.applyProgram(program)
+    if debug then
+      for (cls, duplicate) <- duplicates do
+        summon[TL].emitDbg(
+          s"class-tags transform-phase > duplicated ${cls.nme} as ${duplicate.sym.nme}")
+    val transformed = super.applyProgram(program)
+    // * A copy of an unowned class is a block-local binding like the class it copies, so
+    // * it has to be declared; the copy of an owned one is reached through its owner and
+    // * needs no declaration. The top-level `Scoped` is the one to extend: the JS backend
+    // * reads the program's own bindings off it.
+    val unownedDuplicates: Set[ScopedSymbol] = duplicates.valuesIterator.collect:
+      case duplicate if duplicate.owner.isEmpty => duplicate.sym
+    .toSet
+    val result =
+      if unownedDuplicates.isEmpty then transformed
+      else Program(transformed.imports, Scoped(unownedDuplicates, transformed.main))
     if debug then
       summon[TL].emitDbg("<<< end class-tags transform-phase")
     result
+
+  /** A duplicated class is defined right after the class it copies, so that it is in
+    * scope exactly where that class is. */
+  override def applyBlock(block: Block): Block = block match
+    case Define(defn: ClsLikeDefn, _) =>
+      val duplicate = defn.isym match
+        case cls: ClassSymbol => duplicates.get(cls)
+        case _ => N
+      val transformed = super.applyBlock(block)
+      (transformed, duplicate) match
+        // * the copy is already built; only the original is transformed
+        case (Define(defn2, rest2), S(duplicate)) => Define(defn2, Define(duplicate, rest2))
+        // * dropping the copy here would leave the constructions that build it dangling
+        case (_, S(_)) => lastWords(
+          s"the definition of ${defn.sym.nme} did not survive this pass, which leaves its "
+          + "tagged copy undefined")
+        case _ => transformed
+    case _ => super.applyBlock(block)
 
   override def applyFunDefn(fun: FunDefn): FunDefn =
     val transformer = new BlockTransformerShallow(SymbolSubst.Id):
@@ -1273,14 +1566,25 @@ object ClassTagsTransformer:
         .toList.distinct
         val webs = mkMatchWebs(entryPoints, matchConsumers)
         if dCfg.debug then logWebs(webs)
-        // * All that is kept from the webs: which constructions may be tagged. Holding
-        // * on to the flow analysis itself, or to shapes derived from it, is what used
-        // * to exhaust the heap on the larger staged programs.
+        // * All that is kept from the webs: which constructions may be tagged, and which
+        // * of those may be seen from outside this module. Holding on to the flow analysis
+        // * itself, or to shapes derived from it, is what used to exhaust the heap on the
+        // * larger staged programs.
         // * Every producer the web reaches is tagged. There is no need to leave out the
         // * ones that escape the webs' functions: the pass requires `:noFreeze`, so an
         // * object this module builds is never frozen and can always carry the property.
         val taggedResultIds = webs.iterator
           .flatMap(_.markedProducers.iterator)
+          .map(_.exprId).toSet
+        // * Which of them a caller outside this module can get hold of: the analysis
+        // * constrains the module's public surface -- its public functions and values, and
+        // * the result of every method -- to `UnknownCons`, so a producer that reaches it
+        // * has that among its destinations. Carrying the tag in a copy of the class is
+        // * visible from outside in a way that a field added to the instance is not, so
+        // * these keep having their tag assigned after construction.
+        val escapingResultIds = webs.iterator
+          .flatMap(_.markedProducers.iterator)
+          .filter(_.dests.contains(UnknownCons))
           .map(_.exprId).toSet
         val funSymToFunDefn = flowAnalysisRes.preAnalyzer.res.funSymToFunDefn
         val patternShapesByCall = matchCalls.iterator.flatMap: call =>
@@ -1290,7 +1594,9 @@ object ClassTagsTransformer:
         val shapeProp = new ShapeProp(funSymToFunDefn, patternShapesByCall)
         shapeProp.applyProgram(p)
         new ClassTagsTransformer(
+          p,
           taggedResultIds,
+          escapingResultIds,
           shapeProp.shapeByResultId,
           funSymToFunDefn,
           shapeProp.shapeTags,
