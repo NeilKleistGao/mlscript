@@ -98,15 +98,15 @@ staged module SpecialFib with
       [Nil, _, _] then None
       else Error
 
-  fun mkFib(n) =
-    let insts =
-      new Cons(new Fun("fib", new Cons("x", Nil),
-        new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Comp(false),
-          new Cons(new Branch(new Cons(new Push(1), Nil), new Cons(
-            new Load("x"), new Cons(new Push(1), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call,
-              new Cons(new Load("x"), new Cons(new Push(2), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call, new Cons(Add, Nil))))))))))
-          )), Nil))))), new Cons(new Push(n), new Cons(new Load("fib"), new Cons(Call, Nil))))
-    exec(insts, Nil, Nil, Nil)
+  // fun mkFib(n) =
+  //   let insts =
+  //     new Cons(new Fun("fib", new Cons("x", Nil),
+  //       new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Comp(false),
+  //         new Cons(new Branch(new Cons(new Push(1), Nil), new Cons(
+  //           new Load("x"), new Cons(new Push(1), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call,
+  //             new Cons(new Load("x"), new Cons(new Push(2), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call, new Cons(Add, Nil))))))))))
+  //         )), Nil))))), new Cons(new Push(n), new Cons(new Load("fib"), new Cons(Call, Nil))))
+  //   exec(insts, Nil, Nil, Nil)
 
   // ---------------------------------------------------------------------------
   // Choosing the program at run time.
@@ -119,7 +119,8 @@ staged module SpecialFib with
   // ---------------------------------------------------------------------------
 
   fun mkCons(x, xs) = (@special new Cons(x, xs))
-  fun mkPush(v) = (@special new Push(v))
+  fun mkCons2(x, xs) = new Cons(x, xs)
+  fun mkPush(v) = new Push(v)
   fun mkLoad(n) = new Load(n)
   fun mkComp(le) = new Comp(le)
   fun mkBranch(t, f) = (@special new Branch(t, f))
@@ -130,15 +131,15 @@ staged module SpecialFib with
     mkCons(mkLoad("x"), mkCons(mkPush(guard), mkCons(mkComp(false),
       mkCons(mkBranch(
         mkCons(mkPush(base), Nil),
-        mkCons(mkLoad("x"), mkCons(mkPush(1), mkCons(Sub, mkCons(mkLoad("f"), mkCons(Call,
-          mkCons(mkLoad("x"), mkCons(mkPush(2), mkCons(Sub, mkCons(mkLoad("f"), mkCons(Call, mkCons(Add, Nil)))))))))))
+        mkCons2(mkLoad("x"), mkCons2(mkPush(1), mkCons2(Sub, mkCons2(mkLoad("f"), mkCons2(Call,
+          mkCons2(mkLoad("x"), mkCons2(mkPush(2), mkCons2(Sub, mkCons2(mkLoad("f"), mkCons2(Call, mkCons2(Add, Nil)))))))))))
       ), Nil))))
 
   staged class Program(val body) with
     fun run(n) =
       exec of
-        mkCons(mkFun("f", mkCons("x", Nil), body),
-          mkCons(mkPush(n), mkCons(mkLoad("f"), mkCons(Call, Nil))))
+        mkCons(mkFun("f", mkCons2("x", Nil), body),
+          mkCons2(mkPush(n), mkCons2(mkLoad("f"), mkCons2(Call, Nil))))
         , Nil, Nil, Nil
 
   fun program(k) =
