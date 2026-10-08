@@ -9,6 +9,8 @@ staged module Special with
     fun f() = x + 1
   staged class Bar(val x, val y) with
     fun f() = x + y
+  staged class Baz(val x) with
+    fun f() = x.f()
   
   fun sub(p) = p.x - p.y
 
@@ -81,3 +83,8 @@ staged module Special with
     let x = if b then new Foo(1) else new Bar(2, 2)
     let p = (@special new Pair((@special new Foo(x)), 0))
     p.x.x.f()
+
+  fun test(x) =
+    let t = if x then (@special new Baz(new Foo(1))) else (@special new Baz(new Foo(2)))
+    t.f()
+

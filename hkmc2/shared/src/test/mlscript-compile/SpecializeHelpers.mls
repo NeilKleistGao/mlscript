@@ -584,7 +584,7 @@ fun needsUCS(pss) =
       other !== s and other is Shape.Class(otherSym, _, _, _) and
         getActualClass(sym.value) == getActualClass(otherSym.value)
     )
-  )
+  ) and groupedUCSShapes(pss).length > 1
 
 fun hasSingleDispatchBranch(pss) =
   if needsUCS(pss) then false
@@ -611,6 +611,28 @@ fun orderedUCSShapes(pss) =
     ...shapes.filter(s => not (s is Shape.Class)),
   ]
 
+// Different inferred shapes can print the same pattern: ordinary instances hide their fields
+fun groupedUCSShapes(pss) =
+  let shapes = orderedUCSShapes(pss)
+  let groups = new Map()
+  let printer = Printer(None)
+  shapes.forEach(shape =>
+    let ptn = shape.toUCSPattern(printer, shapes)
+    if groups.has(ptn) then
+      let group = groups.get(ptn)
+      assert(if [group.0, shape] is
+        [Shape.Class(sym, _, _, _), Shape.Class(other, _, _, _)] then
+          classGroupKey(sym) == classGroupKey(other)
+        else true
+      )
+      groups.set(ptn, [group.0, union2(group.1, lift(shape))])
+    else do groups.set(ptn, [shape, lift(shape)])
+  )
+  let grouped = [...groups.values()]
+  let branchShapes = grouped.map(_.0)
+  assert(new Set(branchShapes.map(_.toUCSPattern(printer, branchShapes))).size == branchShapes.length)
+  grouped
+
 fun mergeAssigned(acc, assigned) =
   assigned.forEach((ss, ps, _) =>
     if acc.has(ps) then
@@ -620,22 +642,22 @@ fun mergeAssigned(acc, assigned) =
   )
 
 fun propUCSReturn(ctx, p, f, args, isSpecial, pss) =
-  let branches = orderedUCSShapes(pss).map(shape =>
+  let branches = groupedUCSShapes(pss).map(group =>
     let branchCtx = ctx.clone
-    branchCtx.refine(p, lift(shape))
+    branchCtx.refine(p, group.1)
     let res = dispatchMethodCall(branchCtx, None, p, f, args, isSpecial)
-    [shape, res.0, res.1]
+    [group.0, res.0, res.1]
   )
   let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
   [UCS(subLitPath(ctx, p), branches.map(branch => [branch.0, branch.1])), retShape, false]
 
 fun propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss) =
-  let branches = orderedUCSShapes(pss).map(shape =>
+  let branches = groupedUCSShapes(pss).map(group =>
     let branchCtx = ctx.clone
-    branchCtx.refine(p, lift(shape))
+    branchCtx.refine(p, group.1)
     let callRes = dispatchMethodCall(branchCtx, Some(x), p, f, args, isSpecial)
     let restRes = prop(branchCtx.add(ValueSimpleRef(x), callRes.1), restBlock)
-    [shape, concat(callRes.0, restRes.0), restRes.1, restRes.2, branchCtx.sub(ctx)]
+    [group.0, concat(callRes.0, restRes.0), restRes.1, restRes.2, branchCtx.sub(ctx)]
   )
   let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
   let canReachEnd = branches.some(_.3)
@@ -647,11 +669,11 @@ fun propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss) =
   [UCS(subLitPath(ctx, p), branches.map(branch => [branch.0, branch.1])), retShape, canReachEnd]
 
 fun propUCSMatch(ctx, p, arms, dflt, restBlock, pss) =
-  let branches = orderedUCSShapes(pss).map(shape =>
+  let branches = groupedUCSShapes(pss).map(group =>
     let branchCtx = ctx.clone
-    branchCtx.refine(p, lift(shape))
+    branchCtx.refine(p, group.1)
     let res = prop(branchCtx, Match(p, arms, dflt, restBlock))
-    [shape, res.0, res.1, res.2, branchCtx.sub(ctx)]
+    [group.0, res.0, res.1, res.2, branchCtx.sub(ctx)]
   )
   let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
   let canReachEnd = branches.some(_.3)
