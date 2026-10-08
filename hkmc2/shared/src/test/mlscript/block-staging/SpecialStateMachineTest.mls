@@ -1,0 +1,92 @@
+:js
+:staging
+:noModuleCheck
+
+
+// The stepping-state-machine benchmark.
+//
+// `NaiveStateMachine`, `StateMachine` and `SpecialStateMachine` all expose
+//
+//   run0(arr)        -- one named machine, statically known
+//   runSel(k, arr)   -- one of three machines, chosen at run time
+//
+// The three machines are
+//
+//   k = 0   `frame`   a byte-stuffing frame decoder (idle/len/body/esc/crc)
+//   k = 1   `tokens`  a character classifier (start/word/num/punct/skip)
+//   k = 2   `ladder`  a five-state mixer (s0..s4)
+//
+// Each returns the Adler-style checksum `(a + b * 65536) mod 1000003` of the
+// run.  `run0` is machine 0.
+//
+// Only `SpecialStateMachine` marks the table nodes `@special`, so only it can
+// compile past the run-time choice.  The three machines visit states in
+// different orders and apply different actions, so a collapsed dispatch shows
+// up as a wrong answer.
+
+
+fun mkInput(n, step) = globalThis.Array.from({length: n}, (_, i) => (i * step + 7) % 256)
+
+// Bound as functions rather than `let`s so the diff test does not echo the
+// whole input array.
+fun input() = mkInput(2000, 101)
+fun input2() = mkInput(1333, 23)
+
+
+import "../../mlscript-compile/NaiveStateMachine.mls"
+
+
+NaiveStateMachine.run0(input())
+//│ = 118297
+
+[NaiveStateMachine.runSel(0, input()), NaiveStateMachine.runSel(1, input()), NaiveStateMachine.runSel(2, input())]
+//│ = [118297, 981910, 212730]
+
+
+// ===========================================================================
+// Compiling a machine named at the call site.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/StateMachine.mls"
+
+
+StateMachine."generate"("../StateMachine.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/StateMachine.mls")
+
+
+import "../../mlscript-compile/staging/out/StateMachine.mls"
+
+
+StateMachine.run0(input()) == NaiveStateMachine.run0(input())
+//│ = true
+
+[StateMachine.runSel(0, input()), StateMachine.runSel(1, input()), StateMachine.runSel(2, input())]
+//│ = [118297, 981910, 212730]
+
+
+// ===========================================================================
+// Compiling past a machine only chosen at run time.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/SpecialStateMachine.mls"
+
+
+SpecialStateMachine."generate"("../SpecialStateMachine.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SpecialStateMachine.mls")
+
+
+import "../../mlscript-compile/staging/out/SpecialStateMachine.mls"
+
+
+SpecialStateMachine.run0(input()) == NaiveStateMachine.run0(input())
+//│ = true
+
+// Each of these would fail if the dispatch collapsed onto one machine, since
+// the three compute different checksums.
+[SpecialStateMachine.runSel(0, input()), SpecialStateMachine.runSel(1, input()), SpecialStateMachine.runSel(2, input())]
+//│ = [118297, 981910, 212730]
+
+// A second, unrelated input, so the answers cannot be accidental.
+[NaiveStateMachine.runSel(0, input2()), NaiveStateMachine.runSel(1, input2()), NaiveStateMachine.runSel(2, input2())]
+//│ = [155037, 952236, 539964]
+
+[SpecialStateMachine.runSel(0, input2()), SpecialStateMachine.runSel(1, input2()), SpecialStateMachine.runSel(2, input2())]
+//│ = [155037, 952236, 539964]

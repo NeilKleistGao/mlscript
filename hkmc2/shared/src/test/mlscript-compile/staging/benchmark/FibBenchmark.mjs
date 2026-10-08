@@ -4,22 +4,22 @@ import SimpleFib from "../../SimpleFib.mjs"
 import InterpreterFib from "../out/InterpreterFib.mjs"
 import SpecialFib from "../out/SpecialFib.mjs"
 
-const size = 1;
-boxplot(() => {
-  summary(() => {
-    bench('Fib(25)', () => {
-      for (let i = 0; i < size; ++i) {
-        SimpleFib.mkFib(25);
-      }
-    });
+// const size = 1;
+// boxplot(() => {
+//   summary(() => {
+//     bench('Fib(25)', () => {
+//       for (let i = 0; i < size; ++i) {
+//         SimpleFib.mkFib(25);
+//       }
+//     });
 
-    bench('Staged Fib(25)', () => {
-      for (let i = 0; i < size; ++i) {
-        InterpreterFib.mkFib(25);
-      }
-    });
-  });
-});
+//     bench('Staged Fib(25)', () => {
+//       for (let i = 0; i < size; ++i) {
+//         InterpreterFib.mkFib(25);
+//       }
+//     });
+//   });
+// });
 
 // ---------------------------------------------------------------------------
 // The interpreted program chosen at run time.
@@ -44,7 +44,7 @@ for (let k = 0; k < 3; ++k) {
   const a = SimpleFib.runProgram(k, 14).x;
   const b = InterpreterFib.runProgram(k, 14).x;
   const c = SpecialFib.runProgram(k, 14).x;
-  if (a !== b || a !== c) throw new Error(`runProgram(${k}): implementations disagree`);
+  if (a !== b || a !== c) throw new Error(`runProgram(${k}): implementations disagree ${a}, ${b}, ${c}`);
 }
 // ... and that the dispatch is not collapsed: the three programs compute
 // different functions, so their results must differ.

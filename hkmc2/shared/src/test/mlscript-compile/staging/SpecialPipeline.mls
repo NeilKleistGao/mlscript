@@ -1,0 +1,310 @@
+open annotations { special, specialize }
+
+// ===========================================================================
+// The workhorse `foreach`-in-generator benchmark.
+//
+// A pipeline is a little tree of generator combinators (`Source`, `MapG`,
+// `FilterG`, `ClampG`, `TapG`, `BranchG`, `ConcatG`) terminated by a sink.
+// Driving it with `foreach` turns the tree into a chain of `Sink` wrappers, so
+// every element pays one virtual `accept` per stage.  Each stage's payload --
+// the *workhorse* -- is itself an interpreted expression tree (`Expr`/`Pred`),
+// so every element also pays one virtual `eval` per node of that tree.
+//
+// The node sets are deliberately wide: six `Sink` classes reach the same
+// `k.accept` call site and ten `Expr` classes reach the same `l.eval` call
+// site, which is past the point where a JIT can keep those sites in a
+// polymorphic inline cache.  That is the cost staging removes: when the
+// pipeline is statically known, the whole chain becomes direct calls on
+// straight-line arithmetic and the dispatch disappears entirely.
+//
+// This is the `@special` version: every pipeline node is built by an annotated
+// smart constructor, so the three alternatives of `pipe` keep distinct shapes
+// and the specializer emits one fused loop per pipeline.
+// ===========================================================================
+
+module Arr with
+  fun len(a) = a.length
+  fun at(a, i) = a.(i)
+
+staged module SpecialPipeline with
+
+  // ---------------------------------------------------------------------------
+  // The workhorse: a small arithmetic expression language, evaluated once per
+  // element per stage.  Everything is kept modulo 1000003 so the results stay
+  // exact in a double and the three pipelines below cannot be confused.
+  // ---------------------------------------------------------------------------
+
+  staged class Expr() with
+    fun eval(x)
+
+  staged object Var extends Expr() with
+    fun eval(x) = x
+
+  staged class Lit(val v) extends Expr() with
+    fun eval(x) = v
+
+  staged class Add(val l, val r) extends Expr() with
+    fun eval(x) = (l.eval(x) + r.eval(x)) % 1000003
+
+  staged class Sub(val l, val r) extends Expr() with
+    fun eval(x) = (l.eval(x) - r.eval(x) + 1000003) % 1000003
+
+  staged class Mul(val l, val r) extends Expr() with
+    fun eval(x) = (l.eval(x) * r.eval(x)) % 1000003
+
+  staged class Rem(val l, val k) extends Expr() with
+    fun eval(x) = l.eval(x) % k
+
+  staged class Min(val l, val r) extends Expr() with
+    fun eval(x) =
+      let a = l.eval(x)
+      let b = r.eval(x)
+      if a < b then a else b
+
+  staged class Max(val l, val r) extends Expr() with
+    fun eval(x) =
+      let a = l.eval(x)
+      let b = r.eval(x)
+      if a > b then a else b
+
+  staged class Dbl(val l) extends Expr() with
+    fun eval(x) = (l.eval(x) * 2) % 1000003
+
+  staged class Inc(val l) extends Expr() with
+    fun eval(x) = (l.eval(x) + 1) % 1000003
+
+  // ---------------------------------------------------------------------------
+  // Predicates, used by the filtering and routing stages.
+  // ---------------------------------------------------------------------------
+
+  staged class Pred() with
+    fun test(x)
+
+  staged class Ge(val l, val r) extends Pred() with
+    fun test(x) = l.eval(x) >= r.eval(x)
+
+  staged class Lt(val l, val r) extends Pred() with
+    fun test(x) = l.eval(x) < r.eval(x)
+
+  staged class EqZ(val l) extends Pred() with
+    fun test(x) = l.eval(x) === 0
+
+  staged class Odd(val l) extends Pred() with
+    fun test(x) = (l.eval(x) % 2) === 1
+
+  staged class AndP(val a, val b) extends Pred() with
+    fun test(x) = a.test(x) and b.test(x)
+
+  staged class OrP(val a, val b) extends Pred() with
+    fun test(x) = a.test(x) || b.test(x)
+
+  staged class NotP(val a) extends Pred() with
+    fun test(x) = not a.test(x)
+
+  // ---------------------------------------------------------------------------
+  // Sinks: the consuming end of `foreach`.  A pipeline stage is compiled into a
+  // sink wrapper that forwards to the next sink, so `k.accept` below is the one
+  // call site every stage type goes through.
+  // ---------------------------------------------------------------------------
+
+  staged class Sink() with
+    fun accept(acc, x)
+
+  staged object SumSink extends Sink() with
+    fun accept(acc, x) = (acc + x) % 1000003
+
+  staged class MapSink(val f, val k) extends Sink() with
+    fun accept(acc, x) = k.accept(acc, f.eval(x))
+
+  staged class FilterSink(val p, val k) extends Sink() with
+    fun accept(acc, x) = if p.test(x) then k.accept(acc, x) else acc
+
+  staged class ClampSink(val lo, val hi, val k) extends Sink() with
+    fun accept(acc, x) =
+      if x < lo then k.accept(acc, lo)
+      else if x > hi then k.accept(acc, hi)
+      else k.accept(acc, x)
+
+  // Folds `f(x)` into the accumulator and passes `x` through unchanged.
+  staged class TapSink(val f, val k) extends Sink() with
+    fun accept(acc, x) = k.accept((acc + f.eval(x)) % 1000003, x)
+
+  // Routes each element through one of two expressions.
+  staged class BranchSink(val p, val f, val g, val k) extends Sink() with
+    fun accept(acc, x) =
+      if p.test(x) then k.accept(acc, f.eval(x)) else k.accept(acc, g.eval(x))
+
+  // ---------------------------------------------------------------------------
+  // Generators.  `foreach` builds the sink chain and threads the accumulator
+  // through it.
+  //
+  // The driving loop counts *down* from a run-time length, so the trip count is
+  // never statically known: specializing the pipeline must not mean unrolling
+  // the data.
+  // ---------------------------------------------------------------------------
+
+  staged class Gen() with
+    fun foreach(@specialize snk, acc, arr)
+
+  // `Arr.len` is called from a module-level function rather than from inside
+  // `Source.foreach`: a reference to an unstaged module from a *class* method
+  // is resolved against the class, which comes out as `Arr$Source` and is not
+  // defined in the residual program.
+  staged object Source extends Gen() with
+    fun foreach(@specialize snk, acc, arr) = runSource(snk, acc, arr)
+
+  fun runSource(@specialize snk, acc, arr) =
+    let n = Arr.len(arr)
+    srcLoop(snk, acc, arr, n, n)
+
+  staged class MapG(val f, val src) extends Gen() with
+    fun foreach(@specialize snk, acc, arr) = src.foreach(new MapSink(f, snk), acc, arr)
+
+  staged class FilterG(val p, val src) extends Gen() with
+    fun foreach(@specialize snk, acc, arr) = src.foreach(new FilterSink(p, snk), acc, arr)
+
+  staged class ClampG(val lo, val hi, val src) extends Gen() with
+    fun foreach(@specialize snk, acc, arr) = src.foreach(new ClampSink(lo, hi, snk), acc, arr)
+
+  staged class TapG(val f, val src) extends Gen() with
+    fun foreach(@specialize snk, acc, arr) = src.foreach(new TapSink(f, snk), acc, arr)
+
+  staged class BranchG(val p, val f, val g, val src) extends Gen() with
+    fun foreach(@specialize snk, acc, arr) = src.foreach(new BranchSink(p, f, g, snk), acc, arr)
+
+  staged class ConcatG(val a, val b) extends Gen() with
+    fun foreach(@specialize snk, acc, arr) = b.foreach(snk, a.foreach(snk, acc, arr), arr)
+
+  fun srcLoop(@specialize snk, acc, arr, n, k) =
+    if k <= 0 then acc
+    else srcLoop(snk, snk.accept(acc, Arr.at(arr, n - k)), arr, n, k - 1)
+
+  fun total(@specialize g, arr) = g.foreach(SumSink, 0, arr)
+
+  // ---------------------------------------------------------------------------
+  // Pipeline builders.  Every one of them is `@special`, because `@special`
+  // tracks only the constructor it is written on: annotating just the outer
+  // `Pipe` would let the three alternatives' shapes widen to `Pipe(MapG(_, _))`
+  // and the dispatch would collapse onto the first pipeline.  `Var` and
+  // `Source` are singletons, so their shapes are already precise.
+  // ---------------------------------------------------------------------------
+
+  @specialize
+  fun lit(v) = (@special new Lit(v))
+  fun vr() = Var
+  @specialize
+  fun add(l, r) = (@special new Add(l, r))
+  @specialize
+  fun sub(l, r) = (@special new Sub(l, r))
+  @specialize
+  fun mul(l, r) = (@special new Mul(l, r))
+  @specialize
+  fun rem(l, k) = (@special new Rem(l, k))
+  @specialize
+  fun minE(l, r) = (@special new Min(l, r))
+  @specialize
+  fun maxE(l, r) = (@special new Max(l, r))
+  @specialize
+  fun dbl(l) = (@special new Dbl(l))
+  @specialize
+  fun inc(l) = (@special new Inc(l))
+  @specialize
+  fun ge(l, r) = (@special new Ge(l, r))
+  @specialize
+  fun lt(l, r) = (@special new Lt(l, r))
+  @specialize
+  fun eqz(l) = (@special new EqZ(l))
+  @specialize
+  fun odd(l) = (@special new Odd(l))
+  @specialize
+  fun andP(a, b) = (@special new AndP(a, b))
+  @specialize
+  fun orP(a, b) = (@special new OrP(a, b))
+  @specialize
+  fun notP(a) = (@special new NotP(a))
+  fun source() = Source
+  @specialize
+  fun mapG(src, f) = (@special new MapG(f, src))
+  @specialize
+  fun filterG(src, p) = (@special new FilterG(p, src))
+  @specialize
+  fun clampG(src, lo, hi) = (@special new ClampG(lo, hi, src))
+  @specialize
+  fun tapG(src, f) = (@special new TapG(f, src))
+  @specialize
+  fun branchG(src, p, f, g) = (@special new BranchG(p, f, g, src))
+  @specialize
+  fun concatG(a, b) = (@special new ConcatG(a, b))
+
+  // poly(x) = ((x*x + 3x + 7) * (x + 5)) mod 1000003, written with a mix of
+  // node types so that `l.eval` really does see ten different classes.
+  fun poly() =
+    mul of
+      add(add(mul(vr(), vr()), mul(lit(3), vr())), lit(7))
+      add(vr(), lit(5))
+
+  // mix(x) = min(2*poly(x), max(poly(x) - x, x + 1) mod 99991) + 1
+  fun mix() =
+    inc of
+      minE of
+        dbl(poly())
+        rem(maxE(sub(poly(), vr()), inc(vr())), 99991)
+
+  // ---------------------------------------------------------------------------
+  // Choosing the pipeline at run time.
+  //
+  // `runPipe(k, arr)` picks one of three pipelines.  Without `@special` the
+  // chosen `Pipe` is an ordinary value, so `foreach` has to walk the combinator
+  // tree and interpret every `Expr` node for every element.  With `@special`
+  // each alternative is still a known shape, so the specializer keeps one fused
+  // loop per pipeline behind a dispatch on `k`.
+  // ---------------------------------------------------------------------------
+
+  staged class Pipe(val body) with
+    fun run(arr) = total(body, arr)
+
+  // source |> filter (x mod 3 == 0) |> map poly |> tap mix |> clamp |> map (7x+1)
+  fun bodyA() =
+    mapG of
+      clampG of
+        tapG of
+          mapG(filterG(source(), eqz(rem(vr(), 3))), poly())
+          mix()
+        , 1000, 900000
+      add(mul(vr(), lit(7)), lit(1))
+
+  // source |> map mix |> filter (>= 20000 && not (x mod 5 == 0))
+  //        |> branch odd (x*x) (min(x, 123456)) |> tap poly |> map (x+9)
+  fun bodyB() =
+    mapG of
+      tapG of
+        branchG of
+          filterG of
+            mapG(source(), mix())
+            andP(ge(vr(), lit(20000)), notP(eqz(rem(vr(), 5))))
+          odd(vr()), mul(vr(), vr()), minE(vr(), lit(123456))
+        poly()
+      add(vr(), lit(9))
+
+  // (source |> map (2x+1) |> tap poly) ++ (source |> filter odd |> map mix)
+  //        |> clamp |> branch (x >= 500000) (x - 11) (x + 11)
+  fun bodyC() =
+    branchG of
+      clampG of
+        concatG of
+          tapG(mapG(source(), add(dbl(vr()), lit(1))), poly())
+          mapG(filterG(source(), odd(vr())), mix())
+        , 7, 999000
+      ge(vr(), lit(500000)), sub(vr(), lit(11)), add(vr(), lit(11))
+
+  // The pipeline `pipe0` names: statically known at its only call site, so a
+  // staged module can fuse it with no annotations at all.
+  fun pipe0(arr) = total(bodyA(), arr)
+
+  fun pipe(k) =
+    if k is
+      0 then (@special new Pipe(bodyA()))
+      1 then (@special new Pipe(bodyB()))
+      else (@special new Pipe(bodyC()))
+
+  fun runPipe(k, arr) = pipe(k).run(arr)

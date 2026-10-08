@@ -1,0 +1,91 @@
+:js
+:staging
+:noModuleCheck
+
+
+// The workhorse `foreach`-in-generator benchmark.
+//
+// `NaivePipeline`, `Pipeline` and `SpecialPipeline` all expose
+//
+//   pipe0(arr)        -- one named pipeline, statically known
+//   runPipe(k, arr)   -- one of three pipelines, chosen at run time
+//
+// The three pipelines are
+//
+//   k = 0   source |> filter (x mod 3 == 0) |> map poly |> map (7x + 1)
+//   k = 1   source |> map poly |> filter (x >= 500000 && x mod 5 /= 0) |> map x*x
+//   k = 2   (source |> map (2x+1)) ++ (source |> filter odd |> map poly) |> map (x+9)
+//
+// where poly(x) = ((x*x + 3x + 7) * (x + 5)) mod 1000003, and the sink sums
+// modulo 1000003.  `pipe0` is pipeline 0.
+//
+// Only `SpecialPipeline` marks the pipeline nodes `@special`, so only it can
+// specialize past the run-time choice.  The three pipelines compute different
+// sums, so a collapsed dispatch shows up as a wrong answer.
+
+
+fun mkInput(n) = globalThis.Array.from({length: n}, (_, i) => (i * 37 + 11) % 999983)
+
+// Bound as functions rather than `let`s so the diff test does not echo the
+// whole input array.
+fun input() = mkInput(1000)
+fun input2() = mkInput(777)
+
+
+import "../../mlscript-compile/NaivePipeline.mls"
+
+
+NaivePipeline.pipe0(input())
+//│ = 222557
+
+[NaivePipeline.runPipe(0, input()), NaivePipeline.runPipe(1, input()), NaivePipeline.runPipe(2, input())]
+//│ = [222557, 113291, 39874]
+
+
+// ===========================================================================
+// Fusing a pipeline named at the call site.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/Pipeline.mls"
+
+
+Pipeline."generate"("../Pipeline.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/Pipeline.mls")
+
+
+import "../../mlscript-compile/staging/out/Pipeline.mls"
+
+
+Pipeline.pipe0(input()) == NaivePipeline.pipe0(input())
+//│ = true
+
+[Pipeline.runPipe(0, input()), Pipeline.runPipe(1, input()), Pipeline.runPipe(2, input())]
+//│ = [222557, 113291, 39874]
+
+
+// ===========================================================================
+// Fusing past a pipeline only chosen at run time.
+// ===========================================================================
+
+import "../../mlscript-compile/staging/SpecialPipeline.mls"
+
+
+SpecialPipeline."generate"("../SpecialPipeline.mls", "./hkmc2/shared/src/test/mlscript-compile/staging/out/SpecialPipeline.mls")
+
+
+import "../../mlscript-compile/staging/out/SpecialPipeline.mls"
+
+
+SpecialPipeline.pipe0(input()) == NaivePipeline.pipe0(input())
+//│ = true
+
+// Each of these would fail if the dispatch collapsed onto one pipeline, since
+// the three compute different sums.
+[SpecialPipeline.runPipe(0, input()), SpecialPipeline.runPipe(1, input()), SpecialPipeline.runPipe(2, input())]
+//│ = [222557, 113291, 39874]
+
+// A second, unrelated input, so the answers cannot be accidental.
+[NaivePipeline.runPipe(0, input2()), NaivePipeline.runPipe(1, input2()), NaivePipeline.runPipe(2, input2())]
+//│ = [736080, 537960, 62697]
+
+[SpecialPipeline.runPipe(0, input2()), SpecialPipeline.runPipe(1, input2()), SpecialPipeline.runPipe(2, input2())]
+//│ = [736080, 537960, 62697]

@@ -1,0 +1,3332 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, classTags: Some(ClassTags(debug: false, mono: true)))
+import "../SpecialStateMachine.mls" as SpecialStateMachine__Legacy
+module SpecialStateMachine with
+    class Cons(val x, val xs)
+    object Nil
+    class Some(val x)
+    object None
+    object Stuck
+    class Guard() with
+      ()
+    object AnyG with
+      fun test(c) = true
+    class IsVal(val v) extends Guard() with
+      ()
+      fun test(c) = c === this.IsVal#v
+    class NotVal(val v) extends Guard() with
+      ()
+      fun test(c) = c !== this.NotVal#v
+    class InRange(val lo, val hi) extends Guard() with
+      ()
+      fun test(c) =
+        let {scrut, scrut1}
+        scrut = c >= this.InRange#lo
+        if scrut is
+          true then
+            scrut1 = c <= this.InRange#hi
+            if scrut1 is
+              true then true
+              else false
+          else false
+    class OutRange(val lo, val hi) extends Guard() with
+      ()
+      fun test(c) =
+        let {tmp}
+        tmp = c < this.OutRange#lo
+        if tmp is
+          false then c > this.OutRange#hi
+          else true
+    class ModIs(val k, val r) extends Guard() with
+      ()
+      fun test(c) =
+        let {tmp1}
+        tmp1 = c % this.ModIs#k
+        tmp1 === this.ModIs#r
+    class AndG(val g1, val g2) extends Guard() with
+      ()
+      fun test(c) =
+        let {scrut2, scrut3}
+        scrut2 = this.AndG#g1.test(c)
+        if scrut2 is
+          true then
+            scrut3 = this.AndG#g2.test(c)
+            if scrut3 is
+              true then true
+              else false
+          else false
+    class OrG(val g1, val g2) extends Guard() with
+      ()
+      fun test(c) =
+        let {tmp2}
+        tmp2 = this.OrG#g1.test(c)
+        if tmp2 is
+          false then this.OrG#g2.test(c)
+          else true
+    class NotG(val g) extends Guard() with
+      ()
+      fun test(c) =
+        let {tmp3}
+        tmp3 = this.NotG#g.test(c)
+        not tmp3
+    class Act() with
+      ()
+    object Nop with
+      fun upd(a, b, c) = [a, b]
+    object Reset with
+      fun upd(a, b, c) = [1, 0]
+    object AddIn with
+      fun upd(a, b, c) =
+        let {tmp4, tmp5}
+        tmp4 = a + c
+        tmp5 = tmp4 % 65521
+        [tmp5, b]
+    object MixIn with
+      fun upd(a, b, c) =
+        let {tmp6, tmp7}
+        tmp6 = b + a
+        tmp7 = tmp6 % 65521
+        [a, tmp7]
+    object Both with
+      fun upd(a, b, c) =
+        let {tmp8, tmp9, tmp10, tmp11, tmp12}
+        tmp8 = a + c
+        tmp9 = tmp8 % 65521
+        tmp10 = b + a
+        tmp11 = tmp10 + c
+        tmp12 = tmp11 % 65521
+        [tmp9, tmp12]
+    class SetB(val k) extends Act() with
+      ()
+      fun upd(a, b, c) =
+        let {tmp13, tmp14}
+        tmp13 = c * this.SetB#k
+        tmp14 = tmp13 % 65521
+        [a, tmp14]
+    class Scale(val k) extends Act() with
+      ()
+      fun upd(a, b, c) =
+        let {tmp15, tmp16, tmp17}
+        tmp15 = a * this.Scale#k
+        tmp16 = tmp15 + c
+        tmp17 = tmp16 % 65521
+        [tmp17, b]
+    class Seq(val x, val y) extends Act() with
+      ()
+      fun upd(a, b, c) =
+        let {t, nb, na, element1_, element0_}
+        t = this.Seq#x.upd(a, b, c)
+        if t is
+          [_, _] then
+            element0_ = t.0
+            element1_ = t.1
+            nb = element1_
+            na = element0_
+            this.Seq#y.upd(na, nb, c)
+          else Stuck
+    class Edge(val g, val act, val target)
+    class St(val name, val edges)
+    class Machine(val start, val states) with
+      ()
+      fun run(arr) = driveFrom(this.Machine#start, this.Machine#states, arr)
+    fun andG(g1, g2) = new AndG(g1, g2)
+    fun cons(x, xs) = new Cons(x, xs)
+    fun driveFrom(start, states, arr) =
+      let {n}
+      n = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".len(arr)
+      runLoop_SpecialStateMachine_sp_0(states, start, 1, 0, arr, n, n)
+    fun edge(g, act, target) = new Edge(g, act, target)
+    fun fire(edges, a, b, c, here) =
+      let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+      if edges is
+        Cons then
+          arg_Cons_0_1 = edges.Cons#x
+          arg_Cons_1_1 = edges.Cons#xs
+          rest1 = arg_Cons_1_1
+          e = arg_Cons_0_1
+          scrut5 = e.g.test(c)
+          if scrut5 is
+            true then
+              t1 = e.act.upd(a, b, c)
+              if t1 is
+                [_, _] then
+                  element0_1 = t1.0
+                  element1_1 = t1.1
+                  nb1 = element1_1
+                  na1 = element0_1
+                  [na1, nb1, e.target]
+                else Stuck
+            else fire(rest1, a, b, c, here)
+        else [a, b, here]
+    fun frame() =
+      let {tmp32, tmp33, tmp34, tmp35, tmp36, tmp37, tmp38, tmp39, tmp40, tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52, tmp53, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62, tmp63, tmp64}
+      tmp32 = isVal_SpecialStateMachine_sp_0(126)
+      tmp33 = edge_SpecialStateMachine_sp_0(tmp32, Reset, "len")
+      tmp34 = edge_SpecialStateMachine_sp_1(AnyG, Nop, "idle")
+      tmp35 = ls2_SpecialStateMachine_sp_0(tmp33, tmp34)
+      tmp36 = st_SpecialStateMachine_sp_0("idle", tmp35)
+      tmp37 = inRange_SpecialStateMachine_sp_0(1, 255)
+      tmp38 = setB_SpecialStateMachine_sp_0(3)
+      tmp39 = edge_SpecialStateMachine_sp_2(tmp37, tmp38, "body")
+      tmp40 = edge_SpecialStateMachine_sp_1(AnyG, Nop, "idle")
+      tmp41 = ls2_SpecialStateMachine_sp_1(tmp39, tmp40)
+      tmp42 = st_SpecialStateMachine_sp_1("len", tmp41)
+      tmp43 = isVal_SpecialStateMachine_sp_1(125)
+      tmp44 = edge_SpecialStateMachine_sp_3(tmp43, Nop, "esc")
+      tmp45 = isVal_SpecialStateMachine_sp_0(126)
+      tmp46 = edge_SpecialStateMachine_sp_4(tmp45, MixIn, "crc")
+      tmp47 = modIs_SpecialStateMachine_sp_0(7, 0)
+      tmp48 = edge_SpecialStateMachine_sp_5(tmp47, Both, "body")
+      tmp49 = edge_SpecialStateMachine_sp_6(AnyG, AddIn, "body")
+      tmp50 = ls4_SpecialStateMachine_sp_0(tmp44, tmp46, tmp48, tmp49)
+      tmp51 = st_SpecialStateMachine_sp_2("body", tmp50)
+      tmp52 = notVal_SpecialStateMachine_sp_0(0)
+      tmp53 = seqA_SpecialStateMachine_sp_0(AddIn, MixIn)
+      tmp54 = edge_SpecialStateMachine_sp_7(tmp52, tmp53, "body")
+      tmp55 = edge_SpecialStateMachine_sp_8(AnyG, Nop, "body")
+      tmp56 = ls2_SpecialStateMachine_sp_2(tmp54, tmp55)
+      tmp57 = st_SpecialStateMachine_sp_3("esc", tmp56)
+      tmp58 = outRange_SpecialStateMachine_sp_0(0, 127)
+      tmp59 = scale_SpecialStateMachine_sp_0(31)
+      tmp60 = edge_SpecialStateMachine_sp_9(tmp58, tmp59, "idle")
+      tmp61 = edge_SpecialStateMachine_sp_10(AnyG, MixIn, "idle")
+      tmp62 = ls2_SpecialStateMachine_sp_3(tmp60, tmp61)
+      tmp63 = st_SpecialStateMachine_sp_4("crc", tmp62)
+      tmp64 = ls5_SpecialStateMachine_sp_0(tmp36, tmp42, tmp51, tmp57, tmp63)
+      machineOf_SpecialStateMachine_sp_0("idle", tmp64)
+    fun inRange(lo, hi) = new InRange(lo, hi)
+    fun isVal(v) = new IsVal(v)
+    fun ladder() =
+      let {tmp105, tmp106, tmp107, tmp108, tmp109, tmp110, tmp111, tmp112, tmp113, tmp114, tmp115, tmp116, tmp117, tmp118, tmp119, tmp120, tmp121, tmp122, tmp123, tmp124, tmp125, tmp126, tmp127, tmp128, tmp129, tmp130, tmp131, tmp132, tmp133, tmp134, tmp135, tmp136, tmp137, tmp138, tmp139}
+      tmp105 = modIs_SpecialStateMachine_sp_3(2, 0)
+      tmp106 = edge_SpecialStateMachine_sp_23(tmp105, AddIn, "s1")
+      tmp107 = edge_SpecialStateMachine_sp_24(AnyG, MixIn, "s2")
+      tmp108 = ls2_SpecialStateMachine_sp_6(tmp106, tmp107)
+      tmp109 = st_SpecialStateMachine_sp_10("s0", tmp108)
+      tmp110 = modIs_SpecialStateMachine_sp_1(3, 0)
+      tmp111 = edge_SpecialStateMachine_sp_25(tmp110, Both, "s2")
+      tmp112 = inRange_SpecialStateMachine_sp_3(0, 63)
+      tmp113 = scale_SpecialStateMachine_sp_2(17)
+      tmp114 = edge_SpecialStateMachine_sp_26(tmp112, tmp113, "s3")
+      tmp115 = edge_SpecialStateMachine_sp_27(AnyG, AddIn, "s0")
+      tmp116 = ls3_SpecialStateMachine_sp_2(tmp111, tmp114, tmp115)
+      tmp117 = st_SpecialStateMachine_sp_11("s1", tmp116)
+      tmp118 = inRange_SpecialStateMachine_sp_4(64, 191)
+      tmp119 = modIs_SpecialStateMachine_sp_4(2, 1)
+      tmp120 = andG_SpecialStateMachine_sp_0(tmp118, tmp119)
+      tmp121 = seqA_SpecialStateMachine_sp_1(MixIn, AddIn)
+      tmp122 = edge_SpecialStateMachine_sp_28(tmp120, tmp121, "s4")
+      tmp123 = setB_SpecialStateMachine_sp_2(7)
+      tmp124 = edge_SpecialStateMachine_sp_29(AnyG, tmp123, "s3")
+      tmp125 = ls2_SpecialStateMachine_sp_7(tmp122, tmp124)
+      tmp126 = st_SpecialStateMachine_sp_12("s2", tmp125)
+      tmp127 = notVal_SpecialStateMachine_sp_0(0)
+      tmp128 = edge_SpecialStateMachine_sp_30(tmp127, Both, "s0")
+      tmp129 = edge_SpecialStateMachine_sp_31(AnyG, Reset, "s1")
+      tmp130 = ls2_SpecialStateMachine_sp_8(tmp128, tmp129)
+      tmp131 = st_SpecialStateMachine_sp_13("s3", tmp130)
+      tmp132 = modIs_SpecialStateMachine_sp_2(5, 0)
+      tmp133 = edge_SpecialStateMachine_sp_32(tmp132, MixIn, "s0")
+      tmp134 = outRange_SpecialStateMachine_sp_1(32, 224)
+      tmp135 = edge_SpecialStateMachine_sp_33(tmp134, AddIn, "s2")
+      tmp136 = edge_SpecialStateMachine_sp_34(AnyG, Both, "s4")
+      tmp137 = ls3_SpecialStateMachine_sp_3(tmp133, tmp135, tmp136)
+      tmp138 = st_SpecialStateMachine_sp_14("s4", tmp137)
+      tmp139 = ls5_SpecialStateMachine_sp_2(tmp109, tmp117, tmp126, tmp131, tmp138)
+      machineOf_SpecialStateMachine_sp_2("s0", tmp139)
+    fun lookup(states, name) =
+      let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+      if states is
+        Cons then
+          arg_Cons_0_ = states.Cons#x
+          arg_Cons_1_ = states.Cons#xs
+          rest = arg_Cons_1_
+          s = arg_Cons_0_
+          scrut4 = s.name == name
+          if scrut4 is
+            true then new Some(s)
+            else lookup(rest, name)
+        else None
+    fun ls2(a, b) =
+      let {tmp24}
+      tmp24 = cons_SpecialStateMachine_sp_0(b, Nil)
+      cons_SpecialStateMachine_sp_1(a, tmp24)
+    fun ls3(a, b, c) =
+      let {tmp22, tmp23}
+      tmp22 = cons_SpecialStateMachine_sp_0(c, Nil)
+      tmp23 = cons_SpecialStateMachine_sp_1(b, tmp22)
+      cons_SpecialStateMachine_sp_2(a, tmp23)
+    fun ls4(a, b, c, d) =
+      let {tmp25, tmp26, tmp27}
+      tmp25 = cons_SpecialStateMachine_sp_0(d, Nil)
+      tmp26 = cons_SpecialStateMachine_sp_1(c, tmp25)
+      tmp27 = cons_SpecialStateMachine_sp_2(b, tmp26)
+      cons_SpecialStateMachine_sp_3(a, tmp27)
+    fun ls5(a, b, c, d, e) =
+      let {tmp28, tmp29, tmp30, tmp31}
+      tmp28 = cons_SpecialStateMachine_sp_0(e, Nil)
+      tmp29 = cons_SpecialStateMachine_sp_1(d, tmp28)
+      tmp30 = cons_SpecialStateMachine_sp_2(c, tmp29)
+      tmp31 = cons_SpecialStateMachine_sp_3(b, tmp30)
+      cons_SpecialStateMachine_sp_4(a, tmp31)
+    fun machine(k) =
+      if k is
+        0 then frame()
+        1 then tokens()
+        else ladder()
+    fun machineOf(start, states) = new Machine(start, states)
+    fun modIs(k, r) = new ModIs(k, r)
+    fun notG(g) = new NotG(g)
+    fun notVal(v) = new NotVal(v)
+    fun orG(g1, g2) = new OrG(g1, g2)
+    fun outRange(lo, hi) = new OutRange(lo, hi)
+    fun run0(arr) =
+      let {tmp140}
+      tmp140 = frame()
+      run_Machine_sp_0(tmp140, arr)
+    fun runLoop(states, name, a, b, arr, n, k) =
+      let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+      scrut6 = k <= 0
+      if scrut6 is
+        true then
+          tmp18 = b * 65536
+          tmp19 = a + tmp18
+          tmp19 % 1000003
+        else
+          tmp20 = n - k
+          c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+          r1 = step(states, name, a, b, c19)
+          if r1 is
+            [_, _, _] then
+              element0_2 = r1.0
+              element1_2 = r1.1
+              element2_ = r1.2
+              nt = element2_
+              nb2 = element1_2
+              na2 = element0_2
+              tmp21 = k - 1
+              runLoop(states, nt, na2, nb2, arr, n, tmp21)
+            else Stuck
+    fun runSel(k, arr) =
+      let {tmp141}
+      tmp141 = machine(k)
+      @matchShapes(Machine("idle", Cons(St("idle", Cons(Edge(IsVal(126), Reset, "len"), Cons(Edge(AnyG, Nop, "idle"), Nil))), Cons(St("len", Cons(Edge(InRange(1, 255), SetB(3), "body"), Cons(Edge(AnyG, Nop, "idle"), Nil))), Cons(St("body", Cons(Edge(IsVal(125), Nop, "esc"), Cons(Edge(IsVal(126), MixIn, "crc"), Cons(Edge(ModIs(7, 0), Both, "body"), Cons(Edge(AnyG, AddIn, "body"), Nil))))), Cons(St("esc", Cons(Edge(NotVal(0), Seq(AddIn, MixIn), "body"), Cons(Edge(AnyG, Nop, "body"), Nil))), Cons(St("crc", Cons(Edge(OutRange(0, 127), Scale(31), "idle"), Cons(Edge(AnyG, MixIn, "idle"), Nil))), Nil)))))), Machine("start", Cons(St("start", Cons(Edge(InRange(97, 122), AddIn, "word"), Cons(Edge(InRange(48, 57), Scale(10), "num"), Cons(Edge(ModIs(3, 0), MixIn, "punct"), Cons(Edge(AnyG, Nop, "skip"), Nil))))), Cons(St("word", Cons(Edge(InRange(97, 122), Both, "word"), Cons(Edge(InRange(48, 57), AddIn, "num"), Cons(Edge(AnyG, MixIn, "start"), Nil)))), Cons(St("num", Cons(Edge(InRange(48, 57), Scale(10), "num"), Cons(Edge(NotVal(32), AddIn, "word"), Cons(Edge(AnyG, Reset, "start"), Nil)))), Cons(St("punct", Cons(Edge(OrG(IsVal(44), IsVal(46)), Both, "start"), Cons(Edge(AnyG, SetB(5), "word"), Nil))), Cons(St("skip", Cons(Edge(NotG(ModIs(5, 0)), Nop, "skip"), Cons(Edge(AnyG, MixIn, "start"), Nil))), Nil)))))), Machine("s0", Cons(St("s0", Cons(Edge(ModIs(2, 0), AddIn, "s1"), Cons(Edge(AnyG, MixIn, "s2"), Nil))), Cons(St("s1", Cons(Edge(ModIs(3, 0), Both, "s2"), Cons(Edge(InRange(0, 63), Scale(17), "s3"), Cons(Edge(AnyG, AddIn, "s0"), Nil)))), Cons(St("s2", Cons(Edge(AndG(InRange(64, 191), ModIs(2, 1)), Seq(MixIn, AddIn), "s4"), Cons(Edge(AnyG, SetB(7), "s3"), Nil))), Cons(St("s3", Cons(Edge(NotVal(0), Both, "s0"), Cons(Edge(AnyG, Reset, "s1"), Nil))), Cons(St("s4", Cons(Edge(ModIs(5, 0), MixIn, "s0"), Cons(Edge(OutRange(32, 224), AddIn, "s2"), Cons(Edge(AnyG, Both, "s4"), Nil)))), Nil))))))) shape.match of tmp141,
+        () => run_Machine_sp_0(tmp141, arr)
+        () => run_Machine_sp_1(tmp141, arr)
+        () => run_Machine_sp_2(tmp141, arr)
+    fun scale(k) = new Scale(k)
+    fun seqA(x, y) = new Seq(x, y)
+    fun setB(k) = new SetB(k)
+    fun st(name, edges) = new St(name, edges)
+    fun step(states, name, a, b, c) =
+      let {s1, st, arg_Some_0_}
+      s1 = lookup(states, name)
+      if s1 is
+        Some then
+          arg_Some_0_ = s1.Some#x
+          st = arg_Some_0_
+          fire(st.edges, a, b, c, name)
+        else Stuck
+    fun tokens() =
+      let {tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77, tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91, tmp92, tmp93, tmp94, tmp95, tmp96, tmp97, tmp98, tmp99, tmp100, tmp101, tmp102, tmp103, tmp104}
+      tmp65 = inRange_SpecialStateMachine_sp_1(97, 122)
+      tmp66 = edge_SpecialStateMachine_sp_11(tmp65, AddIn, "word")
+      tmp67 = inRange_SpecialStateMachine_sp_2(48, 57)
+      tmp68 = scale_SpecialStateMachine_sp_1(10)
+      tmp69 = edge_SpecialStateMachine_sp_12(tmp67, tmp68, "num")
+      tmp70 = modIs_SpecialStateMachine_sp_1(3, 0)
+      tmp71 = edge_SpecialStateMachine_sp_13(tmp70, MixIn, "punct")
+      tmp72 = edge_SpecialStateMachine_sp_14(AnyG, Nop, "skip")
+      tmp73 = ls4_SpecialStateMachine_sp_1(tmp66, tmp69, tmp71, tmp72)
+      tmp74 = st_SpecialStateMachine_sp_5("start", tmp73)
+      tmp75 = inRange_SpecialStateMachine_sp_1(97, 122)
+      tmp76 = edge_SpecialStateMachine_sp_15(tmp75, Both, "word")
+      tmp77 = inRange_SpecialStateMachine_sp_2(48, 57)
+      tmp78 = edge_SpecialStateMachine_sp_16(tmp77, AddIn, "num")
+      tmp79 = edge_SpecialStateMachine_sp_17(AnyG, MixIn, "start")
+      tmp80 = ls3_SpecialStateMachine_sp_0(tmp76, tmp78, tmp79)
+      tmp81 = st_SpecialStateMachine_sp_6("word", tmp80)
+      tmp82 = inRange_SpecialStateMachine_sp_2(48, 57)
+      tmp83 = scale_SpecialStateMachine_sp_1(10)
+      tmp84 = edge_SpecialStateMachine_sp_12(tmp82, tmp83, "num")
+      tmp85 = notVal_SpecialStateMachine_sp_1(32)
+      tmp86 = edge_SpecialStateMachine_sp_18(tmp85, AddIn, "word")
+      tmp87 = edge_SpecialStateMachine_sp_19(AnyG, Reset, "start")
+      tmp88 = ls3_SpecialStateMachine_sp_1(tmp84, tmp86, tmp87)
+      tmp89 = st_SpecialStateMachine_sp_7("num", tmp88)
+      tmp90 = isVal_SpecialStateMachine_sp_2(44)
+      tmp91 = isVal_SpecialStateMachine_sp_3(46)
+      tmp92 = orG_SpecialStateMachine_sp_0(tmp90, tmp91)
+      tmp93 = edge_SpecialStateMachine_sp_20(tmp92, Both, "start")
+      tmp94 = setB_SpecialStateMachine_sp_1(5)
+      tmp95 = edge_SpecialStateMachine_sp_21(AnyG, tmp94, "word")
+      tmp96 = ls2_SpecialStateMachine_sp_4(tmp93, tmp95)
+      tmp97 = st_SpecialStateMachine_sp_8("punct", tmp96)
+      tmp98 = modIs_SpecialStateMachine_sp_2(5, 0)
+      tmp99 = notG_SpecialStateMachine_sp_0(tmp98)
+      tmp100 = edge_SpecialStateMachine_sp_22(tmp99, Nop, "skip")
+      tmp101 = edge_SpecialStateMachine_sp_17(AnyG, MixIn, "start")
+      tmp102 = ls2_SpecialStateMachine_sp_5(tmp100, tmp101)
+      tmp103 = st_SpecialStateMachine_sp_9("skip", tmp102)
+      tmp104 = ls5_SpecialStateMachine_sp_1(tmp74, tmp81, tmp89, tmp97, tmp103)
+      machineOf_SpecialStateMachine_sp_1("start", tmp104)
+open SpecialStateMachine
+private fun andG_SpecialStateMachine_sp_0(g1, g2) = new AndG(g1, g2)
+private fun cons_SpecialStateMachine_sp_0(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_1(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_10(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_11(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_12(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_13(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_14(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_15(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_16(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_17(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_18(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_19(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_2(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_20(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_21(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_22(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_23(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_24(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_25(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_26(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_27(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_28(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_29(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_3(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_30(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_31(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_32(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_33(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_34(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_35(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_36(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_37(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_38(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_39(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_4(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_40(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_41(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_42(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_43(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_44(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_45(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_46(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_47(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_48(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_49(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_5(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_50(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_51(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_52(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_53(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_54(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_55(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_6(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_7(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_8(x, xs) = new Cons(x, xs)
+private fun cons_SpecialStateMachine_sp_9(x, xs) = new Cons(x, xs)
+private fun driveFrom_SpecialStateMachine_sp_0(start, states, arr) =
+  let {n}
+  n = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".len(arr)
+  runLoop_SpecialStateMachine_sp_2(states, "idle", 1, 0, arr, n, n)
+private fun driveFrom_SpecialStateMachine_sp_1(start, states, arr) =
+  let {n}
+  n = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".len(arr)
+  runLoop_SpecialStateMachine_sp_6(states, "start", 1, 0, arr, n, n)
+private fun driveFrom_SpecialStateMachine_sp_2(start, states, arr) =
+  let {n}
+  n = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".len(arr)
+  runLoop_SpecialStateMachine_sp_10(states, "s0", 1, 0, arr, n, n)
+private fun edge_SpecialStateMachine_sp_0(g, act, target) = new Edge(g, act, "len")
+private fun edge_SpecialStateMachine_sp_1(g, act, target) = new Edge(g, act, "idle")
+private fun edge_SpecialStateMachine_sp_10(g, act, target) = new Edge(g, act, "idle")
+private fun edge_SpecialStateMachine_sp_11(g, act, target) = new Edge(g, act, "word")
+private fun edge_SpecialStateMachine_sp_12(g, act, target) = new Edge(g, act, "num")
+private fun edge_SpecialStateMachine_sp_13(g, act, target) = new Edge(g, act, "punct")
+private fun edge_SpecialStateMachine_sp_14(g, act, target) = new Edge(g, act, "skip")
+private fun edge_SpecialStateMachine_sp_15(g, act, target) = new Edge(g, act, "word")
+private fun edge_SpecialStateMachine_sp_16(g, act, target) = new Edge(g, act, "num")
+private fun edge_SpecialStateMachine_sp_17(g, act, target) = new Edge(g, act, "start")
+private fun edge_SpecialStateMachine_sp_18(g, act, target) = new Edge(g, act, "word")
+private fun edge_SpecialStateMachine_sp_19(g, act, target) = new Edge(g, act, "start")
+private fun edge_SpecialStateMachine_sp_2(g, act, target) = new Edge(g, act, "body")
+private fun edge_SpecialStateMachine_sp_20(g, act, target) = new Edge(g, act, "start")
+private fun edge_SpecialStateMachine_sp_21(g, act, target) = new Edge(g, act, "word")
+private fun edge_SpecialStateMachine_sp_22(g, act, target) = new Edge(g, act, "skip")
+private fun edge_SpecialStateMachine_sp_23(g, act, target) = new Edge(g, act, "s1")
+private fun edge_SpecialStateMachine_sp_24(g, act, target) = new Edge(g, act, "s2")
+private fun edge_SpecialStateMachine_sp_25(g, act, target) = new Edge(g, act, "s2")
+private fun edge_SpecialStateMachine_sp_26(g, act, target) = new Edge(g, act, "s3")
+private fun edge_SpecialStateMachine_sp_27(g, act, target) = new Edge(g, act, "s0")
+private fun edge_SpecialStateMachine_sp_28(g, act, target) = new Edge(g, act, "s4")
+private fun edge_SpecialStateMachine_sp_29(g, act, target) = new Edge(g, act, "s3")
+private fun edge_SpecialStateMachine_sp_3(g, act, target) = new Edge(g, act, "esc")
+private fun edge_SpecialStateMachine_sp_30(g, act, target) = new Edge(g, act, "s0")
+private fun edge_SpecialStateMachine_sp_31(g, act, target) = new Edge(g, act, "s1")
+private fun edge_SpecialStateMachine_sp_32(g, act, target) = new Edge(g, act, "s0")
+private fun edge_SpecialStateMachine_sp_33(g, act, target) = new Edge(g, act, "s2")
+private fun edge_SpecialStateMachine_sp_34(g, act, target) = new Edge(g, act, "s4")
+private fun edge_SpecialStateMachine_sp_4(g, act, target) = new Edge(g, act, "crc")
+private fun edge_SpecialStateMachine_sp_5(g, act, target) = new Edge(g, act, "body")
+private fun edge_SpecialStateMachine_sp_6(g, act, target) = new Edge(g, act, "body")
+private fun edge_SpecialStateMachine_sp_7(g, act, target) = new Edge(g, act, "body")
+private fun edge_SpecialStateMachine_sp_8(g, act, target) = new Edge(g, act, "body")
+private fun edge_SpecialStateMachine_sp_9(g, act, target) = new Edge(g, act, "idle")
+private fun fire_SpecialStateMachine_sp_0(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  if edges is
+    Cons then
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = e.g.test(c)
+      if scrut5 is
+        true then
+          t1 = e.act.upd(1, 0, c)
+          if t1 is
+            [_, _] then
+              element0_1 = t1.0
+              element1_1 = t1.1
+              nb1 = element1_1
+              na1 = element0_1
+              [na1, nb1, e.target]
+            else Stuck
+        else fire_SpecialStateMachine_sp_1(rest1, 1, 0, c, here)
+    else [a, b, here]
+private fun fire_SpecialStateMachine_sp_1(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  if edges is
+    Cons then
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = e.g.test(c)
+      if scrut5 is
+        true then
+          t1 = e.act.upd(a, b, c)
+          if t1 is
+            [_, _] then
+              element0_1 = t1.0
+              element1_1 = t1.1
+              nb1 = element1_1
+              na1 = element0_1
+              [na1, nb1, e.target]
+            else Stuck
+        else fire_SpecialStateMachine_sp_1(rest1, a, b, c, here)
+    else [a, b, here]
+private fun fire_SpecialStateMachine_sp_10(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_11(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(IsVal(126), Reset, "len"), Cons(Edge(AnyG, Nop, "idle"), Nil)), Cons(Edge(InRange(1, 255), SetB(3), "body"), Cons(Edge(AnyG, Nop, "idle"), Nil)), Cons(Edge(IsVal(125), Nop, "esc"), Cons(Edge(IsVal(126), MixIn, "crc"), Cons(Edge(ModIs(7, 0), Both, "body"), Cons(Edge(AnyG, AddIn, "body"), Nil)))), Cons(Edge(NotVal(0), Seq(AddIn, MixIn), "body"), Cons(Edge(AnyG, Nop, "body"), Nil)), Cons(Edge(OutRange(0, 127), Scale(31), "idle"), Cons(Edge(AnyG, MixIn, "idle"), Nil))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_IsVal_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = 0
+          na1 = 1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_12(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_SetB_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_12(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_IsVal_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_13(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_NotVal_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Seq_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_16(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_OutRange_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Scale_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_17(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_12(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_13(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_IsVal_sp_0(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_14(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_14(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_ModIs_sp_0(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_15(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_15(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_16(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_17(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_18(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_1(e.Edge#act, 1, 0, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = 0
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_19(rest1, 1, 0, c, "start")
+private fun fire_SpecialStateMachine_sp_19(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_2(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Scale_sp_1(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_20(rest1, a, b, c, "start")
+private fun fire_SpecialStateMachine_sp_2(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_IsVal_sp_0(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Reset_sp_0(e.Edge#act, 1, 0, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = 0
+      na1 = 1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_3(rest1, 1, 0, c, "idle")
+private fun fire_SpecialStateMachine_sp_20(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_ModIs_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_21(rest1, a, b, c, "start")
+private fun fire_SpecialStateMachine_sp_21(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_22(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(InRange(97, 122), Both, "word"), Cons(Edge(InRange(48, 57), AddIn, "num"), Cons(Edge(AnyG, MixIn, "start"), Nil))), Cons(Edge(InRange(48, 57), Scale(10), "num"), Cons(Edge(NotVal(32), AddIn, "word"), Cons(Edge(AnyG, Reset, "start"), Nil))), Cons(Edge(OrG(IsVal(44), IsVal(46)), Both, "start"), Cons(Edge(AnyG, SetB(5), "word"), Nil)), Cons(Edge(NotG(ModIs(5, 0)), Nop, "skip"), Cons(Edge(AnyG, MixIn, "start"), Nil))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_23(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_2(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Scale_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_25(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_OrG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_27(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_NotG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_24(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_23(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_2(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_24(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_24(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_25(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_NotVal_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_26(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_26(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = 0
+  na1 = 1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_27(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_SetB_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_28(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(InRange(97, 122), AddIn, "word"), Cons(Edge(InRange(48, 57), Scale(10), "num"), Cons(Edge(ModIs(3, 0), MixIn, "punct"), Cons(Edge(AnyG, Nop, "skip"), Nil)))), Cons(Edge(InRange(97, 122), Both, "word"), Cons(Edge(InRange(48, 57), AddIn, "num"), Cons(Edge(AnyG, MixIn, "start"), Nil))), Cons(Edge(InRange(48, 57), Scale(10), "num"), Cons(Edge(NotVal(32), AddIn, "word"), Cons(Edge(AnyG, Reset, "start"), Nil))), Cons(Edge(NotG(ModIs(5, 0)), Nop, "skip"), Cons(Edge(AnyG, MixIn, "start"), Nil))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_29(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_32(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_2(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Scale_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_34(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_NotG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_33(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_29(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_2(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Scale_sp_1(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_30(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_3(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_30(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_ModIs_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_31(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_31(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_32(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_2(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_33(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_33(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_34(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_NotVal_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_35(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_35(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = 0
+  na1 = 1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_36(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(InRange(97, 122), AddIn, "word"), Cons(Edge(InRange(48, 57), Scale(10), "num"), Cons(Edge(ModIs(3, 0), MixIn, "punct"), Cons(Edge(AnyG, Nop, "skip"), Nil)))), Cons(Edge(InRange(97, 122), Both, "word"), Cons(Edge(InRange(48, 57), AddIn, "num"), Cons(Edge(AnyG, MixIn, "start"), Nil))), Cons(Edge(InRange(48, 57), Scale(10), "num"), Cons(Edge(NotVal(32), AddIn, "word"), Cons(Edge(AnyG, Reset, "start"), Nil))), Cons(Edge(OrG(IsVal(44), IsVal(46)), Both, "start"), Cons(Edge(AnyG, SetB(5), "word"), Nil)), Cons(Edge(NotG(ModIs(5, 0)), Nop, "skip"), Cons(Edge(AnyG, MixIn, "start"), Nil))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_37(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_40(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_2(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Scale_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_42(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_OrG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_44(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_NotG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_41(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_37(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_2(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Scale_sp_1(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_38(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_38(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_ModIs_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_39(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_39(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_4(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(IsVal(126), Reset, "len"), _), Cons(Edge(InRange(1, 255), SetB(3), "body"), _)) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_IsVal_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = 0
+          na1 = 1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_5(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_SetB_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_5(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_40(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_2(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_41(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_41(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_42(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_NotVal_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_43(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_43(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = 0
+  na1 = 1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_44(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_SetB_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_45(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_ModIs_sp_3(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_1(e.Edge#act, 1, 0, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = 0
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_46(rest1, 1, 0, c, "s0")
+private fun fire_SpecialStateMachine_sp_46(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_47(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(ModIs(3, 0), Both, "s2"), Cons(Edge(InRange(0, 63), Scale(17), "s3"), Cons(Edge(AnyG, AddIn, "s0"), Nil))), Cons(Edge(AndG(InRange(64, 191), ModIs(2, 1)), Seq(MixIn, AddIn), "s4"), Cons(Edge(AnyG, SetB(7), "s3"), Nil))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_48(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_AndG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Seq_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_50(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_48(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_3(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Scale_sp_2(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_49(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_49(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_5(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_50(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_SetB_sp_2(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_51(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(ModIs(2, 0), AddIn, "s1"), Cons(Edge(AnyG, MixIn, "s2"), Nil)), Cons(Edge(AndG(InRange(64, 191), ModIs(2, 1)), Seq(MixIn, AddIn), "s4"), Cons(Edge(AnyG, SetB(7), "s3"), Nil)), Cons(Edge(NotVal(0), Both, "s0"), Cons(Edge(AnyG, Reset, "s1"), Nil)), Cons(Edge(ModIs(5, 0), MixIn, "s0"), Cons(Edge(OutRange(32, 224), AddIn, "s2"), Cons(Edge(AnyG, Both, "s4"), Nil)))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_3(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_52(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_AndG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Seq_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_53(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_NotVal_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_54(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_2(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_55(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_52(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_53(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_SetB_sp_2(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_54(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = 0
+  na1 = 1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_55(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_OutRange_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_56(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_56(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_57(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(ModIs(2, 0), AddIn, "s1"), Cons(Edge(AnyG, MixIn, "s2"), Nil)), Cons(Edge(ModIs(3, 0), Both, "s2"), Cons(Edge(InRange(0, 63), Scale(17), "s3"), Cons(Edge(AnyG, AddIn, "s0"), Nil))), Cons(Edge(AndG(InRange(64, 191), ModIs(2, 1)), Seq(MixIn, AddIn), "s4"), Cons(Edge(AnyG, SetB(7), "s3"), Nil)), Cons(Edge(NotVal(0), Both, "s0"), Cons(Edge(AnyG, Reset, "s1"), Nil)), Cons(Edge(ModIs(5, 0), MixIn, "s0"), Cons(Edge(OutRange(32, 224), AddIn, "s2"), Cons(Edge(AnyG, Both, "s4"), Nil)))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_3(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_58(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_59(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_AndG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Seq_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_61(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_NotVal_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_62(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_2(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_63(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_58(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_59(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_3(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Scale_sp_2(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_60(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_6(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(IsVal(126), Reset, "len"), Cons(Edge(AnyG, Nop, "idle"), Nil)), Cons(Edge(InRange(1, 255), SetB(3), "body"), Cons(Edge(AnyG, Nop, "idle"), Nil)), Cons(Edge(IsVal(125), Nop, "esc"), Cons(Edge(IsVal(126), MixIn, "crc"), Cons(Edge(ModIs(7, 0), Both, "body"), Cons(Edge(AnyG, AddIn, "body"), Nil))))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_IsVal_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = 0
+          na1 = 1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_7(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_InRange_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_SetB_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_7(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_IsVal_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_8(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_60(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_61(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_SetB_sp_2(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_62(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = 0
+  na1 = 1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_63(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_OutRange_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_64(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_64(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_65(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  @matchShapes(Cons(Edge(ModIs(2, 0), AddIn, "s1"), Cons(Edge(AnyG, MixIn, "s2"), Nil)), Cons(Edge(ModIs(3, 0), Both, "s2"), Cons(Edge(InRange(0, 63), Scale(17), "s3"), Cons(Edge(AnyG, AddIn, "s0"), Nil))), Cons(Edge(AndG(InRange(64, 191), ModIs(2, 1)), Seq(MixIn, AddIn), "s4"), Cons(Edge(AnyG, SetB(7), "s3"), Nil)), Cons(Edge(NotVal(0), Both, "s0"), Cons(Edge(AnyG, Reset, "s1"), Nil)), Cons(Edge(ModIs(5, 0), MixIn, "s0"), Cons(Edge(OutRange(32, 224), AddIn, "s2"), Cons(Edge(AnyG, Both, "s4"), Nil)))) shape.match of edges,
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_3(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_66(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_1(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_67(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_AndG_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Seq_sp_1(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_69(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_NotVal_sp_0(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_70(rest1, a, b, c, here)
+    () =>
+      arg_Cons_0_1 = edges.Cons#x
+      arg_Cons_1_1 = edges.Cons#xs
+      rest1 = arg_Cons_1_1
+      e = arg_Cons_0_1
+      scrut5 = test_ModIs_sp_2(e.Edge#g, c)
+      if scrut5 is
+        true then
+          t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+          element0_1 = t1.0
+          element1_1 = t1.1
+          nb1 = element1_1
+          na1 = element0_1
+          [na1, nb1, e.target]
+        else fire_SpecialStateMachine_sp_71(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_66(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_67(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_InRange_sp_3(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Scale_sp_2(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_68(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_68(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_69(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_SetB_sp_2(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_7(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Nop_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_70(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Reset_sp_1(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = 0
+  na1 = 1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_71(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_OutRange_sp_1(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_AddIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_72(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_72(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_AnyG_sp_0(e.Edge#g, c)
+  t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+  element0_1 = t1.0
+  element1_1 = t1.1
+  nb1 = element1_1
+  na1 = element0_1
+  [na1, nb1, e.target]
+private fun fire_SpecialStateMachine_sp_8(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_IsVal_sp_0(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_MixIn_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_9(rest1, a, b, c, here)
+private fun fire_SpecialStateMachine_sp_9(edges, a, b, c, here) =
+  let {e, rest1, scrut5, t1, nb1, na1, arg_Cons_0_1, arg_Cons_1_1, element1_1, element0_1}
+  arg_Cons_0_1 = edges.Cons#x
+  arg_Cons_1_1 = edges.Cons#xs
+  rest1 = arg_Cons_1_1
+  e = arg_Cons_0_1
+  scrut5 = test_ModIs_sp_0(e.Edge#g, c)
+  if scrut5 is
+    true then
+      t1 = upd_Both_sp_0(e.Edge#act, a, b, c)
+      element0_1 = t1.0
+      element1_1 = t1.1
+      nb1 = element1_1
+      na1 = element0_1
+      [na1, nb1, e.target]
+    else fire_SpecialStateMachine_sp_10(rest1, a, b, c, here)
+private fun inRange_SpecialStateMachine_sp_0(lo, hi) = new InRange(1, 255)
+private fun inRange_SpecialStateMachine_sp_1(lo, hi) = new InRange(97, 122)
+private fun inRange_SpecialStateMachine_sp_2(lo, hi) = new InRange(48, 57)
+private fun inRange_SpecialStateMachine_sp_3(lo, hi) = new InRange(0, 63)
+private fun inRange_SpecialStateMachine_sp_4(lo, hi) = new InRange(64, 191)
+private fun isVal_SpecialStateMachine_sp_0(v) = new IsVal(126)
+private fun isVal_SpecialStateMachine_sp_1(v) = new IsVal(125)
+private fun isVal_SpecialStateMachine_sp_2(v) = new IsVal(44)
+private fun isVal_SpecialStateMachine_sp_3(v) = new IsVal(46)
+private fun lookup_SpecialStateMachine_sp_0(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  if states is
+    Cons then
+      arg_Cons_0_ = states.Cons#x
+      arg_Cons_1_ = states.Cons#xs
+      rest = arg_Cons_1_
+      s = arg_Cons_0_
+      scrut4 = s.name == name
+      if scrut4 is
+        true then new Some(s)
+        else lookup_SpecialStateMachine_sp_0(rest, name)
+    else None
+private fun lookup_SpecialStateMachine_sp_1(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = true
+  new Some(s)
+private fun lookup_SpecialStateMachine_sp_10(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "body" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_11(rest, name)
+private fun lookup_SpecialStateMachine_sp_11(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_12(rest, name)
+private fun lookup_SpecialStateMachine_sp_12(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_13(rest, name)
+private fun lookup_SpecialStateMachine_sp_13(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_14(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "idle" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_15(rest, name)
+private fun lookup_SpecialStateMachine_sp_15(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "len" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_16(rest, name)
+private fun lookup_SpecialStateMachine_sp_16(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "body" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_17(rest, name)
+private fun lookup_SpecialStateMachine_sp_17(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "esc" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_18(rest, name)
+private fun lookup_SpecialStateMachine_sp_18(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "crc" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_19(rest, name)
+private fun lookup_SpecialStateMachine_sp_19(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_2(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "idle" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_3(rest, name)
+private fun lookup_SpecialStateMachine_sp_20(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = true
+  new Some(s)
+private fun lookup_SpecialStateMachine_sp_21(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_22(rest, name)
+private fun lookup_SpecialStateMachine_sp_22(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "word" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_23(rest, name)
+private fun lookup_SpecialStateMachine_sp_23(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "num" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_24(rest, name)
+private fun lookup_SpecialStateMachine_sp_24(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "punct" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_25(rest, name)
+private fun lookup_SpecialStateMachine_sp_25(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "skip" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_26(rest, name)
+private fun lookup_SpecialStateMachine_sp_26(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_27(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "start" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_28(rest, name)
+private fun lookup_SpecialStateMachine_sp_28(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "word" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_29(rest, name)
+private fun lookup_SpecialStateMachine_sp_29(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "num" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_30(rest, name)
+private fun lookup_SpecialStateMachine_sp_3(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "len" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_4(rest, name)
+private fun lookup_SpecialStateMachine_sp_30(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_31(rest, name)
+private fun lookup_SpecialStateMachine_sp_31(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "skip" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_32(rest, name)
+private fun lookup_SpecialStateMachine_sp_32(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_33(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "start" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_34(rest, name)
+private fun lookup_SpecialStateMachine_sp_34(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "word" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_35(rest, name)
+private fun lookup_SpecialStateMachine_sp_35(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "num" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_36(rest, name)
+private fun lookup_SpecialStateMachine_sp_36(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "punct" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_37(rest, name)
+private fun lookup_SpecialStateMachine_sp_37(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "skip" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_38(rest, name)
+private fun lookup_SpecialStateMachine_sp_38(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_39(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = true
+  new Some(s)
+private fun lookup_SpecialStateMachine_sp_4(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_5(rest, name)
+private fun lookup_SpecialStateMachine_sp_40(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_41(rest, name)
+private fun lookup_SpecialStateMachine_sp_41(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s1" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_42(rest, name)
+private fun lookup_SpecialStateMachine_sp_42(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s2" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_43(rest, name)
+private fun lookup_SpecialStateMachine_sp_43(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_44(rest, name)
+private fun lookup_SpecialStateMachine_sp_44(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_45(rest, name)
+private fun lookup_SpecialStateMachine_sp_45(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_46(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s0" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_47(rest, name)
+private fun lookup_SpecialStateMachine_sp_47(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_48(rest, name)
+private fun lookup_SpecialStateMachine_sp_48(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s2" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_49(rest, name)
+private fun lookup_SpecialStateMachine_sp_49(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s3" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_50(rest, name)
+private fun lookup_SpecialStateMachine_sp_5(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_6(rest, name)
+private fun lookup_SpecialStateMachine_sp_50(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s4" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_51(rest, name)
+private fun lookup_SpecialStateMachine_sp_51(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_52(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s0" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_53(rest, name)
+private fun lookup_SpecialStateMachine_sp_53(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s1" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_54(rest, name)
+private fun lookup_SpecialStateMachine_sp_54(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s2" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_55(rest, name)
+private fun lookup_SpecialStateMachine_sp_55(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s3" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_56(rest, name)
+private fun lookup_SpecialStateMachine_sp_56(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s4" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_57(rest, name)
+private fun lookup_SpecialStateMachine_sp_57(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_58(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s0" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_59(rest, name)
+private fun lookup_SpecialStateMachine_sp_59(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s1" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_60(rest, name)
+private fun lookup_SpecialStateMachine_sp_6(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = false
+  lookup_SpecialStateMachine_sp_7(rest, name)
+private fun lookup_SpecialStateMachine_sp_60(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s2" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_61(rest, name)
+private fun lookup_SpecialStateMachine_sp_61(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s3" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_62(rest, name)
+private fun lookup_SpecialStateMachine_sp_62(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "s4" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_63(rest, name)
+private fun lookup_SpecialStateMachine_sp_63(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_7(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  None
+private fun lookup_SpecialStateMachine_sp_8(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "idle" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_9(rest, name)
+private fun lookup_SpecialStateMachine_sp_9(states, name) =
+  let {s, rest, scrut4, arg_Cons_0_, arg_Cons_1_}
+  arg_Cons_0_ = states.Cons#x
+  arg_Cons_1_ = states.Cons#xs
+  rest = arg_Cons_1_
+  s = arg_Cons_0_
+  scrut4 = "len" == name
+  if scrut4 is
+    true then new Some(s)
+    else lookup_SpecialStateMachine_sp_10(rest, name)
+private fun ls2_SpecialStateMachine_sp_0(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_5(b, Nil)
+  cons_SpecialStateMachine_sp_6(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_1(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_5(b, Nil)
+  cons_SpecialStateMachine_sp_7(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_2(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_12(b, Nil)
+  cons_SpecialStateMachine_sp_13(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_3(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_14(b, Nil)
+  cons_SpecialStateMachine_sp_15(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_4(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_31(b, Nil)
+  cons_SpecialStateMachine_sp_32(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_5(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_25(b, Nil)
+  cons_SpecialStateMachine_sp_33(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_6(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_39(b, Nil)
+  cons_SpecialStateMachine_sp_40(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_7(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_44(b, Nil)
+  cons_SpecialStateMachine_sp_45(a, tmp24)
+private fun ls2_SpecialStateMachine_sp_8(a, b) =
+  let {tmp24}
+  tmp24 = cons_SpecialStateMachine_sp_46(b, Nil)
+  cons_SpecialStateMachine_sp_47(a, tmp24)
+private fun ls3_SpecialStateMachine_sp_0(a, b, c) =
+  let {tmp22, tmp23}
+  tmp22 = cons_SpecialStateMachine_sp_25(c, Nil)
+  tmp23 = cons_SpecialStateMachine_sp_26(b, tmp22)
+  cons_SpecialStateMachine_sp_27(a, tmp23)
+private fun ls3_SpecialStateMachine_sp_1(a, b, c) =
+  let {tmp22, tmp23}
+  tmp22 = cons_SpecialStateMachine_sp_28(c, Nil)
+  tmp23 = cons_SpecialStateMachine_sp_29(b, tmp22)
+  cons_SpecialStateMachine_sp_30(a, tmp23)
+private fun ls3_SpecialStateMachine_sp_2(a, b, c) =
+  let {tmp22, tmp23}
+  tmp22 = cons_SpecialStateMachine_sp_41(c, Nil)
+  tmp23 = cons_SpecialStateMachine_sp_42(b, tmp22)
+  cons_SpecialStateMachine_sp_43(a, tmp23)
+private fun ls3_SpecialStateMachine_sp_3(a, b, c) =
+  let {tmp22, tmp23}
+  tmp22 = cons_SpecialStateMachine_sp_48(c, Nil)
+  tmp23 = cons_SpecialStateMachine_sp_49(b, tmp22)
+  cons_SpecialStateMachine_sp_50(a, tmp23)
+private fun ls4_SpecialStateMachine_sp_0(a, b, c, d) =
+  let {tmp25, tmp26, tmp27}
+  tmp25 = cons_SpecialStateMachine_sp_8(d, Nil)
+  tmp26 = cons_SpecialStateMachine_sp_9(c, tmp25)
+  tmp27 = cons_SpecialStateMachine_sp_10(b, tmp26)
+  cons_SpecialStateMachine_sp_11(a, tmp27)
+private fun ls4_SpecialStateMachine_sp_1(a, b, c, d) =
+  let {tmp25, tmp26, tmp27}
+  tmp25 = cons_SpecialStateMachine_sp_21(d, Nil)
+  tmp26 = cons_SpecialStateMachine_sp_22(c, tmp25)
+  tmp27 = cons_SpecialStateMachine_sp_23(b, tmp26)
+  cons_SpecialStateMachine_sp_24(a, tmp27)
+private fun ls5_SpecialStateMachine_sp_0(a, b, c, d, e) =
+  let {tmp28, tmp29, tmp30, tmp31}
+  tmp28 = cons_SpecialStateMachine_sp_16(e, Nil)
+  tmp29 = cons_SpecialStateMachine_sp_17(d, tmp28)
+  tmp30 = cons_SpecialStateMachine_sp_18(c, tmp29)
+  tmp31 = cons_SpecialStateMachine_sp_19(b, tmp30)
+  cons_SpecialStateMachine_sp_20(a, tmp31)
+private fun ls5_SpecialStateMachine_sp_1(a, b, c, d, e) =
+  let {tmp28, tmp29, tmp30, tmp31}
+  tmp28 = cons_SpecialStateMachine_sp_34(e, Nil)
+  tmp29 = cons_SpecialStateMachine_sp_35(d, tmp28)
+  tmp30 = cons_SpecialStateMachine_sp_36(c, tmp29)
+  tmp31 = cons_SpecialStateMachine_sp_37(b, tmp30)
+  cons_SpecialStateMachine_sp_38(a, tmp31)
+private fun ls5_SpecialStateMachine_sp_2(a, b, c, d, e) =
+  let {tmp28, tmp29, tmp30, tmp31}
+  tmp28 = cons_SpecialStateMachine_sp_51(e, Nil)
+  tmp29 = cons_SpecialStateMachine_sp_52(d, tmp28)
+  tmp30 = cons_SpecialStateMachine_sp_53(c, tmp29)
+  tmp31 = cons_SpecialStateMachine_sp_54(b, tmp30)
+  cons_SpecialStateMachine_sp_55(a, tmp31)
+private fun machineOf_SpecialStateMachine_sp_0(start, states) = new Machine("idle", states)
+private fun machineOf_SpecialStateMachine_sp_1(start, states) = new Machine("start", states)
+private fun machineOf_SpecialStateMachine_sp_2(start, states) = new Machine("s0", states)
+private fun modIs_SpecialStateMachine_sp_0(k, r) = new ModIs(7, 0)
+private fun modIs_SpecialStateMachine_sp_1(k, r) = new ModIs(3, 0)
+private fun modIs_SpecialStateMachine_sp_2(k, r) = new ModIs(5, 0)
+private fun modIs_SpecialStateMachine_sp_3(k, r) = new ModIs(2, 0)
+private fun modIs_SpecialStateMachine_sp_4(k, r) = new ModIs(2, 1)
+private fun notG_SpecialStateMachine_sp_0(g) = new NotG(g)
+private fun notVal_SpecialStateMachine_sp_0(v) = new NotVal(0)
+private fun notVal_SpecialStateMachine_sp_1(v) = new NotVal(32)
+private fun orG_SpecialStateMachine_sp_0(g1, g2) = new OrG(g1, g2)
+private fun outRange_SpecialStateMachine_sp_0(lo, hi) = new OutRange(0, 127)
+private fun outRange_SpecialStateMachine_sp_1(lo, hi) = new OutRange(32, 224)
+private fun runLoop_SpecialStateMachine_sp_0(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = 0
+      tmp19 = 1
+      1
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_0(states, name, 1, 0, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_1(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_1(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_1(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_1(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_10(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = 0
+      tmp19 = 1
+      1
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_10(states, "s0", 1, 0, c19)
+      element0_2 = r1.0
+      element1_2 = r1.1
+      element2_ = r1.2
+      nt = element2_
+      nb2 = element1_2
+      na2 = element0_2
+      tmp21 = k - 1
+      runLoop_SpecialStateMachine_sp_11(states, nt, na2, nb2, arr, n, tmp21)
+private fun runLoop_SpecialStateMachine_sp_11(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_11(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_12(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_12(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_12(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_13(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_13(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_13(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_14(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_14(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_14(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_14(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_2(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = 0
+      tmp19 = 1
+      1
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_2(states, "idle", 1, 0, c19)
+      element0_2 = r1.0
+      element1_2 = r1.1
+      element2_ = r1.2
+      nt = element2_
+      nb2 = element1_2
+      na2 = element0_2
+      tmp21 = k - 1
+      runLoop_SpecialStateMachine_sp_3(states, nt, na2, nb2, arr, n, tmp21)
+private fun runLoop_SpecialStateMachine_sp_3(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_3(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_4(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_4(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_4(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_5(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_5(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_5(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_5(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_6(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = 0
+      tmp19 = 1
+      1
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_6(states, "start", 1, 0, c19)
+      element0_2 = r1.0
+      element1_2 = r1.1
+      element2_ = r1.2
+      nt = element2_
+      nb2 = element1_2
+      na2 = element0_2
+      tmp21 = k - 1
+      runLoop_SpecialStateMachine_sp_7(states, nt, na2, nb2, arr, n, tmp21)
+private fun runLoop_SpecialStateMachine_sp_7(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_7(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_8(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_8(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_8(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_9(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun runLoop_SpecialStateMachine_sp_9(states, name, a, b, arr, n, k) =
+  let {scrut6, c19, r1, nb2, na2, nt, tmp18, tmp19, tmp20, element2_, element1_2, element0_2, tmp21}
+  scrut6 = k <= 0
+  if scrut6 is
+    true then
+      tmp18 = b * 65536
+      tmp19 = a + tmp18
+      tmp19 % 1000003
+    else
+      tmp20 = n - k
+      c19 = SpecialStateMachine__Legacy."Sym$SpecialStateMachine".at(arr, tmp20)
+      r1 = step_SpecialStateMachine_sp_9(states, name, a, b, c19)
+      if r1 is
+        [_, _, _] then
+          element0_2 = r1.0
+          element1_2 = r1.1
+          element2_ = r1.2
+          nt = element2_
+          nb2 = element1_2
+          na2 = element0_2
+          tmp21 = k - 1
+          runLoop_SpecialStateMachine_sp_9(states, nt, na2, nb2, arr, n, tmp21)
+        else Stuck
+private fun scale_SpecialStateMachine_sp_0(k) = new Scale(31)
+private fun scale_SpecialStateMachine_sp_1(k) = new Scale(10)
+private fun scale_SpecialStateMachine_sp_2(k) = new Scale(17)
+private fun seqA_SpecialStateMachine_sp_0(x, y) = new Seq(x, y)
+private fun seqA_SpecialStateMachine_sp_1(x, y) = new Seq(x, y)
+private fun setB_SpecialStateMachine_sp_0(k) = new SetB(3)
+private fun setB_SpecialStateMachine_sp_1(k) = new SetB(5)
+private fun setB_SpecialStateMachine_sp_2(k) = new SetB(7)
+private fun st_SpecialStateMachine_sp_0(name, edges) = new St("idle", edges)
+private fun st_SpecialStateMachine_sp_1(name, edges) = new St("len", edges)
+private fun st_SpecialStateMachine_sp_10(name, edges) = new St("s0", edges)
+private fun st_SpecialStateMachine_sp_11(name, edges) = new St("s1", edges)
+private fun st_SpecialStateMachine_sp_12(name, edges) = new St("s2", edges)
+private fun st_SpecialStateMachine_sp_13(name, edges) = new St("s3", edges)
+private fun st_SpecialStateMachine_sp_14(name, edges) = new St("s4", edges)
+private fun st_SpecialStateMachine_sp_2(name, edges) = new St("body", edges)
+private fun st_SpecialStateMachine_sp_3(name, edges) = new St("esc", edges)
+private fun st_SpecialStateMachine_sp_4(name, edges) = new St("crc", edges)
+private fun st_SpecialStateMachine_sp_5(name, edges) = new St("start", edges)
+private fun st_SpecialStateMachine_sp_6(name, edges) = new St("word", edges)
+private fun st_SpecialStateMachine_sp_7(name, edges) = new St("num", edges)
+private fun st_SpecialStateMachine_sp_8(name, edges) = new St("punct", edges)
+private fun st_SpecialStateMachine_sp_9(name, edges) = new St("skip", edges)
+private fun step_SpecialStateMachine_sp_0(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_0(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_0(st.edges, 1, 0, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_1(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_0(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_1(st.edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_10(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_39(states, "s0")
+  arg_Some_0_ = s1.Some#x
+  st = arg_Some_0_
+  fire_SpecialStateMachine_sp_45(st.St#edges, 1, 0, c, "s0")
+private fun step_SpecialStateMachine_sp_11(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_40(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_47(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_12(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_46(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_51(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_13(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_52(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_57(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_14(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_58(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_65(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_2(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_1(states, "idle")
+  arg_Some_0_ = s1.Some#x
+  st = arg_Some_0_
+  fire_SpecialStateMachine_sp_2(st.St#edges, 1, 0, c, "idle")
+private fun step_SpecialStateMachine_sp_3(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_2(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_4(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_4(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_8(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_6(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_5(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_14(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_11(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_6(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_20(states, "start")
+  arg_Some_0_ = s1.Some#x
+  st = arg_Some_0_
+  fire_SpecialStateMachine_sp_18(st.St#edges, 1, 0, c, "start")
+private fun step_SpecialStateMachine_sp_7(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_21(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_22(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_8(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_27(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_28(st.St#edges, a, b, c, name)
+    else Stuck
+private fun step_SpecialStateMachine_sp_9(states, name, a, b, c) =
+  let {s1, st, arg_Some_0_}
+  s1 = lookup_SpecialStateMachine_sp_33(states, name)
+  if s1 is
+    Some then
+      arg_Some_0_ = s1.Some#x
+      st = arg_Some_0_
+      fire_SpecialStateMachine_sp_36(st.St#edges, a, b, c, name)
+    else Stuck
+private fun test_AnyG_sp_0(self, c) = true
+private fun test_IsVal_sp_0(self, c) = c === 126
+private fun test_IsVal_sp_1(self, c) = c === 125
+private fun test_IsVal_sp_2(self, c) = c === 44
+private fun test_IsVal_sp_3(self, c) = c === 46
+private fun test_NotVal_sp_0(self, c) = c !== 0
+private fun test_NotVal_sp_1(self, c) = c !== 32
+private fun test_InRange_sp_0(self, c) =
+  let {scrut, scrut1}
+  scrut = c >= 1
+  if scrut is
+    true then
+      scrut1 = c <= 255
+      if scrut1 is
+        true then true
+        else false
+    else false
+private fun test_InRange_sp_1(self, c) =
+  let {scrut, scrut1}
+  scrut = c >= 97
+  if scrut is
+    true then
+      scrut1 = c <= 122
+      if scrut1 is
+        true then true
+        else false
+    else false
+private fun test_InRange_sp_2(self, c) =
+  let {scrut, scrut1}
+  scrut = c >= 48
+  if scrut is
+    true then
+      scrut1 = c <= 57
+      if scrut1 is
+        true then true
+        else false
+    else false
+private fun test_InRange_sp_3(self, c) =
+  let {scrut, scrut1}
+  scrut = c >= 0
+  if scrut is
+    true then
+      scrut1 = c <= 63
+      if scrut1 is
+        true then true
+        else false
+    else false
+private fun test_InRange_sp_4(self, c) =
+  let {scrut, scrut1}
+  scrut = c >= 64
+  if scrut is
+    true then
+      scrut1 = c <= 191
+      if scrut1 is
+        true then true
+        else false
+    else false
+private fun test_OutRange_sp_0(self, c) =
+  let {tmp}
+  tmp = c < 0
+  if tmp is
+    false then c > 127
+    else true
+private fun test_OutRange_sp_1(self, c) =
+  let {tmp}
+  tmp = c < 32
+  if tmp is
+    false then c > 224
+    else true
+private fun test_ModIs_sp_0(self, c) =
+  let {tmp1}
+  tmp1 = c % 7
+  tmp1 === 0
+private fun test_ModIs_sp_1(self, c) =
+  let {tmp1}
+  tmp1 = c % 3
+  tmp1 === 0
+private fun test_ModIs_sp_2(self, c) =
+  let {tmp1}
+  tmp1 = c % 5
+  tmp1 === 0
+private fun test_ModIs_sp_3(self, c) =
+  let {tmp1}
+  tmp1 = c % 2
+  tmp1 === 0
+private fun test_ModIs_sp_4(self, c) =
+  let {tmp1}
+  tmp1 = c % 2
+  tmp1 === 1
+private fun test_AndG_sp_0(self, c) =
+  let {scrut2, scrut3}
+  scrut2 = test_InRange_sp_4(self.AndG#g1, c)
+  if scrut2 is
+    true then
+      scrut3 = test_ModIs_sp_4(self.AndG#g2, c)
+      if scrut3 is
+        true then true
+        else false
+    else false
+private fun test_OrG_sp_0(self, c) =
+  let {tmp2}
+  tmp2 = test_IsVal_sp_2(self.OrG#g1, c)
+  if tmp2 is
+    false then test_IsVal_sp_3(self.OrG#g2, c)
+    else true
+private fun test_NotG_sp_0(self, c) =
+  let {tmp3}
+  tmp3 = test_ModIs_sp_2(self.NotG#g, c)
+  not tmp3
+private fun upd_Nop_sp_0(self, a, b, c) = [a, b]
+private fun upd_Reset_sp_0(self, a, b, c) = [1, 0]
+private fun upd_Reset_sp_1(self, a, b, c) = [1, 0]
+private fun upd_AddIn_sp_0(self, a, b, c) =
+  let {tmp4, tmp5}
+  tmp4 = a + c
+  tmp5 = tmp4 % 65521
+  [tmp5, b]
+private fun upd_AddIn_sp_1(self, a, b, c) =
+  let {tmp4, tmp5}
+  tmp4 = 1 + c
+  tmp5 = tmp4 % 65521
+  [tmp5, b]
+private fun upd_MixIn_sp_0(self, a, b, c) =
+  let {tmp6, tmp7}
+  tmp6 = b + a
+  tmp7 = tmp6 % 65521
+  [a, tmp7]
+private fun upd_Both_sp_0(self, a, b, c) =
+  let {tmp8, tmp9, tmp10, tmp11, tmp12}
+  tmp8 = a + c
+  tmp9 = tmp8 % 65521
+  tmp10 = b + a
+  tmp11 = tmp10 + c
+  tmp12 = tmp11 % 65521
+  [tmp9, tmp12]
+private fun upd_SetB_sp_0(self, a, b, c) =
+  let {tmp13, tmp14}
+  tmp13 = c * 3
+  tmp14 = tmp13 % 65521
+  [a, tmp14]
+private fun upd_SetB_sp_1(self, a, b, c) =
+  let {tmp13, tmp14}
+  tmp13 = c * 5
+  tmp14 = tmp13 % 65521
+  [a, tmp14]
+private fun upd_SetB_sp_2(self, a, b, c) =
+  let {tmp13, tmp14}
+  tmp13 = c * 7
+  tmp14 = tmp13 % 65521
+  [a, tmp14]
+private fun upd_Scale_sp_0(self, a, b, c) =
+  let {tmp15, tmp16, tmp17}
+  tmp15 = a * 31
+  tmp16 = tmp15 + c
+  tmp17 = tmp16 % 65521
+  [tmp17, b]
+private fun upd_Scale_sp_1(self, a, b, c) =
+  let {tmp15, tmp16, tmp17}
+  tmp15 = a * 10
+  tmp16 = tmp15 + c
+  tmp17 = tmp16 % 65521
+  [tmp17, b]
+private fun upd_Scale_sp_2(self, a, b, c) =
+  let {tmp15, tmp16, tmp17}
+  tmp15 = a * 17
+  tmp16 = tmp15 + c
+  tmp17 = tmp16 % 65521
+  [tmp17, b]
+private fun upd_Seq_sp_0(self, a, b, c) =
+  let {t, nb, na, element1_, element0_}
+  t = upd_AddIn_sp_0(self.Seq#x, a, b, c)
+  element0_ = t.0
+  element1_ = t.1
+  nb = element1_
+  na = element0_
+  upd_MixIn_sp_0(self.Seq#y, na, nb, c)
+private fun upd_Seq_sp_1(self, a, b, c) =
+  let {t, nb, na, element1_, element0_}
+  t = upd_MixIn_sp_0(self.Seq#x, a, b, c)
+  element0_ = t.0
+  element1_ = t.1
+  nb = element1_
+  na = element0_
+  upd_AddIn_sp_0(self.Seq#y, na, nb, c)
+private fun run_Machine_sp_0(self, arr) = driveFrom_SpecialStateMachine_sp_0(self.Machine#start, self.Machine#states, arr)
+private fun run_Machine_sp_1(self, arr) = driveFrom_SpecialStateMachine_sp_1(self.Machine#start, self.Machine#states, arr)
+private fun run_Machine_sp_2(self, arr) = driveFrom_SpecialStateMachine_sp_2(self.Machine#start, self.Machine#states, arr)

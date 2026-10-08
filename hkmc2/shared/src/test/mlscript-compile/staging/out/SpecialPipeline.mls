@@ -1,0 +1,1013 @@
+#config(noFreeze: true, noModuleCheck: true, liftDefns: None, classTags: Some(ClassTags(debug: false, mono: true)))
+import "../SpecialPipeline.mls" as SpecialPipeline__Legacy
+module SpecialPipeline with
+    class Expr() with
+      ()
+    object Var with
+      fun eval(x) = x
+    class Lit(val v) extends Expr() with
+      ()
+      fun eval(x) = this.Lit#v
+    class Add(val l, val r) extends Expr() with
+      ()
+      fun eval(x) =
+        let {tmp, tmp1, tmp2}
+        tmp = this.Add#l.eval(x)
+        tmp1 = this.Add#r.eval(x)
+        tmp2 = tmp + tmp1
+        tmp2 % 1000003
+    class Sub(val l, val r) extends Expr() with
+      ()
+      fun eval(x) =
+        let {tmp3, tmp4, tmp5, tmp6}
+        tmp3 = this.Sub#l.eval(x)
+        tmp4 = this.Sub#r.eval(x)
+        tmp5 = tmp3 - tmp4
+        tmp6 = tmp5 + 1000003
+        tmp6 % 1000003
+    class Mul(val l, val r) extends Expr() with
+      ()
+      fun eval(x) =
+        let {tmp7, tmp8, tmp9}
+        tmp7 = this.Mul#l.eval(x)
+        tmp8 = this.Mul#r.eval(x)
+        tmp9 = tmp7 * tmp8
+        tmp9 % 1000003
+    class Rem(val l, val k) extends Expr() with
+      ()
+      fun eval(x) =
+        let {tmp10}
+        tmp10 = this.Rem#l.eval(x)
+        tmp10 % this.Rem#k
+    class Min(val l, val r) extends Expr() with
+      ()
+      fun eval(x) =
+        let {a, b, scrut}
+        a = this.Min#l.eval(x)
+        b = this.Min#r.eval(x)
+        scrut = a < b
+        if scrut is
+          true then a
+          else b
+    class Max(val l, val r) extends Expr() with
+      ()
+      fun eval(x) =
+        let {a1, b1, scrut1}
+        a1 = this.Max#l.eval(x)
+        b1 = this.Max#r.eval(x)
+        scrut1 = a1 > b1
+        if scrut1 is
+          true then a1
+          else b1
+    class Dbl(val l) extends Expr() with
+      ()
+      fun eval(x) =
+        let {tmp11, tmp12}
+        tmp11 = this.Dbl#l.eval(x)
+        tmp12 = tmp11 * 2
+        tmp12 % 1000003
+    class Inc(val l) extends Expr() with
+      ()
+      fun eval(x) =
+        let {tmp13, tmp14}
+        tmp13 = this.Inc#l.eval(x)
+        tmp14 = tmp13 + 1
+        tmp14 % 1000003
+    class Pred() with
+      ()
+    class Ge(val l, val r) extends Pred() with
+      ()
+      fun test(x) =
+        let {tmp15, tmp16}
+        tmp15 = this.Ge#l.eval(x)
+        tmp16 = this.Ge#r.eval(x)
+        tmp15 >= tmp16
+    class Lt(val l, val r) extends Pred() with
+      ()
+      fun test(x) =
+        let {tmp17, tmp18}
+        tmp17 = this.Lt#l.eval(x)
+        tmp18 = this.Lt#r.eval(x)
+        tmp17 < tmp18
+    class EqZ(val l) extends Pred() with
+      ()
+      fun test(x) =
+        let {tmp19}
+        tmp19 = this.EqZ#l.eval(x)
+        tmp19 === 0
+    class Odd(val l) extends Pred() with
+      ()
+      fun test(x) =
+        let {tmp20, tmp21}
+        tmp20 = this.Odd#l.eval(x)
+        tmp21 = tmp20 % 2
+        tmp21 === 1
+    class AndP(val a, val b) extends Pred() with
+      ()
+      fun test(x) =
+        let {scrut2, scrut3}
+        scrut2 = this.AndP#a.test(x)
+        if scrut2 is
+          true then
+            scrut3 = this.AndP#b.test(x)
+            if scrut3 is
+              true then true
+              else false
+          else false
+    class OrP(val a, val b) extends Pred() with
+      ()
+      fun test(x) =
+        let {tmp22}
+        tmp22 = this.OrP#a.test(x)
+        if tmp22 is
+          false then this.OrP#b.test(x)
+          else true
+    class NotP(val a) extends Pred() with
+      ()
+      fun test(x) =
+        let {tmp23}
+        tmp23 = this.NotP#a.test(x)
+        not tmp23
+    class Sink() with
+      ()
+    object SumSink with
+      fun accept(acc, x) =
+        let {tmp24}
+        tmp24 = acc + x
+        tmp24 % 1000003
+    class MapSink(val f, val k) extends Sink() with
+      ()
+      fun accept(acc, x) =
+        let {tmp25}
+        tmp25 = this.MapSink#f.eval(x)
+        this.MapSink#k.accept(acc, tmp25)
+    class FilterSink(val p, val k) extends Sink() with
+      ()
+      fun accept(acc, x) =
+        let {scrut4}
+        scrut4 = this.FilterSink#p.test(x)
+        if scrut4 is
+          true then this.FilterSink#k.accept(acc, x)
+          else acc
+    class ClampSink(val lo, val hi, val k) extends Sink() with
+      ()
+      fun accept(acc, x) =
+        let {scrut5, scrut6}
+        scrut5 = x < this.ClampSink#lo
+        if scrut5 is
+          true then this.ClampSink#k.accept(acc, this.ClampSink#lo)
+          else
+            scrut6 = x > this.ClampSink#hi
+            if scrut6 is
+              true then this.ClampSink#k.accept(acc, this.ClampSink#hi)
+              else this.ClampSink#k.accept(acc, x)
+    class TapSink(val f, val k) extends Sink() with
+      ()
+      fun accept(acc, x) =
+        let {tmp26, tmp27, tmp28}
+        tmp26 = this.TapSink#f.eval(x)
+        tmp27 = acc + tmp26
+        tmp28 = tmp27 % 1000003
+        this.TapSink#k.accept(tmp28, x)
+    class BranchSink(val p, val f, val g, val k) extends Sink() with
+      ()
+      fun accept(acc, x) =
+        let {scrut7, tmp29, tmp30}
+        scrut7 = this.BranchSink#p.test(x)
+        if scrut7 is
+          true then
+            tmp29 = this.BranchSink#f.eval(x)
+            this.BranchSink#k.accept(acc, tmp29)
+          else
+            tmp30 = this.BranchSink#g.eval(x)
+            this.BranchSink#k.accept(acc, tmp30)
+    class Gen() with
+      ()
+    object Source with
+      fun foreach(snk, acc, arr) = runSource(snk, acc, arr)
+    class MapG(val f, val src) extends Gen() with
+      ()
+      fun foreach(snk, acc, arr) =
+        let {tmp31}
+        tmp31 = new MapSink(this.MapG#f, snk)
+        this.MapG#src.foreach(tmp31, acc, arr)
+    class FilterG(val p, val src) extends Gen() with
+      ()
+      fun foreach(snk, acc, arr) =
+        let {tmp32}
+        tmp32 = new FilterSink(this.FilterG#p, snk)
+        this.FilterG#src.foreach(tmp32, acc, arr)
+    class ClampG(val lo, val hi, val src) extends Gen() with
+      ()
+      fun foreach(snk, acc, arr) =
+        let {tmp33}
+        tmp33 = new ClampSink(this.ClampG#lo, this.ClampG#hi, snk)
+        this.ClampG#src.foreach(tmp33, acc, arr)
+    class TapG(val f, val src) extends Gen() with
+      ()
+      fun foreach(snk, acc, arr) =
+        let {tmp34}
+        tmp34 = new TapSink(this.TapG#f, snk)
+        this.TapG#src.foreach(tmp34, acc, arr)
+    class BranchG(val p, val f, val g, val src) extends Gen() with
+      ()
+      fun foreach(snk, acc, arr) =
+        let {tmp35}
+        tmp35 = new BranchSink(this.BranchG#p, this.BranchG#f, this.BranchG#g, snk)
+        this.BranchG#src.foreach(tmp35, acc, arr)
+    class ConcatG(val a, val b) extends Gen() with
+      ()
+      fun foreach(snk, acc, arr) =
+        let {tmp36}
+        tmp36 = this.ConcatG#a.foreach(snk, acc, arr)
+        this.ConcatG#b.foreach(snk, tmp36, arr)
+    class Pipe(val body) with
+      ()
+      fun run(arr) = total(this.Pipe#body, arr)
+    fun add(l, r) = new Add(l, r)
+    fun andP(a, b) = new AndP(a, b)
+    fun bodyA() =
+      let {tmp63, tmp64, tmp65, tmp66, tmp67, tmp68, tmp69, tmp70, tmp71, tmp72, tmp73, tmp74, tmp75, tmp76, tmp77}
+      tmp63 = source()
+      tmp64 = vr()
+      tmp65 = rem_SpecialPipeline_sp_1(tmp64, 3)
+      tmp66 = eqz_SpecialPipeline_sp_0(tmp65)
+      tmp67 = filterG_SpecialPipeline_sp_0(tmp63, tmp66)
+      tmp68 = poly()
+      tmp69 = mapG_SpecialPipeline_sp_0(tmp67, tmp68)
+      tmp70 = mix()
+      tmp71 = tapG_SpecialPipeline_sp_0(tmp69, tmp70)
+      tmp72 = clampG_SpecialPipeline_sp_0(tmp71, 1000, 900000)
+      tmp73 = vr()
+      tmp74 = lit_SpecialPipeline_sp_1(7)
+      tmp75 = mul_SpecialPipeline_sp_3(tmp73, tmp74)
+      tmp76 = lit_SpecialPipeline_sp_3(1)
+      tmp77 = add_SpecialPipeline_sp_3(tmp75, tmp76)
+      mapG_SpecialPipeline_sp_1(tmp72, tmp77)
+    fun bodyB() =
+      let {tmp78, tmp79, tmp80, tmp81, tmp82, tmp83, tmp84, tmp85, tmp86, tmp87, tmp88, tmp89, tmp90, tmp91, tmp92, tmp93, tmp94, tmp95, tmp96, tmp97, tmp98, tmp99, tmp100, tmp101, tmp102, tmp103}
+      tmp78 = source()
+      tmp79 = mix()
+      tmp80 = mapG_SpecialPipeline_sp_2(tmp78, tmp79)
+      tmp81 = vr()
+      tmp82 = lit_SpecialPipeline_sp_4(20000)
+      tmp83 = ge_SpecialPipeline_sp_0(tmp81, tmp82)
+      tmp84 = vr()
+      tmp85 = rem_SpecialPipeline_sp_2(tmp84, 5)
+      tmp86 = eqz_SpecialPipeline_sp_1(tmp85)
+      tmp87 = notP_SpecialPipeline_sp_0(tmp86)
+      tmp88 = andP_SpecialPipeline_sp_0(tmp83, tmp87)
+      tmp89 = filterG_SpecialPipeline_sp_1(tmp80, tmp88)
+      tmp90 = vr()
+      tmp91 = odd_SpecialPipeline_sp_0(tmp90)
+      tmp92 = vr()
+      tmp93 = vr()
+      tmp94 = mul_SpecialPipeline_sp_0(tmp92, tmp93)
+      tmp95 = vr()
+      tmp96 = lit_SpecialPipeline_sp_5(123456)
+      tmp97 = minE_SpecialPipeline_sp_1(tmp95, tmp96)
+      tmp98 = branchG_SpecialPipeline_sp_0(tmp89, tmp91, tmp94, tmp97)
+      tmp99 = poly()
+      tmp100 = tapG_SpecialPipeline_sp_1(tmp98, tmp99)
+      tmp101 = vr()
+      tmp102 = lit_SpecialPipeline_sp_6(9)
+      tmp103 = add_SpecialPipeline_sp_4(tmp101, tmp102)
+      mapG_SpecialPipeline_sp_3(tmp100, tmp103)
+    fun bodyC() =
+      let {tmp104, tmp105, tmp106, tmp107, tmp108, tmp109, tmp110, tmp111, tmp112, tmp113, tmp114, tmp115, tmp116, tmp117, tmp118, tmp119, tmp120, tmp121, tmp122, tmp123, tmp124, tmp125, tmp126, tmp127, tmp128}
+      tmp104 = source()
+      tmp105 = vr()
+      tmp106 = dbl_SpecialPipeline_sp_1(tmp105)
+      tmp107 = lit_SpecialPipeline_sp_3(1)
+      tmp108 = add_SpecialPipeline_sp_5(tmp106, tmp107)
+      tmp109 = mapG_SpecialPipeline_sp_4(tmp104, tmp108)
+      tmp110 = poly()
+      tmp111 = tapG_SpecialPipeline_sp_2(tmp109, tmp110)
+      tmp112 = source()
+      tmp113 = vr()
+      tmp114 = odd_SpecialPipeline_sp_0(tmp113)
+      tmp115 = filterG_SpecialPipeline_sp_2(tmp112, tmp114)
+      tmp116 = mix()
+      tmp117 = mapG_SpecialPipeline_sp_5(tmp115, tmp116)
+      tmp118 = concatG_SpecialPipeline_sp_0(tmp111, tmp117)
+      tmp119 = clampG_SpecialPipeline_sp_1(tmp118, 7, 999000)
+      tmp120 = vr()
+      tmp121 = lit_SpecialPipeline_sp_7(500000)
+      tmp122 = ge_SpecialPipeline_sp_1(tmp120, tmp121)
+      tmp123 = vr()
+      tmp124 = lit_SpecialPipeline_sp_8(11)
+      tmp125 = sub_SpecialPipeline_sp_1(tmp123, tmp124)
+      tmp126 = vr()
+      tmp127 = lit_SpecialPipeline_sp_8(11)
+      tmp128 = add_SpecialPipeline_sp_6(tmp126, tmp127)
+      branchG_SpecialPipeline_sp_1(tmp119, tmp122, tmp125, tmp128)
+    fun branchG(src, p, f, g) = new BranchG(p, f, g, src)
+    fun clampG(src, lo, hi) = new ClampG(lo, hi, src)
+    fun concatG(a, b) = new ConcatG(a, b)
+    fun dbl(l) = new Dbl(l)
+    fun eqz(l) = new EqZ(l)
+    fun filterG(src, p) = new FilterG(p, src)
+    fun ge(l, r) = new Ge(l, r)
+    fun inc(l) = new Inc(l)
+    fun lit(v) = new Lit(v)
+    fun lt(l, r) = new Lt(l, r)
+    fun mapG(src, f) = new MapG(f, src)
+    fun maxE(l, r) = new Max(l, r)
+    fun minE(l, r) = new Min(l, r)
+    fun mix() =
+      let {tmp53, tmp54, tmp55, tmp56, tmp57, tmp58, tmp59, tmp60, tmp61, tmp62}
+      tmp53 = poly()
+      tmp54 = dbl_SpecialPipeline_sp_0(tmp53)
+      tmp55 = poly()
+      tmp56 = vr()
+      tmp57 = sub_SpecialPipeline_sp_0(tmp55, tmp56)
+      tmp58 = vr()
+      tmp59 = inc_SpecialPipeline_sp_0(tmp58)
+      tmp60 = maxE_SpecialPipeline_sp_0(tmp57, tmp59)
+      tmp61 = rem_SpecialPipeline_sp_0(tmp60, 99991)
+      tmp62 = minE_SpecialPipeline_sp_0(tmp54, tmp61)
+      inc_SpecialPipeline_sp_1(tmp62)
+    fun mul(l, r) = new Mul(l, r)
+    fun notP(a) = new NotP(a)
+    fun odd(l) = new Odd(l)
+    fun orP(a, b) = new OrP(a, b)
+    fun pipe(k) =
+      let {tmp130, tmp131, tmp132}
+      if k is
+        0 then
+          tmp130 = bodyA()
+          new Pipe(tmp130)
+        1 then
+          tmp131 = bodyB()
+          new Pipe(tmp131)
+        else
+          tmp132 = bodyC()
+          new Pipe(tmp132)
+    fun pipe0(arr) =
+      let {tmp129}
+      tmp129 = bodyA()
+      total_SpecialPipeline_sp_0(tmp129, arr)
+    fun poly() =
+      let {tmp41, tmp42, tmp43, tmp44, tmp45, tmp46, tmp47, tmp48, tmp49, tmp50, tmp51, tmp52}
+      tmp41 = vr()
+      tmp42 = vr()
+      tmp43 = mul_SpecialPipeline_sp_0(tmp41, tmp42)
+      tmp44 = lit_SpecialPipeline_sp_0(3)
+      tmp45 = vr()
+      tmp46 = mul_SpecialPipeline_sp_1(tmp44, tmp45)
+      tmp47 = add_SpecialPipeline_sp_0(tmp43, tmp46)
+      tmp48 = lit_SpecialPipeline_sp_1(7)
+      tmp49 = add_SpecialPipeline_sp_1(tmp47, tmp48)
+      tmp50 = vr()
+      tmp51 = lit_SpecialPipeline_sp_2(5)
+      tmp52 = add_SpecialPipeline_sp_2(tmp50, tmp51)
+      mul_SpecialPipeline_sp_2(tmp49, tmp52)
+    fun rem(l, k) = new Rem(l, k)
+    fun runPipe(k, arr) =
+      let {tmp133}
+      tmp133 = pipe(k)
+      @matchShapes(Pipe(MapG(Add(Mul(Var, Lit(7)), Lit(1)), ClampG(1000, 900000, TapG(Inc(Min(Dbl(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5)))), Rem(Max(Sub(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5))), Var), Inc(Var)), 99991))), MapG(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5))), FilterG(EqZ(Rem(Var, 3)), Source)))))), Pipe(MapG(Add(Var, Lit(9)), TapG(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5))), BranchG(Odd(Var), Mul(Var, Var), Min(Var, Lit(123456)), FilterG(AndP(Ge(Var, Lit(20000)), NotP(EqZ(Rem(Var, 5)))), MapG(Inc(Min(Dbl(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5)))), Rem(Max(Sub(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5))), Var), Inc(Var)), 99991))), Source)))))), Pipe(BranchG(Ge(Var, Lit(500000)), Sub(Var, Lit(11)), Add(Var, Lit(11)), ClampG(7, 999000, ConcatG(TapG(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5))), MapG(Add(Dbl(Var), Lit(1)), Source)), MapG(Inc(Min(Dbl(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5)))), Rem(Max(Sub(Mul(Add(Add(Mul(Var, Var), Mul(Lit(3), Var)), Lit(7)), Add(Var, Lit(5))), Var), Inc(Var)), 99991))), FilterG(Odd(Var), Source))))))) shape.match of tmp133,
+        () => run_Pipe_sp_0(tmp133, arr)
+        () => run_Pipe_sp_1(tmp133, arr)
+        () => run_Pipe_sp_2(tmp133, arr)
+    fun runSource(snk, acc, arr) =
+      let {n}
+      n = SpecialPipeline__Legacy."Arr$SpecialPipeline".len(arr)
+      srcLoop(snk, acc, arr, n, n)
+    fun source() = Source
+    fun srcLoop(snk, acc, arr, n, k) =
+      let {scrut8, tmp37, tmp38, tmp39, tmp40}
+      scrut8 = k <= 0
+      if scrut8 is
+        true then acc
+        else
+          tmp37 = n - k
+          tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+          tmp39 = snk.accept(acc, tmp38)
+          tmp40 = k - 1
+          srcLoop(snk, tmp39, arr, n, tmp40)
+    fun sub(l, r) = new Sub(l, r)
+    fun tapG(src, f) = new TapG(f, src)
+    fun total(g, arr) = g.foreach(SumSink, 0, arr)
+    fun vr() = Var
+open SpecialPipeline
+private fun add_SpecialPipeline_sp_0(l, r) = new Add(l, r)
+private fun add_SpecialPipeline_sp_1(l, r) = new Add(l, r)
+private fun add_SpecialPipeline_sp_2(l, r) = new Add(l, r)
+private fun add_SpecialPipeline_sp_3(l, r) = new Add(l, r)
+private fun add_SpecialPipeline_sp_4(l, r) = new Add(l, r)
+private fun add_SpecialPipeline_sp_5(l, r) = new Add(l, r)
+private fun add_SpecialPipeline_sp_6(l, r) = new Add(l, r)
+private fun andP_SpecialPipeline_sp_0(a, b) = new AndP(a, b)
+private fun branchG_SpecialPipeline_sp_0(src, p, f, g) = new BranchG(p, f, g, src)
+private fun branchG_SpecialPipeline_sp_1(src, p, f, g) = new BranchG(p, f, g, src)
+private fun clampG_SpecialPipeline_sp_0(src, lo, hi) = new ClampG(1000, 900000, src)
+private fun clampG_SpecialPipeline_sp_1(src, lo, hi) = new ClampG(7, 999000, src)
+private fun concatG_SpecialPipeline_sp_0(a, b) = new ConcatG(a, b)
+private fun dbl_SpecialPipeline_sp_0(l) = new Dbl(l)
+private fun dbl_SpecialPipeline_sp_1(l) = new Dbl(l)
+private fun eqz_SpecialPipeline_sp_0(l) = new EqZ(l)
+private fun eqz_SpecialPipeline_sp_1(l) = new EqZ(l)
+private fun filterG_SpecialPipeline_sp_0(src, p) = new FilterG(p, src)
+private fun filterG_SpecialPipeline_sp_1(src, p) = new FilterG(p, src)
+private fun filterG_SpecialPipeline_sp_2(src, p) = new FilterG(p, src)
+private fun ge_SpecialPipeline_sp_0(l, r) = new Ge(l, r)
+private fun ge_SpecialPipeline_sp_1(l, r) = new Ge(l, r)
+private fun inc_SpecialPipeline_sp_0(l) = new Inc(l)
+private fun inc_SpecialPipeline_sp_1(l) = new Inc(l)
+private fun lit_SpecialPipeline_sp_0(v) = new Lit(3)
+private fun lit_SpecialPipeline_sp_1(v) = new Lit(7)
+private fun lit_SpecialPipeline_sp_2(v) = new Lit(5)
+private fun lit_SpecialPipeline_sp_3(v) = new Lit(1)
+private fun lit_SpecialPipeline_sp_4(v) = new Lit(20000)
+private fun lit_SpecialPipeline_sp_5(v) = new Lit(123456)
+private fun lit_SpecialPipeline_sp_6(v) = new Lit(9)
+private fun lit_SpecialPipeline_sp_7(v) = new Lit(500000)
+private fun lit_SpecialPipeline_sp_8(v) = new Lit(11)
+private fun mapG_SpecialPipeline_sp_0(src, f) = new MapG(f, src)
+private fun mapG_SpecialPipeline_sp_1(src, f) = new MapG(f, src)
+private fun mapG_SpecialPipeline_sp_2(src, f) = new MapG(f, src)
+private fun mapG_SpecialPipeline_sp_3(src, f) = new MapG(f, src)
+private fun mapG_SpecialPipeline_sp_4(src, f) = new MapG(f, src)
+private fun mapG_SpecialPipeline_sp_5(src, f) = new MapG(f, src)
+private fun maxE_SpecialPipeline_sp_0(l, r) = new Max(l, r)
+private fun minE_SpecialPipeline_sp_0(l, r) = new Min(l, r)
+private fun minE_SpecialPipeline_sp_1(l, r) = new Min(l, r)
+private fun mul_SpecialPipeline_sp_0(l, r) = new Mul(l, r)
+private fun mul_SpecialPipeline_sp_1(l, r) = new Mul(l, r)
+private fun mul_SpecialPipeline_sp_2(l, r) = new Mul(l, r)
+private fun mul_SpecialPipeline_sp_3(l, r) = new Mul(l, r)
+private fun notP_SpecialPipeline_sp_0(a) = new NotP(a)
+private fun odd_SpecialPipeline_sp_0(l) = new Odd(l)
+private fun rem_SpecialPipeline_sp_0(l, k) = new Rem(l, 99991)
+private fun rem_SpecialPipeline_sp_1(l, k) = new Rem(l, 3)
+private fun rem_SpecialPipeline_sp_2(l, k) = new Rem(l, 5)
+private fun runSource_SpecialPipeline_sp_0(snk, acc, arr) =
+  let {n}
+  n = SpecialPipeline__Legacy."Arr$SpecialPipeline".len(arr)
+  srcLoop_SpecialPipeline_sp_0(snk, 0, arr, n, n)
+private fun runSource_SpecialPipeline_sp_1(snk, acc, arr) =
+  let {n}
+  n = SpecialPipeline__Legacy."Arr$SpecialPipeline".len(arr)
+  srcLoop_SpecialPipeline_sp_2(snk, 0, arr, n, n)
+private fun runSource_SpecialPipeline_sp_2(snk, acc, arr) =
+  let {n}
+  n = SpecialPipeline__Legacy."Arr$SpecialPipeline".len(arr)
+  srcLoop_SpecialPipeline_sp_4(snk, 0, arr, n, n)
+private fun runSource_SpecialPipeline_sp_3(snk, acc, arr) =
+  let {n}
+  n = SpecialPipeline__Legacy."Arr$SpecialPipeline".len(arr)
+  srcLoop_SpecialPipeline_sp_6(snk, acc, arr, n, n)
+private fun srcLoop_SpecialPipeline_sp_0(snk, acc, arr, n, k) =
+  let {scrut8, tmp37, tmp38, tmp39, tmp40}
+  scrut8 = k <= 0
+  if scrut8 is
+    true then 0
+    else
+      tmp37 = n - k
+      tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+      tmp39 = accept_FilterSink_sp_0(snk, 0, tmp38)
+      tmp40 = k - 1
+      srcLoop_SpecialPipeline_sp_1(snk, tmp39, arr, n, tmp40)
+private fun srcLoop_SpecialPipeline_sp_1(snk, acc, arr, n, k) =
+  let {scrut8, tmp37, tmp38, tmp39, tmp40}
+  scrut8 = k <= 0
+  if scrut8 is
+    true then acc
+    else
+      tmp37 = n - k
+      tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+      tmp39 = accept_FilterSink_sp_1(snk, acc, tmp38)
+      tmp40 = k - 1
+      srcLoop_SpecialPipeline_sp_1(snk, tmp39, arr, n, tmp40)
+private fun srcLoop_SpecialPipeline_sp_2(snk, acc, arr, n, k) =
+  let {scrut8, tmp37, tmp38, tmp39, tmp40}
+  scrut8 = k <= 0
+  if scrut8 is
+    true then 0
+    else
+      tmp37 = n - k
+      tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+      tmp39 = accept_MapSink_sp_5(snk, 0, tmp38)
+      tmp40 = k - 1
+      srcLoop_SpecialPipeline_sp_3(snk, tmp39, arr, n, tmp40)
+private fun srcLoop_SpecialPipeline_sp_3(snk, acc, arr, n, k) =
+  let {scrut8, tmp37, tmp38, tmp39, tmp40}
+  scrut8 = k <= 0
+  if scrut8 is
+    true then acc
+    else
+      tmp37 = n - k
+      tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+      tmp39 = accept_MapSink_sp_7(snk, acc, tmp38)
+      tmp40 = k - 1
+      srcLoop_SpecialPipeline_sp_3(snk, tmp39, arr, n, tmp40)
+private fun srcLoop_SpecialPipeline_sp_4(snk, acc, arr, n, k) =
+  let {scrut8, tmp37, tmp38, tmp39, tmp40}
+  scrut8 = k <= 0
+  if scrut8 is
+    true then 0
+    else
+      tmp37 = n - k
+      tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+      tmp39 = accept_MapSink_sp_8(snk, 0, tmp38)
+      tmp40 = k - 1
+      srcLoop_SpecialPipeline_sp_5(snk, tmp39, arr, n, tmp40)
+private fun srcLoop_SpecialPipeline_sp_5(snk, acc, arr, n, k) =
+  let {scrut8, tmp37, tmp38, tmp39, tmp40}
+  scrut8 = k <= 0
+  if scrut8 is
+    true then acc
+    else
+      tmp37 = n - k
+      tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+      tmp39 = accept_MapSink_sp_9(snk, acc, tmp38)
+      tmp40 = k - 1
+      srcLoop_SpecialPipeline_sp_5(snk, tmp39, arr, n, tmp40)
+private fun srcLoop_SpecialPipeline_sp_6(snk, acc, arr, n, k) =
+  let {scrut8, tmp37, tmp38, tmp39, tmp40}
+  scrut8 = k <= 0
+  if scrut8 is
+    true then acc
+    else
+      tmp37 = n - k
+      tmp38 = SpecialPipeline__Legacy."Arr$SpecialPipeline".at(arr, tmp37)
+      tmp39 = accept_FilterSink_sp_4(snk, acc, tmp38)
+      tmp40 = k - 1
+      srcLoop_SpecialPipeline_sp_6(snk, tmp39, arr, n, tmp40)
+private fun sub_SpecialPipeline_sp_0(l, r) = new Sub(l, r)
+private fun sub_SpecialPipeline_sp_1(l, r) = new Sub(l, r)
+private fun tapG_SpecialPipeline_sp_0(src, f) = new TapG(f, src)
+private fun tapG_SpecialPipeline_sp_1(src, f) = new TapG(f, src)
+private fun tapG_SpecialPipeline_sp_2(src, f) = new TapG(f, src)
+private fun total_SpecialPipeline_sp_0(g, arr) = foreach_MapG_sp_0(g, SumSink, 0, arr)
+private fun total_SpecialPipeline_sp_1(g, arr) = foreach_MapG_sp_2(g, SumSink, 0, arr)
+private fun total_SpecialPipeline_sp_2(g, arr) = foreach_BranchG_sp_1(g, SumSink, 0, arr)
+private fun eval_Var_sp_0(self, x) = x
+private fun eval_Var_sp_1(self, x) = 1000
+private fun eval_Var_sp_2(self, x) = 900000
+private fun eval_Var_sp_3(self, x) = 7
+private fun eval_Var_sp_4(self, x) = 999000
+private fun eval_Lit_sp_0(self, x) = 3
+private fun eval_Lit_sp_1(self, x) = 7
+private fun eval_Lit_sp_10(self, x) = 123456
+private fun eval_Lit_sp_11(self, x) = 500000
+private fun eval_Lit_sp_12(self, x) = 11
+private fun eval_Lit_sp_13(self, x) = 500000
+private fun eval_Lit_sp_14(self, x) = 11
+private fun eval_Lit_sp_15(self, x) = 500000
+private fun eval_Lit_sp_16(self, x) = 11
+private fun eval_Lit_sp_2(self, x) = 5
+private fun eval_Lit_sp_3(self, x) = 7
+private fun eval_Lit_sp_4(self, x) = 1
+private fun eval_Lit_sp_5(self, x) = 7
+private fun eval_Lit_sp_6(self, x) = 1
+private fun eval_Lit_sp_7(self, x) = 1
+private fun eval_Lit_sp_8(self, x) = 20000
+private fun eval_Lit_sp_9(self, x) = 9
+private fun eval_Add_sp_0(self, x) =
+  let {tmp, tmp1, tmp2}
+  tmp = eval_Add_sp_1(self.Add#l, x)
+  tmp1 = eval_Lit_sp_1(self.Add#r, x)
+  tmp2 = tmp + 7
+  tmp2 % 1000003
+private fun eval_Add_sp_1(self, x) =
+  let {tmp, tmp1, tmp2}
+  tmp = eval_Mul_sp_1(self.Add#l, x)
+  tmp1 = eval_Mul_sp_2(self.Add#r, x)
+  tmp2 = tmp + tmp1
+  tmp2 % 1000003
+private fun eval_Add_sp_2(self, x) =
+  let {tmp, tmp1, tmp2}
+  tmp = eval_Var_sp_0(self.Add#l, x)
+  tmp1 = eval_Lit_sp_2(self.Add#r, x)
+  tmp2 = tmp + 5
+  tmp2 % 1000003
+private fun eval_Add_sp_3(self, x) = 7001
+private fun eval_Add_sp_4(self, x) = 299983
+private fun eval_Add_sp_5(self, x) =
+  let {tmp, tmp1, tmp2}
+  tmp = eval_Mul_sp_5(self.Add#l, x)
+  tmp1 = eval_Lit_sp_7(self.Add#r, x)
+  tmp2 = tmp + 1
+  tmp2 % 1000003
+private fun eval_Add_sp_6(self, x) =
+  let {tmp, tmp1, tmp2}
+  tmp = eval_Var_sp_0(self.Add#l, x)
+  tmp1 = eval_Lit_sp_9(self.Add#r, x)
+  tmp2 = tmp + 9
+  tmp2 % 1000003
+private fun eval_Add_sp_7(self, x) =
+  let {tmp, tmp1, tmp2}
+  tmp = eval_Dbl_sp_1(self.Add#l, x)
+  tmp1 = eval_Lit_sp_7(self.Add#r, x)
+  tmp2 = tmp + 1
+  tmp2 % 1000003
+private fun eval_Add_sp_8(self, x) = 18
+private fun eval_Add_sp_9(self, x) =
+  let {tmp, tmp1, tmp2}
+  tmp = eval_Var_sp_0(self.Add#l, x)
+  tmp1 = eval_Lit_sp_16(self.Add#r, x)
+  tmp2 = tmp + 11
+  tmp2 % 1000003
+private fun eval_Sub_sp_0(self, x) =
+  let {tmp3, tmp4, tmp5, tmp6}
+  tmp3 = eval_Mul_sp_0(self.Sub#l, x)
+  tmp4 = eval_Var_sp_0(self.Sub#r, x)
+  tmp5 = tmp3 - tmp4
+  tmp6 = tmp5 + 1000003
+  tmp6 % 1000003
+private fun eval_Sub_sp_1(self, x) = 998989
+private fun eval_Sub_sp_2(self, x) =
+  let {tmp3, tmp4, tmp5, tmp6}
+  tmp3 = eval_Var_sp_0(self.Sub#l, x)
+  tmp4 = eval_Lit_sp_16(self.Sub#r, x)
+  tmp5 = tmp3 - 11
+  tmp6 = tmp5 + 1000003
+  tmp6 % 1000003
+private fun eval_Mul_sp_0(self, x) =
+  let {tmp7, tmp8, tmp9}
+  tmp7 = eval_Add_sp_0(self.Mul#l, x)
+  tmp8 = eval_Add_sp_2(self.Mul#r, x)
+  tmp9 = tmp7 * tmp8
+  tmp9 % 1000003
+private fun eval_Mul_sp_1(self, x) =
+  let {tmp7, tmp8, tmp9}
+  tmp7 = eval_Var_sp_0(self.Mul#l, x)
+  tmp8 = eval_Var_sp_0(self.Mul#r, x)
+  tmp9 = tmp7 * tmp8
+  tmp9 % 1000003
+private fun eval_Mul_sp_2(self, x) =
+  let {tmp7, tmp8, tmp9}
+  tmp7 = eval_Lit_sp_0(self.Mul#l, x)
+  tmp8 = eval_Var_sp_0(self.Mul#r, x)
+  tmp9 = 3 * tmp8
+  tmp9 % 1000003
+private fun eval_Mul_sp_3(self, x) = 7000
+private fun eval_Mul_sp_4(self, x) = 299982
+private fun eval_Mul_sp_5(self, x) =
+  let {tmp7, tmp8, tmp9}
+  tmp7 = eval_Var_sp_0(self.Mul#l, x)
+  tmp8 = eval_Lit_sp_1(self.Mul#r, x)
+  tmp9 = tmp7 * 7
+  tmp9 % 1000003
+private fun eval_Rem_sp_0(self, x) =
+  let {tmp10}
+  tmp10 = eval_Var_sp_0(self.Rem#l, x)
+  tmp10 % 3
+private fun eval_Rem_sp_1(self, x) =
+  let {tmp10}
+  tmp10 = eval_Max_sp_0(self.Rem#l, x)
+  tmp10 % 99991
+private fun eval_Rem_sp_2(self, x) =
+  let {tmp10}
+  tmp10 = eval_Var_sp_0(self.Rem#l, x)
+  tmp10 % 5
+private fun eval_Min_sp_0(self, x) =
+  let {a, b, scrut}
+  a = eval_Dbl_sp_0(self.Min#l, x)
+  b = eval_Rem_sp_1(self.Min#r, x)
+  scrut = a < b
+  if scrut is
+    true then a
+    else b
+private fun eval_Min_sp_1(self, x) =
+  let {a, b, scrut}
+  a = eval_Var_sp_0(self.Min#l, x)
+  b = eval_Lit_sp_10(self.Min#r, x)
+  scrut = a < 123456
+  if scrut is
+    true then a
+    else 123456
+private fun eval_Max_sp_0(self, x) =
+  let {a1, b1, scrut1}
+  a1 = eval_Sub_sp_0(self.Max#l, x)
+  b1 = eval_Inc_sp_1(self.Max#r, x)
+  scrut1 = a1 > b1
+  if scrut1 is
+    true then a1
+    else b1
+private fun eval_Dbl_sp_0(self, x) =
+  let {tmp11, tmp12}
+  tmp11 = eval_Mul_sp_0(self.Dbl#l, x)
+  tmp12 = tmp11 * 2
+  tmp12 % 1000003
+private fun eval_Dbl_sp_1(self, x) =
+  let {tmp11, tmp12}
+  tmp11 = eval_Var_sp_0(self.Dbl#l, x)
+  tmp12 = tmp11 * 2
+  tmp12 % 1000003
+private fun eval_Inc_sp_0(self, x) =
+  let {tmp13, tmp14}
+  tmp13 = eval_Min_sp_0(self.Inc#l, x)
+  tmp14 = tmp13 + 1
+  tmp14 % 1000003
+private fun eval_Inc_sp_1(self, x) =
+  let {tmp13, tmp14}
+  tmp13 = eval_Var_sp_0(self.Inc#l, x)
+  tmp14 = tmp13 + 1
+  tmp14 % 1000003
+private fun test_Ge_sp_0(self, x) =
+  let {tmp15, tmp16}
+  tmp15 = eval_Var_sp_0(self.Ge#l, x)
+  tmp16 = eval_Lit_sp_8(self.Ge#r, x)
+  tmp15 >= 20000
+private fun test_Ge_sp_1(self, x) = false
+private fun test_Ge_sp_2(self, x) = true
+private fun test_Ge_sp_3(self, x) =
+  let {tmp15, tmp16}
+  tmp15 = eval_Var_sp_0(self.Ge#l, x)
+  tmp16 = eval_Lit_sp_15(self.Ge#r, x)
+  tmp15 >= 500000
+private fun test_EqZ_sp_0(self, x) =
+  let {tmp19}
+  tmp19 = eval_Rem_sp_0(self.EqZ#l, x)
+  tmp19 === 0
+private fun test_EqZ_sp_1(self, x) =
+  let {tmp19}
+  tmp19 = eval_Rem_sp_2(self.EqZ#l, x)
+  tmp19 === 0
+private fun test_Odd_sp_0(self, x) =
+  let {tmp20, tmp21}
+  tmp20 = eval_Var_sp_0(self.Odd#l, x)
+  tmp21 = tmp20 % 2
+  tmp21 === 1
+private fun test_AndP_sp_0(self, x) =
+  let {scrut2, scrut3}
+  scrut2 = test_Ge_sp_0(self.AndP#a, x)
+  if scrut2 is
+    true then
+      scrut3 = test_NotP_sp_0(self.AndP#b, x)
+      if scrut3 is
+        true then true
+        else false
+    else false
+private fun test_NotP_sp_0(self, x) =
+  let {tmp23}
+  tmp23 = test_EqZ_sp_1(self.NotP#a, x)
+  not tmp23
+private fun accept_SumSink_sp_0(self, acc, x) =
+  let {tmp24}
+  tmp24 = acc + 7001
+  tmp24 % 1000003
+private fun accept_SumSink_sp_1(self, acc, x) =
+  let {tmp24}
+  tmp24 = acc + 299983
+  tmp24 % 1000003
+private fun accept_SumSink_sp_2(self, acc, x) =
+  let {tmp24}
+  tmp24 = acc + x
+  tmp24 % 1000003
+private fun accept_SumSink_sp_3(self, acc, x) =
+  let {tmp24}
+  tmp24 = acc + 18
+  tmp24 % 1000003
+private fun accept_SumSink_sp_4(self, acc, x) =
+  let {tmp24}
+  tmp24 = acc + 998989
+  tmp24 % 1000003
+private fun accept_MapSink_sp_0(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Mul_sp_0(self.MapSink#f, x)
+  accept_TapSink_sp_0(self.MapSink#k, 0, tmp25)
+private fun accept_MapSink_sp_1(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Add_sp_3(self.MapSink#f, 1000)
+  accept_SumSink_sp_0(self.MapSink#k, acc, 7001)
+private fun accept_MapSink_sp_10(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Inc_sp_0(self.MapSink#f, x)
+  accept_ClampSink_sp_1(self.MapSink#k, acc, tmp25)
+private fun accept_MapSink_sp_2(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Add_sp_4(self.MapSink#f, 900000)
+  accept_SumSink_sp_1(self.MapSink#k, acc, 299983)
+private fun accept_MapSink_sp_3(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Add_sp_5(self.MapSink#f, x)
+  accept_SumSink_sp_2(self.MapSink#k, acc, tmp25)
+private fun accept_MapSink_sp_4(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Mul_sp_0(self.MapSink#f, x)
+  accept_TapSink_sp_1(self.MapSink#k, acc, tmp25)
+private fun accept_MapSink_sp_5(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Inc_sp_0(self.MapSink#f, x)
+  accept_FilterSink_sp_2(self.MapSink#k, 0, tmp25)
+private fun accept_MapSink_sp_6(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Add_sp_6(self.MapSink#f, x)
+  accept_SumSink_sp_2(self.MapSink#k, acc, tmp25)
+private fun accept_MapSink_sp_7(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Inc_sp_0(self.MapSink#f, x)
+  accept_FilterSink_sp_3(self.MapSink#k, acc, tmp25)
+private fun accept_MapSink_sp_8(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Add_sp_7(self.MapSink#f, x)
+  accept_TapSink_sp_4(self.MapSink#k, 0, tmp25)
+private fun accept_MapSink_sp_9(self, acc, x) =
+  let {tmp25}
+  tmp25 = eval_Add_sp_7(self.MapSink#f, x)
+  accept_TapSink_sp_5(self.MapSink#k, acc, tmp25)
+private fun accept_FilterSink_sp_0(self, acc, x) =
+  let {scrut4}
+  scrut4 = test_EqZ_sp_0(self.FilterSink#p, x)
+  if scrut4 is
+    true then accept_MapSink_sp_0(self.FilterSink#k, 0, x)
+    else 0
+private fun accept_FilterSink_sp_1(self, acc, x) =
+  let {scrut4}
+  scrut4 = test_EqZ_sp_0(self.FilterSink#p, x)
+  if scrut4 is
+    true then accept_MapSink_sp_4(self.FilterSink#k, acc, x)
+    else acc
+private fun accept_FilterSink_sp_2(self, acc, x) =
+  let {scrut4}
+  scrut4 = test_AndP_sp_0(self.FilterSink#p, x)
+  if scrut4 is
+    true then accept_BranchSink_sp_0(self.FilterSink#k, 0, x)
+    else 0
+private fun accept_FilterSink_sp_3(self, acc, x) =
+  let {scrut4}
+  scrut4 = test_AndP_sp_0(self.FilterSink#p, x)
+  if scrut4 is
+    true then accept_BranchSink_sp_1(self.FilterSink#k, acc, x)
+    else acc
+private fun accept_FilterSink_sp_4(self, acc, x) =
+  let {scrut4}
+  scrut4 = test_Odd_sp_0(self.FilterSink#p, x)
+  if scrut4 is
+    true then accept_MapSink_sp_10(self.FilterSink#k, acc, x)
+    else acc
+private fun accept_ClampSink_sp_0(self, acc, x) =
+  let {scrut5, scrut6}
+  scrut5 = x < 1000
+  if scrut5 is
+    true then accept_MapSink_sp_1(self.ClampSink#k, acc, self.ClampSink#lo)
+    else
+      scrut6 = x > 900000
+      if scrut6 is
+        true then accept_MapSink_sp_2(self.ClampSink#k, acc, self.ClampSink#hi)
+        else accept_MapSink_sp_3(self.ClampSink#k, acc, x)
+private fun accept_ClampSink_sp_1(self, acc, x) =
+  let {scrut5, scrut6}
+  scrut5 = x < 7
+  if scrut5 is
+    true then accept_BranchSink_sp_2(self.ClampSink#k, acc, self.ClampSink#lo)
+    else
+      scrut6 = x > 999000
+      if scrut6 is
+        true then accept_BranchSink_sp_3(self.ClampSink#k, acc, self.ClampSink#hi)
+        else accept_BranchSink_sp_4(self.ClampSink#k, acc, x)
+private fun accept_TapSink_sp_0(self, acc, x) =
+  let {tmp26, tmp27, tmp28}
+  tmp26 = eval_Inc_sp_0(self.TapSink#f, x)
+  tmp27 = 0 + tmp26
+  tmp28 = tmp27 % 1000003
+  accept_ClampSink_sp_0(self.TapSink#k, tmp28, x)
+private fun accept_TapSink_sp_1(self, acc, x) =
+  let {tmp26, tmp27, tmp28}
+  tmp26 = eval_Inc_sp_0(self.TapSink#f, x)
+  tmp27 = acc + tmp26
+  tmp28 = tmp27 % 1000003
+  accept_ClampSink_sp_0(self.TapSink#k, tmp28, x)
+private fun accept_TapSink_sp_2(self, acc, x) =
+  let {tmp26, tmp27, tmp28}
+  tmp26 = eval_Mul_sp_0(self.TapSink#f, x)
+  tmp27 = 0 + tmp26
+  tmp28 = tmp27 % 1000003
+  accept_MapSink_sp_6(self.TapSink#k, tmp28, x)
+private fun accept_TapSink_sp_3(self, acc, x) =
+  let {tmp26, tmp27, tmp28}
+  tmp26 = eval_Mul_sp_0(self.TapSink#f, x)
+  tmp27 = acc + tmp26
+  tmp28 = tmp27 % 1000003
+  accept_MapSink_sp_6(self.TapSink#k, tmp28, x)
+private fun accept_TapSink_sp_4(self, acc, x) =
+  let {tmp26, tmp27, tmp28}
+  tmp26 = eval_Mul_sp_0(self.TapSink#f, x)
+  tmp27 = 0 + tmp26
+  tmp28 = tmp27 % 1000003
+  accept_ClampSink_sp_1(self.TapSink#k, tmp28, x)
+private fun accept_TapSink_sp_5(self, acc, x) =
+  let {tmp26, tmp27, tmp28}
+  tmp26 = eval_Mul_sp_0(self.TapSink#f, x)
+  tmp27 = acc + tmp26
+  tmp28 = tmp27 % 1000003
+  accept_ClampSink_sp_1(self.TapSink#k, tmp28, x)
+private fun accept_BranchSink_sp_0(self, acc, x) =
+  let {scrut7, tmp29, tmp30}
+  scrut7 = test_Odd_sp_0(self.BranchSink#p, x)
+  if scrut7 is
+    true then
+      tmp29 = eval_Mul_sp_1(self.BranchSink#f, x)
+      accept_TapSink_sp_2(self.BranchSink#k, 0, tmp29)
+    else
+      tmp30 = eval_Min_sp_1(self.BranchSink#g, x)
+      accept_TapSink_sp_2(self.BranchSink#k, 0, tmp30)
+private fun accept_BranchSink_sp_1(self, acc, x) =
+  let {scrut7, tmp29, tmp30}
+  scrut7 = test_Odd_sp_0(self.BranchSink#p, x)
+  if scrut7 is
+    true then
+      tmp29 = eval_Mul_sp_1(self.BranchSink#f, x)
+      accept_TapSink_sp_3(self.BranchSink#k, acc, tmp29)
+    else
+      tmp30 = eval_Min_sp_1(self.BranchSink#g, x)
+      accept_TapSink_sp_3(self.BranchSink#k, acc, tmp30)
+private fun accept_BranchSink_sp_2(self, acc, x) =
+  let {scrut7, tmp29, tmp30}
+  scrut7 = test_Ge_sp_1(self.BranchSink#p, 7)
+  tmp30 = eval_Add_sp_8(self.BranchSink#g, 7)
+  accept_SumSink_sp_3(self.BranchSink#k, acc, 18)
+private fun accept_BranchSink_sp_3(self, acc, x) =
+  let {scrut7, tmp29, tmp30}
+  scrut7 = test_Ge_sp_2(self.BranchSink#p, 999000)
+  tmp29 = eval_Sub_sp_1(self.BranchSink#f, 999000)
+  accept_SumSink_sp_4(self.BranchSink#k, acc, 998989)
+private fun accept_BranchSink_sp_4(self, acc, x) =
+  let {scrut7, tmp29, tmp30}
+  scrut7 = test_Ge_sp_3(self.BranchSink#p, x)
+  if scrut7 is
+    true then
+      tmp29 = eval_Sub_sp_2(self.BranchSink#f, x)
+      accept_SumSink_sp_2(self.BranchSink#k, acc, tmp29)
+    else
+      tmp30 = eval_Add_sp_9(self.BranchSink#g, x)
+      accept_SumSink_sp_2(self.BranchSink#k, acc, tmp30)
+private fun foreach_Source_sp_0(self, snk, acc, arr) = runSource_SpecialPipeline_sp_0(snk, 0, arr)
+private fun foreach_Source_sp_1(self, snk, acc, arr) = runSource_SpecialPipeline_sp_1(snk, 0, arr)
+private fun foreach_Source_sp_2(self, snk, acc, arr) = runSource_SpecialPipeline_sp_2(snk, 0, arr)
+private fun foreach_Source_sp_3(self, snk, acc, arr) = runSource_SpecialPipeline_sp_3(snk, acc, arr)
+private fun foreach_MapG_sp_0(self, snk, acc, arr) =
+  let {tmp31}
+  tmp31 = new MapSink(self.MapG#f, snk)
+  foreach_ClampG_sp_0(self.MapG#src, tmp31, 0, arr)
+private fun foreach_MapG_sp_1(self, snk, acc, arr) =
+  let {tmp31}
+  tmp31 = new MapSink(self.MapG#f, snk)
+  foreach_FilterG_sp_0(self.MapG#src, tmp31, 0, arr)
+private fun foreach_MapG_sp_2(self, snk, acc, arr) =
+  let {tmp31}
+  tmp31 = new MapSink(self.MapG#f, snk)
+  foreach_TapG_sp_1(self.MapG#src, tmp31, 0, arr)
+private fun foreach_MapG_sp_3(self, snk, acc, arr) =
+  let {tmp31}
+  tmp31 = new MapSink(self.MapG#f, snk)
+  foreach_Source_sp_1(self.MapG#src, tmp31, 0, arr)
+private fun foreach_MapG_sp_4(self, snk, acc, arr) =
+  let {tmp31}
+  tmp31 = new MapSink(self.MapG#f, snk)
+  foreach_Source_sp_2(self.MapG#src, tmp31, 0, arr)
+private fun foreach_MapG_sp_5(self, snk, acc, arr) =
+  let {tmp31}
+  tmp31 = new MapSink(self.MapG#f, snk)
+  foreach_FilterG_sp_2(self.MapG#src, tmp31, acc, arr)
+private fun foreach_FilterG_sp_0(self, snk, acc, arr) =
+  let {tmp32}
+  tmp32 = new FilterSink(self.FilterG#p, snk)
+  foreach_Source_sp_0(self.FilterG#src, tmp32, 0, arr)
+private fun foreach_FilterG_sp_1(self, snk, acc, arr) =
+  let {tmp32}
+  tmp32 = new FilterSink(self.FilterG#p, snk)
+  foreach_MapG_sp_3(self.FilterG#src, tmp32, 0, arr)
+private fun foreach_FilterG_sp_2(self, snk, acc, arr) =
+  let {tmp32}
+  tmp32 = new FilterSink(self.FilterG#p, snk)
+  foreach_Source_sp_3(self.FilterG#src, tmp32, acc, arr)
+private fun foreach_ClampG_sp_0(self, snk, acc, arr) =
+  let {tmp33}
+  tmp33 = new ClampSink(self.ClampG#lo, self.ClampG#hi, snk)
+  foreach_TapG_sp_0(self.ClampG#src, tmp33, 0, arr)
+private fun foreach_ClampG_sp_1(self, snk, acc, arr) =
+  let {tmp33}
+  tmp33 = new ClampSink(self.ClampG#lo, self.ClampG#hi, snk)
+  foreach_ConcatG_sp_0(self.ClampG#src, tmp33, 0, arr)
+private fun foreach_TapG_sp_0(self, snk, acc, arr) =
+  let {tmp34}
+  tmp34 = new TapSink(self.TapG#f, snk)
+  foreach_MapG_sp_1(self.TapG#src, tmp34, 0, arr)
+private fun foreach_TapG_sp_1(self, snk, acc, arr) =
+  let {tmp34}
+  tmp34 = new TapSink(self.TapG#f, snk)
+  foreach_BranchG_sp_0(self.TapG#src, tmp34, 0, arr)
+private fun foreach_TapG_sp_2(self, snk, acc, arr) =
+  let {tmp34}
+  tmp34 = new TapSink(self.TapG#f, snk)
+  foreach_MapG_sp_4(self.TapG#src, tmp34, 0, arr)
+private fun foreach_BranchG_sp_0(self, snk, acc, arr) =
+  let {tmp35}
+  tmp35 = new BranchSink(self.BranchG#p, self.BranchG#f, self.BranchG#g, snk)
+  foreach_FilterG_sp_1(self.BranchG#src, tmp35, 0, arr)
+private fun foreach_BranchG_sp_1(self, snk, acc, arr) =
+  let {tmp35}
+  tmp35 = new BranchSink(self.BranchG#p, self.BranchG#f, self.BranchG#g, snk)
+  foreach_ClampG_sp_1(self.BranchG#src, tmp35, 0, arr)
+private fun foreach_ConcatG_sp_0(self, snk, acc, arr) =
+  let {tmp36}
+  tmp36 = foreach_TapG_sp_2(self.ConcatG#a, snk, 0, arr)
+  foreach_MapG_sp_5(self.ConcatG#b, snk, tmp36, arr)
+private fun run_Pipe_sp_0(self, arr) = total_SpecialPipeline_sp_0(self.Pipe#body, arr)
+private fun run_Pipe_sp_1(self, arr) = total_SpecialPipeline_sp_1(self.Pipe#body, arr)
+private fun run_Pipe_sp_2(self, arr) = total_SpecialPipeline_sp_2(self.Pipe#body, arr)

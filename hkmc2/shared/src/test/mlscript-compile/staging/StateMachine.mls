@@ -1,0 +1,289 @@
+// ===========================================================================
+// The stepping-state-machine benchmark.
+//
+// A machine is a table: a list of states, each a list of guarded edges, each
+// edge carrying a guard on the current symbol, an action on the accumulator and
+// the *name* of its target state.  Targets are names rather than references
+// because a transition table is a cycle, so there is nothing else to write it
+// with -- and resolving a name is what makes a step expensive:
+//
+//   * `lookup` scans the state list and compares names,
+//   * `fire` scans the edge list and calls a virtual `test` per edge,
+//   * the matching edge calls a virtual `upd`, which allocates a pair,
+//   * `step` wraps that into a triple with the next state name.
+//
+// Nine `Guard` classes reach the same `g.test(c)` call site and eight `Act`
+// classes reach the same `e.act.upd(...)`, so neither site fits in a
+// polymorphic inline cache.  When the machine is statically known, all of that
+// collapses: each state becomes its own specialized loop and the table turns
+// into straight-line code, i.e. the interpreter becomes the DFA.
+//
+// This is the plain `staged module` version: `run0` names its machine, so it is
+// compiled with no annotations at all, but `runSel(k, arr)` chooses at run time
+// and so stays a table interpreter.  See `SpecialStateMachine.mls` for the
+// `@special` version, which compiles past that choice.
+// ===========================================================================
+
+module Sym with
+  fun len(a) = a.length
+  fun at(a, i) = a.(i)
+
+staged module StateMachine with
+  class Cons(val x, val xs)
+  object Nil
+
+  class Some(val x)
+  object None
+  object Stuck
+
+  // ---------------------------------------------------------------------------
+  // Guards on the current input symbol.
+  // ---------------------------------------------------------------------------
+
+  staged class Guard() with
+    fun test(c)
+
+  staged object AnyG extends Guard() with
+    fun test(c) = true
+
+  staged class IsVal(val v) extends Guard() with
+    fun test(c) = c === v
+
+  staged class NotVal(val v) extends Guard() with
+    fun test(c) = c !== v
+
+  staged class InRange(val lo, val hi) extends Guard() with
+    fun test(c) = c >= lo and c <= hi
+
+  staged class OutRange(val lo, val hi) extends Guard() with
+    fun test(c) = c < lo || c > hi
+
+  staged class ModIs(val k, val r) extends Guard() with
+    fun test(c) = (c % k) === r
+
+  staged class AndG(val g1, val g2) extends Guard() with
+    fun test(c) = g1.test(c) and g2.test(c)
+
+  staged class OrG(val g1, val g2) extends Guard() with
+    fun test(c) = g1.test(c) || g2.test(c)
+
+  staged class NotG(val g) extends Guard() with
+    fun test(c) = not g.test(c)
+
+  // ---------------------------------------------------------------------------
+  // Actions on the two-register accumulator, Adler-32 style.  `upd` returns the
+  // new pair.
+  // ---------------------------------------------------------------------------
+
+  staged class Act() with
+    fun upd(a, b, c)
+
+  staged object Nop extends Act() with
+    fun upd(a, b, c) = [a, b]
+
+  staged object Reset extends Act() with
+    fun upd(a, b, c) = [1, 0]
+
+  staged object AddIn extends Act() with
+    fun upd(a, b, c) = [(a + c) % 65521, b]
+
+  staged object MixIn extends Act() with
+    fun upd(a, b, c) = [a, (b + a) % 65521]
+
+  staged object Both extends Act() with
+    fun upd(a, b, c) = [(a + c) % 65521, (b + a + c) % 65521]
+
+  staged class SetB(val k) extends Act() with
+    fun upd(a, b, c) = [a, (c * k) % 65521]
+
+  staged class Scale(val k) extends Act() with
+    fun upd(a, b, c) = [(a * k + c) % 65521, b]
+
+  staged class Seq(val x, val y) extends Act() with
+    fun upd(a, b, c) =
+      let t = x.upd(a, b, c)
+      if t is
+        [na, nb] then y.upd(na, nb, c)
+        else Stuck
+
+  // ---------------------------------------------------------------------------
+  // The transition table.
+  // ---------------------------------------------------------------------------
+
+  class Edge(val g, val act, val target)
+  class St(val name, val edges)
+  staged class Machine(val start, val states) with
+    fun run(arr) = driveFrom(start, states, arr)
+
+  fun lookup(@specialize states, @specialize name) =
+    if states is
+      Cons(s, rest) then
+        if s.name == name then new Some(s) else lookup(rest, name)
+      else None
+
+  // Every state below ends in an `AnyG` edge, so the `Nil` case is unreachable;
+  // staying put is the safe fallback.
+  fun fire(@specialize edges, a, b, c, @specialize here) =
+    if edges is
+      Cons(e, rest) then
+        if e.g.test(c) then
+          let t = e.act.upd(a, b, c)
+          if t is
+            [na, nb] then [na, nb, e.target]
+            else Stuck
+        else fire(rest, a, b, c, here)
+      else [a, b, here]
+
+  fun step(@specialize states, @specialize name, a, b, c) =
+    let s = lookup(states, name)
+    if s is
+      Some(st) then fire(st.edges, a, b, c, name)
+      else Stuck
+
+  // ---------------------------------------------------------------------------
+  // Stepping.  The loop counts *down* from a run-time length, so the trip count
+  // is never statically known: compiling the machine must not mean unrolling the
+  // input.
+  //
+  // `Sym.len` is called from a module-level function rather than from inside
+  // `Machine.run`: a reference to an unstaged module from a *class* method is
+  // resolved against the class, which comes out as `Sym$Machine` and is not
+  // defined in the residual program.
+  // ---------------------------------------------------------------------------
+
+  fun driveFrom(@specialize start, @specialize states, arr) =
+    let n = Sym.len(arr)
+    runLoop(states, start, 1, 0, arr, n, n)
+
+  fun runLoop(@specialize states, @specialize name, a, b, arr, n, k) =
+    if k <= 0 then (a + b * 65536) % 1000003
+    else
+      let c = Sym.at(arr, n - k)
+      let r = step(states, name, a, b, c)
+      if r is
+        [na, nb, nt] then runLoop(states, nt, na, nb, arr, n, k - 1)
+        else Stuck
+
+  // ---------------------------------------------------------------------------
+  // Table builders.  These are plain smart constructors here; the `@special`
+  // version annotates each of them, which is what lets a run-time choice
+  // between machines keep one specialization per alternative.
+  // ---------------------------------------------------------------------------
+
+  fun cons(x, xs) = new Cons(x, xs)
+  fun isVal(v) = new IsVal(v)
+  fun notVal(v) = new NotVal(v)
+  fun inRange(lo, hi) = new InRange(lo, hi)
+  fun outRange(lo, hi) = new OutRange(lo, hi)
+  fun modIs(k, r) = new ModIs(k, r)
+  fun andG(g1, g2) = new AndG(g1, g2)
+  fun orG(g1, g2) = new OrG(g1, g2)
+  fun notG(g) = new NotG(g)
+  fun setB(k) = new SetB(k)
+  fun scale(k) = new Scale(k)
+  fun seqA(x, y) = new Seq(x, y)
+  fun edge(g, act, target) = new Edge(g, act, target)
+  fun st(name, edges) = new St(name, edges)
+  fun machineOf(start, states) = new Machine(start, states)
+
+  // `[a, b, c]` as a cons list, since the spine needs its own `@special` nodes.
+  fun ls3(a, b, c) = cons(a, cons(b, cons(c, Nil)))
+  fun ls2(a, b) = cons(a, cons(b, Nil))
+  fun ls4(a, b, c, d) = cons(a, cons(b, cons(c, cons(d, Nil))))
+  fun ls5(a, b, c, d, e) = cons(a, cons(b, cons(c, cons(d, cons(e, Nil)))))
+
+  // ---------------------------------------------------------------------------
+  // Three machines.
+  //
+  // `frame` is a byte-stuffing frame decoder, `tokens` a character classifier
+  // and `ladder` a five-state mixer.  They visit states in different orders and
+  // apply different actions, so they compute different checksums.
+  // ---------------------------------------------------------------------------
+
+  fun frame() =
+    machineOf of
+      "idle"
+      ls5 of
+        st("idle", ls2(edge(isVal(126), Reset, "len"), edge(AnyG, Nop, "idle")))
+        st("len", ls2(edge(inRange(1, 255), setB(3), "body"), edge(AnyG, Nop, "idle")))
+        st of
+          "body"
+          ls4 of
+            edge(isVal(125), Nop, "esc")
+            edge(isVal(126), MixIn, "crc")
+            edge(modIs(7, 0), Both, "body")
+            edge(AnyG, AddIn, "body")
+        st("esc", ls2(edge(notVal(0), seqA(AddIn, MixIn), "body"), edge(AnyG, Nop, "body")))
+        st("crc", ls2(edge(outRange(0, 127), scale(31), "idle"), edge(AnyG, MixIn, "idle")))
+
+  fun tokens() =
+    machineOf of
+      "start"
+      ls5 of
+        st of
+          "start"
+          ls4 of
+            edge(inRange(97, 122), AddIn, "word")
+            edge(inRange(48, 57), scale(10), "num")
+            edge(modIs(3, 0), MixIn, "punct")
+            edge(AnyG, Nop, "skip")
+        st of
+          "word"
+          ls3 of
+            edge(inRange(97, 122), Both, "word")
+            edge(inRange(48, 57), AddIn, "num")
+            edge(AnyG, MixIn, "start")
+        st of
+          "num"
+          ls3 of
+            edge(inRange(48, 57), scale(10), "num")
+            edge(notVal(32), AddIn, "word")
+            edge(AnyG, Reset, "start")
+        st("punct", ls2(edge(orG(isVal(44), isVal(46)), Both, "start"), edge(AnyG, setB(5), "word")))
+        st("skip", ls2(edge(notG(modIs(5, 0)), Nop, "skip"), edge(AnyG, MixIn, "start")))
+
+  fun ladder() =
+    machineOf of
+      "s0"
+      ls5 of
+        st("s0", ls2(edge(modIs(2, 0), AddIn, "s1"), edge(AnyG, MixIn, "s2")))
+        st of
+          "s1"
+          ls3 of
+            edge(modIs(3, 0), Both, "s2")
+            edge(inRange(0, 63), scale(17), "s3")
+            edge(AnyG, AddIn, "s0")
+        st of
+          "s2"
+          ls2 of
+            edge(andG(inRange(64, 191), modIs(2, 1)), seqA(MixIn, AddIn), "s4")
+            edge(AnyG, setB(7), "s3")
+        st("s3", ls2(edge(notVal(0), Both, "s0"), edge(AnyG, Reset, "s1")))
+        st of
+          "s4"
+          ls3 of
+            edge(modIs(5, 0), MixIn, "s0")
+            edge(outRange(32, 224), AddIn, "s2")
+            edge(AnyG, Both, "s4")
+
+  // The machine `run0` names: statically known at its only call site, so a
+  // staged module can compile it with no annotations at all.
+  fun run0(arr) = frame().run(arr)
+
+  // ---------------------------------------------------------------------------
+  // Choosing the machine at run time.
+  //
+  // `runSel(k, arr)` picks one of the three.  Without `@special` the chosen
+  // `Machine` is an ordinary value, so every step pays the name lookup, the
+  // guard scan and the pair allocations.  With `@special` each alternative is
+  // still a known shape, so the specializer keeps one compiled machine per
+  // alternative behind a dispatch on `k`.
+  // ---------------------------------------------------------------------------
+
+  fun machine(k) =
+    if k is
+      0 then frame()
+      1 then tokens()
+      else ladder()
+
+  fun runSel(k, arr) = machine(k).run(arr)
