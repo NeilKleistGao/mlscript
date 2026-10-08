@@ -142,7 +142,7 @@ object ReplHost:
     * It is deliberately *not* the default for every REPL: tests such as
     * `handlers/NoStackSafety` recurse a fixed 10000 deep and expect the
     * overflow, so raising the stack under them changes what they assert. */
-  val stagingStackSizeKB: Int = 7000
+  val stagingStackSizeKB: Int = 65536
 
   /**
     * The syntax error beginning text from Node.js.
