@@ -10,31 +10,34 @@ module Special with
     class Bar(val x, val y) with
       ()
       fun f() = this.Bar#x + this.Bar#y
+    class Baz(val x) with
+      ()
+      fun f() = this.Baz#x.f()
     fun bar(b) = true
     fun barbar(n) = 1
     fun baz(b) =
-      let {x5, tmp6, tmp7}
+      let {x6, tmp6, tmp7}
       if b is
         true then
           tmp6 = new Pair(1, 2)
         else
           tmp6 = new Pair(3, 4)
-      x5 = tmp6
-      @matchShapes(Pair(1, 2), Pair(3, 4)) shape.match of x5,
+      x6 = tmp6
+      @matchShapes(Pair(1, 2), Pair(3, 4)) shape.match of x6,
         () =>
-          tmp7 = swap_Pair_sp_1(x5)
+          tmp7 = swap_Pair_sp_1(x6)
           tmp7.Pair#x
         () =>
-          tmp7 = swap_Pair_sp_3(x5)
+          tmp7 = swap_Pair_sp_3(x6)
           tmp7.Pair#x
     fun bazbaz(b) =
-      let {x11, y2, tmp22}
-      x11 = dec(b)
+      let {x12, y2, tmp22}
+      x12 = dec(b)
       if b is
         true then
-          tmp22 = new Pair(1, x11)
+          tmp22 = new Pair(1, x12)
         else
-          tmp22 = new Pair(2, x11)
+          tmp22 = new Pair(2, x12)
       y2 = tmp22
       @matchShapes(Pair(1, Foo(_)), Pair(1, Bar(_, _)), Pair(2, Foo(_)), Pair(2, Bar(_, _))) shape.match of y2,
         () => swap_Pair_sp_9(y2)
@@ -47,7 +50,7 @@ module Special with
         else new Bar(2, 2)
     fun f() = new Pair(1, 2)
     fun ff(b) =
-      let {x6, tmp8, tmp9, tmp10, tmp11}
+      let {x7, tmp8, tmp9, tmp10, tmp11}
       if b is
         true then
           tmp8 = new Foo(2)
@@ -55,42 +58,42 @@ module Special with
         else
           tmp10 = new Foo(2)
           tmp9 = new Pair(2, tmp10)
-      x6 = tmp9
-      @matchShapes(Pair(1, _), Pair(2, _)) shape.match of x6,
+      x7 = tmp9
+      @matchShapes(Pair(1, _), Pair(2, _)) shape.match of x7,
         () =>
-          tmp11 = swap_Pair_sp_4(x6)
+          tmp11 = swap_Pair_sp_4(x7)
           tmp11.Pair#x
         () =>
-          tmp11 = swap_Pair_sp_5(x6)
+          tmp11 = swap_Pair_sp_5(x7)
           tmp11.Pair#x
     fun fff(b) =
-      let {x12, p2, tmp23, tmp24}
+      let {x13, p2, tmp23, tmp24}
       if b is
         true then
           tmp23 = new Foo(1)
         else
           tmp23 = new Bar(2, 2)
-      x12 = tmp23
-      tmp24 = new Foo(x12)
+      x13 = tmp23
+      tmp24 = new Foo(x13)
       p2 = new Pair(tmp24, 0)
       if p2.Pair#x.Foo#x is
         Foo then f_Foo_sp_0(p2.Pair#x.Foo#x)
         Bar then f_Bar_sp_0(p2.Pair#x.Foo#x)
     fun foo(b) =
-      let {x3, tmp, tmp1, tmp2}
+      let {x4, tmp, tmp1, tmp2}
       if b is
         true then
           tmp = new Pair(1, 2)
         else
           tmp = new Pair(3, 4)
-      x3 = tmp
-      tmp1 = swap_Pair_sp_0(x3)
+      x4 = tmp
+      tmp1 = swap_Pair_sp_0(x4)
       tmp2 = sub_Special_sp_0(tmp1)
       tmp2 > 0
     fun foofoo(b) = 1
     fun g(p) = sub(p)
     fun gg(b) =
-      let {x7, tmp12, tmp13, tmp14, tmp15}
+      let {x8, tmp12, tmp13, tmp14, tmp15}
       if b is
         true then
           tmp12 = new Foo(2)
@@ -98,16 +101,16 @@ module Special with
         else
           tmp14 = new Foo(3)
           tmp13 = new Pair(2, tmp14)
-      x7 = tmp13
-      @matchShapes(Pair(1, Foo(2)), Pair(2, Foo(3))) shape.match of x7,
+      x8 = tmp13
+      @matchShapes(Pair(1, Foo(2)), Pair(2, Foo(3))) shape.match of x8,
         () =>
-          tmp15 = swap_Pair_sp_6(x7)
+          tmp15 = swap_Pair_sp_6(x8)
           tmp15.Pair#x
         () =>
-          tmp15 = swap_Pair_sp_7(x7)
+          tmp15 = swap_Pair_sp_7(x8)
           tmp15.Pair#x
     fun hh(b) =
-      let {x8, tmp16, tmp17, tmp18, tmp19}
+      let {x9, tmp16, tmp17, tmp18, tmp19}
       if b is
         true then
           tmp16 = new Foo(2)
@@ -115,15 +118,26 @@ module Special with
         else
           tmp18 = new Foo(2)
           tmp17 = new Pair(2, tmp18)
-      x8 = tmp17
-      @matchShapes(Pair(1, _), Pair(2, _)) shape.match of x8,
+      x9 = tmp17
+      @matchShapes(Pair(1, _), Pair(2, _)) shape.match of x9,
         () =>
-          tmp19 = swap_Pair_sp_6(x8)
+          tmp19 = swap_Pair_sp_6(x9)
           tmp19.Pair#x
         () =>
-          tmp19 = swap_Pair_sp_8(x8)
+          tmp19 = swap_Pair_sp_8(x9)
           tmp19.Pair#x
     fun sub(p) = p.x - p.y
+    fun test(x) =
+      let {t, tmp25, tmp26, tmp27}
+      if x is
+        true then
+          tmp25 = new Foo(1)
+          tmp26 = new Baz(tmp25)
+        else
+          tmp27 = new Foo(2)
+          tmp26 = new Baz(tmp27)
+      t = tmp26
+      f_Baz_sp_0(t)
 open Special
 private fun sub_Special_sp_0(p) = p.Pair#x - p.Pair#y
 private fun sub_Special_sp_1(p) = 1
@@ -142,4 +156,6 @@ private fun swap_Pair_sp_7(self) = new Pair(self.Pair#y, self.Pair#x)
 private fun swap_Pair_sp_8(self) = new Pair(self.Pair#y, self.Pair#x)
 private fun swap_Pair_sp_9(self) = new Pair(self.Pair#y, self.Pair#x)
 private fun f_Foo_sp_0(self) = 2
+private fun f_Foo_sp_1(self) = self.Foo#x + 1
 private fun f_Bar_sp_0(self) = 4
+private fun f_Baz_sp_0(self) = f_Foo_sp_1(self.Baz#x)

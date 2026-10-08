@@ -408,19 +408,9 @@ class Printer(val owner: Opt[Symbol]) with
         let printer = this
         let branchShapes = arms.map(_.0)
         let patterns = arms.map(a => a.0.toUCSPattern(printer, branchShapes))
-        // `shape.match` picks a branch by tag, so its patterns have to be pairwise
-        // distinct. A field we know only as a union prints as `_`, which can collapse
-        // two different branch shapes onto one pattern; the ordered form still works
-        // there, because it takes the first branch that matches.
-        if new Set(patterns).size == patterns.length then
-          // tag-dispatched: the class-tags pass turns these into integer comparisons
-          "@matchShapes(" + patterns.join(", ") + ")"
+        "@matchShapes(" + patterns.join(", ") + ")"
           + " shape.match of " + showPath(scrut) + ","
           + indent("\n" + arms.map(a => printer.showUCSBranch(a)).join("\n"))
-        else
-          "if " + showPath(scrut) + " is"
-          + indent("\n" + arms.map((a, i, _) => printer.showUCSOrderedArm(patterns.(i), a.1)).join("\n"))
-          + indent("\nelse branch.unreachable")
       Scoped(symbols, rest) then
         // but this one must use the function argument instead of a lambda...
         "let {" + symbols.map(showSymbol).join(", ") + "}" + showRestBlock(rest)
