@@ -89,13 +89,13 @@ staged module StagedRegExp with
     fun startsWith(c) = ch == c
     fun flat() = new Cons(this, Nil)
 
-  staged class Any() extends RegExp() with
-    fun derive(c) = Empty
-    fun canBeEmpty() = false
-    fun normalize() = this
-    fun eq(other) = other is Any
-    fun startsWith(c) = true
-    fun flat() = new Cons(this, Nil)
+  // staged class Any() extends RegExp() with
+  //   fun derive(c) = Empty
+  //   fun canBeEmpty() = false
+  //   fun normalize() = this
+  //   fun eq(other) = other is Any
+  //   fun startsWith(c) = true
+  //   fun flat() = new Cons(this, Nil)
 
   staged class Not(val chars) extends RegExp() with
     fun derive(c) =
@@ -107,9 +107,9 @@ staged module StagedRegExp with
     fun startsWith(c) = not has(chars, c)
     fun flat() = new Cons(this, Nil)
 
-  fun notWord() = new Not(CharSet.alphabet())
-  fun notSpace() = new Not(CharSet.space())
-  fun notDigit() = new Not(CharSet.digit())
+  // fun notWord() = new Not(CharSet.alphabet())
+  // fun notSpace() = new Not(CharSet.space())
+  // fun notDigit() = new Not(CharSet.digit())
 
   @specialize fun mkUnion(ls) =
     if ls is
@@ -168,9 +168,9 @@ staged module StagedRegExp with
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
     fun flat() = new Cons(this, Nil)
 
-  fun nTimes(r, i) =
-    if i == 1 then r
-    else new Concat(r, nTimes(r, i - 1))
+  // fun nTimes(r, i) =
+  //   if i == 1 then r
+  //   else new Concat(r, nTimes(r, i - 1))
 
   staged class Star(val p) extends RegExp() with
     fun derive(c) = (new Concat(p.derive(c), new Star(p))).normalize()
@@ -206,11 +206,11 @@ staged module StagedRegExp with
   fun matchAll(p, s) =
     matchAllImpl(p, s, 0, [])
 
-  // [\w\.-]+@[\w\.-]+\.[\w\.-]+
-  fun matchAllEmail(s) =
-    let p = plus(new In(SeqHelper.concat(CharSet.alphabet(), ["-", "."])))
-    let email = new Concat(p, new Concat(new Exact("@"), new Concat(p, new Concat(new Exact("."), p))))
-    matchAll(email, s)
+  // // [\w\.-]+@[\w\.-]+\.[\w\.-]+
+  // fun matchAllEmail(s) =
+  //   let p = plus(new In(SeqHelper.concat(CharSet.alphabet(), ["-", "."])))
+  //   let email = new Concat(p, new Concat(new Exact("@"), new Concat(p, new Concat(new Exact("."), p))))
+  //   matchAll(email, s)
 
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
   fun matchAllURI(s) =
@@ -226,13 +226,13 @@ staged module StagedRegExp with
     let uri = new Concat(head, new Concat(body, params))
     matchAll(uri, s)
 
-  // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
-  fun matchAllIPv4(s) =
-    let fo = new In(["0", "1", "2", "3", "4"])
-    let fi = new In(["0", "1", "2", "3", "4", "5"])
-    let segment = new Altern(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Altern(
-      new Concat(new Exact("2"), new Concat(fo, digits())),
-      new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
-    ))
-    let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
-    matchAll(ipv4, s)
+  // // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
+  // fun matchAllIPv4(s) =
+  //   let fo = new In(["0", "1", "2", "3", "4"])
+  //   let fi = new In(["0", "1", "2", "3", "4", "5"])
+  //   let segment = new Altern(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Altern(
+  //     new Concat(new Exact("2"), new Concat(fo, digits())),
+  //     new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
+  //   ))
+  //   let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
+  //   matchAll(ipv4, s)

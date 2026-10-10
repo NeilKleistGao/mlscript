@@ -156,7 +156,20 @@ addCommandAlias("ndtest", "hkmc2NofibTests/testOnly hkmc2.NofibDiffTestRunner --
 addCommandAlias("adtest", "hkmc2AppsTests/testOnly hkmc2.AppsDiffTestRunner -- -z")
 addCommandAlias("wdtest", "hkmc2WasmTests/testOnly hkmc2.WasmDiffTestRunner -- -z")
 // Compilation tests
-addCommandAlias("ctest", "hkmc2JVM/testOnly hkmc2.CompileTestRunner -- -z")
+// A plain path selects one file; substring matching must be requested explicitly.
+commands += Command.args("ctest", "[test-path | -z pattern]") { (state, args) =>
+  val runner = "hkmc2JVM/testOnly hkmc2.CompileTestRunner"
+  def quoted(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+  args match {
+    case Seq() => runner :: state
+    case Seq("-z", pattern) => s"$runner -- -z ${quoted(pattern)}" :: state
+    case Seq(path) => s"$runner -- ${quoted(s"-DcompileTestPath=$path")}" :: state
+    case _ =>
+      state.log.error("Usage: ctest [test-path | -z pattern]")
+      state.fail
+  }
+}
 addCommandAlias("cntest", "hkmc2NofibTests/testOnly hkmc2.NofibCompileTestRunner -- -z")
 addCommandAlias("catest", "hkmc2AppsTests/testOnly hkmc2.AppsCompileTestRunner -- -z")
 addCommandAlias("cwtest", "hkmc2WasmTests/testOnly hkmc2.WasmCompileTestRunner -- -z")

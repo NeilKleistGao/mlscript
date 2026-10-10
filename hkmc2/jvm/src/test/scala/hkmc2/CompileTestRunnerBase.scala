@@ -1,6 +1,6 @@
 package hkmc2
 
-import org.scalatest.{funsuite, ParallelTestExecution}
+import org.scalatest.{Args, Status, funsuite, ParallelTestExecution}
 import org.scalatest.time._
 import org.scalatest.concurrent.{TimeLimitedTests, Signaler}
 
@@ -33,6 +33,26 @@ abstract class CompileTestRunnerBase(
   
   val validExt = Set("mls")
   
+  // Resolve ctest's path against registered tests so discovery and exclusions
+  // stay centralized here. Reject ambiguous basenames instead of compiling
+  // both a staging source and its generated out/ copy.
+  override def run(testName: Option[String], args: Args): Status =
+    (testName, args.configMap.get("compileTestPath")) match
+      case (None, Some(path: String)) =>
+        val selector = path.stripSuffix(".mls").stripPrefix("mlscript-compile/")
+        val matches = testNames.filter: name =>
+          val relative = name.stripPrefix("mlscript-compile/")
+          relative == selector || relative.endsWith("/" + selector)
+        matches.toList.sorted match
+          case selected :: Nil => super.run(Some(selected), args)
+          case Nil =>
+            throw new IllegalArgumentException(
+              s"No compilation test matches '$path'. Use an exact file path, or ctest -z $path for substring matching.")
+          case candidates =>
+            throw new IllegalArgumentException(
+              s"Ambiguous compilation test '$path'. Specify one of: ${candidates.mkString(", ")}")
+      case _ => super.run(testName, args)
+
   for dir <- compileDirs do {
     val allFiles = os.walk(dir)
       .filter(_.toIO.isFile)
@@ -56,7 +76,16 @@ abstract class CompileTestRunnerBase(
         val wrap: (=> Unit) => Unit = body => this.synchronized(body)
         val report = ReportFormatter(System.out.println, mainTestDir, colorize = true, wrap = Some(wrap))
         val compiler = MLsCompiler(mkRaise = report.mkRaise)
-        compiler.compileModule(file)
+        val startTime = System.nanoTime()
+        // Report elapsed time even when compilation throws, as diff tests do.
+        try compiler.compileModule(file) finally
+          val duration = (System.nanoTime() - startTime) / 1000000
+          this.synchronized:
+            println(s"${fansi.Color.Cyan.escape}Compiled in ${Console.BOLD}${
+                f"$duration%5d"
+              } ms${Console.RESET}  ${
+                Console.YELLOW + relativeName + "." + file.ext + Console.RESET
+              }")
         
         if report.badLines.nonEmpty then
           fail(s"Unexpected diagnostic at: " +

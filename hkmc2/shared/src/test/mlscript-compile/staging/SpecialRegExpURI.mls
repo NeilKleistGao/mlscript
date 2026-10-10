@@ -87,13 +87,13 @@ staged module SpecialRegExpURI with
     fun startsWith(c) = ch == c
     fun flat() = (@special new Cons(this, Nil))
 
-  staged class Any() extends RegExp() with
-    fun derive(c) = Empty
-    fun canBeEmpty() = false
-    fun normalize() = this
-    fun eq(other) = other is Any
-    fun startsWith(c) = true
-    fun flat() = (@special new Cons(this, Nil))
+  // staged class Any() extends RegExp() with
+  //   fun derive(c) = Empty
+  //   fun canBeEmpty() = false
+  //   fun normalize() = this
+  //   fun eq(other) = other is Any
+  //   fun startsWith(c) = true
+  //   fun flat() = (@special new Cons(this, Nil))
 
   staged class Not(val chars) extends RegExp() with
     fun derive(c) =
@@ -105,9 +105,9 @@ staged module SpecialRegExpURI with
     fun startsWith(c) = not has(chars, c)
     fun flat() = (@special new Cons(this, Nil))
 
-  fun notWord() = new Not(CharSet.alphabet())
-  fun notSpace() = new Not(CharSet.space())
-  fun notDigit() = new Not(CharSet.digit())
+  // fun notWord() = new Not(CharSet.alphabet())
+  // fun notSpace() = new Not(CharSet.space())
+  // fun notDigit() = new Not(CharSet.digit())
 
   @specialize
   fun mkUnion(ls) =
@@ -144,7 +144,7 @@ staged module SpecialRegExpURI with
     fun flat() = (@special new Cons(this, Nil))
 
   fun words() = new In(CharSet.alphabet())
-  fun spaces() = new In(CharSet.space())
+  // fun spaces() = new In(CharSet.space())
   fun digits() = new In(CharSet.digit())
 
   staged class Concat(val p1, val p2) extends RegExp() with
@@ -165,9 +165,9 @@ staged module SpecialRegExpURI with
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
     fun flat() = (@special new Cons(this, Nil))
 
-  fun nTimes(r, i) =
-    if i == 1 then r
-    else (@special new Concat(r, nTimes(r, i - 1)))
+  // fun nTimes(r, i) =
+  //   if i == 1 then r
+  //   else (@special new Concat(r, nTimes(r, i - 1)))
 
   staged class Star(val p) extends RegExp() with
     fun derive(c) = (@special new Concat(p.derive(c), (@special new Star(p)))).normalize()

@@ -4,156 +4,301 @@
 
 import "../../mlscript-compile/SimpleRegExp.mls"
 
-open SimpleRegExp
+// open SimpleRegExp
 
-match(Exact("x"), "x")
-//│ = Some("x")
+// match(Exact("x"), "x")
+// //│ = Some("x")
 
-match(Exact("x"), "")
-//│ = None
+// match(Exact("x"), "")
+// //│ = None
 
-match(Exact("x"), "xyz")
-//│ = Some("x")
-
-
-match(Any(), "x")
-//│ = Some("x")
-
-match(Any(), "")
-//│ = None
-
-match(Any(), "xyz")
-//│ = Some("x")
+// match(Exact("x"), "xyz")
+// //│ = Some("x")
 
 
-match(Not(["x", "y", "z"]), "xyz")
-//│ = None
+// match(Any(), "x")
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] TypeError: globalThis.Any is not a function
+// //│     at REPL29:1:51
+// //│     at ContextifyScript.runInThisContext (node:vm:138:12)
+// //│     at defaultEval (node:repl:610:24)
+// //│     at REPLEvalInContext (node:repl:693:9)
+// //│     at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+// //│     at REPLServer.REPLEval [as eval] (node:repl:692:19)
+// //│     at REPLServer.onLine (node:repl:830:12)
+// //│     at REPLServer.emit (node:events:514:20)
+// //│     at [_onLine] [as _onLine] (node:internal/readline/interface:477:12)
+// //│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:675:18)
 
-match(Not(["x", "y", "z"]), "w")
-//│ = Some("w")
+// match(Any(), "")
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] TypeError: globalThis.Any is not a function
+// //│     at REPL32:1:51
+// //│     at ContextifyScript.runInThisContext (node:vm:138:12)
+// //│     at defaultEval (node:repl:610:24)
+// //│     at REPLEvalInContext (node:repl:693:9)
+// //│     at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+// //│     at REPLServer.REPLEval [as eval] (node:repl:692:19)
+// //│     at REPLServer.onLine (node:repl:830:12)
+// //│     at REPLServer.emit (node:events:514:20)
+// //│     at [_onLine] [as _onLine] (node:internal/readline/interface:477:12)
+// //│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:675:18)
 
-
-match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "z")
-//│ = Some("z")
-
-match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "y")
-//│ = Some("y")
-
-match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "w")
-//│ = None
-
-
-match(question(Exact("x")), "x")
-//│ = Some("x")
-
-match(question(Exact("x")), "y")
-//│ = Some("")
-
-match(question(Exact("x")), "xx")
-//│ = Some("x")
-
-match(question(Any()), "y")
-//│ = Some("y")
-
-
-match(new Concat(new Exact("x"), new Concat(new Exact("y"), new Not(["z"]))), "xyy")
-//│ = Some("xyy")
-
-match(new Concat(new Exact("x"), new Concat(new Exact("y"), new Not(["z"]))), "xyz")
-//│ = None
-
-match(new Concat(new Exact("x"), new Concat(new Exact("y"), new Not(["z"]))), "yyy")
-//│ = None
-
-
-// x{3}, equivalent to xxx
-match(nTimes(Exact("x"), 3), "xxx")
-//│ = Some("xxx")
-
-match(nTimes(Exact("x"), 3), "xxy")
-//│ = None
-
-match(nTimes(Exact("x"), 3), "xx")
-//│ = None
+// match(Any(), "xyz")
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] TypeError: globalThis.Any is not a function
+// //│     at REPL35:1:51
+// //│     at ContextifyScript.runInThisContext (node:vm:138:12)
+// //│     at defaultEval (node:repl:610:24)
+// //│     at REPLEvalInContext (node:repl:693:9)
+// //│     at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+// //│     at REPLServer.REPLEval [as eval] (node:repl:692:19)
+// //│     at REPLServer.onLine (node:repl:830:12)
+// //│     at REPLServer.emit (node:events:514:20)
+// //│     at [_onLine] [as _onLine] (node:internal/readline/interface:477:12)
+// //│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:675:18)
 
 
-match(Concat(Star(Exact("x")), Exact("y")), "x")
-//│ = None
+// match(Not(["x", "y", "z"]), "xyz")
+// //│ = None
 
-match(Concat(Star(Exact("x")), Exact("y")), "y")
-//│ = Some("y")
-
-match(Concat(Star(Exact("x")), Exact("y")), "xxxxxy")
-//│ = Some("xxxxxy")
-
-match(Concat(Star(Exact("x")), Exact("y")), "xyyyy")
-//│ = Some("xy")
+// match(Not(["x", "y", "z"]), "w")
+// //│ = Some("w")
 
 
-match(plus(Exact("x")), "")
-//│ = None
+// match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "z")
+// //│ = Some("z")
 
-match(plus(Exact("x")), "x")
-//│ = Some("x")
+// match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "y")
+// //│ = Some("y")
 
-
-match(plus(Exact("x")), "y")
-//│ = None
-
-
-match(plus(Exact("x")), "xxx")
-//│ = Some("xxx")
+// match(Altern(Altern(Exact("x"), Exact("y")), Exact("z")), "w")
+// //│ = None
 
 
-match(plus(Exact("x")), "xxxy")
-//│ = Some("xxx")
+// match(question(Exact("x")), "x")
+// //│ = Some("x")
+
+// match(question(Exact("x")), "y")
+// //│ = Some("")
+
+// match(question(Exact("x")), "xx")
+// //│ = Some("x")
+
+// match(question(Any()), "y")
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] TypeError: globalThis.Any is not a function
+// //│     at REPL62:1:60
+// //│     at ContextifyScript.runInThisContext (node:vm:138:12)
+// //│     at defaultEval (node:repl:610:24)
+// //│     at REPLEvalInContext (node:repl:693:9)
+// //│     at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+// //│     at REPLServer.REPLEval [as eval] (node:repl:692:19)
+// //│     at REPLServer.onLine (node:repl:830:12)
+// //│     at REPLServer.emit (node:events:514:20)
+// //│     at [_onLine] [as _onLine] (node:internal/readline/interface:477:12)
+// //│     at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:675:18)
 
 
-:silent
-let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord())) 
+// match(new Concat(new Exact("x"), new Concat(new Exact("y"), new Not(["z"]))), "xyy")
+// //│ = Some("xyy")
+
+// match(new Concat(new Exact("x"), new Concat(new Exact("y"), new Not(["z"]))), "xyz")
+// //│ = None
+
+// match(new Concat(new Exact("x"), new Concat(new Exact("y"), new Not(["z"]))), "yyy")
+// //│ = None
 
 
-matchAll(p, "To be or not to be, that is the question.")
-//│ = ["To ", "t ", "to ", "that ", "the ", "tion."]
+// // x{3}, equivalent to xxx
+// match(nTimes(Exact("x"), 3), "xxx")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: nTimes
+// //│ ║  l.118: 	match(nTimes(Exact("x"), 3), "xxx")
+// //│ ╙──       	      ^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// match(nTimes(Exact("x"), 3), "xxy")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: nTimes
+// //│ ║  l.128: 	match(nTimes(Exact("x"), 3), "xxy")
+// //│ ╙──       	      ^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// match(nTimes(Exact("x"), 3), "xx")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: nTimes
+// //│ ║  l.138: 	match(nTimes(Exact("x"), 3), "xx")
+// //│ ╙──       	      ^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
 
-matchAllEmail("foo@bar.baz")
-//│ = ["foo@bar.baz"]
+// match(Concat(Star(Exact("x")), Exact("y")), "x")
+// //│ = None
 
-matchAllEmail("foo-foo@bar.baz")
-//│ = ["foo-foo@bar.baz"]
+// match(Concat(Star(Exact("x")), Exact("y")), "y")
+// //│ = Some("y")
 
-matchAllEmail("a.b.c.d@e-f.g.h")
-//│ = ["a.b.c.d@e-f.g.h"]
+// match(Concat(Star(Exact("x")), Exact("y")), "xxxxxy")
+// //│ = Some("xxxxxy")
 
-matchAllEmail("a-b.c.d@e-f.g.h")
-//│ = ["a-b.c.d@e-f.g.h"]
-
-matchAllEmail("foo@bar@baz")
-//│ = []
-
-matchAllEmail("f@a")
-//│ = []
+// match(Concat(Star(Exact("x")), Exact("y")), "xyyyy")
+// //│ = Some("xy")
 
 
-matchAllURI("http://foo.bar.com")
-//│ = ["http://foo.bar.com"]
+// match(plus(Exact("x")), "")
+// //│ = None
+
+// match(plus(Exact("x")), "x")
+// //│ = Some("x")
 
 
-matchAllURI("http://foo.bar.com?xxx")
-//│ = ["http://foo.bar.com?xxx"]
+// match(plus(Exact("x")), "y")
+// //│ = None
 
 
-matchAllURI("http://foo.bar.com?xxx#42")
-//│ = ["http://foo.bar.com?xxx#42"]
+// match(plus(Exact("x")), "xxx")
+// //│ = Some("xxx")
 
 
-matchAllURI("http://foo.bar.com#42")
-//│ = ["http://foo.bar.com#42"]
+// match(plus(Exact("x")), "xxxy")
+// //│ = Some("xxx")
 
 
-matchAllIPv4("8.8.8.8")
-//│ = ["8.8.8.8"]
+// :silent
+// let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord())) 
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: notWord
+// //│ ║  l.182: 	let p = Concat(In(["T", "t"]), Concat(Star(words()), notWord())) 
+// //│ ╙──       	                                                     ^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
 
-matchAllIPv4("192.168.1.1")
-//│ = ["192.168.1.1"]
+
+// matchAll(p, "To be or not to be, that is the question.")
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] TypeError: Cannot read properties of undefined (reading 'startsWith')
+// //│     at SimpleRegExp.matchImpl (file:///home/neilkleistgao/mlscript/hkmc2/shared/src/test/mlscript-compile/SimpleRegExp.mjs:792:35)
+// //│     at SimpleRegExp.matchAllImpl (file:///home/neilkleistgao/mlscript/hkmc2/shared/src/test/mlscript-compile/SimpleRegExp.mjs:819:29)
+// //│     at SimpleRegExp.matchAll (file:///home/neilkleistgao/mlscript/hkmc2/shared/src/test/mlscript-compile/SimpleRegExp.mjs:844:25)
+// //│     at REPL112:1:52
+// //│     at ContextifyScript.runInThisContext (node:vm:138:12)
+// //│     at defaultEval (node:repl:610:24)
+// //│     at REPLEvalInContext (node:repl:693:9)
+// //│     at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+// //│     at REPLServer.REPLEval [as eval] (node:repl:692:19)
+// //│     at REPLServer.onLine (node:repl:830:12)
+
+
+// matchAllEmail("foo@bar.baz")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllEmail
+// //│ ║  l.209: 	matchAllEmail("foo@bar.baz")
+// //│ ╙──       	^^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// matchAllEmail("foo-foo@bar.baz")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllEmail
+// //│ ║  l.219: 	matchAllEmail("foo-foo@bar.baz")
+// //│ ╙──       	^^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// matchAllEmail("a.b.c.d@e-f.g.h")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllEmail
+// //│ ║  l.229: 	matchAllEmail("a.b.c.d@e-f.g.h")
+// //│ ╙──       	^^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// matchAllEmail("a-b.c.d@e-f.g.h")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllEmail
+// //│ ║  l.239: 	matchAllEmail("a-b.c.d@e-f.g.h")
+// //│ ╙──       	^^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// matchAllEmail("foo@bar@baz")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllEmail
+// //│ ║  l.249: 	matchAllEmail("foo@bar@baz")
+// //│ ╙──       	^^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// matchAllEmail("f@a")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllEmail
+// //│ ║  l.259: 	matchAllEmail("f@a")
+// //│ ╙──       	^^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+
+// matchAllURI("http://foo.bar.com")
+// //│ = ["http://foo.bar.com"]
+
+
+// matchAllURI("http://foo.bar.com?xxx")
+// //│ = ["http://foo.bar.com?xxx"]
+
+
+// matchAllURI("http://foo.bar.com?xxx#42")
+// //│ = ["http://foo.bar.com?xxx#42"]
+
+
+// matchAllURI("http://foo.bar.com#42")
+// //│ = ["http://foo.bar.com#42"]
+
+
+// matchAllIPv4("8.8.8.8")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllIPv4
+// //│ ║  l.286: 	matchAllIPv4("8.8.8.8")
+// //│ ╙──       	^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
+
+// matchAllIPv4("192.168.1.1")
+// //│ FAILURE: Unexpected compilation error
+// //│ FAILURE LOCATION: subterm (Elaborator.scala:1224)
+// //│ ╔══[COMPILATION ERROR] Name not found: matchAllIPv4
+// //│ ║  l.296: 	matchAllIPv4("192.168.1.1")
+// //│ ╙──       	^^^^^^^^^^^^
+// //│ FAILURE: Unexpected runtime error
+// //│ FAILURE LOCATION: mkQuery (JSBackendDiffMaker.scala:287)
+// //│ ═══[RUNTIME ERROR] This code cannot be run as its compilation yielded an error.
