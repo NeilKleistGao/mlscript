@@ -11,17 +11,12 @@ module SeqHelper with
   fun len(s) = s.length
   fun eq(arr1, arr2) =
     arr1.length == arr2.length and arr1.every((v, i) => v == arr2.(i))
-  fun setEq(s1, s2) =
-    s1.slice().sort()
-    s2.slice().sort()
-    s1.length == s2.length and s1.every((v, i) => v.eq(s2.(i)))
 
 module CharSet with
   fun alphabet() = [
     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
   ]
-  fun space() = [" ", "\n", "\t", "\r"]
   fun digit() = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 staged module StagedRegExp with
@@ -52,7 +47,6 @@ staged module StagedRegExp with
   fun len(s) = SeqHelper.len(s)
   fun has(arr, ele) = SeqHelper.has(arr, ele)
   fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
-  fun push(arr, ele) = SeqHelper.push(arr, ele)
 
   staged class RegExp() with
     fun derive(c)
@@ -89,14 +83,6 @@ staged module StagedRegExp with
     fun startsWith(c) = ch == c
     fun flat() = new Cons(this, Nil)
 
-  // staged class Any() extends RegExp() with
-  //   fun derive(c) = Empty
-  //   fun canBeEmpty() = false
-  //   fun normalize() = this
-  //   fun eq(other) = other is Any
-  //   fun startsWith(c) = true
-  //   fun flat() = new Cons(this, Nil)
-
   staged class Not(val chars) extends RegExp() with
     fun derive(c) =
       if startsWith(c) then Empty else Nothing
@@ -106,10 +92,6 @@ staged module StagedRegExp with
       if other is Not(chars') then arrEq(chars, chars') else false
     fun startsWith(c) = not has(chars, c)
     fun flat() = new Cons(this, Nil)
-
-  // fun notWord() = new Not(CharSet.alphabet())
-  // fun notSpace() = new Not(CharSet.space())
-  // fun notDigit() = new Not(CharSet.digit())
 
   @specialize fun mkUnion(ls) =
     if ls is
@@ -146,8 +128,6 @@ staged module StagedRegExp with
     fun flat() = new Cons(this, Nil)
 
   fun words() = new In(CharSet.alphabet())
-  fun spaces() = new In(CharSet.space())
-  fun digits() = new In(CharSet.digit())
 
   staged class Concat(val p1, val p2) extends RegExp() with
     fun derive(c) =
@@ -167,10 +147,6 @@ staged module StagedRegExp with
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
     fun flat() = new Cons(this, Nil)
-
-  // fun nTimes(r, i) =
-  //   if i == 1 then r
-  //   else new Concat(r, nTimes(r, i - 1))
 
   staged class Star(val p) extends RegExp() with
     fun derive(c) = (new Concat(p.derive(c), new Star(p))).normalize()
@@ -192,8 +168,6 @@ staged module StagedRegExp with
     p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
     p.canBeEmpty() then new Some(s.substring(i, j))
     else None
-  fun match(p, s) =
-    matchImpl(p, s, 0, 0)
 
   fun matchAllImpl(@specialize p, s, i, res) =
     if len(s) == i then res
@@ -206,33 +180,14 @@ staged module StagedRegExp with
   fun matchAll(p, s) =
     matchAllImpl(p, s, 0, [])
 
-  // // [\w\.-]+@[\w\.-]+\.[\w\.-]+
-  // fun matchAllEmail(s) =
-  //   let p = plus(new In(SeqHelper.concat(CharSet.alphabet(), ["-", "."])))
-  //   let email = new Concat(p, new Concat(new Exact("@"), new Concat(p, new Concat(new Exact("."), p))))
-  //   matchAll(email, s)
-
   // \w+://[^/\s?#]+[^\s?#]+(\?[^\s#]*)?(#[^\s]*)?
   fun matchAllURI(s) =
     let n1 = new Not(["/", "?", "#", " ", "\n", "\t", "\r"])
     let n2 = new Not(["?", "#", " ", "\n", "\t", "\r"])
-    let n3 = new Not(["#", " ", "\n", "\t", "\r"])
     let w = words()
-    let d = digits()
     let p = SeqHelper.concat(CharSet.alphabet(), SeqHelper.concat(CharSet.digit(), ["-", "_"]))
     let head = new Concat(plus(w), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
     let body = new Concat(plus(n1), plus(n2))
     let params = new Concat(question(new Concat(new Exact("?"), new Star(new In(p)))), question(new Concat(new Exact("#"), new Star(new In(p)))))
     let uri = new Concat(head, new Concat(body, params))
     matchAll(uri, s)
-
-  // // ((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])
-  // fun matchAllIPv4(s) =
-  //   let fo = new In(["0", "1", "2", "3", "4"])
-  //   let fi = new In(["0", "1", "2", "3", "4", "5"])
-  //   let segment = new Altern(new Concat(new Exact("2"), new Concat(new Exact("5"), fi)), new Altern(
-  //     new Concat(new Exact("2"), new Concat(fo, digits())),
-  //     new Concat(question(new Exact("1")), new Concat(question(digits()), digits()))
-  //   ))
-  //   let ipv4 = new Concat(nTimes(new Concat(segment, new Exact(".")), 3), segment)
-  //   matchAll(ipv4, s)

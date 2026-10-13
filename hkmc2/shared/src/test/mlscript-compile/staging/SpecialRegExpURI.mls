@@ -17,7 +17,6 @@ module CharSet with
     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
   ]
-  fun space() = [" ", "\n", "\t", "\r"]
   fun digit() = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 staged module SpecialRegExpURI with
@@ -47,10 +46,8 @@ staged module SpecialRegExpURI with
       [Cons(x, xs), Cons(y, ys)] then x.eq(y) and lsEq(xs, ys)
       else false
 
-  fun len(s) = SeqHelper.len(s)
   fun has(arr, ele) = SeqHelper.has(arr, ele)
   fun arrEq(arr1, arr2) = SeqHelper.eq(arr1, arr2)
-  fun push(arr, ele) = SeqHelper.push(arr, ele)
 
   staged class RegExp() with
     fun derive(c)
@@ -87,14 +84,6 @@ staged module SpecialRegExpURI with
     fun startsWith(c) = ch == c
     fun flat() = (@special new Cons(this, Nil))
 
-  // staged class Any() extends RegExp() with
-  //   fun derive(c) = Empty
-  //   fun canBeEmpty() = false
-  //   fun normalize() = this
-  //   fun eq(other) = other is Any
-  //   fun startsWith(c) = true
-  //   fun flat() = (@special new Cons(this, Nil))
-
   staged class Not(val chars) extends RegExp() with
     fun derive(c) =
       if startsWith(c) then Empty else Nothing
@@ -104,10 +93,6 @@ staged module SpecialRegExpURI with
       if other is Not(chars') then arrEq(chars, chars') else false
     fun startsWith(c) = not has(chars, c)
     fun flat() = (@special new Cons(this, Nil))
-
-  // fun notWord() = new Not(CharSet.alphabet())
-  // fun notSpace() = new Not(CharSet.space())
-  // fun notDigit() = new Not(CharSet.digit())
 
   @specialize
   fun mkUnion(ls) =
@@ -144,8 +129,6 @@ staged module SpecialRegExpURI with
     fun flat() = (@special new Cons(this, Nil))
 
   fun words() = new In(CharSet.alphabet())
-  // fun spaces() = new In(CharSet.space())
-  fun digits() = new In(CharSet.digit())
 
   staged class Concat(val p1, val p2) extends RegExp() with
     fun derive(c) =
@@ -164,10 +147,6 @@ staged module SpecialRegExpURI with
       if other is Concat(p1', p2') then p1.eq(p1') and p2.eq(p2') else false
     fun startsWith(c) = p1.startsWith(c) || (p1.canBeEmpty() and p2.startsWith(c))
     fun flat() = (@special new Cons(this, Nil))
-
-  // fun nTimes(r, i) =
-  //   if i == 1 then r
-  //   else (@special new Concat(r, nTimes(r, i - 1)))
 
   staged class Star(val p) extends RegExp() with
     fun derive(c) = (@special new Concat(p.derive(c), (@special new Star(p)))).normalize()
@@ -189,8 +168,6 @@ staged module SpecialRegExpURI with
     p.startsWith(c) then matchImpl(p.derive(c), s, i, j + 1)
     p.canBeEmpty() then new Some(s.substring(i, j))
     else None
-  fun match(p, s) =
-    matchImpl(p, s, 0, 0)
 
   fun matchAllImpl(@specialize p, s, i, res) =
     if SeqHelper.len(s) == i then res
@@ -207,9 +184,7 @@ staged module SpecialRegExpURI with
   fun matchAllURI(s) =
     let n1 = new Not(["/", "?", "#", " ", "\n", "\t", "\r"])
     let n2 = new Not(["?", "#", " ", "\n", "\t", "\r"])
-    let n3 = new Not(["#", " ", "\n", "\t", "\r"])
     let w = words()
-    let d = digits()
     let p = SeqHelper.concat(CharSet.alphabet(), SeqHelper.concat(CharSet.digit(), ["-", "_"]))
     let head = new Concat(plus(w), new Concat(new Exact(":"), new Concat(new Exact("/"), new Exact("/"))))
     let body = new Concat(plus(n1), plus(n2))

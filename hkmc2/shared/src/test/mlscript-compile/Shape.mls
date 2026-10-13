@@ -24,7 +24,8 @@ class Shape extends CachedHash with
     Arr(val shapes: Array[ShSet])
     // superShape is the direct superclass instance shape, or bot when the class has no superclass.
     Class(val sym: ConcreteClassSymbol, val fields: Array[ShSet], val superShape: ShSet, val isSpecial: Bool) // TODO: track the auxParams as well
-  fun toUCSPattern(printer, branchShapes) = showUCSPattern(this, printer, branchShapes)
+  // Only meaningful on a pattern shape (see `ucsPatternShape`), which is what a `UCS` arm carries.
+  fun toPattern(printer) = showPattern(this, printer)
 
 fun show(s: Shape) =
   if s is
@@ -44,12 +45,9 @@ fun classArity(sym: ConcreteClassSymbol) =
 fun showPatternSet(s: ShSet, printer) =
   if s.values() is [shape] then showPattern(shape, printer) else "_"
 
-// mask marks the field positions that should be printed as wildcards regardless
-// of the shape we know for them.
-fun showPatternFields(fields: Array[ShSet], arity: Int, mask: Array[Bool], printer) =
+fun showPatternFields(fields: Array[ShSet], arity: Int, printer) =
   Array(arity).fill(0).map((_, i, _) =>
-    if i < mask.length and mask.(i) then "_"
-    else if i < fields.length then showPatternSet(fields.(i), printer)
+    if i < fields.length then showPatternSet(fields.(i), printer)
     else "_"
   ).join(", ")
 
@@ -63,9 +61,9 @@ fun showPattern(s: Shape, printer) =
       let arity = classArity(sym)
       if arity is 0 then cls
       // a non-special shape carries no reliable field information
-      else cls + "(" + showPatternFields(if isSpecial then fields else [], arity, [], printer) + ")"
+      else cls + "(" + showPatternFields(if isSpecial then fields else [], arity, printer) + ")"
 
-// This mask only simplifies emitted UCS patterns; the branch shapes remain unchanged.
+// This mask only coarsens emitted UCS patterns; see `ucsPatternShape`.
 fun sharedPatternFields(s: Shape, branchShapes: Array[Shape]) =
   if s is
     Class(sym1, fields, _, _) then
@@ -83,12 +81,96 @@ fun sharedPatternFields(s: Shape, branchShapes: Array[Shape]) =
         )
       )
 
-fun showUCSPattern(s: Shape, printer, branchShapes: Array[Shape]) =
+// A *pattern shape* is a shape read as a `@matchShapes` pattern: `Dyn` is the wildcard
+// `_`, and every other shape matches exactly the values `showPattern` says it does. It is
+// what the specializer refines branch shapes with, so the printed pattern and the shapes
+// the branch is specialized at cannot disagree: `showPattern(patternShape(s))` prints
+// exactly what `showPattern(s)` prints, and `refine(s, patternShape(s))` is `[s]`.
+
+fun patternSetShape(ss: ShSet) =
+  if ss.values() is [shape] then ShapeSet.lift(patternShape(shape)) else ShapeSet.mkDyn()
+
+// mask marks the field positions that become wildcards regardless of the shape we know
+// for them.
+fun patternFieldShapes(fields: Array[ShSet], arity: Int, mask: Array[Bool]) =
+  Array(arity).fill(0).map((_, i, _) =>
+    if i < mask.length and mask.(i) then ShapeSet.mkDyn()
+    else if i < fields.length then patternSetShape(fields.(i))
+    else ShapeSet.mkDyn()
+  )
+
+fun patternShape(s: Shape): Shape =
+  if s is
+    Dyn then s
+    Lit then s
+    Arr(shapes) then Arr(shapes.map(patternSetShape))
+    Class(sym, fields, _, isSpecial) then
+      let arity = classArity(sym)
+      Class(sym, patternFieldShapes(if isSpecial then fields else [], arity, []), ShapeSet.mkDyn(), isSpecial)
+
+// The pattern a `shape.match` branch is emitted with. Fields that all the same-class
+// branches share are printed as wildcards, which makes this pattern coarser than the
+// shapes it was printed from: a value of another branch's shape may well match it. The
+// branch must therefore be specialized at the scrutinee *refined by this pattern* (see
+// `refine`), not at the shapes it was printed from.
+fun ucsPatternShape(s: Shape, branchShapes: Array[Shape]) =
   if s is
     Class(sym, fields, _, true) and classArity(sym) > 0 then
-      printer.showSymbol(sym) + "(" +
-        showPatternFields(fields, classArity(sym), sharedPatternFields(s, branchShapes), printer) + ")"
-    else showPattern(s, printer)
+      Class(sym, patternFieldShapes(fields, classArity(sym), sharedPatternFields(s, branchShapes)), ShapeSet.mkDyn(), true)
+    else patternShape(s)
+
+// `refine(s, q)` is the part of `s` whose values the pattern shape `q` accepts: each field
+// is narrowed by the pattern's field, a `Dyn` becomes the pattern itself, and what the
+// pattern rules out disappears. A shape the pattern does not narrow is returned as the very
+// same object, which is what `covers` relies on: comparing rebuilt shapes by `hash()` means
+// rendering them, and these shapes can be large. Unlike `filter` against a `Case`, this
+// keeps whatever `s` knows beyond the pattern. Deep patterns accept the exact class only, as the class-tags
+// pass checks them (`Shape.<=` in `ClassTagsTransformer.scala`), so a subclass is ruled out.
+//
+// History: a branch used to be specialized at the union of the shapes that printed its
+// pattern. That is unsound once a pattern is coarser than its shapes (masked fields and
+// non-special nested classes make it so) and patterns overlap: with `@special` `C` and
+// plain `D`, the members `C(D(1), _)` and `C(D(2), 5)` print `C(D(_), _)` and
+// `C(D(_), 5)`, and a `C(D(2), 5)` takes the first branch, which assumed `D(1)`. The
+// formal development (`refine` in the Lean proof's `Shapes.lean`) found the same gap.
+fun refine(s: Shape, q: Shape): Array[Shape] =
+  if [s, q] is
+    [_, Dyn] then [s]
+    [Dyn, _] then [q]
+    [Lit(l1), Lit(l2)] and l1 == l2 then [s]
+    [Arr(fields), Arr(patternFields)] and fields.length == patternFields.length and refineFields(fields, patternFields) is Some(refined) then
+      [if sameElements(refined, fields) then s else Arr(refined)]
+    [Class(sym, fields, superShape, isSpecial), Class(patternSym, patternFields, _, _)] and sameClass(sym, patternSym) and refineFields(fields, patternFields) is Some(refined) then
+      [if sameElements(refined, fields) then s else Class(sym, refined, superShape, isSpecial)]
+    else []
+
+fun sameElements(xs, ys) =
+  xs.length == ys.length and xs.every((x, i, _) => x === ys.(i))
+
+fun sameClass(sym1, sym2) = ShapeSet.classGroupKey(sym1) == ShapeSet.classGroupKey(sym2)
+
+// A pattern field is always a single shape (see `patternSetShape`).
+fun refineSet(ss: ShSet, q: ShSet) =
+  if q.values() is
+    [Dyn] then ss
+    [qShape] and
+      let members = ss.values()
+      let refined = members.flatMap(refine(_, qShape))
+      sameElements(refined, members) then ss
+      else ShapeSet.liftMany(refined)
+
+// None when some field rules the whole shape out. A field past the pattern's arity is
+// left alone, as `showPatternFields` prints it as a wildcard.
+fun refineFields(fields: Array[ShSet], patternFields: Array[ShSet]) =
+  let refined = fields.map((field, i, _) =>
+    if i < patternFields.length then refineSet(field, patternFields.(i)) else field
+  )
+  if refined.some((field, i, _) => field.isEmpty() and not fields.(i).isEmpty()) then None
+  else Some(refined)
+
+// Every value of `s` matches the pattern shape `q`.
+fun covers(q: Shape, s: Shape) =
+  refine(s, q) is [r] and r === s
 
 fun sel(s1: Shape, s2: Shape): Array[Shape] =
   if [s1, s2] is

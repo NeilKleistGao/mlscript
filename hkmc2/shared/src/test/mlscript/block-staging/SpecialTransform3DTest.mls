@@ -31,12 +31,12 @@ let p3 = [0, 0, 0]
 import "../../mlscript-compile/NaiveTransform3D.mls"
 
 // Direct reference computations keep runtime selection out of the baseline.
-fun modelA(local) = NaiveTransform3D.model0(local)
+fun modelA(local) = NaiveTransform3D.model(local, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0])
 fun modelB(local) = NaiveTransform3D.model(local, [-3, 7, 12], [1.5, 0.5, 2.0], [0.25 * 3.14159265, 0.0, 1.5707963268])
 fun modelC(local) = NaiveTransform3D.model(local, [0, 0, 0], [1.0, 1.0, 1.0], [0.0, 0.0, 0.0])
 
 
-// Preset 0 uses the placement fixed by `model0`.
+// Preset 0 is the benchmark placement.
 
 // The three presets really are different transforms.
 differ(modelA(p1), modelB(p1))
@@ -69,13 +69,13 @@ Transform3D."generate"("../Transform3D.mls", "./hkmc2/shared/src/test/mlscript-c
 import "../../mlscript-compile/staging/out/Transform3D.mls"
 
 
-same(Transform3D.model0(p1), modelA(p1))
+same(Transform3D.model(p1, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0]), modelA(p1))
 //│ = true
 
-same(Transform3D.model0(p2), modelA(p2))
+same(Transform3D.model(p2, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0]), modelA(p2))
 //│ = true
 
-same(Transform3D.model0(p3), modelA(p3))
+same(Transform3D.model(p3, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0]), modelA(p3))
 //│ = true
 
 same(Transform3D.model(p2, [-3, 7, 12], [1.5, 0.5, 2.0], [0.25 * 3.14159265, 0.0, 1.5707963268]), modelB(p2))
@@ -120,5 +120,3 @@ differ(SpecialTransform3D.modelPreset(0, p1), SpecialTransform3D.modelPreset(2, 
 differ(SpecialTransform3D.modelPreset(1, p1), SpecialTransform3D.modelPreset(2, p1))
 //│ = true
 
-// The entry point that names one placement still works in this module.
-// same(SpecialTransform3D.model0(p1), NaiveTransform3D.model0(p1))

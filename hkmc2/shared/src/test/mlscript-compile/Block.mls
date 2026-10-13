@@ -131,6 +131,7 @@ class Block with
   constructor
     Match(val scrut: Path, val arms: Array[Arm], val dflt: Opt[Block], val rest: Block)
     // Output-only shape dispatch; ReflectionInstrumenter never constructs this node.
+    // Each arm's first component is the pattern shape it is emitted with (`Shape.ucsPatternShape`).
     UCS(val scrut: Path, val arms: Array[[Any, Block]])
     Return(val res: Result)
     Assign(val lhs: Symbol, val rhs: Result, val rest: Block)
@@ -406,8 +407,7 @@ class Printer(val owner: Opt[Symbol]) with
         + showRestBlock(rest)
       UCS(scrut, arms) then
         let printer = this
-        let branchShapes = arms.map(_.0)
-        let patterns = arms.map(a => a.0.toUCSPattern(printer, branchShapes))
+        let patterns = arms.map(a => a.0.toPattern(printer))
         "@matchShapes(" + patterns.join(", ") + ")"
           + " shape.match of " + showPath(scrut) + ","
           + indent("\n" + arms.map(a => printer.showUCSBranch(a)).join("\n"))

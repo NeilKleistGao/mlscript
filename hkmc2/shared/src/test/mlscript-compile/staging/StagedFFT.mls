@@ -2,11 +2,11 @@
 
 // Mixed-radix Cooley–Tukey FFT, specialized on the radix sequence.
 //
-// The entry points at the bottom of the module each fix a factorization of the
-// transform length (e.g. 8 = 2*2*2 or 8 = 4*2).  The radix list, the transform
-// length, every index and every twiddle factor are then known during
-// specialization, so each entry point is unrolled into a fixed butterfly
-// network over the (unknown) input samples.
+// The entry point at the bottom of the module fixes a factorization of the
+// transform length (8 = 2*2*2).  The radix list, the transform length, every
+// index and every twiddle factor are then known during specialization, so the
+// entry point is unrolled into a fixed butterfly network over the (unknown)
+// input samples.
 //
 // Signals are exchanged as flat arrays of `2*n` numbers holding interleaved
 // real and imaginary parts, which is what the surrounding benchmark harness
@@ -24,7 +24,6 @@ module FFTMath with
   fun setAt(a, i, v) =
     set a.(i) = v
     a
-  fun len(a) = a.length
 
 staged module StagedFFT with
 
@@ -170,69 +169,8 @@ staged module StagedFFT with
     store(fftRec(load(xs, 0, n), n, radices), FFTMath.mkArr(2 * n), 0)
 
   // ---------------------------------------------------------------------------
-  // Reference implementation: a direct O(n^2) DFT.  Nothing here is static, so
-  // it survives specialization as an ordinary loop and the tests can use it to
-  // check the specialized transforms.
+  // Entry point.  It fixes the radix sequence, so it is specialized.
   // ---------------------------------------------------------------------------
-
-  fun dftTerm(xs, n, k, t, re, im) =
-    if t == n then new Complex(re, im)
-    else
-      let c = FFTMath.cosW(k * t, n)
-      let s = FFTMath.sinW(k * t, n)
-      dftTerm(xs, n, k, t + 1,
-        re + xs.(2 * t) * c - xs.(2 * t + 1) * s,
-        im + xs.(2 * t) * s + xs.(2 * t + 1) * c)
-
-  fun dftAll(xs, n, k, acc) =
-    if k == n then acc
-    else
-      let z = dftTerm(xs, n, k, 0, 0.0, 0.0)
-      dftAll(xs, n, k + 1, FFTMath.setAt(FFTMath.setAt(acc, 2 * k, z.re), 2 * k + 1, z.im))
-
-  fun dft(xs) =
-    let n = FFTMath.len(xs) / 2
-    dftAll(xs, n, 0, FFTMath.mkArr(2 * n))
-
-  // ---------------------------------------------------------------------------
-  // Entry points.  `fft` keeps the radix sequence dynamic and is therefore not
-  // specialized; the others fix it and are.
-  // ---------------------------------------------------------------------------
-
-  fun fft(xs, radices) = run(xs, radices)
 
   // 8 = 2*2*2
   fun fft8(xs) = run(xs, new Cons(2, new Cons(2, new Cons(2, Nil))))
-
-  // 8 = 4*2
-  fun fft8_42(xs) = run(xs, new Cons(4, new Cons(2, Nil)))
-
-  // 8 = 2*4
-  fun fft8_24(xs) = run(xs, new Cons(2, new Cons(4, Nil)))
-
-  // 6 = 3*2
-  fun fft6(xs) = run(xs, new Cons(3, new Cons(2, Nil)))
-
-  // 12 = 3*2*2
-  fun fft12(xs) = run(xs, new Cons(3, new Cons(2, new Cons(2, Nil))))
-
-  // ---------------------------------------------------------------------------
-  // Choosing the factorization at run time.
-  //
-  // `fft` above takes the radix list as an ordinary argument, so nothing about
-  // it is static and the transform stays interpreted.  Wrapping each candidate
-  // list in a class instead makes the run-time choice a choice between
-  // *instances*, which is the form the specializer can keep apart across the
-  // join; all three factor 8, so any 8-point signal is valid for any of them.
-  // ---------------------------------------------------------------------------
-
-  staged class Plan(val radices) with
-    fun transform(xs) = run(xs, radices)
-
-  fun plan(k) =
-    if k is
-      0 then new Plan(new Cons(2, new Cons(2, new Cons(2, Nil))))
-      1 then new Plan(new Cons(4, new Cons(2, Nil)))
-      else new Plan(new Cons(2, new Cons(4, Nil)))
-
-  fun fftPlan(k, xs) = plan(k).transform(xs)

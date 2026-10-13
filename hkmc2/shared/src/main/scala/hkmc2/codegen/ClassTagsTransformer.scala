@@ -246,7 +246,7 @@ private case class UnionShape(subshapes: List[Shape]) extends Shape:
 private object UnionShape:
   /** A union keeps at most this many top-level members of the same class apart; past
     * that they decay -- see `decayWideClasses`. */
-  val classDecayThreshold: Int = 16
+  val classDecayThreshold: Int = 8
 
   /** Members are put in a canonical order so that unions with the same members are the
     * same shape. `rank` must be a stable total order that does not render the shape:

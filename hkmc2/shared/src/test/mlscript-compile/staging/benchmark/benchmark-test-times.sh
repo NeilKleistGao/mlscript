@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: benchmark-test-times.sh [FFT Fib Pipeline RegExpURI SparseTensor StateMachine Transform3D]
+# Usage: benchmark-test-times.sh [FFT Interpreter Pipeline RegExpURI SparseTensor StateMachine Transform3D]
 # With no arguments, measure all listed benchmarks. SBT can name an executable.
 # Before a first run, generate shared JS dependencies with:
 #   sbt -J-Xss1G -J-Xmx8G ctest
@@ -21,7 +21,7 @@ if ! command -v "$sbt_bin" >/dev/null 2>&1; then
   fi
 fi
 
-benchmarks=(FFT Fib Pipeline RegExpURI SparseTensor StateMachine Transform3D)
+benchmarks=(FFT Interpreter Pipeline RegExpURI SparseTensor StateMachine Transform3D)
 # benchmarks=(FFT FFT2)
 if (( $# > 0 )); then
   benchmarks=("$@")
@@ -29,7 +29,7 @@ fi
 selected=' '
 for benchmark in "${benchmarks[@]}"; do
   case "$benchmark" in
-    FFT|Fib|Pipeline|RegExpURI|SparseTensor|StateMachine|Transform3D) ;;
+    FFT|Interpreter|Pipeline|RegExpURI|SparseTensor|StateMachine|Transform3D) ;;
     *) printf 'Unknown benchmark: %s\n' "$benchmark" >&2; exit 1 ;;
   esac
   if [[ "$selected" == *" $benchmark "* ]]; then
@@ -71,9 +71,9 @@ for benchmark in "${benchmarks[@]}"; do
   special=''
   special_test=''
   case "$benchmark" in
-    FFT) staged=StagedFFT; staged_test=StagedFFTTest; special=SpecialFFT; special_test=SpecialFFTTest ;;
-    # FFT2) staged=StagedFFT; staged_test=StagedFFTTest; special=SpecialFFT; special_test=SpecialFFTTest ;;
-    Fib) staged=InterpreterFib; staged_test=InterpreterFibTest ;;
+    FFT) staged=StagedFFT; staged_test=StagedFFTTest ;;
+    # FFT2) staged=StagedFFT; staged_test=StagedFFTTest ;;
+    Interpreter) staged=InterpreterFib; staged_test=InterpreterFibTest; special=SpecialFib; special_test=SpecialFibBenchmarkTest ;;
     Pipeline) staged=Pipeline; staged_test=PipelineTest ;;
     RegExpURI) staged=StagedRegExp; staged_test=StagedRegExpTest; special=SpecialRegExpURI; special_test=SpecialRegExpURITest ;;
     SparseTensor) staged=StagedSparseTensor; staged_test=SparseTensorTest ;;

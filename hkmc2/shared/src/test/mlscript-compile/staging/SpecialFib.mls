@@ -10,28 +10,41 @@ staged module SpecialFib with
 
   class Closure(val name, val ps, val body, val env)
 
+  // Classes rather than tuples: the class-tags pass cannot follow a value through
+  // a tuple whose size the specializer has already proven, so a `@special` value
+  // travelling through a tuple-shaped interpreter state would never get a tag.
+  class State(val s, val e, val d)
+  class Frame(val s, val e)
+  class Bind(val n, val v)
+
   staged class Instruction() with
     fun eval(s, e, d)
 
   staged class Push(val v) extends Instruction() with
-    fun eval(s, e, d) = [new Cons(v, s), e, d]
+    fun eval(s, e, d) = new State(new Cons(v, s), e, d)
 
   staged object Add extends Instruction() with
     fun eval(s, e, d) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Cons(x + y, rest), e, d]
+        Cons(x, Cons(y, rest)) then new State(new Cons(x + y, rest), e, d)
         else Error
 
   staged object Sub extends Instruction() with
     fun eval(s, e, d) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Cons(y - x, rest), e, d]
+        Cons(x, Cons(y, rest)) then new State(new Cons(y - x, rest), e, d)
+        else Error
+
+  staged object Mul extends Instruction() with
+    fun eval(s, e, d) =
+      if s is
+        Cons(x, Cons(y, rest)) then new State(new Cons(x * y, rest), e, d)
         else Error
 
   staged class Comp(val le) extends Instruction() with
     fun eval(s, e, d) =
       if s is
-        Cons(x, Cons(y, rest)) then [new Cons(if le then x <= y else x >= y, rest), e, d]
+        Cons(x, Cons(y, rest)) then new State(new Cons(if le then x <= y else x >= y, rest), e, d)
         else Error
 
   staged class Branch(val t, val f) extends Instruction() with
@@ -45,41 +58,43 @@ staged module SpecialFib with
     fun eval(s, e, d) =
       let opt = get(e, name)
       if opt is
-        Some(v) then [new Cons(v, s), e, d]
-        else
-          let f = get(d, name)
-          if f is
-            Some(g) then [new Cons(g, s), e, d]
-            else Error
+        Some(v) then new State(new Cons(v, s), e, d)
+        else Error
 
   staged class Fun(val name, val ps, val body) extends Instruction() with
     fun eval(s, e, d) =
-      [s, e, new Cons([name, new Closure(name, ps, body, e)], d)]
+      // `@special` keeps each function's closure apart, so a call through a
+      // closure chosen at run time is specialized once per function.
+      new State(s, e, new Cons(new Bind(name, (@special new Closure(name, ps, body, e))), d))
 
-  staged object Call extends Instruction() with
+  // Calls the function named `name`.  Functions are only ever looked up by name
+  // in the function environment `d`; a closure never travels on the value stack,
+  // which is what lets the class-tags pass follow a `@special` closure.
+  staged class Call(val name) extends Instruction() with
     fun eval(s, e, @specialize d) =
-      if s is
-        Cons(v, s') and v is Closure(name, ps, body, e') then
-          let t = bind(ps, s', e')
+      let f = get(d, name)
+      if f is
+        Some(v) and v is Closure(_, ps, body, e') then
+          let t = bind(ps, s, e')
           if t is
-            [ss, ee] then
+            Frame(ss, ee) then
               let res = evalAll(body, ss, ee, d)
               if res is
-                [rest, _, nd] then [rest, e, nd]
-                else Error 
+                State(rest, _, nd) then new State(rest, e, nd)
+                else Error
             else Error
         else Error
 
   fun get(@specialize env, @specialize name) =
     if env is
-      Cons([n, v], rest) then
+      Cons(Bind(n, v), rest) then
         if n == name then new Some(v) else get(rest, name)
       else None
 
   fun bind(ps, s, e) =
-    if [ps, s] is
-      [Cons(p, r1), Cons(v, r2)] then bind(r1, r2, new Cons([p, v], e))
-      [Nil, ss] then [ss, e]
+    if ps is
+      Cons(p, r1) and s is Cons(v, r2) then bind(r1, r2, new Cons(new Bind(p, v), e))
+      Nil then new Frame(s, e)
       else Error
 
   fun evalAll(@specialize insts, @specialize s, e, @specialize d) =
@@ -87,65 +102,104 @@ staged module SpecialFib with
       Cons(inst, rest) then
         let res = inst.eval(s, e, d)
         if res is
-          [ss, ne, nd] then evalAll(rest, ss, ne, nd)
+          State(ss, ne, nd) then evalAll(rest, ss, ne, nd)
           else res
-      else [s, e, d]
+      else new State(s, e, d)
 
   fun exec(insts, s, e, d) =
     let ss = evalAll(insts, s, e, d)
     if ss is
-      [Cons(x, Nil), _, _] then new Some(x)
-      [Nil, _, _] then None
+      State(Cons(x, Nil), _, _) then new Some(x)
+      State(Nil, _, _) then None
       else Error
 
-  // fun mkFib(n) =
-  //   let insts =
-  //     new Cons(new Fun("fib", new Cons("x", Nil),
-  //       new Cons(new Load("x"), new Cons(new Push(1), new Cons(new Comp(false),
-  //         new Cons(new Branch(new Cons(new Push(1), Nil), new Cons(
-  //           new Load("x"), new Cons(new Push(1), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call,
-  //             new Cons(new Load("x"), new Cons(new Push(2), new Cons(Sub, new Cons(new Load("fib"), new Cons(Call, new Cons(Add, Nil))))))))))
-  //         )), Nil))))), new Cons(new Push(n), new Cons(new Load("fib"), new Cons(Call, Nil))))
-  //   exec(insts, Nil, Nil, Nil)
-
   // ---------------------------------------------------------------------------
-  // Choosing the program at run time.
+  // Choosing the function at run time.
   //
-  // `mkFib` names one program, so the interpreter can be specialized away
-  // against it entirely.  `runProgram` instead picks one of three programs at
-  // run time, which leaves the instruction list an ordinary value -- unless
-  // the alternatives are `@special`, in which case each one is still a known
-  // shape and the interpreter is specialized once per program.
+  // `run(name, args)` defines five functions and calls the one `name` picks on
+  // the argument list `args`:
+  //
+  //   fib(a, b, n)  = if n <= 0 then a else if n <= 1 then b
+  //                   else fib(a, b, n - 1) + fib(a, b, n - 2)
+  //   fact(x)       = if x <= 1 then 1 else x * fact(x - 1)
+  //   square(x)     = x * x
+  //   sumSquares(n) = if n <= 0 then 0 else square(n) + sumSquares(n - 1)
+  //   pow(b, e)     = if e <= 0 then 1 else b * pow(b, e - 1)
+  //
+  // `fib` is seeded with its first two elements `a` and `b`, and `n` is the
+  // index of the element to compute.  The arguments start out on the stack as
+  // if pushed in order, and parameters are bound top-of-stack first, so
+  // `fib`'s parameter list reads `n, b, a`; a call with the wrong number of
+  // arguments leaves the stack unbalanced, which `exec` reports as `Error`.
+  //
+  // The name is only known at run time, so the closure that `Call(name)`
+  // finds is one of five; an unknown name finds none, which yields `Error`.
+  // `SpecialFib` makes closures `@special`, so the call `Call(name)` makes
+  // through the closure it finds dispatches on that closure, and each branch
+  // is specialized against one function's body.
   // ---------------------------------------------------------------------------
 
-  fun mkCons(x, xs) = (@special new Cons(x, xs))
-  fun mkCons2(x, xs) = new Cons(x, xs)
-  fun mkPush(v) = new Push(v)
-  fun mkLoad(n) = new Load(n)
-  fun mkComp(le) = new Comp(le)
-  fun mkBranch(t, f) = (@special new Branch(t, f))
-  fun mkFun(name, ps, body) = (@special new Fun(name, ps, body))
+  // `@special` is not deep.  The closure alone keeps the five functions apart,
+  // but their bodies merge with each other, and the `Cons` spines widen to
+  // `Cons(_, _)`.  The spines and the `Branch` cells, which hold the code of
+  // both arms, are marked to keep each body's structure.  The other
+  // instructions' fields still widen in the dispatch patterns (e.g. `Load(_)`),
+  // but marking them too gave the same `eval` specializations and no speedup.
+  fun sCons(x, xs) = (@special new Cons(x, xs))
+  fun sBranch(t, f) = (@special new Branch(t, f))
 
-  // f(x) = if x <= guard then base else f(x - 1) + f(x - 2)
-  fun fibBody(guard, base) =
-    mkCons(mkLoad("x"), mkCons(mkPush(guard), mkCons(mkComp(false),
-      mkCons(mkBranch(
-        mkCons(mkPush(base), Nil),
-        mkCons2(mkLoad("x"), mkCons2(mkPush(1), mkCons2(Sub, mkCons2(mkLoad("f"), mkCons2(Call,
-          mkCons2(mkLoad("x"), mkCons2(mkPush(2), mkCons2(Sub, mkCons2(mkLoad("f"), mkCons2(Call, mkCons2(Add, Nil)))))))))))
-      ), Nil))))
+  fun fibFun() =
+    new Fun("fib", sCons("n", sCons("b", sCons("a", Nil))),
+      sCons(new Load("n"), sCons(new Push(1), sCons(new Comp(false),
+        sCons(sBranch(
+          sCons(new Load("n"), sCons(new Push(0), sCons(new Comp(false),
+            sCons(sBranch(sCons(new Load("a"), Nil), sCons(new Load("b"), Nil)), Nil)))),
+          sCons(new Load("a"), sCons(new Load("b"), sCons(new Load("n"), sCons(new Push(1), sCons(Sub, sCons(new Call("fib"),
+            sCons(new Load("a"), sCons(new Load("b"), sCons(new Load("n"), sCons(new Push(2), sCons(Sub, sCons(new Call("fib"),
+              sCons(Add, Nil)))))))))))))
+        ), Nil)))))
 
-  staged class Program(val body) with
-    fun run(n) =
-      exec of
-        mkCons(mkFun("f", mkCons2("x", Nil), body),
-          mkCons2(mkPush(n), mkCons2(mkLoad("f"), mkCons2(Call, Nil))))
-        , Nil, Nil, Nil
+  fun factFun() =
+    new Fun("fact", sCons("x", Nil),
+      sCons(new Load("x"), sCons(new Push(1), sCons(new Comp(false),
+        sCons(sBranch(sCons(new Push(1), Nil), sCons(
+          new Load("x"), sCons(new Load("x"), sCons(new Push(1), sCons(Sub,
+            sCons(new Call("fact"), sCons(Mul, Nil))))))
+        ), Nil)))))
 
-  fun program(k) =
-    if k is
-      0 then (@special new Program(fibBody(1, 1)))
-      1 then (@special new Program(fibBody(2, 1)))
-      else (@special new Program(fibBody(1, 2)))
+  fun squareFun() =
+    new Fun("square", sCons("x", Nil),
+      sCons(new Load("x"), sCons(new Load("x"), sCons(Mul, Nil))))
 
-  fun runProgram(k, n) = program(k).run(n)
+  fun sumSquaresFun() =
+    new Fun("sumSquares", sCons("n", Nil),
+      sCons(new Load("n"), sCons(new Push(0), sCons(new Comp(false),
+        sCons(sBranch(sCons(new Push(0), Nil), sCons(
+          new Load("n"), sCons(new Call("square"), sCons(new Load("n"), sCons(new Push(1), sCons(Sub,
+            sCons(new Call("sumSquares"), sCons(Add, Nil)))))))
+        ), Nil)))))
+
+  fun powFun() =
+    new Fun("pow", sCons("e", sCons("b", Nil)),
+      sCons(new Load("e"), sCons(new Push(0), sCons(new Comp(false),
+        sCons(sBranch(sCons(new Push(1), Nil), sCons(
+          new Load("b"), sCons(new Load("b"), sCons(new Load("e"), sCons(new Push(1), sCons(Sub,
+            sCons(new Call("pow"), sCons(Mul, Nil)))))))
+        ), Nil)))))
+
+  // Puts each of `args` on the stack `s`, in order, so that the last is on top.
+  //
+  // The arguments are given as the initial stack rather than as `Push`
+  // instructions in front of the call: the number of arguments is only known at
+  // run time, so instructions built from them would make the program itself a
+  // list of unknown length, and the call behind it could not be specialized.
+  fun argStack(args, s) =
+    if args is
+      Cons(x, xs) then argStack(xs, new Cons(x, s))
+      else s
+
+  fun run(name, args) =
+    let insts =
+      new Cons(fibFun(), new Cons(factFun(), new Cons(squareFun(), new Cons(sumSquaresFun(), new Cons(powFun(),
+        new Cons(new Call(name), Nil))))))
+    exec(insts, argStack(args, Nil), Nil, Nil)

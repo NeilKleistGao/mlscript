@@ -584,7 +584,7 @@ fun needsUCS(pss) =
       other !== s and other is Shape.Class(otherSym, _, _, _) and
         getActualClass(sym.value) == getActualClass(otherSym.value)
     )
-  ) and groupedUCSShapes(pss).length > 1
+  ) and ucsBranches(pss).length > 1
 
 fun hasSingleDispatchBranch(pss) =
   if needsUCS(pss) then false
@@ -611,27 +611,49 @@ fun orderedUCSShapes(pss) =
     ...shapes.filter(s => not (s is Shape.Class)),
   ]
 
-// Different inferred shapes can print the same pattern: ordinary instances hide their fields
+// Different inferred shapes can print the same pattern: ordinary instances hide their fields.
+// Returns one pattern shape per distinct pattern, in test order.
 fun groupedUCSShapes(pss) =
   let shapes = orderedUCSShapes(pss)
   let groups = new Map()
   let printer = Printer(None)
   shapes.forEach(shape =>
-    let ptn = shape.toUCSPattern(printer, shapes)
+    let ptn = Shape.ucsPatternShape(shape, shapes).toPattern(printer)
     if groups.has(ptn) then
-      let group = groups.get(ptn)
-      assert(if [group.0, shape] is
+      assert(if [groups.get(ptn), shape] is
         [Shape.Class(sym, _, _, _), Shape.Class(other, _, _, _)] then
           classGroupKey(sym) == classGroupKey(other)
         else true
       )
-      groups.set(ptn, [group.0, union2(group.1, lift(shape))])
-    else do groups.set(ptn, [shape, lift(shape)])
+    else do groups.set(ptn, shape)
   )
-  let grouped = [...groups.values()]
-  let branchShapes = grouped.map(_.0)
-  assert(new Set(branchShapes.map(_.toUCSPattern(printer, branchShapes))).size == branchShapes.length)
-  grouped
+  let branchShapes = [...groups.values()]
+  let patterns = branchShapes.map(Shape.ucsPatternShape(_, branchShapes))
+  assert(new Set(patterns.map(_.toPattern(printer))).size == patterns.length)
+  patterns
+
+// The branches of a `shape.match` on `pss`, as `[pattern shape, branch shape]` pairs in
+// test order. At run time a value takes the first branch whose pattern accepts it (the
+// class-tags pass hands each tag to the first pattern that accepts it), and a pattern is
+// coarser than the shapes it was printed from, so a branch is specialized at what the
+// earlier branches leave of the scrutinee, refined by its own pattern (`Shape.refine`).
+// A member is left to the later branches only when an earlier pattern accepts all of its
+// values; one that is only partly accepted stays, which costs precision but not soundness.
+// A branch no value can take is dropped: either its pattern is subsumed by an earlier one,
+// or nothing left of the scrutinee matches it, so dropping it changes no value's branch.
+fun ucsBranches(pss) =
+  let res = foldl((acc, q) =>
+    let rest = acc.0
+    let branches = acc.1
+    if branches.some(b => Shape.covers(b.0, q)) then acc
+    else
+      let refined = rest.flatMap(Shape.refine(_, q))
+      [
+        rest.filter(s => not Shape.covers(q, s)),
+        if refined.length is 0 then branches else [...branches, [q, liftMany(refined)]],
+      ]
+  )([pss.values(), []], ...groupedUCSShapes(pss))
+  res.1
 
 fun mergeAssigned(acc, assigned) =
   assigned.forEach((ss, ps, _) =>
@@ -642,22 +664,22 @@ fun mergeAssigned(acc, assigned) =
   )
 
 fun propUCSReturn(ctx, p, f, args, isSpecial, pss) =
-  let branches = groupedUCSShapes(pss).map(group =>
+  let branches = ucsBranches(pss).map(branch =>
     let branchCtx = ctx.clone
-    branchCtx.refine(p, group.1)
+    branchCtx.refine(p, branch.1)
     let res = dispatchMethodCall(branchCtx, None, p, f, args, isSpecial)
-    [group.0, res.0, res.1]
+    [branch.0, res.0, res.1]
   )
   let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
   [UCS(subLitPath(ctx, p), branches.map(branch => [branch.0, branch.1])), retShape, false]
 
 fun propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss) =
-  let branches = groupedUCSShapes(pss).map(group =>
+  let branches = ucsBranches(pss).map(branch =>
     let branchCtx = ctx.clone
-    branchCtx.refine(p, group.1)
+    branchCtx.refine(p, branch.1)
     let callRes = dispatchMethodCall(branchCtx, Some(x), p, f, args, isSpecial)
     let restRes = prop(branchCtx.add(ValueSimpleRef(x), callRes.1), restBlock)
-    [group.0, concat(callRes.0, restRes.0), restRes.1, restRes.2, branchCtx.sub(ctx)]
+    [branch.0, concat(callRes.0, restRes.0), restRes.1, restRes.2, branchCtx.sub(ctx)]
   )
   let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
   let canReachEnd = branches.some(_.3)
@@ -669,11 +691,13 @@ fun propUCSAssign(ctx, x, p, f, args, isSpecial, restBlock, pss) =
   [UCS(subLitPath(ctx, p), branches.map(branch => [branch.0, branch.1])), retShape, canReachEnd]
 
 fun propUCSMatch(ctx, p, arms, dflt, restBlock, pss) =
-  let branches = groupedUCSShapes(pss).map(group =>
+  let branches = ucsBranches(pss).map(branch =>
     let branchCtx = ctx.clone
-    branchCtx.refine(p, group.1)
-    let res = prop(branchCtx, Match(p, arms, dflt, restBlock))
-    [group.0, res.0, res.1, res.2, branchCtx.sub(ctx)]
+    branchCtx.refine(p, branch.1)
+    // Not `prop`: a refined branch shape may well split again, and re-splitting the same
+    // `Match` need not terminate. Each branch is a plain match on its own shape.
+    let res = propMatch(branchCtx, p, arms, dflt, restBlock)
+    [branch.0, res.0, res.1, res.2, branchCtx.sub(ctx)]
   )
   let retShape = foldl((acc, branch) => union2(acc, branch.2))(mkBot(), ...branches)
   let canReachEnd = branches.some(_.3)
@@ -734,45 +758,49 @@ fun prop(ctx, b) = if b is
       needsUCS(pss) then
         withDynamicSpecialization(pss, false, () => propUCSMatch(ctx, p, arms, dflt, restBlock, pss))
     Match(p, arms, dflt, restBlock) then
-      let s = sop(ctx, p)
-      let matchRes = withDynamicSpecialization(s, hasSingleMatchBranch(s, arms), () =>
-        fun propBranch(body, branchShape) =
-          let branchCtx = ctx.clone
-          if not p is ValueLit do branchCtx.refine(p, branchShape)
-          let res = prop(branchCtx, body)
-          [...res, branchCtx.sub(ctx)]
-        let filteredArms = foldl((r, arm) =>
-          let fs = filterSet(r.0, arm.cse)
-          if fs.isEmpty() then r
-          else
-            let res = propBranch(arm.body, fs)
-            mergeAssigned(r.3, res.3)
-            [restSet(r.0, arm.cse), union2(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3, r.4 || res.2]
-        )([s, mkBot(), [], new Map(), false], ...arms)
-        let dfltRes = if filteredArms.0.isEmpty() then [None, mkBot(), new Map(), None] else if dflt is
-          Some(d) then
-            let res = propBranch(d, filteredArms.0)
-            [Some(res.0), res.1, res.3, Some(res.2)]
-          else [None, mkBot(), new Map(), None]
-        mergeAssigned(filteredArms.3, dfltRes.2)
-        [filteredArms, dfltRes]
-      )
-      let filteredArms = matchRes.0
-      let dfltRes = matchRes.1
-      mergeAssigned(ctx.ctx, filteredArms.3)
-      let canReachEnd = filteredArms.4 || (dfltRes.3 is Some(true))
-      let restRes = prop(ctx, restBlock)
-      let retShape = if canReachEnd then union(filteredArms.1, dfltRes.1, restRes.1)
-        else union(filteredArms.1, dfltRes.1) // every possible branch has a return, so the restBlock cannot be reached
-      if filteredArms.2.length is
-        0 and
-          canReachEnd and dfltRes.0 is Some(d) then [concat(d, restRes.0), retShape, true]
-          not canReachEnd and dfltRes.0 is Some(d) and dfltRes.3 is Some(dcanReachEnd) then [d, retShape, dcanReachEnd] // the rest block is unreachable
-          else restRes // the else block is unreachable
-        1 and dfltRes.0 is None then // the else block is unreachable
-          [concat(filteredArms.2.0.body, restRes.0), retShape, canReachEnd || restRes.2]
-        else [Match(subLitPath(ctx, p), filteredArms.2, dfltRes.0, restRes.0), retShape, canReachEnd || restRes.2]
+      propMatch(ctx, p, arms, dflt, restBlock)
     else [b, mkDyn(), true]
+
+// A match whose scrutinee is not split by shape (see `propUCSMatch`).
+fun propMatch(ctx, p, arms, dflt, restBlock) =
+  let s = sop(ctx, p)
+  let matchRes = withDynamicSpecialization(s, hasSingleMatchBranch(s, arms), () =>
+    fun propBranch(body, branchShape) =
+      let branchCtx = ctx.clone
+      if not p is ValueLit do branchCtx.refine(p, branchShape)
+      let res = prop(branchCtx, body)
+      [...res, branchCtx.sub(ctx)]
+    let filteredArms = foldl((r, arm) =>
+      let fs = filterSet(r.0, arm.cse)
+      if fs.isEmpty() then r
+      else
+        let res = propBranch(arm.body, fs)
+        mergeAssigned(r.3, res.3)
+        [restSet(r.0, arm.cse), union2(r.1, res.1), [...r.2, Arm(arm.cse, res.0)], r.3, r.4 || res.2]
+    )([s, mkBot(), [], new Map(), false], ...arms)
+    let dfltRes = if filteredArms.0.isEmpty() then [None, mkBot(), new Map(), None] else if dflt is
+      Some(d) then
+        let res = propBranch(d, filteredArms.0)
+        [Some(res.0), res.1, res.3, Some(res.2)]
+      else [None, mkBot(), new Map(), None]
+    mergeAssigned(filteredArms.3, dfltRes.2)
+    [filteredArms, dfltRes]
+  )
+  let filteredArms = matchRes.0
+  let dfltRes = matchRes.1
+  mergeAssigned(ctx.ctx, filteredArms.3)
+  let canReachEnd = filteredArms.4 || (dfltRes.3 is Some(true))
+  let restRes = prop(ctx, restBlock)
+  let retShape = if canReachEnd then union(filteredArms.1, dfltRes.1, restRes.1)
+    else union(filteredArms.1, dfltRes.1) // every possible branch has a return, so the restBlock cannot be reached
+  if filteredArms.2.length is
+    0 and
+      canReachEnd and dfltRes.0 is Some(d) then [concat(d, restRes.0), retShape, true]
+      not canReachEnd and dfltRes.0 is Some(d) and dfltRes.3 is Some(dcanReachEnd) then [d, retShape, dcanReachEnd] // the rest block is unreachable
+      else restRes // the else block is unreachable
+    1 and dfltRes.0 is None then // the else block is unreachable
+      [concat(filteredArms.2.0.body, restRes.0), retShape, canReachEnd || restRes.2]
+    else [Match(subLitPath(ctx, p), filteredArms.2, dfltRes.0, restRes.0), retShape, canReachEnd || restRes.2]
 
 // TODO: debug only; remove this
 fun propStub(ctx, body) = 

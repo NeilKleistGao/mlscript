@@ -3,45 +3,69 @@
 :noModuleCheck
 
 
-// The interpreted program chosen at run time.
+// The interpreted function chosen at run time.
 //
-// `SpecialFib.runProgram(k, n)` picks between three programs for the little
-// stack machine:
+// `run(name, args)` defines five functions for the little stack machine and
+// calls the one `name` picks on the argument list `args`:
 //
-//   k = 0   f(x) = if x <= 1 then 1 else f(x-1) + f(x-2)
-//   k = 1   f(x) = if x <= 2 then 1 else f(x-1) + f(x-2)
-//   k = 2   f(x) = if x <= 1 then 2 else f(x-1) + f(x-2)
+//   fib(a, b, n)  = if n <= 0 then a else if n <= 1 then b
+//                   else fib(a, b, n - 1) + fib(a, b, n - 2)
+//   fact(x)       = if x <= 1 then 1 else x * fact(x - 1)
+//   square(x)     = x * x
+//   sumSquares(n) = if n <= 0 then 0 else square(n) + sumSquares(n - 1)
+//   pow(b, e)     = if e <= 0 then 1 else b * pow(b, e - 1)
 //
-// `SpecialFib` marks the candidates `@special` to specialize the interpreter
-// past the choice.  The three programs compute different functions, so a
-// collapsed dispatch shows up as a wrong answer.
+// `fib` is seeded with its first two elements.  It is checked with distinct
+// seeds (2, 3), so that mixing up the parameters shows up too.  Each module has
+// its own `Cons`, so each gets its own helpers to build argument lists.
+//
+// `SpecialFib` makes closures `@special` to specialize the interpreter past
+// the choice.  The functions differ, so a collapsed dispatch shows up as a
+// wrong answer.
 
-// References for the three programs, evaluated directly.
-fun refA(x) = if x <= 1 then 1 else refA(x - 1) + refA(x - 2)
-fun refB(x) = if x <= 2 then 1 else refB(x - 1) + refB(x - 2)
-fun refC(x) = if x <= 1 then 2 else refC(x - 1) + refC(x - 2)
+// References, evaluated directly.
+fun refFib(a, b, n) = if n <= 0 then a else if n <= 1 then b else refFib(a, b, n - 1) + refFib(a, b, n - 2)
+fun refFact(x) = if x <= 1 then 1 else x * refFact(x - 1)
+fun refSumSquares(n) = if n <= 0 then 0 else n * n + refSumSquares(n - 1)
+fun refPow(b, e) = if e <= 0 then 1 else b * refPow(b, e - 1)
 
-[refA(18), refB(18), refC(18)]
-//│ = [4181, 2584, 8362]
+[refFib(2, 3, 18), refFact(18), refSumSquares(20), refPow(3, 13)]
+//│ = [10946, 6402373705728000, 2870, 1594323]
 
 
 import "../../mlscript-compile/SimpleFib.mls"
 
 
-SimpleFib.mkFib(18).x == refA(18)
+fun args1S(x) = SimpleFib.Cons(x, SimpleFib.Nil)
+fun args2S(x, y) = SimpleFib.Cons(x, SimpleFib.Cons(y, SimpleFib.Nil))
+fun args3S(x, y, z) = SimpleFib.Cons(x, SimpleFib.Cons(y, SimpleFib.Cons(z, SimpleFib.Nil)))
+
+
+SimpleFib.mkFib(2, 3, 18).x == refFib(2, 3, 18)
 //│ = true
 
-SimpleFib.mkFib(0).x == refA(0)
+SimpleFib.run("fib", args3S(2, 3, 18)).x == refFib(2, 3, 18)
 //│ = true
 
-SimpleFib.mkFib(1).x == refA(1)
+SimpleFib.run("fact", args1S(18)).x == refFact(18)
 //│ = true
 
-// The baseline and staged benchmarks both name the fixed Fibonacci program.
+SimpleFib.run("square", args1S(-7)).x == 49
+//│ = true
+
+SimpleFib.run("sumSquares", args1S(20)).x == refSumSquares(20)
+//│ = true
+
+SimpleFib.run("pow", args2S(3, 13)).x == refPow(3, 13)
+//│ = true
+
+
+SimpleFib.run("fact", args1S(0)).x == refFact(0)
+//│ = true
 
 
 // ===========================================================================
-// Specializing the interpreter against a program named at the call site.
+// The staged interpreter, without `@special`.
 // ===========================================================================
 
 import "../../mlscript-compile/staging/InterpreterFib.mls"
@@ -53,18 +77,38 @@ InterpreterFib."generate"("../InterpreterFib.mls", "./hkmc2/shared/src/test/mlsc
 import "../../mlscript-compile/staging/out/InterpreterFib.mls"
 
 
-InterpreterFib.mkFib(18).x == refA(18)
+fun args1I(x) = InterpreterFib.Cons(x, InterpreterFib.Nil)
+fun args2I(x, y) = InterpreterFib.Cons(x, InterpreterFib.Cons(y, InterpreterFib.Nil))
+fun args3I(x, y, z) = InterpreterFib.Cons(x, InterpreterFib.Cons(y, InterpreterFib.Cons(z, InterpreterFib.Nil)))
+
+
+InterpreterFib.mkFib(2, 3, 18).x == refFib(2, 3, 18)
 //│ = true
 
-InterpreterFib.mkFib(0).x == refA(0)
+InterpreterFib.mkFib(2, 3, 0).x == refFib(2, 3, 0)
 //│ = true
 
-InterpreterFib.mkFib(1).x == refA(1)
+InterpreterFib.mkFib(2, 3, 1).x == refFib(2, 3, 1)
+//│ = true
+
+InterpreterFib.run("fib", args3I(2, 3, 18)).x == refFib(2, 3, 18)
+//│ = true
+
+InterpreterFib.run("fact", args1I(18)).x == refFact(18)
+//│ = true
+
+InterpreterFib.run("square", args1I(-7)).x == 49
+//│ = true
+
+InterpreterFib.run("sumSquares", args1I(20)).x == refSumSquares(20)
+//│ = true
+
+InterpreterFib.run("pow", args2I(3, 13)).x == refPow(3, 13)
 //│ = true
 
 
 // ===========================================================================
-// Specializing past a program only chosen at run time.
+// Specializing past a function only chosen at run time.
 // ===========================================================================
 
 import "../../mlscript-compile/staging/SpecialFib.mls"
@@ -76,25 +120,44 @@ SpecialFib."generate"("../SpecialFib.mls", "./hkmc2/shared/src/test/mlscript-com
 import "../../mlscript-compile/staging/out/SpecialFib.mls"
 
 
-// Each of these would fail if the dispatch collapsed onto one program, since
-// the three compute different functions.
-SpecialFib.runProgram(0, 18).x == refA(18)
+fun args1P(x) = SpecialFib.Cons(x, SpecialFib.Nil)
+fun args2P(x, y) = SpecialFib.Cons(x, SpecialFib.Cons(y, SpecialFib.Nil))
+fun args3P(x, y, z) = SpecialFib.Cons(x, SpecialFib.Cons(y, SpecialFib.Cons(z, SpecialFib.Nil)))
+
+
+// Each of these would fail if the dispatch collapsed onto one function.
+SpecialFib.run("fib", args3P(2, 3, 18)).x == refFib(2, 3, 18)
 //│ = true
 
-SpecialFib.runProgram(1, 18).x == refB(18)
+SpecialFib.run("fact", args1P(18)).x == refFact(18)
 //│ = true
 
-SpecialFib.runProgram(2, 18).x == refC(18)
+SpecialFib.run("square", args1P(-7)).x == 49
 //│ = true
 
-[SpecialFib.runProgram(0, 12).x, SpecialFib.runProgram(1, 12).x, SpecialFib.runProgram(2, 12).x]
-//│ = [233, 144, 466]
+SpecialFib.run("sumSquares", args1P(20)).x == refSumSquares(20)
+//│ = true
 
-// // The entry point that names one program still works in this module.
-// SpecialFib.mkFib(18).x == refA(18)
-// //│ FAILURE: Unexpected compilation error
-// //│ FAILURE LOCATION: resolveField (Elaborator.scala:661)
-// //│ ╔══[COMPILATION ERROR] Module 'SpecialFib' does not contain member 'mkFib'
-// //│ ║  l.96: 	SpecialFib.mkFib(18).x == refA(18)
-// //│ ╙──      	          ^^^^^^
-// //│ = true
+SpecialFib.run("pow", args2P(3, 13)).x == refPow(3, 13)
+//│ = true
+
+
+SpecialFib.run("fib", args3P(2, 3, 0)).x == refFib(2, 3, 0)
+//│ = true
+
+SpecialFib.run("fact", args1P(0)).x == refFact(0)
+//│ = true
+
+[
+  SpecialFib.run("fib", args3P(2, 3, 10)).x,
+  SpecialFib.run("fact", args1P(10)).x,
+  SpecialFib.run("square", args1P(10)).x,
+  SpecialFib.run("sumSquares", args1P(10)).x,
+  SpecialFib.run("pow", args2P(2, 10)).x,
+]
+//│ = [233, 3628800, 100, 385, 1024]
+
+
+// An unknown name finds no closure.
+SpecialFib.run("nope", args1P(3))
+//│ = Error

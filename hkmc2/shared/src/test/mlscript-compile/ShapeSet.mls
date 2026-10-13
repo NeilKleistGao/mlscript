@@ -43,7 +43,14 @@ module ShapeSet with
 // other classes in the same union are left alone. `UnionShape.mkUnion` in
 // `ClassTagsTransformer.scala` bounds its unions the same way, so that the shapes the
 // class-tags pass computes still satisfy the patterns printed from these.
-val classDecayThreshold = 16
+//
+// History: this was 16. Once `shape.match` branches were specialized at the scrutinee
+// refined by their patterns (see `Shape.refine`), a branch can take members of several
+// groups, and at 16 `SpecialRegExpURI` no longer specialized within the diff-test time
+// limit; at 8 it takes about half as long as it did at 16 before the change. Lowering
+// it used to miscompile `SpecialRegExpURI` (the two passes decayed different unions); it
+// no longer does, but both copies must still be changed together.
+val classDecayThreshold = 8
 
 fun classFieldCount(s: Shape) = if s is Shape.Class(_, fields, _, _) then fields.length else 0
 

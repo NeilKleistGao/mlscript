@@ -165,8 +165,51 @@ selSet(lift(derivedShape), mkLit("base"))
 selSet(lift(moreDerivedShape), mkLit("base"))
 //│ = {Lit(1)}
 
-derivedShape.toUCSPattern(Block.Printer(None), [derivedShape])
+Shape.ucsPatternShape(derivedShape, [derivedShape]).toPattern(Block.Printer(None))
 //│ = "Derived(2)"
+
+// A `shape.match` branch is specialized at the scrutinee refined by its (coarser) pattern,
+// not at the shapes that printed the pattern. Here `Base` is not special, so both members
+// print `A(Base(_), ...)`, and an `A(Base(2), 5)` takes the first branch. The first branch
+// therefore gets both members, and the second pattern can never fire, so it is dropped.
+let overlapping = liftMany([
+  Class(aSym, [lift(Class(baseSym, [mkLit(1)], mkBot(), false)), mkDyn()], mkBot(), true),
+  Class(aSym, [lift(Class(baseSym, [mkLit(2)], mkBot(), false)), mkLit(5)], mkBot(), true),
+])
+//│ overlapping = {Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param([], Symbol("a")), Param([], Symbol("b"))]), [], false), [{Class(ConcreteClassSymbol("Base", fun Base { class: class Base }, Some([Param([], Symbol("base"))]), [], false), [{Lit(1)}], {}, false)}, {Dyn()}], {}, true),Class(ConcreteClassSymbol("A", fun A { class: class A }, Some([Param([], Symbol("a")), Param([], Symbol("b"))]), [], false), [{Class(ConcreteClassSymbol("Base", fun Base { class: class Base }, Some([Param([], Symbol("base"))]), [], false), [{Lit(2)}], {}, false)}, {Lit(5)}], {}, true)}
+
+SpecializeHelpers.ucsBranches(overlapping).map((b, _, _) => [b.0.toPattern(Block.Printer(None)), b.1.toString()])
+//│ = [
+//│   [
+//│     "A(Base(_), _)",
+//│     "{Class(ConcreteClassSymbol(\"A\", fun A { class: class A }, Some([Param([], Symbol(\"a\")), Param([], Symbol(\"b\"))]), [], false), [{Class(ConcreteClassSymbol(\"Base\", fun Base { class: class Base }, Some([Param([], Symbol(\"base\"))]), [], false), [{Lit(1)}], {}, false)}, {Dyn()}], {}, true),Class(ConcreteClassSymbol(\"A\", fun A { class: class A }, Some([Param([], Symbol(\"a\")), Param([], Symbol(\"b\"))]), [], false), [{Class(ConcreteClassSymbol(\"Base\", fun Base { class: class Base }, Some([Param([], Symbol(\"base\"))]), [], false), [{Lit(2)}], {}, false)}, {Lit(5)}], {}, true)}"
+//│   ]
+//│ ]
+
+// A `Dyn` field is narrowed to what the pattern requires; other fields are kept.
+Shape.refine(
+  Class(aSym, [mkDyn(), mkLit(5)], mkBot(), true),
+  Shape.patternShape(Class(aSym, [mkLit(1), mkDyn()], mkBot(), true)),
+).map((s, _, _) => s.toString())
+//│ = [
+//│   "Class(ConcreteClassSymbol(\"A\", fun A { class: class A }, Some([Param([], Symbol(\"a\")), Param([], Symbol(\"b\"))]), [], false), [{Lit(1)}, {Lit(5)}], {}, true)"
+//│ ]
+
+// The second pattern only takes what the first leaves: `A(1, 5)` went to the first.
+SpecializeHelpers.ucsBranches(liftMany([
+  Class(aSym, [mkLit(1), mkDyn()], mkBot(), true),
+  Class(aSym, [mkDyn(), mkLit(5)], mkBot(), true),
+])).map((b, _, _) => [b.0.toPattern(Block.Printer(None)), b.1.toString()])
+//│ = [
+//│   [
+//│     "A(1, _)",
+//│     "{Class(ConcreteClassSymbol(\"A\", fun A { class: class A }, Some([Param([], Symbol(\"a\")), Param([], Symbol(\"b\"))]), [], false), [{Lit(1)}, {Dyn()}], {}, true),Class(ConcreteClassSymbol(\"A\", fun A { class: class A }, Some([Param([], Symbol(\"a\")), Param([], Symbol(\"b\"))]), [], false), [{Lit(1)}, {Lit(5)}], {}, true)}"
+//│   ],
+//│   [
+//│     "A(_, 5)",
+//│     "{Class(ConcreteClassSymbol(\"A\", fun A { class: class A }, Some([Param([], Symbol(\"a\")), Param([], Symbol(\"b\"))]), [], false), [{Dyn()}, {Lit(5)}], {}, true)}"
+//│   ]
+//│ ]
 
 // union
 mkClass(aSym, [union2(mkLit(42), mkLit(43)), union2(mkLit("c"), mkLit("d"))], false)
@@ -485,7 +528,7 @@ module M with
 :ignore
 val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
 //│ ╔══[COMPILATION ERROR] Unexpected moduleful reference of type M.
-//│ ║  l.486: 	val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
+//│ ║  l.529: 	val MSym = ValueMemberRef(ModuleSymbol("M", M, false))
 //│ ║         	                                            ^
 //│ ╙── Module argument passed to a non-module parameter.
 //│ MSym = ValueMemberRef(ModuleSymbol("M", class M, false))

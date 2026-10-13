@@ -13,8 +13,8 @@ import StateMachine from "../out/StateMachine.mjs"
 // ---------------------------------------------------------------------------
 
 const size = Number(process.env.FSM_SIZE ?? 1000000);
-// Three passes, so the statically-known machine also lands near the 100ms-1s band.
-const staticReps = 3;
+// Two passes, so that one execution of the naive machine stays under a second.
+const staticReps = 2;
 const input = Array.from({ length: size }, (_, i) => (i * 101 + 7) % 256);
 
 // Guard against measuring different computations.

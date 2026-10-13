@@ -14,8 +14,8 @@ import Pipeline from "../out/Pipeline.mjs"
 // ---------------------------------------------------------------------------
 
 const size = Number(process.env.PIPE_SIZE ?? 1000000);
-// Two passes, so the statically-known pipeline also lands in the 100ms-1s band.
-const staticReps = 2;
+// Three passes, so that one execution of the naive pipeline takes about 500ms.
+const staticReps = 3;
 const input = Array.from({ length: size }, (_, i) => (i * 37 + 11) % 999983);
 
 // Guard against measuring different computations.

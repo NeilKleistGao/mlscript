@@ -48,8 +48,8 @@ while read -r benchmark naive_module staged_module special_module; do
     }
   '
 done <<'BENCHMARKS'
-FFT NaiveFFT StagedFFT SpecialFFT
-Fib SimpleFib InterpreterFib
+FFT NaiveFFT StagedFFT
+Interpreter SimpleFib InterpreterFib SpecialFib
 Pipeline NaivePipeline Pipeline
 RegExpURI SimpleRegExp StagedRegExp SpecialRegExpURI
 SparseTensor NaiveSparseTensor StagedSparseTensor

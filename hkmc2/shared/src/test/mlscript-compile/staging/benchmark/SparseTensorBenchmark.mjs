@@ -13,6 +13,10 @@ const iota = (n) => Array.from({ length: n }, (_, i) => i + 1);
 const valsTri128 = iota(382);
 const x128 = iota(128);
 
+// The naive kernel (`spmvTri128` in the naive module) rebuilds the pattern on
+// every call and then interprets it, whereas the staged kernel has the same
+// pattern resolved at specialization time.
+
 // The whole result vector is summed, not just one entry, so that no part of
 // the product can be dropped as dead.
 function sum(v) {
@@ -21,22 +25,25 @@ function sum(v) {
   return t;
 }
 
-function fixed(m) {
+function repeat(spmv) {
   let acc = 0;
-  for (let i = 0; i < REPS; i++) acc += sum(m.spmvTri128(valsTri128, x128));
+  for (let i = 0; i < REPS; i++) acc += sum(spmv());
   return acc;
 }
 
+const naiveRebuilt = () => repeat(() => NaiveSparseTensor.spmvTri128(valsTri128, x128));
+const staged = () => repeat(() => StagedSparseTensor.spmvTri128(valsTri128, x128));
+
 // Guard against measuring different computations.
 {
-  const a = fixed(NaiveSparseTensor), b = fixed(StagedSparseTensor);
+  const a = naiveRebuilt(), b = staged();
   if (a !== b) throw new Error(`spmvTri128: implementations disagree: ${a} ${b}`);
 }
 
 boxplot(() => {
   summary(() => {
-    bench('NaiveSparseTensor.spmvTri128', () => { fixed(NaiveSparseTensor); });
-    bench('StagedSparseTensor.spmvTri128', () => { fixed(StagedSparseTensor); });
+    bench('NaiveSparseTensor.spmvTri128(pattern rebuilt per call)', naiveRebuilt);
+    bench('StagedSparseTensor.spmvTri128', staged);
   });
 });
 

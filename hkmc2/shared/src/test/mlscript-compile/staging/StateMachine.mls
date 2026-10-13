@@ -59,15 +59,6 @@ staged module StateMachine with
   staged class ModIs(val k, val r) extends Guard() with
     fun test(c) = (c % k) === r
 
-  staged class AndG(val g1, val g2) extends Guard() with
-    fun test(c) = g1.test(c) and g2.test(c)
-
-  staged class OrG(val g1, val g2) extends Guard() with
-    fun test(c) = g1.test(c) || g2.test(c)
-
-  staged class NotG(val g) extends Guard() with
-    fun test(c) = not g.test(c)
-
   // ---------------------------------------------------------------------------
   // Actions on the two-register accumulator, Adler-32 style.  `upd` returns the
   // new pair.
@@ -172,9 +163,6 @@ staged module StateMachine with
   fun inRange(lo, hi) = new InRange(lo, hi)
   fun outRange(lo, hi) = new OutRange(lo, hi)
   fun modIs(k, r) = new ModIs(k, r)
-  fun andG(g1, g2) = new AndG(g1, g2)
-  fun orG(g1, g2) = new OrG(g1, g2)
-  fun notG(g) = new NotG(g)
   fun setB(k) = new SetB(k)
   fun scale(k) = new Scale(k)
   fun seqA(x, y) = new Seq(x, y)
@@ -183,7 +171,6 @@ staged module StateMachine with
   fun machineOf(start, states) = new Machine(start, states)
 
   // Build the state and edge lists with a statically known cons spine.
-  fun ls3(a, b, c) = cons(a, cons(b, cons(c, Nil)))
   fun ls2(a, b) = cons(a, cons(b, Nil))
   fun ls4(a, b, c, d) = cons(a, cons(b, cons(c, cons(d, Nil))))
   fun ls5(a, b, c, d, e) = cons(a, cons(b, cons(c, cons(d, cons(e, Nil)))))

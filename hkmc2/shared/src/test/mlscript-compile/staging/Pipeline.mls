@@ -2,7 +2,7 @@
 // The workhorse `foreach`-in-generator benchmark.
 //
 // A pipeline is a little tree of generator combinators (`Source`, `MapG`,
-// `FilterG`, `ClampG`, `TapG`, `BranchG`, `ConcatG`) terminated by a sink.
+// `FilterG`, `ClampG`, `TapG`) terminated by a sink.
 // Driving it with `foreach` turns the tree into a chain of `Sink` wrappers, so
 // every element pays one virtual `accept` per stage.  Each stage's payload --
 // the *workhorse* -- is itself an interpreted expression tree (`Expr`/`Pred`),
@@ -71,32 +71,14 @@ staged module Pipeline with
     fun eval(x) = (l.eval(x) + 1) % 1000003
 
   // ---------------------------------------------------------------------------
-  // Predicates, used by the filtering and routing stages.
+  // Predicates, used by the filtering stage.
   // ---------------------------------------------------------------------------
 
   staged class Pred() with
     fun test(x)
 
-  staged class Ge(val l, val r) extends Pred() with
-    fun test(x) = l.eval(x) >= r.eval(x)
-
-  staged class Lt(val l, val r) extends Pred() with
-    fun test(x) = l.eval(x) < r.eval(x)
-
   staged class EqZ(val l) extends Pred() with
     fun test(x) = l.eval(x) === 0
-
-  staged class Odd(val l) extends Pred() with
-    fun test(x) = (l.eval(x) % 2) === 1
-
-  staged class AndP(val a, val b) extends Pred() with
-    fun test(x) = a.test(x) and b.test(x)
-
-  staged class OrP(val a, val b) extends Pred() with
-    fun test(x) = a.test(x) || b.test(x)
-
-  staged class NotP(val a) extends Pred() with
-    fun test(x) = not a.test(x)
 
   // ---------------------------------------------------------------------------
   // Sinks: the consuming end of `foreach`.  A pipeline stage is compiled into a
@@ -125,11 +107,6 @@ staged module Pipeline with
   // Folds `f(x)` into the accumulator and passes `x` through unchanged.
   staged class TapSink(val f, val k) extends Sink() with
     fun accept(acc, x) = k.accept((acc + f.eval(x)) % 1000003, x)
-
-  // Routes each element through one of two expressions.
-  staged class BranchSink(val p, val f, val g, val k) extends Sink() with
-    fun accept(acc, x) =
-      if p.test(x) then k.accept(acc, f.eval(x)) else k.accept(acc, g.eval(x))
 
   // ---------------------------------------------------------------------------
   // Generators.  `foreach` builds the sink chain and threads the accumulator
@@ -166,12 +143,6 @@ staged module Pipeline with
   staged class TapG(val f, val src) extends Gen() with
     fun foreach(@specialize snk, acc, arr) = src.foreach(new TapSink(f, snk), acc, arr)
 
-  staged class BranchG(val p, val f, val g, val src) extends Gen() with
-    fun foreach(@specialize snk, acc, arr) = src.foreach(new BranchSink(p, f, g, snk), acc, arr)
-
-  staged class ConcatG(val a, val b) extends Gen() with
-    fun foreach(@specialize snk, acc, arr) = b.foreach(snk, a.foreach(snk, acc, arr), arr)
-
   fun srcLoop(@specialize snk, acc, arr, n, k) =
     if k <= 0 then acc
     else srcLoop(snk, snk.accept(acc, Arr.at(arr, n - k)), arr, n, k - 1)
@@ -192,20 +163,12 @@ staged module Pipeline with
   fun maxE(l, r) = new Max(l, r)
   fun dbl(l) = new Dbl(l)
   fun inc(l) = new Inc(l)
-  fun ge(l, r) = new Ge(l, r)
-  fun lt(l, r) = new Lt(l, r)
   fun eqz(l) = new EqZ(l)
-  fun odd(l) = new Odd(l)
-  fun andP(a, b) = new AndP(a, b)
-  fun orP(a, b) = new OrP(a, b)
-  fun notP(a) = new NotP(a)
   fun source() = Source
   fun mapG(src, f) = new MapG(f, src)
   fun filterG(src, p) = new FilterG(p, src)
   fun clampG(src, lo, hi) = new ClampG(lo, hi, src)
   fun tapG(src, f) = new TapG(f, src)
-  fun branchG(src, p, f, g) = new BranchG(p, f, g, src)
-  fun concatG(a, b) = new ConcatG(a, b)
 
   // poly(x) = ((x*x + 3x + 7) * (x + 5)) mod 1000003, written with a mix of
   // node types so that `l.eval` really does see ten different classes.
