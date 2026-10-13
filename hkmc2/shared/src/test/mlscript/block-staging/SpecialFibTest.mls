@@ -5,16 +5,16 @@
 
 // The interpreted program chosen at run time.
 //
-// `SimpleFib`, `InterpreterFib` and `SpecialFib` all expose `runProgram(k, n)`,
-// which picks between three programs for the little stack machine:
+// `SpecialFib.runProgram(k, n)` picks between three programs for the little
+// stack machine:
 //
 //   k = 0   f(x) = if x <= 1 then 1 else f(x-1) + f(x-2)
 //   k = 1   f(x) = if x <= 2 then 1 else f(x-1) + f(x-2)
 //   k = 2   f(x) = if x <= 1 then 2 else f(x-1) + f(x-2)
 //
-// Only `SpecialFib` marks the candidates `@special`, so only it can specialize
-// the interpreter past the choice.  The three programs compute different
-// functions, so a collapsed dispatch shows up as a wrong answer.
+// `SpecialFib` marks the candidates `@special` to specialize the interpreter
+// past the choice.  The three programs compute different functions, so a
+// collapsed dispatch shows up as a wrong answer.
 
 // References for the three programs, evaluated directly.
 fun refA(x) = if x <= 1 then 1 else refA(x - 1) + refA(x - 2)
@@ -28,17 +28,16 @@ fun refC(x) = if x <= 1 then 2 else refC(x - 1) + refC(x - 2)
 import "../../mlscript-compile/SimpleFib.mls"
 
 
-SimpleFib.runProgram(0, 18).x == refA(18)
+SimpleFib.mkFib(18).x == refA(18)
 //│ = true
 
-SimpleFib.runProgram(1, 18).x == refB(18)
+SimpleFib.mkFib(0).x == refA(0)
 //│ = true
 
-SimpleFib.runProgram(2, 18).x == refC(18)
+SimpleFib.mkFib(1).x == refA(1)
 //│ = true
 
-// Program 0 is the one `mkFib` already names.
-// SimpleFib.runProgram(0, 18).x == SimpleFib.mkFib(18).x
+// The baseline and staged benchmarks both name the fixed Fibonacci program.
 
 
 // ===========================================================================
@@ -54,13 +53,13 @@ InterpreterFib."generate"("../InterpreterFib.mls", "./hkmc2/shared/src/test/mlsc
 import "../../mlscript-compile/staging/out/InterpreterFib.mls"
 
 
-InterpreterFib.runProgram(0, 18).x == refA(18)
+InterpreterFib.mkFib(18).x == refA(18)
 //│ = true
 
-InterpreterFib.runProgram(1, 18).x == refB(18)
+InterpreterFib.mkFib(0).x == refA(0)
 //│ = true
 
-InterpreterFib.runProgram(2, 18).x == refC(18)
+InterpreterFib.mkFib(1).x == refA(1)
 //│ = true
 
 

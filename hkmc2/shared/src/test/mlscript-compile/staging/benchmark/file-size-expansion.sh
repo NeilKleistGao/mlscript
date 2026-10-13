@@ -27,7 +27,10 @@ while read -r benchmark naive_module staged_module special_module; do
   naive_file="$compile_dir/$naive_module.mjs"
   naive_bytes=$(file_bytes "$naive_file")
   staged_bytes=$(file_bytes "$staged_dir/$staged_module.mjs")
-  special_bytes=$(file_bytes "$staged_dir/$special_module.mjs")
+  special_bytes=''
+  if [[ -n "$special_module" ]]; then
+    special_bytes=$(file_bytes "$staged_dir/$special_module.mjs")
+  fi
 
   if (( naive_bytes == 0 )); then
     printf 'Naive module is empty; expansion factor is undefined: %s\n' "$naive_file" >&2
@@ -37,16 +40,19 @@ while read -r benchmark naive_module staged_module special_module; do
   awk -v benchmark="$benchmark" -v naive="$naive_bytes" \
       -v staged="$staged_bytes" -v special="$special_bytes" '
     BEGIN {
-      printf "%-16s %14d %14d %13.3fx %14d %13.3fx\n", \
-        benchmark, naive, staged, staged / naive, special, special / naive
+      printf "%-16s %14d %14d %13.3fx", benchmark, naive, staged, staged / naive
+      if (special == "")
+        printf " %14s %14s\n", "-", "-"
+      else
+        printf " %14d %13.3fx\n", special, special / naive
     }
   '
 done <<'BENCHMARKS'
 FFT NaiveFFT StagedFFT SpecialFFT
-Fib SimpleFib InterpreterFib SpecialFib
-Pipeline NaivePipeline Pipeline SpecialPipeline
+Fib SimpleFib InterpreterFib
+Pipeline NaivePipeline Pipeline
 RegExpURI SimpleRegExp StagedRegExp SpecialRegExpURI
-SparseTensor NaiveSparseTensor StagedSparseTensor SpecialSparseTensor
-StateMachine NaiveStateMachine StateMachine SpecialStateMachine
-Transform3D NaiveTransform3D Transform3D SpecialTransform3D
+SparseTensor NaiveSparseTensor StagedSparseTensor
+StateMachine NaiveStateMachine StateMachine
+Transform3D NaiveTransform3D Transform3D
 BENCHMARKS

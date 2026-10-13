@@ -10,10 +10,6 @@
 // index are known during specialization and each entry point is unrolled into
 // straight-line multiply-accumulate code over the (unknown) values.
 //
-// `spmvStencil` is the exception: it picks a pattern at run time, so nothing
-// about it is static here and it falls back to walking the spine.  That is the
-// case `SpecialSparseTensor.mls` recovers with `@special`.
-//
 // Values are exchanged as flat arrays: `vals` holds the nonzeros in pattern
 // order, `x` and the result are dense vectors.
 
@@ -167,17 +163,3 @@ staged module StagedSparseTensor with
   fun spmvTri64(vals, x) = spmv(patTri64(), vals, x)
 
   fun spmvTri128(vals, x) = spmv(patTri128(), vals, x)
-
-  // A stencil is a pattern wrapped in a class, so that picking one at run time
-  // is a choice between instances rather than between bare cons spines.
-  staged class Stencil(val pat) with
-    fun mul(vals, x) = spmv(pat, vals, x)
-
-  // The stencil is picked at run time out of a fixed menu.
-  fun stencil(k) =
-    if k is
-      0 then new Stencil(pat45())
-      1 then new Stencil(patTri64())
-      else new Stencil(patTri128())
-
-  fun spmvStencil(k, vals, x) = stencil(k).mul(vals, x)

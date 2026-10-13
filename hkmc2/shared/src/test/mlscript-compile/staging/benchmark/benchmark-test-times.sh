@@ -2,15 +2,15 @@
 set -euo pipefail
 
 # Usage: benchmark-test-times.sh [FFT Fib Pipeline RegExpURI SparseTensor StateMachine Transform3D]
-# With no arguments, measure FFT and SparseTensor. SBT can name an executable.
+# With no arguments, measure all listed benchmarks. SBT can name an executable.
 # Before a first run, generate shared JS dependencies with:
 #   sbt -J-Xss1G -J-Xmx8G ctest
-# Each staged and special sample separately sums the reported milliseconds:
+# Each implementation sample separately sums the reported milliseconds:
 #   ctest staging/<module>; ctest staging/out/<module>; dtest block-staging/<test>
 # Run all ten samples in one SBT process to avoid repeated startup costs.
 benchmark_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_dir=$(cd -- "$benchmark_dir/../../../../../../.." && pwd)
-runs=10
+runs=5
 sbt_bin=${SBT:-sbt}
 if ! command -v "$sbt_bin" >/dev/null 2>&1; then
   if [[ -z ${SBT+x} && -x "$HOME/.local/share/coursier/bin/sbt" ]]; then
@@ -68,17 +68,17 @@ add_implementation() {
 
 for benchmark in "${benchmarks[@]}"; do
   # These names follow the benchmark imports and the tests that generate out/.
-  # The Fib and Transform3D special regression tests also exercise staged code;
-  # their benchmark-specific diff tests generate only the special program.
+  special=''
+  special_test=''
   case "$benchmark" in
     FFT) staged=StagedFFT; staged_test=StagedFFTTest; special=SpecialFFT; special_test=SpecialFFTTest ;;
     # FFT2) staged=StagedFFT; staged_test=StagedFFTTest; special=SpecialFFT; special_test=SpecialFFTTest ;;
-    Fib) staged=InterpreterFib; staged_test=InterpreterFibTest; special=SpecialFib; special_test=SpecialFibBenchmarkTest ;;
-    Pipeline) staged=Pipeline; staged_test=PipelineTest; special=SpecialPipeline; special_test=SpecialPipelineTest ;;
+    Fib) staged=InterpreterFib; staged_test=InterpreterFibTest ;;
+    Pipeline) staged=Pipeline; staged_test=PipelineTest ;;
     RegExpURI) staged=StagedRegExp; staged_test=StagedRegExpTest; special=SpecialRegExpURI; special_test=SpecialRegExpURITest ;;
-    SparseTensor) staged=StagedSparseTensor; staged_test=SparseTensorTest; special=SpecialSparseTensor; special_test=SpecialSparseTensorTest ;;
-    StateMachine) staged=StateMachine; staged_test=StateMachineTest; special=SpecialStateMachine; special_test=SpecialStateMachineTest ;;
-    Transform3D) staged=Transform3D; staged_test=Transform3DTest; special=SpecialTransform3D; special_test=SpecialTransform3DBenchmarkTest ;;
+    SparseTensor) staged=StagedSparseTensor; staged_test=SparseTensorTest ;;
+    StateMachine) staged=StateMachine; staged_test=StateMachineTest ;;
+    Transform3D) staged=Transform3D; staged_test=Transform3DTest ;;
   esac
 
   if [[ "$staged" == "$special" || "$staged_test" == "$special_test" ]]; then
@@ -86,7 +86,9 @@ for benchmark in "${benchmarks[@]}"; do
     exit 1
   fi
   add_implementation "$benchmark" staged "$staged" "$staged_test"
-  add_implementation "$benchmark" special "$special" "$special_test"
+  if [[ -n "$special" ]]; then
+    add_implementation "$benchmark" special "$special" "$special_test"
+  fi
 done
 
 printf 'Running %d tests (%d samples per implementation). Log: %s\n' "${#commands[@]}" "$runs" "$log" >&2

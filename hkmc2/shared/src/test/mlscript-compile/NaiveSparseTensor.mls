@@ -166,17 +166,3 @@ module NaiveSparseTensor with
   fun spmvTri64(vals, x) = spmv(patTri64(), vals, x)
 
   fun spmvTri128(vals, x) = spmv(patTri128(), vals, x)
-
-  // A stencil is a pattern wrapped in a class, so that picking one at run time
-  // is a choice between instances rather than between bare cons spines.
-  class Stencil(val pat) with
-    fun mul(vals, x) = spmv(pat, vals, x)
-
-  // The stencil is picked at run time out of a fixed menu.
-  fun stencil(k) =
-    if k is
-      0 then new Stencil(pat45())
-      1 then new Stencil(patTri64())
-      else new Stencil(patTri128())
-
-  fun spmvStencil(k, vals, x) = stencil(k).mul(vals, x)

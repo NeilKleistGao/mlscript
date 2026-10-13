@@ -12,15 +12,14 @@
 //   * the matching edge calls a virtual `upd`, which allocates a pair,
 //   * `step` wraps that into a triple with the next state name.
 //
-// Nine `Guard` classes reach the same `g.test(c)` call site and eight `Act`
-// classes reach the same `e.act.upd(...)`, so neither site fits in a
+// The guards share the same `g.test(c)` call site and the actions share
+// `e.act.upd(...)`, so the table interpreter relies on virtual dispatch through a
 // polymorphic inline cache.  When the machine is statically known, all of that
 // collapses: each state becomes its own specialized loop and the table turns
 // into straight-line code, i.e. the interpreter becomes the DFA.
 //
 // This module is the unstaged baseline; `staging/StateMachine.mls` is the same
-// program in a `staged module`, and `staging/SpecialStateMachine.mls` adds
-// `@special` so that a machine only *chosen* at run time can still be compiled.
+// program in a `staged module`, which compiles the named machine `run0`.
 // ===========================================================================
 
 module Sym with
@@ -164,9 +163,7 @@ module NaiveStateMachine with
         else Stuck
 
   // ---------------------------------------------------------------------------
-  // Table builders.  These are plain smart constructors here; the `@special`
-  // version annotates each of them, which is what lets a run-time choice
-  // between machines keep one specialization per alternative.
+  // Table builders for the statically named workload.
   // ---------------------------------------------------------------------------
 
   fun cons(x, xs) = new Cons(x, xs)
@@ -185,18 +182,14 @@ module NaiveStateMachine with
   fun st(name, edges) = new St(name, edges)
   fun machineOf(start, states) = new Machine(start, states)
 
-  // `[a, b, c]` as a cons list, since the spine needs its own `@special` nodes.
+  // Build the state and edge lists with a statically known cons spine.
   fun ls3(a, b, c) = cons(a, cons(b, cons(c, Nil)))
   fun ls2(a, b) = cons(a, cons(b, Nil))
   fun ls4(a, b, c, d) = cons(a, cons(b, cons(c, cons(d, Nil))))
   fun ls5(a, b, c, d, e) = cons(a, cons(b, cons(c, cons(d, cons(e, Nil)))))
 
   // ---------------------------------------------------------------------------
-  // Three machines.
-  //
-  // `frame` is a byte-stuffing frame decoder, `tokens` a character classifier
-  // and `ladder` a five-state mixer.  They visit states in different orders and
-  // apply different actions, so they compute different checksums.
+  // `frame` is a byte-stuffing frame decoder.
   // ---------------------------------------------------------------------------
 
   fun frame() =
@@ -215,74 +208,6 @@ module NaiveStateMachine with
         st("esc", ls2(edge(notVal(0), seqA(AddIn, MixIn), "body"), edge(AnyG, Nop, "body")))
         st("crc", ls2(edge(outRange(0, 127), scale(31), "idle"), edge(AnyG, MixIn, "idle")))
 
-  fun tokens() =
-    machineOf of
-      "start"
-      ls5 of
-        st of
-          "start"
-          ls4 of
-            edge(inRange(97, 122), AddIn, "word")
-            edge(inRange(48, 57), scale(10), "num")
-            edge(modIs(3, 0), MixIn, "punct")
-            edge(AnyG, Nop, "skip")
-        st of
-          "word"
-          ls3 of
-            edge(inRange(97, 122), Both, "word")
-            edge(inRange(48, 57), AddIn, "num")
-            edge(AnyG, MixIn, "start")
-        st of
-          "num"
-          ls3 of
-            edge(inRange(48, 57), scale(10), "num")
-            edge(notVal(32), AddIn, "word")
-            edge(AnyG, Reset, "start")
-        st("punct", ls2(edge(orG(isVal(44), isVal(46)), Both, "start"), edge(AnyG, setB(5), "word")))
-        st("skip", ls2(edge(notG(modIs(5, 0)), Nop, "skip"), edge(AnyG, MixIn, "start")))
-
-  fun ladder() =
-    machineOf of
-      "s0"
-      ls5 of
-        st("s0", ls2(edge(modIs(2, 0), AddIn, "s1"), edge(AnyG, MixIn, "s2")))
-        st of
-          "s1"
-          ls3 of
-            edge(modIs(3, 0), Both, "s2")
-            edge(inRange(0, 63), scale(17), "s3")
-            edge(AnyG, AddIn, "s0")
-        st of
-          "s2"
-          ls2 of
-            edge(andG(inRange(64, 191), modIs(2, 1)), seqA(MixIn, AddIn), "s4")
-            edge(AnyG, setB(7), "s3")
-        st("s3", ls2(edge(notVal(0), Both, "s0"), edge(AnyG, Reset, "s1")))
-        st of
-          "s4"
-          ls3 of
-            edge(modIs(5, 0), MixIn, "s0")
-            edge(outRange(32, 224), AddIn, "s2")
-            edge(AnyG, Both, "s4")
-
   // The machine `run0` names: statically known at its only call site, so a
   // staged module can compile it with no annotations at all.
   fun run0(arr) = frame().run(arr)
-
-  // ---------------------------------------------------------------------------
-  // Choosing the machine at run time.
-  //
-  // `runSel(k, arr)` picks one of the three.  Without `@special` the chosen
-  // `Machine` is an ordinary value, so every step pays the name lookup, the
-  // guard scan and the pair allocations.  With `@special` each alternative is
-  // still a known shape, so the specializer keeps one compiled machine per
-  // alternative behind a dispatch on `k`.
-  // ---------------------------------------------------------------------------
-
-  fun machine(k) =
-    if k is
-      0 then frame()
-      1 then tokens()
-      else ladder()
-
-  fun runSel(k, arr) = machine(k).run(arr)

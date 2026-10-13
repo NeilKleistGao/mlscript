@@ -8,7 +8,7 @@
 // the *workhorse* -- is itself an interpreted expression tree (`Expr`/`Pred`),
 // so every element also pays one virtual `eval` per node of that tree.
 //
-// The node sets are deliberately wide: six `Sink` classes reach the same
+// The node sets are deliberately wide: the `Sink` wrappers share the same
 // `k.accept` call site and ten `Expr` classes reach the same `l.eval` call
 // site, which is past the point where a JIT can keep those sites in a
 // polymorphic inline cache.  That is the cost staging removes: when the
@@ -16,8 +16,7 @@
 // straight-line arithmetic and the dispatch disappears entirely.
 //
 // This module is the unstaged baseline; `staging/Pipeline.mls` is the same
-// program in a `staged module`, and `staging/SpecialPipeline.mls` adds
-// `@special` so that a pipeline only *chosen* at run time can still be fused.
+// program in a `staged module`, which fuses the named pipeline `pipe0`.
 // ===========================================================================
 
 module Arr with
@@ -29,7 +28,7 @@ module NaivePipeline with
   // ---------------------------------------------------------------------------
   // The workhorse: a small arithmetic expression language, evaluated once per
   // element per stage.  Everything is kept modulo 1000003 so the results stay
-  // exact in a double and the three pipelines below cannot be confused.
+  // exact in a double.
   // ---------------------------------------------------------------------------
 
   class Expr() with
@@ -180,9 +179,7 @@ module NaivePipeline with
   fun total(g, arr) = g.foreach(SumSink, 0, arr)
 
   // ---------------------------------------------------------------------------
-  // Pipeline builders.  These are plain smart constructors here; the `@special`
-  // version annotates each of them, which is what lets a run-time choice
-  // between pipelines keep one specialization per alternative.
+  // Pipeline builders for the statically named workload.
   // ---------------------------------------------------------------------------
 
   fun lit(v) = new Lit(v)
@@ -224,19 +221,6 @@ module NaivePipeline with
         dbl(poly())
         rem(maxE(sub(poly(), vr()), inc(vr())), 99991)
 
-  // ---------------------------------------------------------------------------
-  // Choosing the pipeline at run time.
-  //
-  // `runPipe(k, arr)` picks one of three pipelines.  Without `@special` the
-  // chosen `Pipe` is an ordinary value, so `foreach` has to walk the combinator
-  // tree and interpret every `Expr` node for every element.  With `@special`
-  // each alternative is still a known shape, so the specializer keeps one fused
-  // loop per pipeline behind a dispatch on `k`.
-  // ---------------------------------------------------------------------------
-
-  class Pipe(val body) with
-    fun run(arr) = total(body, arr)
-
   // source |> filter (x mod 3 == 0) |> map poly |> tap mix |> clamp |> map (7x+1)
   fun bodyA() =
     mapG of
@@ -247,38 +231,6 @@ module NaivePipeline with
         , 1000, 900000
       add(mul(vr(), lit(7)), lit(1))
 
-  // source |> map mix |> filter (>= 20000 && not (x mod 5 == 0))
-  //        |> branch odd (x*x) (min(x, 123456)) |> tap poly |> map (x+9)
-  fun bodyB() =
-    mapG of
-      tapG of
-        branchG of
-          filterG of
-            mapG(source(), mix())
-            andP(ge(vr(), lit(20000)), notP(eqz(rem(vr(), 5))))
-          odd(vr()), mul(vr(), vr()), minE(vr(), lit(123456))
-        poly()
-      add(vr(), lit(9))
-
-  // (source |> map (2x+1) |> tap poly) ++ (source |> filter odd |> map mix)
-  //        |> clamp |> branch (x >= 500000) (x - 11) (x + 11)
-  fun bodyC() =
-    branchG of
-      clampG of
-        concatG of
-          tapG(mapG(source(), add(dbl(vr()), lit(1))), poly())
-          mapG(filterG(source(), odd(vr())), mix())
-        , 7, 999000
-      ge(vr(), lit(500000)), sub(vr(), lit(11)), add(vr(), lit(11))
-
   // The pipeline `pipe0` names: statically known at its only call site, so a
   // staged module can fuse it with no annotations at all.
   fun pipe0(arr) = total(bodyA(), arr)
-
-  fun pipe(k) =
-    if k is
-      0 then new Pipe(bodyA())
-      1 then new Pipe(bodyB())
-      else new Pipe(bodyC())
-
-  fun runPipe(k, arr) = pipe(k).run(arr)

@@ -99,26 +99,5 @@ module NaiveTransform3D with
         rot, multiply(scale(scaling.0, scaling.1, scaling.2), new Matrix([local.0, local.1, local.2, 1], 4, 1))
     [res.arr.0, res.arr.1, res.arr.2]
 
-  // fun model0(local) =
-  //   model(local, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0])
-
-  // ---------------------------------------------------------------------------
-  // Choosing the transform at run time.
-  //
-  // `model` takes the placement as three ordinary arguments, so none of it is
-  // static and the matrix chain stays interpreted -- `Math.sin`/`Math.cos` are
-  // real calls and every matrix entry is computed.  A preset puts one
-  // placement in a class instead, so a run-time choice between presets is a
-  // choice between *instances*, which the specializer can keep apart.
-  // ---------------------------------------------------------------------------
-
-  class Preset(val px, val py, val pz, val sx, val sy, val sz, val rx, val ry, val rz) with
-    fun applyTo(local) = model(local, [px, py, pz], [sx, sy, sz], [rx, ry, rz])
-
-  fun preset(k) =
-    if k is
-      0 then new Preset(11, 4, 51, 0.4, 0.19, 0.19, 0.8 * 3.14159265, 3.1415926535, 0.0)
-      1 then new Preset(-3, 7, 12, 1.5, 0.5, 2.0, 0.25 * 3.14159265, 0.0, 1.5707963268)
-      else new Preset(0, 0, 0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0)
-
-  fun modelPreset(k, local) = preset(k).applyTo(local)
+  fun model0(local) =
+    model(local, [11, 4, 51], [0.4, 0.19, 0.19], [0.8 * 3.14159265, 3.1415926535, 0.0])

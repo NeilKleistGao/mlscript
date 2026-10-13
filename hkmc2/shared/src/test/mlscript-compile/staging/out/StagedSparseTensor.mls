@@ -4,9 +4,6 @@ module StagedSparseTensor with
     object Nil
     class Cons(val head, val tail)
     class Row(val start, val cols)
-    class Stencil(val pat) with
-      ()
-      fun mul(vals, x) = spmv(this.Stencil#pat, vals, x)
     fun denseDot(a, x, i, c, j, acc) =
       let {scrut6, tmp48, tmp49, tmp50, tmp51, tmp52}
       scrut6 = j == c
@@ -181,10 +178,6 @@ module StagedSparseTensor with
       let {tmp66}
       tmp66 = pat45()
       spmv_StagedSparseTensor_sp_0(tmp66, vals, x)
-    fun spmvStencil(k, vals, x) =
-      let {tmp73}
-      tmp73 = stencil(k)
-      mul_Stencil_sp_0(tmp73, vals, x)
     fun spmvTri128(vals, x) =
       let {tmp69}
       tmp69 = patTri128()
@@ -197,18 +190,6 @@ module StagedSparseTensor with
       let {tmp67}
       tmp67 = patTri8()
       spmv_StagedSparseTensor_sp_1(tmp67, vals, x)
-    fun stencil(k) =
-      let {tmp70, tmp71, tmp72}
-      if k is
-        0 then
-          tmp70 = pat45()
-          new Stencil(tmp70)
-        1 then
-          tmp71 = patTri64()
-          new Stencil(tmp71)
-        else
-          tmp72 = patTri128()
-          new Stencil(tmp72)
     fun toDense(pat, vals, c) =
       let {tmp45, tmp46, tmp47}
       tmp45 = numRows(pat)
@@ -2485,94 +2466,6 @@ private fun goRows_StagedSparseTensor_sp_21(pat, vals, x, y, i) =
   tmp33 = StagedSparseTensor__Legacy."Sx$StagedSparseTensor".setAt(y, 5, tmp32)
   tmp34 = 6
   goRows_StagedSparseTensor_sp_22(rest5, vals, x, tmp33, 6)
-private fun goRows_StagedSparseTensor_sp_210(pat, vals, x, y, i) =
-  let {rest5, r1, scrut5, j1, rest__, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
-  arg_Cons_0_5 = pat.Cons#head
-  arg_Cons_1_5 = pat.Cons#tail
-  rest5 = arg_Cons_1_5
-  r1 = arg_Cons_0_5
-  scrut5 = r1.Row#cols
-  arg_Cons_0_6 = scrut5.Cons#head
-  arg_Cons_1_6 = scrut5.Cons#tail
-  rest__ = arg_Cons_1_6
-  j1 = 0
-  tmp30 = vals.(r1.Row#start) * x.(0)
-  tmp31 = 1
-  tmp32 = rowDot_StagedSparseTensor_sp_393(rest__, tmp30, vals, x, 1)
-  tmp33 = StagedSparseTensor__Legacy."Sx$StagedSparseTensor".setAt(y, 0, tmp32)
-  tmp34 = 1
-  goRows_StagedSparseTensor_sp_211(rest5, vals, x, tmp33, 1)
-private fun goRows_StagedSparseTensor_sp_211(pat, vals, x, y, i) =
-  let {rest5, r1, scrut5, j1, rest__, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
-  arg_Cons_0_5 = pat.Cons#head
-  arg_Cons_1_5 = pat.Cons#tail
-  rest5 = arg_Cons_1_5
-  r1 = arg_Cons_0_5
-  scrut5 = r1.Row#cols
-  arg_Cons_0_6 = scrut5.Cons#head
-  arg_Cons_1_6 = scrut5.Cons#tail
-  rest__ = arg_Cons_1_6
-  j1 = arg_Cons_0_6
-  tmp30 = vals.(r1.Row#start) * x.(j1)
-  tmp31 = 3
-  tmp32 = rowDot_StagedSparseTensor_sp_394(rest__, tmp30, vals, x, 3)
-  tmp33 = StagedSparseTensor__Legacy."Sx$StagedSparseTensor".setAt(y, 1, tmp32)
-  tmp34 = 2
-  goRows_StagedSparseTensor_sp_212(rest5, vals, x, tmp33, 2)
-private fun goRows_StagedSparseTensor_sp_212(pat, vals, x, y, i) =
-  let {rest5, r1, scrut5, j1, rest__, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
-  arg_Cons_0_5 = pat.Cons#head
-  arg_Cons_1_5 = pat.Cons#tail
-  rest5 = arg_Cons_1_5
-  r1 = arg_Cons_0_5
-  scrut5 = r1.Row#cols
-  arg_Cons_0_6 = scrut5.Cons#head
-  arg_Cons_1_6 = scrut5.Cons#tail
-  rest__ = arg_Cons_1_6
-  j1 = arg_Cons_0_6
-  tmp30 = vals.(r1.Row#start) * x.(j1)
-  tmp31 = r1.Row#start + 1
-  tmp32 = rowDot_StagedSparseTensor_sp_395(rest__, tmp30, vals, x, tmp31)
-  tmp33 = StagedSparseTensor__Legacy."Sx$StagedSparseTensor".setAt(y, 2, tmp32)
-  tmp34 = 3
-  goRows_StagedSparseTensor_sp_213(rest5, vals, x, tmp33, 3)
-private fun goRows_StagedSparseTensor_sp_213(pat, vals, x, y, i) =
-  let {rest5, r1, scrut5, j1, rest__, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
-  arg_Cons_0_5 = pat.Cons#head
-  arg_Cons_1_5 = pat.Cons#tail
-  rest5 = arg_Cons_1_5
-  r1 = arg_Cons_0_5
-  scrut5 = r1.Row#cols
-  arg_Cons_0_6 = scrut5.Cons#head
-  arg_Cons_1_6 = scrut5.Cons#tail
-  rest__ = arg_Cons_1_6
-  j1 = arg_Cons_0_6
-  tmp30 = vals.(r1.Row#start) * x.(j1)
-  tmp31 = r1.Row#start + 1
-  tmp32 = rowDot_StagedSparseTensor_sp_398(rest__, tmp30, vals, x, tmp31)
-  tmp33 = StagedSparseTensor__Legacy."Sx$StagedSparseTensor".setAt(y, 3, tmp32)
-  tmp34 = 4
-  goRows_StagedSparseTensor_sp_214(rest5, vals, x, tmp33, 4)
-private fun goRows_StagedSparseTensor_sp_214(pat, vals, x, y, i) =
-  let {rest5, r1, scrut5, j1, rest__, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
-  if pat is
-    Cons then
-      arg_Cons_0_5 = pat.Cons#head
-      arg_Cons_1_5 = pat.Cons#tail
-      rest5 = arg_Cons_1_5
-      r1 = arg_Cons_0_5
-      scrut5 = r1.Row#cols
-      arg_Cons_0_6 = scrut5.Cons#head
-      arg_Cons_1_6 = scrut5.Cons#tail
-      rest__ = arg_Cons_1_6
-      j1 = 3
-      tmp30 = vals.(r1.Row#start) * x.(3)
-      tmp31 = 12
-      tmp32 = rowDot_StagedSparseTensor_sp_18(rest__, tmp30, vals, x, 12)
-      tmp33 = StagedSparseTensor__Legacy."Sx$StagedSparseTensor".setAt(y, 4, tmp32)
-      tmp34 = 5
-      goRows_StagedSparseTensor_sp_1(rest5, vals, x, tmp33, 5)
-    else y
 private fun goRows_StagedSparseTensor_sp_22(pat, vals, x, y, i) =
   let {rest5, r1, scrut5, j1, rest__, arg_Cons_0_5, arg_Cons_1_5, arg_Cons_0_6, arg_Cons_1_6, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36}
   arg_Cons_0_5 = pat.Cons#head
@@ -4109,55 +4002,7 @@ private fun numRows_StagedSparseTensor_sp_201(pat) = 4
 private fun numRows_StagedSparseTensor_sp_202(pat) = 3
 private fun numRows_StagedSparseTensor_sp_203(pat) = 2
 private fun numRows_StagedSparseTensor_sp_204(pat) = 1
-private fun numRows_StagedSparseTensor_sp_205(pat) =
-  let {rest1, arg_Cons_0_1, arg_Cons_1_1, tmp1}
-  arg_Cons_0_1 = pat.Cons#head
-  arg_Cons_1_1 = pat.Cons#tail
-  rest1 = arg_Cons_1_1
-  tmp1 = numRows_StagedSparseTensor_sp_206(rest1)
-  1 + tmp1
-private fun numRows_StagedSparseTensor_sp_206(pat) =
-  let {rest1, arg_Cons_0_1, arg_Cons_1_1, tmp1}
-  arg_Cons_0_1 = pat.Cons#head
-  arg_Cons_1_1 = pat.Cons#tail
-  rest1 = arg_Cons_1_1
-  tmp1 = numRows_StagedSparseTensor_sp_207(rest1)
-  1 + tmp1
-private fun numRows_StagedSparseTensor_sp_207(pat) =
-  let {rest1, arg_Cons_0_1, arg_Cons_1_1, tmp1}
-  arg_Cons_0_1 = pat.Cons#head
-  arg_Cons_1_1 = pat.Cons#tail
-  rest1 = arg_Cons_1_1
-  tmp1 = numRows_StagedSparseTensor_sp_208(rest1)
-  1 + tmp1
-private fun numRows_StagedSparseTensor_sp_208(pat) =
-  let {rest1, arg_Cons_0_1, arg_Cons_1_1, tmp1}
-  arg_Cons_0_1 = pat.Cons#head
-  arg_Cons_1_1 = pat.Cons#tail
-  rest1 = arg_Cons_1_1
-  tmp1 = numRows_StagedSparseTensor_sp_209(rest1)
-  1 + tmp1
-private fun numRows_StagedSparseTensor_sp_209(pat) =
-  let {rest1, arg_Cons_0_1, arg_Cons_1_1, tmp1}
-  if pat is
-    Cons then
-      arg_Cons_0_1 = pat.Cons#head
-      arg_Cons_1_1 = pat.Cons#tail
-      rest1 = arg_Cons_1_1
-      tmp1 = numRows_StagedSparseTensor_sp_210(rest1)
-      1 + tmp1
-    else 0
 private fun numRows_StagedSparseTensor_sp_21(pat) = 56
-private fun numRows_StagedSparseTensor_sp_210(pat) =
-  let {rest1, arg_Cons_0_1, arg_Cons_1_1, tmp1}
-  if pat is
-    Cons then
-      arg_Cons_0_1 = pat.Cons#head
-      arg_Cons_1_1 = pat.Cons#tail
-      rest1 = arg_Cons_1_1
-      tmp1 = numRows_StagedSparseTensor_sp_210(rest1)
-      1 + tmp1
-    else 0
 private fun numRows_StagedSparseTensor_sp_22(pat) = 55
 private fun numRows_StagedSparseTensor_sp_23(pat) = 54
 private fun numRows_StagedSparseTensor_sp_24(pat) = 53
@@ -6776,65 +6621,6 @@ private fun rowDot_StagedSparseTensor_sp_391(cols, acc, vals, x, k) =
 private fun rowDot_StagedSparseTensor_sp_392(cols, acc, vals, x, k) =
   let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
   acc
-private fun rowDot_StagedSparseTensor_sp_393(cols, acc, vals, x, k) =
-  let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
-  arg_Cons_0_4 = cols.Cons#head
-  arg_Cons_1_4 = cols.Cons#tail
-  rest4 = arg_Cons_1_4
-  j = arg_Cons_0_4
-  tmp27 = vals.(1) * x.(j)
-  tmp28 = acc + tmp27
-  tmp29 = 2
-  rowDot_StagedSparseTensor_sp_2(rest4, tmp28, vals, x, 2)
-private fun rowDot_StagedSparseTensor_sp_394(cols, acc, vals, x, k) =
-  let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
-  if cols is
-    Cons then
-      arg_Cons_0_4 = cols.Cons#head
-      arg_Cons_1_4 = cols.Cons#tail
-      rest4 = arg_Cons_1_4
-      j = 1
-      tmp27 = vals.(3) * x.(1)
-      tmp28 = acc + tmp27
-      tmp29 = 4
-      rowDot_StagedSparseTensor_sp_0(rest4, tmp28, vals, x, 4)
-    else acc
-private fun rowDot_StagedSparseTensor_sp_395(cols, acc, vals, x, k) =
-  let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
-  arg_Cons_0_4 = cols.Cons#head
-  arg_Cons_1_4 = cols.Cons#tail
-  rest4 = arg_Cons_1_4
-  j = arg_Cons_0_4
-  tmp27 = vals.(k) * x.(j)
-  tmp28 = acc + tmp27
-  tmp29 = k + 1
-  rowDot_StagedSparseTensor_sp_396(rest4, tmp28, vals, x, tmp29)
-private fun rowDot_StagedSparseTensor_sp_396(cols, acc, vals, x, k) =
-  let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
-  arg_Cons_0_4 = cols.Cons#head
-  arg_Cons_1_4 = cols.Cons#tail
-  rest4 = arg_Cons_1_4
-  j = arg_Cons_0_4
-  tmp27 = vals.(k) * x.(j)
-  tmp28 = acc + tmp27
-  tmp29 = k + 1
-  rowDot_StagedSparseTensor_sp_397(rest4, tmp28, vals, x, tmp29)
-private fun rowDot_StagedSparseTensor_sp_397(cols, acc, vals, x, k) =
-  let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
-  acc
-private fun rowDot_StagedSparseTensor_sp_398(cols, acc, vals, x, k) =
-  let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
-  if cols is
-    Cons then
-      arg_Cons_0_4 = cols.Cons#head
-      arg_Cons_1_4 = cols.Cons#tail
-      rest4 = arg_Cons_1_4
-      j = 3
-      tmp27 = vals.(k) * x.(3)
-      tmp28 = acc + tmp27
-      tmp29 = k + 1
-      rowDot_StagedSparseTensor_sp_0(rest4, tmp28, vals, x, tmp29)
-    else acc
 private fun rowDot_StagedSparseTensor_sp_4(cols, acc, vals, x, k) =
   let {j, rest4, arg_Cons_0_4, arg_Cons_1_4, tmp27, tmp28, tmp29}
   arg_Cons_0_4 = cols.Cons#head
@@ -7837,11 +7623,6 @@ private fun spmv_StagedSparseTensor_sp_3(pat, vals, x) =
   tup_4 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   tmp38 = tup_4
   goRows_StagedSparseTensor_sp_81(pat, vals, x, tmp38, 0)
-private fun spmv_StagedSparseTensor_sp_4(pat, vals, x) =
-  let {tmp37, tmp38}
-  tmp37 = numRows_StagedSparseTensor_sp_205(pat)
-  tmp38 = StagedSparseTensor__Legacy."Sx$StagedSparseTensor".init(tmp37, 0)
-  goRows_StagedSparseTensor_sp_210(pat, vals, x, tmp38, 0)
 private fun triPat_StagedSparseTensor_sp_0(i, n) =
   let {scrut4, tmp24, tmp25, tmp26}
   scrut4 = false
@@ -13492,4 +13273,3 @@ private fun withStarts_StagedSparseTensor_sp_99(rows, k) =
   tmp6 = 62
   tmp7 = withStarts_StagedSparseTensor_sp_100(rest3, 62)
   new Cons(tmp4, tmp7)
-private fun mul_Stencil_sp_0(self, vals, x) = spmv_StagedSparseTensor_sp_4(self.Stencil#pat, vals, x)
