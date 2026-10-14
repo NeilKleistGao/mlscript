@@ -4,31 +4,9 @@ import SimpleFib from "../../SimpleFib.mjs"
 import InterpreterFib from "../out/InterpreterFib.mjs"
 import SpecialFib from "../out/SpecialFib.mjs"
 
-// ---------------------------------------------------------------------------
-// A small stack-machine interpreter running a fixed program.
-//
-// `mkFib(a, b, n)` names its program -- a tree-recursive Fibonacci seeded with
-// its first two elements `a` and `b`, computing the element at index `n` -- at
-// the call site, so the staged interpreter is specialized against it entirely.
-// ---------------------------------------------------------------------------
-
 // Distinct seeds, so that mixing up the parameters changes the result.
 const seedA = 2;
 const seedB = 3;
-const programArg = 25;
-
-for (const n of [0, 1, 7, 14]) {
-  const a = SimpleFib.mkFib(seedA, seedB, n).x;
-  const b = InterpreterFib.mkFib(seedA, seedB, n).x;
-  if (a !== b) throw new Error(`mkFib(${seedA}, ${seedB}, ${n}): implementations disagree ${a}, ${b}`);
-}
-
-boxplot(() => {
-  summary(() => {
-    bench(`SimpleFib.mkFib(${seedA}, ${seedB}, ${programArg})`, () => { return SimpleFib.mkFib(seedA, seedB, programArg).x; });
-    bench(`InterpreterFib.mkFib(${seedA}, ${seedB}, ${programArg})`, () => { return InterpreterFib.mkFib(seedA, seedB, programArg).x; });
-  });
-});
 
 // ---------------------------------------------------------------------------
 // The function chosen at run time.
@@ -50,7 +28,7 @@ const runArgs = {
   pow: [3, 30],
 };
 const names = Object.keys(runArgs);
-const runs = 400;
+const runs = 600;
 
 // A fixed, repeatable sequence of choices, so every implementation sees the
 // same mix and the dispatch is not trivially predicted into one target.

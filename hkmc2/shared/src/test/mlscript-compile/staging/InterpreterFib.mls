@@ -111,20 +111,6 @@ staged module InterpreterFib with
       State(Nil, _, _) then None
       else Error
 
-  fun mkFib(a, b, n) =
-    let insts =
-      new Cons(new Fun("fib", new Cons("n", new Cons("b", new Cons("a", Nil))),
-        new Cons(new Load("n"), new Cons(new Push(1), new Cons(new Comp(false),
-          new Cons(new Branch(
-            new Cons(new Load("n"), new Cons(new Push(0), new Cons(new Comp(false),
-              new Cons(new Branch(new Cons(new Load("a"), Nil), new Cons(new Load("b"), Nil)), Nil)))),
-            new Cons(new Load("a"), new Cons(new Load("b"), new Cons(new Load("n"), new Cons(new Push(1), new Cons(Sub, new Cons(new Call("fib"),
-              new Cons(new Load("a"), new Cons(new Load("b"), new Cons(new Load("n"), new Cons(new Push(2), new Cons(Sub, new Cons(new Call("fib"),
-                new Cons(Add, Nil)))))))))))))
-          ), Nil))))),
-        new Cons(new Push(a), new Cons(new Push(b), new Cons(new Push(n), new Cons(new Call("fib"), Nil)))))
-    exec(insts, Nil, Nil, Nil)
-
   // ---------------------------------------------------------------------------
   // Choosing the function at run time.
   //
